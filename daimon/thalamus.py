@@ -95,10 +95,10 @@ class Thalamus:
                 return "", 0, []
         if self.max_drop is not None:
             ranked = [t for t in ranked if t[1] >= ranked[0][1] - self.max_drop]
-        if explore and self._rng.random() < self.eps:
-            self._rng.shuffle(ranked)
         # MMR: relevancia frente a redundancia con lo ya elegido
         scores = np.array([s for _, s, _ in ranked])
+        if explore and self._rng.random() < self.eps:      # exploración: perturba las puntuaciones
+            scores = scores + self._rng.normal(0, max(scores.std(), 1e-3), len(scores))
         rel = (scores - scores.min()) / (scores.max() - scores.min() + 1e-9)
         vecs = np.stack([self.hippo.vector(e.id) for e, _, _ in ranked])
         chosen: list[int] = []
@@ -115,7 +115,7 @@ class Thalamus:
         texts = [fmt(ranked[i][0]) for i in chosen]
         text, used = pack(texts, budget)
         ids = [ranked[i][0].id for i, t in zip(chosen, texts) if t[:40] in text]
-        self._last[query] = {ranked[i][0].id: ranked[i][2] for i in chosen}
+        self._last[query] = {e.id: x for e, _, x in ranked}
         return text, used, ids
 
     def fit(self, examples: list[tuple[str, set[str]]], epochs: int = 200, lr: float = 0.1,
@@ -140,13 +140,21 @@ class Thalamus:
             self.w -= lr * grad
         return loss
 
-    def feedback(self, ids: list[str], reward: float, query: str, lr: float = 0.05) -> None:
-        """Actualización en línea (bandido): lo que sirvió sube, lo que no, baja."""
-        feats = self._last.get(query, {})
-        for i in ids:
-            x = feats.get(i)
-            if x is not None:
-                self.w += lr * (reward - _sigmoid(x @ self.w)) * x
+    def feedback(self, ids: list[str], reward: float, query: str, lr: float = 0.05, k_alt: int = 10) -> bool:
+        """Bandido por pares: lo útil sube frente a las alternativas; lo inútil baja frente a ellas.
+
+        Devuelve False (sin efecto) si esa consulta no se compuso en esta sesión."""
+        feats = self._last.get(query)
+        marked = [i for i in ids if feats and i in feats]
+        if not marked:
+            return False
+        others = sorted((i for i in feats if i not in ids), key=lambda i: -(feats[i] @ self.w))[:k_alt]
+        pos, neg = (marked, others) if reward >= 0.5 else (others, marked)
+        for p in pos:
+            for n in neg:
+                d = feats[p] - feats[n]
+                self.w += lr * _sigmoid(-(d @ self.w)) * d
+        return True
 
     def save(self, path: Path) -> None:
         np.save(path, self.w)

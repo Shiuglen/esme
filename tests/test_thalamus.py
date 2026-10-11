@@ -94,3 +94,26 @@ def test_se_abstiene_ante_pregunta_ajena(tmp_path):
     assert th.compose("receta de paella valenciana con mariscos", 1500) == ("", 0, [])
     text, used, ids = th.compose("tema3 detalle", 1500)
     assert ids and used > 0
+
+
+def test_feedback_negativo_no_destruye(tmp_path):
+    th = _setup(tmp_path, _corpus())
+    for _ in range(6):
+        _, _, ids = th.compose("tema1 detalle", 300)
+        assert th.feedback(ids[:1], 0.0, "tema1 detalle")
+    assert th.w[0] > 0 and np.linalg.norm(th.w) < 10 * np.linalg.norm(np.ones(12))
+    _, _, after = th.compose("tema1 detalle", 300)
+    assert after[0] != ids[0]          # lo marcado como inútil deja de ir primero
+
+
+def test_feedback_consulta_desconocida(tmp_path):
+    th = _setup(tmp_path, _corpus())
+    w0 = th.w.copy()
+    assert th.feedback(["g1"], 1.0, "nunca compuesta") is False and np.allclose(w0, th.w)
+
+
+def test_explorar_cambia_el_orden(tmp_path):
+    th = _setup(tmp_path, _corpus())
+    th.eps = 1.0
+    base = th.compose("tema3 detalle", 400)[2]
+    assert any(th.compose("tema3 detalle", 400, explore=True)[2] != base for _ in range(5))

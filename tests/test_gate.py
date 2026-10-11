@@ -36,10 +36,12 @@ def test_remember_redacta(tmp_path):
 def test_feedback_ok(tmp_path):
     h = _home(tmp_path)
     rid = remember_tool(h, "Arc paga 500 USDC")
+    remember_tool(h, "Qloo da hasta 15000 dolares en premios")
     recall_tool(h, "Arc USDC", 500)
     w0 = h.thalamus.w.copy()
     assert feedback_tool(h, [rid], True, "Arc USDC") == "ok"
     assert (h.thalamus.w != w0).any() and (tmp_path / "thalamus.npy").exists()
+    assert feedback_tool(h, [rid], True, "consulta nunca vista").startswith("sin efecto")
 
 
 def test_servidor_expone_herramientas(tmp_path):

@@ -30,7 +30,8 @@ def remember_tool(home: Home, text: str, kind: str = "note") -> str:
 
 
 def feedback_tool(home: Home, ids: list[str], useful: bool, query: str) -> str:
-    home.thalamus.feedback(ids, 1.0 if useful else 0.0, query)
+    if not home.thalamus.feedback(ids, 1.0 if useful else 0.0, query):
+        return "sin efecto: esa consulta no se compuso con recall en esta sesión"
     home.save_thalamus()
     return "ok"
 
