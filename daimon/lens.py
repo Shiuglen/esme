@@ -103,3 +103,20 @@ def ollama_encoder(model: str = "embeddinggemma", host: str = "http://127.0.0.1:
 
 # Prefijos recomendados por EmbeddingGemma para búsqueda
 EMBEDDINGGEMMA_PREFIXES = {"query_prefix": "task: search result | query: ", "doc_prefix": "title: none | text: "}
+
+
+def hash_encoder(dim: int = 256) -> tuple[Encoder, int]:
+    """Codificador mínimo sin descargas (bolsa de palabras con vectores por hash). Modo de emergencia y pruebas."""
+    import hashlib
+
+    def word(w: str) -> np.ndarray:
+        seed = int(hashlib.md5(w.encode()).hexdigest()[:8], 16)
+        return np.random.default_rng(seed).standard_normal(dim).astype(np.float32)
+
+    def enc(texts):
+        out = np.zeros((len(texts), dim), dtype=np.float32)
+        for i, t in enumerate(texts):
+            for w in t.lower().split():
+                out[i] += word(w)
+        return out
+    return enc, dim

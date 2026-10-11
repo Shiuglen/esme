@@ -6,7 +6,7 @@ from pathlib import Path
 
 from .hippocampus import Hippocampus
 from .ingest import Event
-from .lens import Lens, model2vec_encoder, ollama_encoder
+from .lens import Lens, hash_encoder, model2vec_encoder, ollama_encoder
 from .lexical import BM25
 from .thalamus import Thalamus
 
@@ -17,6 +17,8 @@ def encoder_from_config(cfg: dict):
     name = cfg.get("encoder", "model2vec:minishlab/potion-multilingual-128M")
     if name.startswith("ollama:"):
         return ollama_encoder(name.split(":", 1)[1])
+    if name.startswith("hash:"):
+        return hash_encoder(int(name.split(":", 1)[1]))
     return model2vec_encoder(name.split(":", 1)[1] if ":" in name else name)
 
 
