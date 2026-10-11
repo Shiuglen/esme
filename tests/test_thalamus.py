@@ -26,7 +26,16 @@ def _corpus():
 
 def test_features_dim():
     e = Event("x", "hola", "t", "note", "2026-10-01T00:00:00Z", 0.8)
-    assert features("q", e, 0.5, 0.2, 1).shape == (10,)
+    assert features("q", e, 0.5, 0.2, 1).shape == (12,)
+
+
+def test_features_lexico_absoluto_y_rango():
+    e = Event("x", "hola", "t", "note", "2026-10-01T00:00:00Z", 0.8)
+    debil = features("q", e, 0.5, 1.0, 0, bm25_raw=0.5, dense_rank=0)
+    fuerte = features("q", e, 0.5, 1.0, 0, bm25_raw=40.0, dense_rank=0)
+    lejos = features("q", e, 0.5, 1.0, 0, bm25_raw=40.0, dense_rank=30)
+    assert fuerte[10] > 0.95 and debil[10] < 0.1          # la fuerza léxica absoluta distingue lo que la relativa no
+    assert lejos[11] < fuerte[11] == 1.0
 
 
 def test_compose_vacio(tmp_path):

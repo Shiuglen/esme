@@ -17,7 +17,7 @@ from .lexical import BM25
 from .tokens import count
 
 KINDS = ("note", "doc", "user_msg", "ai_msg")
-W0 = np.array([1, 0.6, -0.1, 0.2, 0.1, 0, 0, 0.05, 0, -0.05], dtype=np.float64)
+W0 = np.array([1, 0.6, -0.1, 0.2, 0.1, 0, 0, 0.05, 0, -0.05, 0.5, 0.5], dtype=np.float64)
 
 
 def _days_since(ts: str, now: datetime) -> float:
@@ -31,11 +31,15 @@ def _days_since(ts: str, now: datetime) -> float:
 
 
 def features(query: str, cand: Event, dense: float, bm25: float, hop: int,
-             now: datetime | None = None) -> np.ndarray:
+             now: datetime | None = None, bm25_raw: float = 0.0, dense_rank: int | None = None) -> np.ndarray:
+    """12 rasgos: significado, léxico relativo, salto, confianza, recencia, tipo (4), longitud,
+    léxico absoluto (¿la coincidencia es fuerte de verdad?) y rango por significado."""
     now = now or datetime.now(timezone.utc)
     onehot = [1.0 if cand.kind == k else 0.0 for k in KINDS]
+    lex_abs = 1.0 - math.exp(-bm25_raw / 10)
+    dense_rr = 1.0 / (1.0 + dense_rank / 5) if dense_rank is not None else 0.0
     return np.array([dense, bm25, hop, cand.trust, math.exp(-_days_since(cand.ts, now) / 90),
-                     *onehot, math.log1p(count(cand.text)) / 8], dtype=np.float64)
+                     *onehot, math.log1p(count(cand.text)) / 8, lex_abs, dense_rr], dtype=np.float64)
 
 
 def _sigmoid(x):
@@ -64,11 +68,14 @@ class Thalamus:
             found[h.event.id] = (h.event, float(self.hippo.vector(h.event.id) @ q), h.hop)
         lex = self.bm25.search(query, k)
         top = max((s for _, s in lex), default=1.0) or 1.0
-        lexs = {e.id: s / top for e, s in lex}
+        raw = {e.id: s for e, s in lex}
         for e, _ in lex:
             if e.id not in found and self.hippo.get(e.id) is not None:
                 found[e.id] = (e, float(self.hippo.vector(e.id) @ q), 0)
-        return [(e, features(query, e, d, lexs.get(i, 0.0), hop, now)) for i, (e, d, hop) in found.items()]
+        order = sorted(found, key=lambda i: -found[i][1])
+        drank = {i: r for r, i in enumerate(order)}
+        return [(e, features(query, e, d, raw.get(i, 0.0) / top, hop, now, raw.get(i, 0.0), drank[i]))
+                for i, (e, d, hop) in found.items()]
 
     def rank(self, query: str) -> list[tuple[Event, float, np.ndarray]]:
         cands = self.candidates(query)
