@@ -40,3 +40,38 @@ def test_guardar_cargar(tmp_path):
     lens.save(tmp_path / "lens.npz")
     other = Lens.load(tmp_path / "lens.npz", enc)
     assert np.allclose(lens.encode(["a b"]), other.encode(["a b"]))
+
+
+def test_prefijos_consulta_y_documento():
+    seen = []
+    enc, dim = fake_encoder(32)
+
+    def spy(texts):
+        seen.extend(texts)
+        return enc(texts)
+    lens = Lens(spy, dim, query_prefix="Q: ", doc_prefix="D: ")
+    lens.encode(["hola"]); lens.encode(["pregunta"], role="query")
+    assert seen == ["D: hola", "Q: pregunta"]
+
+
+def test_ollama_encoder():
+    import json, threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    from daimon.lens import ollama_encoder
+    got = {}
+
+    class H(BaseHTTPRequestHandler):
+        def do_POST(self):
+            body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            got.setdefault("batches", []).append(len(body["input"]))
+            self.send_response(200); self.end_headers()
+            self.wfile.write(json.dumps({"embeddings": [[1.0, 0.0, 0.0]] * len(body["input"])}).encode())
+
+        def log_message(self, *a):
+            pass
+    srv = HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    enc, dim = ollama_encoder("m", host=f"http://127.0.0.1:{srv.server_port}", batch=2)
+    v = enc(["a", "b", "c"])
+    assert dim == 3 and v.shape == (3, 3) and got["batches"][-2:] == [2, 1]
+    srv.shutdown()

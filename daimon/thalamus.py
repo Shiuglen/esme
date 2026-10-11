@@ -56,7 +56,7 @@ class Thalamus:
         if len(self.hippo) == 0:
             return []
         now = datetime.now(timezone.utc)
-        q = self.hippo.lens.encode([query])[0]
+        q = self.hippo.lens.encode([query], role="query")[0]
         found: dict[str, tuple[Event, float, int]] = {}
         for h in self.hippo.recall(query, k=k // 2, hops=2):
             found[h.event.id] = (h.event, float(self.hippo.vector(h.event.id) @ q), h.hop)

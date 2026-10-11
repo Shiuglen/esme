@@ -15,15 +15,20 @@ def _normalize(x: np.ndarray) -> np.ndarray:
 
 
 class Lens:
-    def __init__(self, encoder: Encoder, dim: int, W: np.ndarray | None = None):
+    def __init__(self, encoder: Encoder, dim: int, W: np.ndarray | None = None,
+                 query_prefix: str = "", doc_prefix: str = ""):
         self.encoder, self.dim = encoder, dim
+        self.query_prefix, self.doc_prefix = query_prefix, doc_prefix
         self.W = np.zeros((dim, dim), dtype=np.float32) if W is None else W.astype(np.float32)
 
-    def _base(self, texts: list[str]) -> np.ndarray:
-        return _normalize(np.asarray(self.encoder(list(texts)), dtype=np.float32).reshape(len(texts), self.dim))
+    def _base(self, texts: list[str], role: str = "doc") -> np.ndarray:
+        pre = self.query_prefix if role == "query" else self.doc_prefix
+        raw = self.encoder([pre + t for t in texts])
+        return _normalize(np.asarray(raw, dtype=np.float32).reshape(len(texts), self.dim))
 
-    def encode(self, texts: list[str]) -> np.ndarray:
-        x = self._base(texts)
+    def encode(self, texts: list[str], role: str = "doc") -> np.ndarray:
+        """role='query' para consultas y 'doc' para recuerdos (algunos codificadores usan prefijos distintos)."""
+        x = self._base(texts, role)
         return _normalize(x + x @ self.W)
 
     def train_adapter(self, pairs: list[tuple[str, str]], epochs: int = 30, lr: float = 0.05,
@@ -61,12 +66,12 @@ class Lens:
         return loss
 
     def save(self, path: Path) -> None:
-        np.savez(path, W=self.W, dim=self.dim)
+        np.savez(path, W=self.W, dim=self.dim, qp=self.query_prefix, dp=self.doc_prefix)
 
     @classmethod
     def load(cls, path: Path, encoder: Encoder) -> "Lens":
         d = np.load(path)
-        return cls(encoder, int(d["dim"]), d["W"])
+        return cls(encoder, int(d["dim"]), d["W"], str(d["qp"]) if "qp" in d else "", str(d["dp"]) if "dp" in d else "")
 
 
 def model2vec_encoder(name: str = "minishlab/potion-multilingual-128M") -> tuple[Encoder, int]:
@@ -74,3 +79,27 @@ def model2vec_encoder(name: str = "minishlab/potion-multilingual-128M") -> tuple
     model = StaticModel.from_pretrained(name)
     dim = int(model.embedding.shape[1])
     return (lambda texts: model.encode(texts)), dim
+
+
+def ollama_encoder(model: str = "embeddinggemma", host: str = "http://127.0.0.1:11434",
+                   batch: int = 64, timeout: float = 120) -> tuple[Encoder, int]:
+    """Codificador local servido por Ollama (p. ej. EmbeddingGemma, multilingüe)."""
+    import json
+    import urllib.request
+
+    def call(texts: list[str]) -> np.ndarray:
+        out = []
+        for s in range(0, len(texts), batch):
+            body = json.dumps({"model": model, "input": texts[s:s + batch]}).encode()
+            req = urllib.request.Request(f"{host.rstrip('/')}/api/embed", data=body,
+                                         headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                out.extend(json.loads(r.read())["embeddings"])
+        return np.asarray(out, dtype=np.float32)
+
+    dim = int(call(["x"]).shape[1])
+    return call, dim
+
+
+# Prefijos recomendados por EmbeddingGemma para búsqueda
+EMBEDDINGGEMMA_PREFIXES = {"query_prefix": "task: search result | query: ", "doc_prefix": "title: none | text: "}

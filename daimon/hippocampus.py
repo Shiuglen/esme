@@ -87,7 +87,7 @@ class Hippocampus:
         """Cada salto trae k recuerdos nuevos; la consulta se desplaza hacia lo recordado (Hopfield moderna)."""
         if not self._alive.any():
             return []
-        q = self.lens.encode([query])[0]
+        q = self.lens.encode([query], role="query")[0]
         taken = ~self._alive.copy()
         best: dict[int, tuple[float, int]] = {}
         for hop in range(hops + 1):
