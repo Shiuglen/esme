@@ -12,16 +12,12 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import prueba0 as P  # noqa: E402
 from daimon.bench.run import SYSTEM_ANSWER, prompt_for  # noqa: E402
-from daimon.hippocampus import Hippocampus  # noqa: E402
-from daimon.lexical import BM25  # noqa: E402
+from daimon.home import Home  # noqa: E402
 from daimon.teachers import Ollama  # noqa: E402
-from daimon.thalamus import Thalamus  # noqa: E402
 
 
 def main(questions):
-    eg = Hippocampus(P.EG_HOME / "mem.db", P.eg_lens())
-    th = Thalamus(eg, BM25(eg.events()), mmr_lambda=1.0, max_drop=P.MAX_DROP)
-    th.load(P.RUNS / "thalamus_eg.npy")
+    th = Home(P.HOME).thalamus          # el mismo Daimon que se midió (config del hogar)
     contexts = [th.compose(q, P.BUDGET) for q in questions]      # primero todos los contextos (un modelo en GPU)
     ia = Ollama(P.ANSWERER, timeout=300)
     for q, (ctx, used, ids) in zip(questions, contexts):
