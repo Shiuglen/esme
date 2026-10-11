@@ -49,3 +49,21 @@ def test_servidor_expone_herramientas(tmp_path):
     srv = build_server(_home(tmp_path))
     names = {t.name for t in asyncio.run(srv.list_tools())}
     assert names == {"recall", "remember", "feedback"}
+
+
+def test_home_lee_config(tmp_path):
+    import json
+    (tmp_path / "config.json").write_text(json.dumps({"mmr_lambda": 1.0, "max_drop": 1.3, "min_dense": 0.5,
+                                                     "query_prefix": "Q: ", "doc_prefix": "D: "}))
+    h = _home(tmp_path)
+    th = h.thalamus
+    assert (th.mmr_lambda, th.max_drop, th.min_dense) == (1.0, 1.3, 0.5)
+    assert (h.lens.query_prefix, h.lens.doc_prefix) == ("Q: ", "D: ")
+
+
+def test_dimension_incompatible(tmp_path):
+    import pytest
+    h = _home(tmp_path)
+    remember_tool(h, "algo que recordar")
+    with pytest.raises(ValueError, match="codificador"):
+        Home(tmp_path, encoder=fake_encoder(16))
