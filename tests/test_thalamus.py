@@ -86,3 +86,11 @@ def test_compose_corte_adaptativo(tmp_path):
     _, cut_tokens, cut = th.compose("tema3 detalle", 1500)
     assert 1 <= len(cut) < len(full) and cut_tokens < full_tokens
     assert cut[0] == full[0]
+
+
+def test_se_abstiene_ante_pregunta_ajena(tmp_path):
+    th = _setup(tmp_path, _corpus())
+    th.min_dense = 0.6          # el codificador falso (32 dims) da hasta ~0.4 por azar
+    assert th.compose("receta de paella valenciana con mariscos", 1500) == ("", 0, [])
+    text, used, ids = th.compose("tema3 detalle", 1500)
+    assert ids and used > 0
