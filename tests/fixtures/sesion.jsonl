@@ -1,0 +1,6 @@
+{"type": "user", "isSidechain": false, "timestamp": "2026-10-10T10:00:00Z", "message": {"role": "user", "content": "¿Por qué elegimos Laya en vez de Jev?"}}
+{"type": "assistant", "isSidechain": false, "timestamp": "2026-10-10T10:00:05Z", "message": {"role": "assistant", "content": [{"type": "text", "text": "Elegimos Laya porque es gratuita y corre en local; Jev cuesta dinero."}, {"type": "tool_use", "id": "x", "name": "Bash", "input": {}}]}}
+{"type": "user", "isSidechain": false, "timestamp": "2026-10-10T10:00:06Z", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "x", "content": "salida"}]}}
+{"type": "user", "isSidechain": true, "timestamp": "2026-10-10T10:00:07Z", "message": {"role": "user", "content": "mensaje de subagente"}}
+{"type": "user", "isSidechain": false, "timestamp": "2026-10-10T10:00:08Z", "message": {"role": "user", "content": "<command-name>/compact</command-name>"}}
+{"type": "attachment", "attachment": {}}
