@@ -31,7 +31,7 @@ def _project(V: np.ndarray, seed: int) -> np.ndarray:
         import umap
         P = umap.UMAP(n_components=2, metric="cosine", n_neighbors=min(15, n - 1), min_dist=0.08,
                       random_state=seed, n_jobs=1).fit_transform(V)
-    P = P - P.mean(0)
+    P = P - (P.min(0) + P.max(0)) / 2          # centrado por su caja: el mapa usa todo el espacio, equilibrado
     scale = np.abs(P).max() or 1.0
     return (P / scale).astype(np.float64)
 
