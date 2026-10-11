@@ -44,10 +44,12 @@ def _sigmoid(x):
 
 class Thalamus:
     def __init__(self, hippo: Hippocampus, bm25: BM25, w: np.ndarray | None = None,
-                 mmr_lambda: float = 0.7, k: int = 40, eps: float = 0.05):
+                 mmr_lambda: float = 0.7, k: int = 40, eps: float = 0.05, max_drop: float | None = None):
         self.hippo, self.bm25 = hippo, bm25
         self.w = (W0.copy() if w is None else np.asarray(w, dtype=np.float64))
         self.mmr_lambda, self.k, self.eps = mmr_lambda, k, eps
+        # corte adaptativo: solo entra lo que puntúa a menos de max_drop del mejor (None = llenar el presupuesto)
+        self.max_drop = max_drop
         self._last: dict[str, dict[str, np.ndarray]] = {}
         self._rng = np.random.default_rng(0)
 
@@ -76,6 +78,8 @@ class Thalamus:
         ranked = self.rank(query)
         if not ranked:
             return "", 0, []
+        if self.max_drop is not None:
+            ranked = [t for t in ranked if t[1] >= ranked[0][1] - self.max_drop]
         if explore and self._rng.random() < self.eps:
             self._rng.shuffle(ranked)
         # MMR: relevancia frente a redundancia con lo ya elegido

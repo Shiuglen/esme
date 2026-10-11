@@ -68,3 +68,12 @@ def test_guardar_cargar(tmp_path):
     th2 = _setup(tmp_path / "otro", [])
     th2.load(tmp_path / "w.npy")
     assert th2.w[0] == 3.0
+
+
+def test_compose_corte_adaptativo(tmp_path):
+    th = _setup(tmp_path, _corpus())
+    _, full_tokens, full = th.compose("tema3 detalle", 1500)
+    th.max_drop = 0.05
+    _, cut_tokens, cut = th.compose("tema3 detalle", 1500)
+    assert 1 <= len(cut) < len(full) and cut_tokens < full_tokens
+    assert cut[0] == full[0]
