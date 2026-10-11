@@ -28,3 +28,14 @@ def test_clean():
 
 def test_trust_orden():
     assert TRUST["user"] > TRUST["file"] > TRUST["ai_verified"] > TRUST["ai"] > TRUST["web"]
+
+
+def test_redacta_formatos_extra():
+    casos = ["DB_PASSWORD=supersecreta1", "JWT_SECRET=abcdef123456", 'NEXTAUTH_SECRET="xyz987654321"',
+             '{"password": "hunter22"}', "postgres://user:Pa55word@db.local:5432/x",
+             "-----BEGIN RSA PRIVATE KEY-----\nMIIEow\n-----END RSA PRIVATE KEY-----",
+             "AIzaSyA1234567890abcdefghijklmnopqrstuv", "xoxb-1234567890-abcdefghij", "la contraseña es Gato.2024"]
+    secretos = ["supersecreta1", "abcdef123456", "xyz987654321", "hunter22", "Pa55word", "MIIEow",
+                "AIzaSyA1234567890", "xoxb-1234567890", "Gato.2024"]
+    for c, s in zip(casos, secretos):
+        assert s not in redact(c), c

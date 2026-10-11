@@ -37,7 +37,7 @@ def test_bm25_vacio():
     assert BM25([]).search("algo", 3) == []
 
 
-def test_md_filtra_firme(tmp_path):
+def test_md_filtra_lineas_excluidas(tmp_path):
     md = tmp_path / "CLAUDE.md"
     md.write_text("Usar Laya por defecto.\nProyecto FirmeDigital en Next.js\nResponder en español.\n")
     text, used = make_ctx_md([md])("cualquier cosa", 500)

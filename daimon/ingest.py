@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .immune import TRUST, clean
+from .immune import TRUST, clean, is_excluded, redact
 
 _SKIP = ("node_modules", "/dist/", "/.git/", "/.venv/", "/build/")
 
@@ -48,7 +48,7 @@ def _mtime_iso(path: Path) -> str:
 
 def from_markdown(path: Path, kind: str = "note") -> list[Event]:
     """Un evento por trozo de cada sección; la cabecera viaja con su sección."""
-    text = path.read_text(encoding="utf-8", errors="replace")
+    text = redact(path.read_text(encoding="utf-8", errors="replace"))   # redactar ANTES de trocear
     sections = re.split(r"(?m)^(?=#{1,6}\s)", text)
     ts, src, trust = _mtime_iso(path), str(path), TRUST["file"]
     events, n = [], 0
@@ -85,7 +85,7 @@ def from_claude_jsonl(path: Path) -> list[Event]:
         else:
             kind, trust, text = "ai_msg", TRUST["ai"], _text_of(content)
         ts = row.get("timestamp") or _mtime_iso(path)
-        for part in chunk(text):
+        for part in chunk(redact(text)):
             events.append(Event(_id(src, n), part, src, kind, ts, trust))
             n += 1
     return events
@@ -95,7 +95,7 @@ def _files(sources: list[Path]):
     for s in sources:
         paths = [s] if s.is_file() else sorted(p for p in s.rglob("*") if p.suffix in (".md", ".jsonl"))
         for p in paths:
-            if not any(k in str(p) for k in _SKIP):
+            if not any(k in str(p) for k in _SKIP) and not is_excluded(str(p)):
                 yield p
 
 
@@ -104,6 +104,8 @@ def collect(sources: list[Path]) -> list[Event]:
     seen, out = set(), []
     for p in _files(sources):
         evs = from_claude_jsonl(p) if p.suffix == ".jsonl" else from_markdown(p, "note" if "Obsidian" in str(p) else "doc")
+        if p.suffix == ".md" and any(is_excluded(e.text) for e in evs):
+            continue          # una nota que toca lo excluido se descarta entera, no solo el trozo
         for e in evs:
             cleaned = clean(e.text)
             if cleaned is None:

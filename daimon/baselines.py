@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Callable
 
 from .hippocampus import Hippocampus
-from .immune import clean
+from .immune import clean, is_excluded
 from .ingest import Event
 from .lexical import BM25
 from .tokens import count
@@ -45,6 +45,8 @@ def ctx_none(query: str, budget: int) -> tuple[str, int]:
 def make_ctx_md(md_paths: list[Path]) -> CtxFn:
     lines = []
     for p in md_paths:
+        if is_excluded(str(p)):
+            continue
         for line in Path(p).read_text(encoding="utf-8", errors="replace").splitlines():
             c = clean(line)
             if c is not None and c.strip():

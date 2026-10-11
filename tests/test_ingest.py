@@ -38,3 +38,23 @@ def test_collect_excluye_y_redacta():
     assert "FirmeDigital" not in text
     assert "sk-ant" not in text and "[SECRET_REDACTED]" in text
     assert "Laya" in text
+
+
+def test_ruta_excluida_no_entra():
+    evs = collect([FIX / "excluida"])
+    assert not any("FirmeDigital-notas" in e.source for e in evs)
+
+
+def test_nota_con_un_trozo_excluido_se_descarta_entera():
+    evs = collect([FIX / "excluida"])
+    assert not any(e.source.endswith("mezcla.md") for e in evs)
+
+
+def test_secreto_partido_entre_trozos():
+    from daimon.ingest import from_markdown
+    import tempfile
+    filler = " ".join(f"w{i}" for i in range(129))
+    p = Path(tempfile.mkdtemp()) / "s.md"
+    p.write_text(filler + " password: hunter2xyz " + " ".join(f"v{i}" for i in range(200)))
+    evs = collect([p])
+    assert evs and all("hunter2xyz" not in e.text for e in evs)
