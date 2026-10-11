@@ -34,7 +34,7 @@ class Hippocampus:
     def __init__(self, db_path: Path, lens: Lens):
         self.db_path, self.lens = Path(db_path), lens
         self.vec_path = self.db_path.with_suffix(".vectors.npy")
-        self.db = sqlite3.connect(self.db_path)
+        self.db = sqlite3.connect(self.db_path, check_same_thread=False)   # el servidor MCP usa hilos
         self.db.execute("PRAGMA secure_delete=ON")       # lo borrado se sobrescribe en disco
         self.db.executescript(_SCHEMA)
         self._reload()

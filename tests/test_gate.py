@@ -67,3 +67,13 @@ def test_dimension_incompatible(tmp_path):
     remember_tool(h, "algo que recordar")
     with pytest.raises(ValueError, match="codificador"):
         Home(tmp_path, encoder=fake_encoder(16))
+
+
+def test_recall_a_traves_del_servidor(tmp_path):
+    import asyncio
+    h = _home(tmp_path)
+    remember_tool(h, "Las auditorías cuestan 79, 179 y 299 dólares")
+    srv = build_server(h)
+    res = asyncio.run(srv.call_tool("recall", {"query": "precio auditorías", "budget": 500}))
+    text = str(res)
+    assert "79" in text and "Error" not in text

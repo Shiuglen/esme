@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import threading
 from datetime import datetime, timezone
 
 from .home import Home
@@ -39,22 +40,26 @@ def feedback_tool(home: Home, ids: list[str], useful: bool, query: str) -> str:
 def build_server(home: Home):
     from mcp.server.mcpserver import MCPServer   # mcp 2.x (antes FastMCP)
 
+    lock = threading.Lock()          # las herramientas corren en hilos: una a la vez sobre la misma mente
     mcp = MCPServer("daimon", instructions="Memoria viva de Daimon: usa recall antes de trabajar, remember para guardar "
                                            "decisiones y feedback para indicar qué recuerdos sirvieron.")
 
     @mcp.tool()
     def recall(query: str, budget: int = 1500) -> str:
         """Devuelve el contexto más útil de la memoria de Daimon para esta consulta (con ids citados)."""
-        return recall_tool(home, query, budget)
+        with lock:
+            return recall_tool(home, query, budget)
 
     @mcp.tool()
     def remember(text: str, kind: str = "note") -> str:
         """Guarda un hecho, decisión o preferencia en la memoria de Daimon. Devuelve su id."""
-        return remember_tool(home, text, kind)
+        with lock:
+            return remember_tool(home, text, kind)
 
     @mcp.tool()
     def feedback(ids: list[str], useful: bool, query: str) -> str:
         """Indica si los recuerdos devueltos por recall sirvieron, para que Daimon aprenda qué contexto funciona."""
-        return feedback_tool(home, ids, useful, query)
+        with lock:
+            return feedback_tool(home, ids, useful, query)
 
     return mcp
