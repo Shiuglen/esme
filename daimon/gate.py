@@ -5,6 +5,8 @@ import hashlib
 import threading
 from datetime import datetime, timezone
 
+from mcp.server.mcpserver import Context
+
 from .home import Home
 from .immune import TRUST, clean
 from .ingest import Event
@@ -37,18 +39,34 @@ def feedback_tool(home: Home, ids: list[str], useful: bool, query: str) -> str:
     return "ok"
 
 
-def build_server(home: Home):
+def who_from_headers(headers) -> str:
+    """Nombre corto del cliente MCP (claude, opencode, codex, gemini…) a partir de su User-Agent."""
+    ua = (dict(headers or {}).get("user-agent") or "").lower()
+    for name in ("claude", "opencode", "codex", "gemini", "cursor", "zed"):
+        if name in ua:
+            return name
+    return "agente"
+
+
+def build_server(home: Home, lock: threading.Lock | None = None, on_event=None):
     from mcp.server.mcpserver import MCPServer   # mcp 2.x (antes FastMCP)
 
-    lock = threading.Lock()          # las herramientas corren en hilos: una a la vez sobre la misma mente
+    lock = lock or threading.Lock()   # las herramientas corren en hilos: una a la vez sobre la misma mente
     mcp = MCPServer("daimon", instructions="Memoria viva de Daimon: usa recall antes de trabajar, remember para guardar "
                                            "decisiones y feedback para indicar qué recuerdos sirvieron.")
 
     @mcp.tool()
-    def recall(query: str, budget: int = 1500) -> str:
+    def recall(query: str, ctx: Context, budget: int = 1500) -> str:
         """Devuelve el contexto más útil de la memoria de Daimon para esta consulta (con ids citados)."""
         with lock:
-            return recall_tool(home, query, budget)
+            text, used, ids = home.thalamus.compose(query, budget)
+        if on_event:
+            try:
+                who = who_from_headers(ctx.headers)
+            except Exception:
+                who = "agente"
+            on_event({"type": "recall", "who": who, "query": query, "ids": ids, "tokens": used, "abstained": not ids})
+        return f"{text}\n\n[recuerdos: {', '.join(ids)}]" if text else "Sin recuerdos relevantes."
 
     @mcp.tool()
     def remember(text: str, kind: str = "note") -> str:
