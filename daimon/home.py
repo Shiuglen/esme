@@ -28,5 +28,11 @@ class Home:
             self.thalamus.bm25 = BM25(self.hippo.events())
         return n
 
+    def ingest(self, events: list[Event]) -> int:
+        """Ingesta sincronizada por fuente (lo editado se actualiza, lo desaparecido queda obsoleto)."""
+        n = self.hippo.add_source_events(events)
+        self.thalamus.bm25 = BM25(self.hippo.events())
+        return n
+
     def save_thalamus(self) -> None:
         self.thalamus.save(self.path / "thalamus.npy")

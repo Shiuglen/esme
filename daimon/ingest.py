@@ -25,8 +25,9 @@ class Event:
     parent: str | None = None
 
 
-def _id(source: str, offset: int) -> str:
-    return hashlib.sha1(f"{source}:{offset}".encode()).hexdigest()[:16]
+def _id(text: str) -> str:
+    """Id por CONTENIDO: lo olvidado sigue bloqueado aunque la nota se edite o se mueva."""
+    return hashlib.sha1(" ".join(text.lower().split()).encode()).hexdigest()[:16]
 
 
 def chunk(text: str, max_words: int = 160, overlap: int = 30) -> list[str]:
@@ -51,11 +52,10 @@ def from_markdown(path: Path, kind: str = "note") -> list[Event]:
     text = redact(path.read_text(encoding="utf-8", errors="replace"))   # redactar ANTES de trocear
     sections = re.split(r"(?m)^(?=#{1,6}\s)", text)
     ts, src, trust = _mtime_iso(path), str(path), TRUST["file"]
-    events, n = [], 0
+    events = []
     for sec in sections:
         for part in chunk(sec):
-            events.append(Event(_id(src, n), part, src, kind, ts, trust))
-            n += 1
+            events.append(Event(_id(part), part, src, kind, ts, trust))
     return events
 
 
@@ -69,7 +69,7 @@ def _text_of(content) -> str:
 
 def from_claude_jsonl(path: Path) -> list[Event]:
     """Mensajes de texto del usuario y del asistente; ignora herramientas, adjuntos y subagentes."""
-    src, events, n = str(path), [], 0
+    src, events = str(path), []
     for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
         try:
             row = json.loads(line)
@@ -86,8 +86,7 @@ def from_claude_jsonl(path: Path) -> list[Event]:
             kind, trust, text = "ai_msg", TRUST["ai"], _text_of(content)
         ts = row.get("timestamp") or _mtime_iso(path)
         for part in chunk(redact(text)):
-            events.append(Event(_id(src, n), part, src, kind, ts, trust))
-            n += 1
+            events.append(Event(_id(part), part, src, kind, ts, trust))
     return events
 
 

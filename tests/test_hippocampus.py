@@ -53,3 +53,38 @@ def test_persistencia(tmp_path):
     assert h2.recall("algo que recordar", k=1, hops=0)[0].event.id == "id1"
     assert h2.vector("id1").shape == (32,)
     assert {e.id for e in h2.events()} == {"id1", "id2"}
+
+
+def test_ids_por_contenido_y_bloqueo_tras_mover(tmp_path):
+    from daimon.ingest import collect
+    d = tmp_path / "src"; d.mkdir()
+    f = d / "n.md"
+    f.write_text("# A\n\nMi diagnostico medico es X y es privado.\n")
+    h = _hippo(tmp_path)
+    h.add_source_events(collect([f]))
+    eid = h.events()[0].id
+    h.forget(eid)
+    f.write_text("# Nueva seccion arriba\n\nAlgo nuevo.\n\n# A\n\nMi diagnostico medico es X y es privado.\n")
+    h.add_source_events(collect([f]))
+    assert all("diagnostico" not in e.text for e in h.events())
+
+
+def test_nota_editada_se_actualiza(tmp_path):
+    from daimon.ingest import collect
+    f = tmp_path / "n.md"
+    f.write_text("# A\n\nEl precio es 79 dolares.\n")
+    h = _hippo(tmp_path)
+    h.add_source_events(collect([f]))
+    f.write_text("# A\n\nEl precio es 99 dolares.\n")
+    h.add_source_events(collect([f]))
+    texts = [e.text for e in h.events()]
+    assert any("99" in t for t in texts) and not any("79" in t for t in texts)
+
+
+def test_dos_procesos_no_chocan(tmp_path):
+    h1, h2 = _hippo(tmp_path), _hippo(tmp_path)
+    h1.store([_ev(1, "uno")])
+    assert h2.store([_ev(2, "dos")]) == 1
+    h3 = _hippo(tmp_path)
+    assert {e.id for e in h3.events()} == {"id1", "id2"} and len(h3.V) == 2
+    assert not list(tmp_path.glob("*.tmp*"))

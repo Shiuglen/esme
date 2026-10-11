@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -34,14 +35,28 @@ class Hippocampus:
         self.db_path, self.lens = Path(db_path), lens
         self.vec_path = self.db_path.with_suffix(".vectors.npy")
         self.db = sqlite3.connect(self.db_path)
+        self.db.execute("PRAGMA secure_delete=ON")       # lo borrado se sobrescribe en disco
         self.db.executescript(_SCHEMA)
+        self._reload()
+
+    def _reload(self) -> None:
+        """Relee vectores y vivos desde disco (otro proceso puede haber escrito)."""
         n = self.db.execute("SELECT COUNT(*) FROM events").fetchone()[0]
-        if self.vec_path.exists():
-            self.V = np.load(self.vec_path)
-        else:
-            self.V = np.zeros((0, lens.dim), dtype=np.float32)
-        assert len(self.V) == n, "vectores y base desalineados"
+        V = np.load(self.vec_path) if self.vec_path.exists() else np.zeros((0, self.lens.dim), dtype=np.float32)
+        if len(V) and V.shape[1] != self.lens.dim:
+            raise ValueError(f"la memoria tiene vectores de {V.shape[1]} dims y la lente produce {self.lens.dim}: "
+                             "usa el mismo codificador con el que se creó")
+        if len(V) > n:          # un cierre a medias dejó vectores sin fila: se descartan
+            V = V[:n]
+        if len(V) < n:
+            raise RuntimeError("faltan vectores para filas guardadas: memoria corrupta")
+        self.V = V.astype(np.float32)
         self._alive = self._load_alive()
+
+    def _save_vectors(self) -> None:
+        tmp = self.vec_path.with_name(self.vec_path.name + ".tmp.npy")
+        np.save(tmp, self.V)
+        os.replace(tmp, self.vec_path)          # escritura atómica
 
     def _load_alive(self) -> np.ndarray:
         alive = np.zeros(len(self.V), dtype=bool)
@@ -53,21 +68,42 @@ class Hippocampus:
         return int(self._alive.sum())
 
     def store(self, events: list[Event]) -> int:
+        if self.db.execute("SELECT COUNT(*) FROM events").fetchone()[0] != len(self.V):
+            self._reload()
         blocked = {r[0] for r in self.db.execute("SELECT id FROM blocklist")}
-        known = {r[0] for r in self.db.execute("SELECT id FROM events")}
-        new = [e for e in events if e.id not in blocked and e.id not in known]
-        if not new:
-            return 0
-        vecs = self.lens.encode([e.text for e in new])
-        start = len(self.V)
-        self.db.executemany(
-            f"INSERT INTO events(row, {_COLS}) VALUES (?,?,?,?,?,?,?,?,?)",
-            [(start + i, e.id, e.text, e.source, e.kind, e.ts, e.trust, e.compartment, e.parent) for i, e in enumerate(new)])
+        status = {r[0]: r[1] for r in self.db.execute("SELECT id, deleted FROM events")}
+        revive = [e.id for e in events if status.get(e.id) == 2 and e.id not in blocked]
+        for i in revive:                                   # vuelve un texto que había quedado obsoleto
+            self.db.execute("UPDATE events SET deleted=0 WHERE id=?", (i,))
+        seen, new = set(), []
+        for e in events:
+            if e.id not in blocked and e.id not in status and e.id not in seen:
+                seen.add(e.id); new.append(e)
+        if new:
+            vecs = self.lens.encode([e.text for e in new])
+            start = len(self.V)
+            self.db.executemany(
+                f"INSERT INTO events(row, {_COLS}) VALUES (?,?,?,?,?,?,?,?,?)",
+                [(start + i, e.id, e.text, e.source, e.kind, e.ts, e.trust, e.compartment, e.parent) for i, e in enumerate(new)])
+            self.V = np.vstack([self.V, vecs]).astype(np.float32)
+            self._save_vectors()                           # primero los vectores, luego el commit
         self.db.commit()
-        self.V = np.vstack([self.V, vecs]).astype(np.float32)
-        self._alive = np.concatenate([self._alive, np.ones(len(new), dtype=bool)])
-        np.save(self.vec_path, self.V)
+        self._alive = self._load_alive()
         return len(new)
+
+    def add_source_events(self, events: list[Event]) -> int:
+        """Sincroniza por fuente: lo que ya no está en la fuente queda obsoleto (deleted=2), lo nuevo entra."""
+        by_src: dict[str, set[str]] = {}
+        for e in events:
+            by_src.setdefault(e.source, set()).add(e.id)
+        for src, ids in by_src.items():
+            for (i,) in self.db.execute("SELECT id FROM events WHERE source=? AND deleted=0", (src,)).fetchall():
+                if i not in ids:
+                    self.db.execute("UPDATE events SET deleted=2 WHERE id=?", (i,))
+        self.db.commit()
+        n = self.store(events)
+        self._alive = self._load_alive()
+        return n
 
     def _event(self, row) -> Event:
         return Event(*row)
@@ -135,6 +171,6 @@ class Hippocampus:
             self.db.execute("UPDATE events SET deleted=1, text='' WHERE id=?", (i,))
             self.db.execute("INSERT OR IGNORE INTO blocklist VALUES (?,?)", (i, now))
         self.db.commit()
-        np.save(self.vec_path, self.V)
+        self._save_vectors()
         ids = sorted(gone)
         return {"forgotten": ids, "sha256": hashlib.sha256(json.dumps(ids).encode()).hexdigest(), "ts": now}

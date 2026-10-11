@@ -11,7 +11,7 @@ from .ingest import collect
 def ingest_cmd(home_path: Path, sources: list[Path], encoder=None) -> int:
     from .home import Home
     home = Home(home_path, encoder=encoder)
-    return home.add(collect([Path(s) for s in sources]))
+    return home.ingest(collect([Path(s) for s in sources]))
 
 
 def main(argv: list[str] | None = None) -> None:
