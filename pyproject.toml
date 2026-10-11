@@ -1,0 +1,12 @@
+[project]
+name = "daimon"
+version = "0.1.0"
+description = "Sistema cognitivo con red neuronal propia que envuelve a cualquier IA"
+requires-python = ">=3.12"
+dependencies = ["numpy", "model2vec", "mcp"]
+
+[project.scripts]
+daimon = "daimon.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
