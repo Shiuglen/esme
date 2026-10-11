@@ -6,3 +6,7 @@ runs/
 .env
 *.memmap
 .superpowers/
+node_modules/
+out/
+dist/
+*.tsbuildinfo
