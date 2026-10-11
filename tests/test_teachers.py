@@ -15,7 +15,7 @@ def _server(handler_fn):
         def do_POST(self):
             calls["n"] += 1
             calls["body"] = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-            code, payload = handler_fn(calls["n"])
+            code, payload = handler_fn(calls["n"], calls["body"])
             self.send_response(code); self.end_headers(); self.wfile.write(json.dumps(payload).encode())
 
         def log_message(self, *a):
@@ -27,7 +27,7 @@ def _server(handler_fn):
 
 
 def test_answer_ok():
-    srv, calls = _server(lambda n: (200, {"message": {"content": "Laya es gratis."}}))
+    srv, calls = _server(lambda n, b: (200, {"message": {"content": "Laya es gratis."}}))
     o = Ollama("m", host=f"http://127.0.0.1:{srv.server_port}", backoff=0)
     assert o.answer("sis", "pregunta") == "Laya es gratis."
     b = calls["body"]
@@ -37,14 +37,14 @@ def test_answer_ok():
 
 
 def test_quita_think():
-    srv, _ = _server(lambda n: (200, {"message": {"content": "<think>pensando...</think>\nRespuesta final"}}))
+    srv, _ = _server(lambda n, b: (200, {"message": {"content": "<think>pensando...</think>\nRespuesta final"}}))
     o = Ollama("m", host=f"http://127.0.0.1:{srv.server_port}", backoff=0)
     assert o.answer("s", "p") == "Respuesta final"
     srv.shutdown()
 
 
 def test_reintenta_y_falla():
-    srv, calls = _server(lambda n: (500, {"error": "x"}))
+    srv, calls = _server(lambda n, b: (500, {"error": "x"}))
     o = Ollama("m", host=f"http://127.0.0.1:{srv.server_port}", retries=3, backoff=0)
     with pytest.raises(TeacherError):
         o.answer("s", "p")
@@ -53,9 +53,32 @@ def test_reintenta_y_falla():
 
 
 def test_reintenta_y_recupera():
-    srv, calls = _server(lambda n: (500, {}) if n < 2 else (200, {"message": {"content": "ok"}}))
+    srv, calls = _server(lambda n, b: (500, {}) if n < 2 else (200, {"message": {"content": "ok"}}))
     o = Ollama("m", host=f"http://127.0.0.1:{srv.server_port}", retries=3, backoff=0)
     assert o.answer("s", "p") == "ok" and calls["n"] == 2
+    srv.shutdown()
+
+
+GPU_ROTA = (500, {"error": "llama-server process has terminated: CUDA error: out of memory"})
+
+
+def _solo_cpu(n, b):
+    return (200, {"message": {"content": "ok"}}) if b["options"].get("num_gpu") == 0 else GPU_ROTA
+
+
+def test_cae_a_cpu_si_la_gpu_no_carga():
+    srv, calls = _server(_solo_cpu)
+    o = Ollama("m", host=f"http://127.0.0.1:{srv.server_port}", retries=3, backoff=0)
+    assert o.answer("s", "p") == "ok"
+    assert calls["n"] == 2 and calls["body"]["options"]["num_gpu"] == 0
+    srv.shutdown()
+
+
+def test_recuerda_la_cpu_y_no_vuelve_a_estrellarse():
+    srv, calls = _server(_solo_cpu)
+    o = Ollama("m", host=f"http://127.0.0.1:{srv.server_port}", retries=3, backoff=0)
+    o.answer("s", "p"); o.answer("s", "otra")
+    assert calls["n"] == 3          # GPU falla una vez, luego dos llamadas directas a CPU
     srv.shutdown()
 
 

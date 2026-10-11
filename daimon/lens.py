@@ -84,17 +84,12 @@ def model2vec_encoder(name: str = "minishlab/potion-multilingual-128M") -> tuple
 def ollama_encoder(model: str = "embeddinggemma", host: str = "http://127.0.0.1:11434",
                    batch: int = 64, timeout: float = 120) -> tuple[Encoder, int]:
     """Codificador local servido por Ollama (p. ej. EmbeddingGemma, multilingüe)."""
-    import json
-    import urllib.request
+    from .ollama_http import post_json
 
     def call(texts: list[str]) -> np.ndarray:
         out = []
         for s in range(0, len(texts), batch):
-            body = json.dumps({"model": model, "input": texts[s:s + batch]}).encode()
-            req = urllib.request.Request(f"{host.rstrip('/')}/api/embed", data=body,
-                                         headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=timeout) as r:
-                out.extend(json.loads(r.read())["embeddings"])
+            out.extend(post_json(host, "/api/embed", {"model": model, "input": texts[s:s + batch]}, timeout)["embeddings"])
         return np.asarray(out, dtype=np.float32)
 
     dim = int(call(["x"]).shape[1])

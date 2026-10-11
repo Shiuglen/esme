@@ -75,3 +75,30 @@ def test_ollama_encoder():
     v = enc(["a", "b", "c"])
     assert dim == 3 and v.shape == (3, 3) and got["batches"][-2:] == [2, 1]
     srv.shutdown()
+
+
+def test_ollama_encoder_cae_a_cpu_si_la_gpu_no_carga():
+    import json, threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    from daimon.lens import ollama_encoder
+    seen = []
+
+    class H(BaseHTTPRequestHandler):
+        def do_POST(self):
+            b = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            seen.append(b.get("options", {}).get("num_gpu"))
+            if b.get("options", {}).get("num_gpu") == 0:
+                code, out = 200, {"embeddings": [[1.0, 0.0, 0.0] for _ in b["input"]]}
+            else:
+                code, out = 500, {"error": "llama-server process has terminated: vk::PhysicalDevice::createDevice: ErrorInitializationFailed"}
+            self.send_response(code); self.end_headers(); self.wfile.write(json.dumps(out).encode())
+
+        def log_message(self, *a):
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    enc, dim = ollama_encoder("m", host=f"http://127.0.0.1:{srv.server_port}")
+    assert dim == 3 and enc(["a", "b"]).shape == (2, 3)
+    assert seen == [None, 0, 0]     # un fallo en GPU, después todo en CPU
+    srv.shutdown()

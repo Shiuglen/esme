@@ -5,7 +5,8 @@ import json
 import re
 import time
 import urllib.error
-import urllib.request
+
+from .ollama_http import post_json
 
 _THINK = re.compile(r"<think>.*?</think>", re.S)
 
@@ -20,17 +21,15 @@ class Ollama:
         self.model, self.host, self.timeout, self.retries, self.backoff = model, host.rstrip("/"), timeout, retries, backoff
 
     def answer(self, system: str, prompt: str, max_tokens: int = 256) -> str:
-        body = json.dumps({
+        payload = {
             "model": self.model, "stream": False, "think": False,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],
             "options": {"temperature": 0, "num_predict": max_tokens},
-        }).encode()
+        }
         last = None
         for attempt in range(self.retries):
             try:
-                req = urllib.request.Request(f"{self.host}/api/chat", data=body, headers={"Content-Type": "application/json"})
-                with urllib.request.urlopen(req, timeout=self.timeout) as r:
-                    content = json.loads(r.read())["message"]["content"]
+                content = post_json(self.host, "/api/chat", payload, self.timeout)["message"]["content"]
                 return _THINK.sub("", content).strip()
             except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, ConnectionError) as e:
                 last = e
