@@ -317,6 +317,34 @@ El juez es un modelo distinto del que responde, con rúbrica. Una muestra se rev
 - Modelo de frontera concreto para la Prueba 0 (según el acceso del usuario).
 - Precios de M1, que se validan con usuarios.
 
+## 13 bis. Lo aprendido en la Prueba 0 (2026-10-11)
+
+- **Privacidad:**
+  - Excluir por texto no basta. Hay que excluir también por **ruta** y descartar **la nota entera** si una parte toca lo excluido.
+  - Hay que redactar **antes** de trocear, porque un secreto puede quedar partido entre dos fragmentos.
+- **Lente:**
+  - El codificador estático (Model2Vec) es débil para la memoria personal: recall denso 0,47.
+  - **EmbeddingGemma**, local vía Ollama y con prefijos de consulta y documento, sube a 0,77 y pasa a ser la Lente por defecto.
+  - El adaptador personal necesita más que 47 pares: queda latente hasta que haya feedback real.
+- **Líneas base:**
+  - Los **.md estáticos y el «contexto largo» no recuperan la evidencia** (recall 0).
+  - BM25 es un rival muy fuerte si la pregunta repite las palabras de la memoria, pero se hunde con paráfrasis.
+- **Tálamo:**
+  - Un ranker entrenado solo con preguntas literales **aprende el sesgo léxico**.
+  - Debe entrenarse con paráfrasis y llevar rasgos de fuerza léxica absoluta y de rango semántico.
+  - El **corte adaptativo** ahorra contexto sin perder recall.
+  - La **abstención** (umbral de significado calibrado) evita meter ruido en preguntas ajenas.
+- **Memoria:**
+  - Ids por **contenido** (lo olvidado no revive al editar o mover).
+  - Sincronización por fuente (lo editado se actualiza).
+  - Borrado seguro en disco y escritura atómica.
+- **Puerta MCP:**
+  - El servidor ejecuta herramientas en hilos: la memoria debe ser segura entre hilos.
+  - El hogar guarda su configuración, para que lo que se sirve sea lo que se midió.
+- **Examen:**
+  - El usuario casi no pregunta, da órdenes: el examen «real» se construye sobre sus mensajes y decisiones.
+  - Hacen falta paráfrasis, preguntas sin respuesta en memoria y validación humana del oro.
+
 ## 14. Fuentes principales
 
 - Titans 2501.00663
