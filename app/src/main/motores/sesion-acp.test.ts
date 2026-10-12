@@ -101,6 +101,13 @@ describe('abrirSesionACP', () => {
     s.cerrar()
     expect(eventos.filter((e) => e.tipo === 'texto').map((e) => (e as { texto: string }).texto).join('')).toBe('rapido')
   })
+  it('preguntando nada más abrir, el modelo elegido gana al que el motor pone después', async () => {
+    const { eventos, o } = base({ config: { model: 'rapido' } })
+    const s = await abrirSesionACP(o)
+    await s.preguntar('modelo-tarde')
+    s.cerrar()
+    expect(eventos.filter((e) => e.tipo === 'texto').map((e) => (e as { texto: string }).texto).join('')).toBe('rapido')
+  })
   it('una opción desconocida o con valor inválido se ignora sin fallar', async () => {
     const { eventos, o } = base({ config: { model: 'inexistente', otra: 'x' } })
     const s = await abrirSesionACP(o)

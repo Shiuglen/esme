@@ -24,6 +24,11 @@ new AgentSideConnection((conn) => ({
     const texto = p.prompt.map((b) => (b.type === 'text' ? b.text : '')).join('')
     const upd = (u) => conn.sessionUpdate({ sessionId: 's1', update: u })
     if (texto === 'morir') process.exit(3)
+    if (texto === 'modelo-tarde') {   // como OpenCode: tarda en responder y entretanto su configuración pisa el modelo
+      await new Promise((r) => setTimeout(r, 120))
+      await upd({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: modelo } })
+      return { stopReason: 'end_turn' }
+    }
     if (texto === 'modelo') {
       await upd({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: modelo } })
       return { stopReason: 'end_turn' }

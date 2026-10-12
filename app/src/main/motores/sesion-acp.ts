@@ -60,7 +60,12 @@ export async function abrirSesionACP(o: Opciones): Promise<{ preguntar(texto: st
 
   let opciones: OpcionConfig[] = []
   const deseada: Record<string, string> = { ...o.config }
-  const nuevasOpciones = (e: Extract<EventoMotor, { tipo: 'opciones' }>) => { opciones = e.opciones; o.alEvento(e) }
+  let ultimoCambio = Date.now()
+  let defender: (() => void) | null = null   // existe cuando la sesión ya está abierta
+  const nuevasOpciones = (e: Extract<EventoMotor, { tipo: 'opciones' }>) => {
+    opciones = e.opciones; ultimoCambio = Date.now(); o.alEvento(e)
+    defender?.()
+  }
 
   const stream = ndJsonStream(Writable.toWeb(hijo.stdin!) as WritableStream<Uint8Array>, Readable.toWeb(hijo.stdout!) as ReadableStream<Uint8Array>)
   const conn = new ClientSideConnection(() => ({
@@ -95,10 +100,26 @@ export async function abrirSesionACP(o: Opciones): Promise<{ preguntar(texto: st
         try { await poner(id, valor) } catch (e) { o.alEvento({ tipo: 'fallo', mensaje: `No se pudo cambiar «${op.nombre}»: ${e instanceof Error ? e.message : String(e)}` }) }
       }
     }
+    // Motores como OpenCode cargan su configuración un instante después de abrir y pisan el modelo elegido.
+    // Antes de la primera pregunta se espera a que las opciones dejen de cambiar (400 ms quietas, 2,5 s como mucho)…
+    const abierta = Date.now()
+    let asentada = false
+    const asentar = async () => {
+      while (!asentada && opciones.length && Date.now() - ultimoCambio < 400 && Date.now() - abierta < 2500) await new Promise((r) => setTimeout(r, 50))
+      asentada = true
+    }
+    // …y si después el motor cambia una opción por su cuenta, se vuelve a poner la elegida (con tope, para no pelear sin fin).
+    let defensas = 0
+    defender = () => {
+      if (causa || defensas >= 5) return
+      const pisada = Object.entries(deseada).some(([id, v]) => { const op = opciones.find((x) => x.id === id); return op && op.actual !== v && op.valores.some((x) => x.id === v) })
+      if (pisada) { defensas++; void aplicar() }
+    }
     return {
       configurar: async (id, valor) => { deseada[id] = valor; if (!causa) await poner(id, valor) },
       preguntar: async (texto) => {
         if (causa) throw causa
+        await asentar()
         await aplicar()
         const r = await vivo(conn.prompt({ sessionId, prompt: [{ type: 'text', text: texto }] }))
         if (r.usage) {
