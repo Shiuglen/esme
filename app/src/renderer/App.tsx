@@ -2,10 +2,10 @@
 // para que la conversación y las terminales del Taller sigan vivas mientras navegas.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Toaster } from 'sonner'
-import { Atlas, type AtlasHandle } from './atlas/Atlas'
 import { BrainClient, type Atlas as AtlasData, type MindEvent } from './lib/brain'
 import { bridge, type AgentView } from './lib/bridge'
 import { cn } from './lib/cn'
+import { RedNeuronal, type Recordado, type RedHandle } from './memoria/RedNeuronal'
 import { Inicio, type EventoMente } from './paginas/Inicio'
 import { Proximamente } from './paginas/Proximamente'
 import { ChatPanel } from './panels/ChatPanel'
@@ -37,7 +37,8 @@ export function App() {
   const [memoria, setMemoria] = useState(true)
   const [semilla, setSemilla] = useState<{ q: string; n: number }>({ q: '', n: 0 })
   const [enfocado, setEnfocado] = useState<string | null>(null)
-  const atlasRef = useRef<AtlasHandle>(null)
+  const redRef = useRef<RedHandle>(null)
+  const [recordados, setRecordados] = useState<Recordado[]>([])
   const seqEvento = useRef(0)
 
   const ir = useCallback((id: SeccionId) => { setSeccion(id); setVisitadas((v) => (v.has(id) ? v : new Set(v).add(id))) }, [])
@@ -75,7 +76,7 @@ export function App() {
     return brain.events((e: MindEvent) => {
       const nuevo = (tipo: EventoMente['tipo'], texto: string, detalle?: string) =>
         setEventos((v) => [{ id: ++seqEvento.current, ts: Date.now(), tipo, texto, detalle }, ...v].slice(0, 40))
-      if (e.type === 'recall') { if (e.ids.length) { atlasRef.current?.light(e.ids, e.who, `recordó ${e.ids.length}`); nuevo('recall', `Recordé ${e.ids.length} ${e.ids.length === 1 ? 'cosa' : 'cosas'} para «${e.query.slice(0, 60)}»`, e.who) } }
+      if (e.type === 'recall') { if (e.ids.length) { redRef.current?.encender(e.ids); setRecordados((v) => [{ id: ++seqEvento.current, consulta: e.query.slice(0, 80), cuantos: e.ids.length }, ...v].slice(0, 10)); nuevo('recall', `Recordé ${e.ids.length} ${e.ids.length === 1 ? 'cosa' : 'cosas'} para «${e.query.slice(0, 60)}»`, e.who) } }
       if (e.type === 'remember') nuevo('remember', 'Guardé un recuerdo nuevo')
       if (e.type === 'forget') nuevo('forget', `Olvidé ${e.ids.length} ${e.ids.length === 1 ? 'recuerdo' : 'recuerdos'}`)
       if (e.type === 'ingest') nuevo('ingest', `Absorbí ${e.added} recuerdos nuevos`)
@@ -85,7 +86,7 @@ export function App() {
   useEffect(() => { void bridge.agents?.().then(setAgentes).catch(() => setAgentes([])) }, [])
 
   const preguntar = (q: string) => { setSemilla((s) => ({ q, n: s.n + 1 })); setPreguntas((n) => n + 1); ir('conversacion') }
-  const enfocarRecuerdo = (id: string) => { setEnfocado(id); ir('memoria'); setTimeout(() => atlasRef.current?.focus(id), 60) }
+  const enfocarRecuerdo = (id: string) => { setEnfocado(id); ir('memoria'); setTimeout(() => redRef.current?.enfocar(id), 60) }
 
   const pagina = (id: SeccionId) => {
     switch (id) {
@@ -98,8 +99,8 @@ export function App() {
       case 'taller': return <div className="flex h-full flex-col p-5"><WorkshopPanel day={tema === 'dia'} /></div>
       case 'memoria': return (
         <div className="grid h-full grid-cols-[400px_minmax(0,1fr)]">
-          <div className="flex min-h-0 flex-col border-r border-linea bg-s1"><MemoryPanel brain={brain} focusId={enfocado} onFocus={(i) => atlasRef.current?.focus(i)} onChanged={refrescar} /></div>
-          <div className="atlas-contenida relative min-h-0 overflow-hidden"><Atlas ref={atlasRef} data={atlas} day={tema === 'dia'} brain={brain} onPick={(i) => { setEnfocado(i); atlasRef.current?.focus(i) }} /></div>
+          <div className="flex min-h-0 flex-col border-r border-linea bg-s1"><MemoryPanel brain={brain} focusId={enfocado} onFocus={(i) => redRef.current?.enfocar(i)} onChanged={refrescar} /></div>
+          <div className="relative min-h-0 overflow-hidden"><RedNeuronal ref={redRef} atlas={atlas} tema={`${tema}-${acento}`} recordados={recordados} onPick={setEnfocado} /></div>
         </div>)
       case 'ajustes': return <div className="mx-auto h-full max-w-[760px] overflow-y-auto px-6 py-6"><SettingsPanel /></div>
       case 'uso': return <Proximamente titulo="Uso" texto="Aquí verás lo que gastas por modelo, tu actividad día a día como en GitHub, tus creaciones y cómo crece tu mente." />
