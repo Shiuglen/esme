@@ -1,9 +1,22 @@
+import type { ModeloCatalogo } from '../../main/catalogo/modelsdev'
+import type { MotorACP } from '../../main/motores/acp-motores'
+import type { Consumo, Presupuesto, RegistroUso } from '../../main/uso/registro'
+import type { EstadoUso as EstadoUsoMain, ProveedorResumen as ProveedorResumenMain } from '../../main/uso/estado'
+
 // Puente: la misma interfaz funciona dentro de Electron (todo) y en el navegador (modo web, para verla y probarla).
 export type BrainInfo = { url: string; token: string }
 export type ProviderView = { id: string; label: string; local: boolean; needsKey: boolean; hasKey: boolean; retainsData: boolean | 'depends'; defaultModel?: string }
 export type AgentView = { id: string; label: string; installed: boolean; memory: boolean; note?: string }
 export type ChatMsg = { role: 'user' | 'assistant'; content: string }
-export type ChatStream = { onChunk(fn: (d: string) => void): void; onDone(fn: () => void): void; onError(fn: (m: string) => void): void; stop(): void }
+export type ChatUso = { entrada: number; salida: number; costeUSD: number }
+export type ChatStream = { onChunk(fn: (d: string) => void): void; onDone(fn: () => void): void; onError(fn: (m: string) => void): void; onUsage(fn: (u: ChatUso) => void): void; stop(): void }
+export type { ModeloCatalogo, Presupuesto }
+export type ProveedorResumen = ProveedorResumenMain
+export type EstadoUso = EstadoUsoMain
+export type ConsumoConCoste = Consumo & { costeUSD: number }
+export type MotorDetectado = MotorACP & { instalado: boolean; ruta?: string }
+export type ResumenUso = ReturnType<RegistroUso['resumen']>
+export type OrigenCatalogo = { origen: 'red' | 'cache' | 'semilla'; fecha: number }
 
 type ElectronApi = {
   brain: { info(): Promise<BrainInfo | null>; onChange(fn: (i: BrainInfo | null) => void): () => void }
@@ -13,7 +26,14 @@ type ElectronApi = {
   chat: {
     start(req: unknown): Promise<unknown>; stop(id: string): Promise<unknown>
     onChunk(id: string, fn: (d: string) => void): () => void; onDone(id: string, fn: () => void): () => void; onError(id: string, fn: (m: string) => void): () => void
+    onUsage(id: string, fn: (u: ChatUso) => void): () => void
   }
+  catalogo: { proveedores(): Promise<ProveedorResumen[]>; modelos(id: string): Promise<ModeloCatalogo[]>; origen(): Promise<OrigenCatalogo> }
+  uso: {
+    estado(): Promise<EstadoUso>; resumen(desde: number, hasta: number): Promise<ResumenUso>; presupuesto(p: Presupuesto): Promise<EstadoUso>
+    onConsumo(fn: (c: ConsumoConCoste) => void): () => void; onAlerta(fn: (e: EstadoUso['evaluacion']) => void): () => void
+  }
+  motores: { detectar(): Promise<MotorDetectado[]> }
   agents: { list(): Promise<AgentView[]> }
   pty: {
     spawn(p: unknown): Promise<unknown>; write(id: string, d: string): void; resize(id: string, c: number, r: number): void; kill(id: string): void
@@ -59,17 +79,19 @@ export const bridge = {
     remove: async (id: string) => { if (isElectron()) await window.daimon!.keys.remove(id) },
   },
 
-  chat(provider: string, model: string, messages: ChatMsg[], memory: { context: string; ids: string[] } | null): ChatStream {
+  chat(provider: string, model: string, messages: ChatMsg[], memory: { context: string; ids: string[] } | null, ahorrados?: number): ChatStream {
     const id = newId()
+    const usageFns: ((u: ChatUso) => void)[] = []
     const chunkFns: ((d: string) => void)[] = [], doneFns: (() => void)[] = [], errFns: ((m: string) => void)[] = []
     if (isElectron()) {
       const offs = [
         window.daimon!.chat.onChunk(id, (d) => chunkFns.forEach((f) => f(d))),
+        window.daimon!.chat.onUsage(id, (u) => usageFns.forEach((f) => f(u))),
         window.daimon!.chat.onDone(id, () => { doneFns.forEach((f) => f()); offs.forEach((o) => o()) }),
         window.daimon!.chat.onError(id, (m) => { errFns.forEach((f) => f(m)); offs.forEach((o) => o()) }),
       ]
-      void window.daimon!.chat.start({ id, provider, model, messages, memory })
-      return { onChunk: (f) => chunkFns.push(f), onDone: (f) => doneFns.push(f), onError: (f) => errFns.push(f), stop: () => void window.daimon!.chat.stop(id) }
+      void window.daimon!.chat.start({ id, provider, model, messages, memory, ahorrados })
+      return { onChunk: (f) => chunkFns.push(f), onDone: (f) => doneFns.push(f), onError: (f) => errFns.push(f), onUsage: (f) => usageFns.push(f), stop: () => void window.daimon!.chat.stop(id) }
     }
     // Modo web: Ollama directo (solo para ver y probar la interfaz)
     const ac = new AbortController()
@@ -94,8 +116,22 @@ export const bridge = {
         doneFns.forEach((f) => f())
       } catch (e) { if (!ac.signal.aborted) errFns.forEach((f) => f(String(e))) }
     })
-    return { onChunk: (f) => chunkFns.push(f), onDone: (f) => doneFns.push(f), onError: (f) => errFns.push(f), stop: () => ac.abort() }
+    return { onChunk: (f) => chunkFns.push(f), onDone: (f) => doneFns.push(f), onError: (f) => errFns.push(f), onUsage: () => {}, stop: () => ac.abort() }
   },
+
+  catalogo: {
+    proveedores: async (): Promise<ProveedorResumen[]> => (isElectron() ? window.daimon!.catalogo.proveedores() : []),
+    modelos: async (id: string): Promise<ModeloCatalogo[]> => (isElectron() ? window.daimon!.catalogo.modelos(id) : []),
+    origen: async (): Promise<OrigenCatalogo | null> => (isElectron() ? window.daimon!.catalogo.origen() : null),
+  },
+  uso: {
+    estado: async (): Promise<EstadoUso | null> => (isElectron() ? window.daimon!.uso.estado() : null),
+    resumen: async (desde: number, hasta: number): Promise<ResumenUso | null> => (isElectron() ? window.daimon!.uso.resumen(desde, hasta) : null),
+    presupuesto: async (p: Presupuesto): Promise<EstadoUso | null> => (isElectron() ? window.daimon!.uso.presupuesto(p) : null),
+    onConsumo: (fn: (c: ConsumoConCoste) => void): (() => void) => (isElectron() ? window.daimon!.uso.onConsumo(fn) : () => {}),
+    onAlerta: (fn: (e: EstadoUso['evaluacion']) => void): (() => void) => (isElectron() ? window.daimon!.uso.onAlerta(fn) : () => {}),
+  },
+  motores: { detectar: async (): Promise<MotorDetectado[]> => (isElectron() ? window.daimon!.motores.detectar() : []) },
 
   agents: async (): Promise<AgentView[]> => (isElectron() ? window.daimon!.agents.list() : []),
   pty: () => (isElectron() ? window.daimon!.pty : null),

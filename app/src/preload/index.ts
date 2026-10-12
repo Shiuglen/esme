@@ -22,7 +22,17 @@ contextBridge.exposeInMainWorld('daimon', {
     onChunk: (id: string, fn: (d: string) => void) => on(`chat:chunk:${id}`, (d) => fn(d as string)),
     onDone: (id: string, fn: () => void) => on(`chat:done:${id}`, () => fn()),
     onError: (id: string, fn: (m: string) => void) => on(`chat:error:${id}`, (m) => fn(m as string)),
+    onUsage: (id: string, fn: (u: unknown) => void) => on(`chat:usage:${id}`, (u) => fn(u)),
   },
+  catalogo: { proveedores: () => ipcRenderer.invoke('catalogo:proveedores'), modelos: (id: string) => ipcRenderer.invoke('catalogo:modelos', id), origen: () => ipcRenderer.invoke('catalogo:origen') },
+  uso: {
+    estado: () => ipcRenderer.invoke('uso:estado'),
+    resumen: (desde: number, hasta: number) => ipcRenderer.invoke('uso:resumen', desde, hasta),
+    presupuesto: (p: unknown) => ipcRenderer.invoke('uso:presupuesto', p),
+    onConsumo: (fn: (c: unknown) => void) => on('uso:consumo', (c) => fn(c)),
+    onAlerta: (fn: (e: unknown) => void) => on('uso:alerta', (e) => fn(e)),
+  },
+  motores: { detectar: () => ipcRenderer.invoke('motores:detectar') },
   agents: { list: () => ipcRenderer.invoke('agents:list') },
   pty: {
     spawn: (p: unknown) => ipcRenderer.invoke('pty:spawn', p),
