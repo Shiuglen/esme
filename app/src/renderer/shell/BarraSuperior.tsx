@@ -1,13 +1,14 @@
 // Barra superior: la palabra esme, dónde estás, la búsqueda (Ctrl K) y el estado de la mente.
 import { Moon, Search, Sun } from 'lucide-react'
 import { cn } from '../lib/cn'
+import { Senal } from '../marca/Senal'
 
 export type Estado = { conectado: boolean; recuerdos: number | null; pensando: boolean }
 
 export function BarraSuperior({ seccion, estado, tema, onTema, onBuscar }: { seccion: string; estado: Estado; tema: 'noche' | 'dia'; onTema(): void; onBuscar(): void }) {
   return (
     <header className="barra-ventana flex h-12 shrink-0 items-center gap-3.5 border-b border-linea bg-s1 pl-[18px]">
-      <span className="font-display text-[21px] leading-none font-[650] tracking-[-0.045em]">esme</span>
+      <span className="flex items-center gap-2"><Senal tam={22} estado={estado.pensando ? 'pensando' : 'reposo'} tapa="var(--superficie-1)" /><span className="font-display text-[21px] leading-none font-[650] tracking-[-0.045em]">esme</span></span>
       <span className="text-texto-3">/</span>
       <span className="font-medium text-texto-2">{seccion}</span>
       <button type="button" onClick={onBuscar} className="ml-auto flex h-[30px] w-[300px] items-center gap-2 rounded-2 bg-s2 px-2.5 text-[13px] text-texto-3 transition-colors hover:bg-s3">

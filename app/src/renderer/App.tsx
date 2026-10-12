@@ -24,7 +24,7 @@ export function App() {
   const [seccion, setSeccion] = useState<SeccionId>(() => cargar('seccion', 'inicio'))
   const [visitadas, setVisitadas] = useState<Set<SeccionId>>(() => new Set([cargar<SeccionId>('seccion', 'inicio')]))
   const [tema, setTema] = useState<'noche' | 'dia'>(() => cargar('tema', 'noche'))
-  const [acento, setAcento] = useState<string>(() => cargar('acento', 'esmeralda'))
+  const [acento, setAcento] = useState<string>(() => cargar('acento-marca', 'violeta'))
   const [paleta, setPaleta] = useState(false)
   const [brain, setBrain] = useState<BrainClient | null>(null)
   const [recuerdos, setRecuerdos] = useState<number | null>(null)
@@ -44,7 +44,7 @@ export function App() {
   const ir = useCallback((id: SeccionId) => { setSeccion(id); setVisitadas((v) => (v.has(id) ? v : new Set(v).add(id))) }, [])
   useEffect(() => { guardar('seccion', seccion) }, [seccion])
   useEffect(() => { document.documentElement.dataset.theme = tema; guardar('tema', tema) }, [tema])
-  useEffect(() => { document.documentElement.dataset.acento = acento; guardar('acento', acento) }, [acento])
+  useEffect(() => { document.documentElement.dataset.acento = acento; guardar('acento-marca', acento) }, [acento])
   // en escritorio, los botones de la ventana toman el color de la barra del tema activo
   useEffect(() => {
     const v = bridge.ventana(); if (!v) return

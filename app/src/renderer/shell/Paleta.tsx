@@ -4,7 +4,7 @@ import { CornerDownLeft, MessageSquare, Palette, Search, SunMoon } from 'lucide-
 import { useState } from 'react'
 import { AJUSTES, SECCIONES, type SeccionId } from './secciones'
 
-const ACENTOS = [['esmeralda', 'Esmeralda'], ['zafiro', 'Zafiro'], ['violeta', 'Violeta'], ['coral', 'Coral']] as const
+const ACENTOS = [['violeta', 'Violeta aurora'], ['esmeralda', 'Esmeralda'], ['zafiro', 'Zafiro'], ['coral', 'Coral']] as const
 const fila = 'flex h-[38px] cursor-pointer items-center gap-2.5 rounded-2 px-2.5 text-texto-2 data-[selected=true]:bg-s3 data-[selected=true]:text-texto'
 const titulo = '[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-texto-3'
 

@@ -1,0 +1,55 @@
+// Esme viva: el símbolo «Señal». En reposo está quieto; al pensar, un impulso de luz recorre la línea más cercana;
+// al recordar, la cresta se eleva. El color es una capa: --senal-fondo, --senal-frente, --senal-impulso.
+import { useEffect, useId, useState } from 'react'
+import { impulso, lineasSenal } from './senal'
+
+export type EstadoSenal = 'reposo' | 'pensando' | 'recordando'
+
+const reducido = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
+
+export function Senal({ tam = 24, estado = 'reposo', tapa = 'var(--fondo)', titulo = 'Esme', className }: {
+  tam?: number; estado?: EstadoSenal; /** color del fondo donde vive: tapa las líneas de detrás */ tapa?: string; titulo?: string; className?: string
+}) {
+  const id = useId().replace(/[^a-zA-Z0-9]/g, '')
+  const [t, setT] = useState(0)
+  useEffect(() => {
+    if (estado === 'reposo' || reducido()) { setT(0); return }
+    let raf = 0; const t0 = performance.now()
+    const paso = (ms: number) => { setT((ms - t0) / 1000); raf = requestAnimationFrame(paso) }
+    raf = requestAnimationFrame(paso)
+    return () => cancelAnimationFrame(raf)
+  }, [estado])
+
+  const mini = tam < 28
+  const lineas = mini ? 3 : 5
+  const alto = estado === 'recordando' ? 33 + 3 * Math.sin(t * 4) : 30
+  const ls = lineasSenal({ lineas, t: estado === 'reposo' ? 0 : t * 1.1, alto, ancho: mini ? [4.2, 6.4] : [1, 2.8], muestras: mini ? 48 : 96 })
+  const imp = estado === 'pensando' ? impulso((((t / 1.5) % 1.3) / 1.3) * 1.15 - 0.05, t * 1.1, alto, lineas) : null
+
+  return (
+    <svg viewBox="6 8 88 86" width={tam} height={tam} role="img" aria-label={titulo} className={className}>
+      <defs>
+        {ls.map((l, k) => (
+          <linearGradient key={k} id={`${id}l${k}`} gradientUnits="userSpaceOnUse" x1={l.x0} x2={l.x1} y1={0} y2={0}>
+            {[0, 0.18, 0.82, 1].map((o) => (
+              <stop key={o} offset={o} style={{ stopColor: `color-mix(in oklab, var(--senal-frente) ${Math.round(l.f * 100)}%, var(--senal-fondo))`, stopOpacity: !mini && (o === 0 || o === 1) ? 0 : 1 }} />
+            ))}
+          </linearGradient>
+        ))}
+        <filter id={`${id}b`} x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="2.2" /></filter>
+      </defs>
+      {ls.map((l, k) => (
+        <g key={k}>
+          <path d={`${l.d} L${l.x1} ${l.base + 8} L${l.x0} ${l.base + 8} Z`} style={{ fill: tapa }} />
+          <path d={l.d} fill="none" stroke={`url(#${id}l${k})`} strokeWidth={l.grosor} strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+      ))}
+      {imp && imp.luz > 0 && (
+        <>
+          <circle cx={imp.x} cy={imp.y} r={mini ? 7 : 3.4} style={{ fill: 'var(--senal-impulso)' }} filter={`url(#${id}b)`} opacity={0.95 * imp.luz} />
+          <circle cx={imp.x} cy={imp.y} r={mini ? 3.2 : 1.5} fill="#fff" opacity={imp.luz} />
+        </>
+      )}
+    </svg>
+  )
+}
