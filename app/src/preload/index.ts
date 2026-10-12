@@ -34,6 +34,16 @@ contextBridge.exposeInMainWorld('daimon', {
     onAlerta: (fn: (e: unknown) => void) => on('uso:alerta', (e) => fn(e)),
   },
   motores: { detectar: () => ipcRenderer.invoke('motores:detectar') },
+  taller: {
+    motores: () => ipcRenderer.invoke('taller:motores'), lista: () => ipcRenderer.invoke('taller:lista'),
+    eventos: (id: string) => ipcRenderer.invoke('taller:eventos', id), crear: (p: unknown) => ipcRenderer.invoke('taller:crear', p),
+    seguir: (id: string, texto: string) => ipcRenderer.invoke('taller:seguir', id, texto), responder: (id: string, opcion: string) => ipcRenderer.invoke('taller:responder', id, opcion),
+    parar: (id: string) => ipcRenderer.invoke('taller:parar', id), descartar: (id: string) => ipcRenderer.invoke('taller:descartar', id),
+    diff: (id: string) => ipcRenderer.invoke('taller:diff', id), carpeta: () => ipcRenderer.invoke('taller:carpeta'), abrir: (id: string) => ipcRenderer.invoke('taller:abrir', id),
+    onCambio: (fn: (t: unknown) => void) => on('taller:cambio', (t) => fn(t)),
+    onEvento: (fn: (e: unknown) => void) => on('taller:evento', (e) => fn(e)),
+    onQuitada: (fn: (id: string) => void) => on('taller:quitada', (id) => fn(id as string)),
+  },
   agents: { list: () => ipcRenderer.invoke('agents:list') },
   pty: {
     spawn: (p: unknown) => ipcRenderer.invoke('pty:spawn', p),

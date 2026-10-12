@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path'
 import { agentCommand, listAgents } from './agents'
 import { BrainProcess, type BrainInfo } from './brain-process'
 import { registerChat } from './chat'
+import { cerrar as cerrarTaller, registerTaller } from './ipc-taller'
 import { registerProveedores } from './ipc-proveedores'
 import { keys } from './keys'
 import { listModels, PROVIDERS, type ProviderId } from './providers'
@@ -65,6 +66,7 @@ function registerIpc() {
   ipcMain.on('pty:kill', (_e, id: string) => ptyHost?.postMessage({ type: 'kill', id }))
   registerProveedores()
   registerChat()
+  registerTaller({ brainInfo: () => brain.info })
 }
 
 app.whenReady().then(async () => {
@@ -74,4 +76,4 @@ app.whenReady().then(async () => {
   brain.start().catch((err) => console.error('[cerebro] no arrancó:', err))
 })
 
-app.on('window-all-closed', () => { brain.stop(); ptyHost?.kill(); app.quit() })
+app.on('window-all-closed', () => { cerrarTaller(); brain.stop(); ptyHost?.kill(); app.quit() })

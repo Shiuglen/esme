@@ -1,5 +1,8 @@
 import type { ModeloCatalogo } from '../../main/catalogo/modelsdev'
 import type { MotorACP } from '../../main/motores/acp-motores'
+import type { MotorTaller } from '../../main/ipc-taller'
+import type { EventoMotor as EventoTaller } from '../../main/motores/sesion-acp'
+import type { Tarea as TareaTaller } from '../../main/taller/taller'
 import type { Consumo, Presupuesto, RegistroUso } from '../../main/uso/registro'
 import type { UsoExterno as UsoExternoMain } from '../../main/uso/externo'
 import type { EstadoUso as EstadoUsoMain, ProveedorResumen as ProveedorResumenMain } from '../../main/uso/estado'
@@ -18,6 +21,8 @@ export type UsoExterno = UsoExternoMain
 export type ConsumoConCoste = Consumo & { costeUSD: number }
 export type MotorDetectado = MotorACP & { instalado: boolean; ruta?: string }
 export type ResumenUso = ReturnType<RegistroUso['resumen']>
+export type { EventoTaller, MotorTaller, TareaTaller }
+export type ResultadoTaller = { ok: true } | { ok: false; error: string }
 export type OrigenCatalogo = { origen: 'red' | 'cache' | 'semilla'; fecha: number }
 
 type ElectronApi = {
@@ -36,6 +41,14 @@ type ElectronApi = {
     onConsumo(fn: (c: ConsumoConCoste) => void): () => void; onAlerta(fn: (e: EstadoUso['evaluacion']) => void): () => void
   }
   motores: { detectar(): Promise<MotorDetectado[]> }
+  taller: {
+    motores(): Promise<MotorTaller[]>; lista(): Promise<TareaTaller[]>; eventos(id: string): Promise<EventoTaller[]>
+    crear(p: { motor: string; carpeta: string | null; texto: string }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }>
+    seguir(id: string, texto: string): Promise<ResultadoTaller>; responder(id: string, opcion: string): Promise<ResultadoTaller>
+    parar(id: string): Promise<ResultadoTaller>; descartar(id: string): Promise<ResultadoTaller>
+    diff(id: string): Promise<{ texto: string; truncado: boolean }>; carpeta(): Promise<string | null>; abrir(id: string): Promise<ResultadoTaller>
+    onCambio(fn: (t: TareaTaller) => void): () => void; onEvento(fn: (e: { id: string; evento: EventoTaller }) => void): () => void; onQuitada(fn: (id: string) => void): () => void
+  }
   agents: { list(): Promise<AgentView[]> }
   pty: {
     spawn(p: unknown): Promise<unknown>; write(id: string, d: string): void; resize(id: string, c: number, r: number): void; kill(id: string): void
@@ -46,6 +59,7 @@ type ElectronApi = {
 declare global { interface Window { daimon?: ElectronApi } }
 
 export const isElectron = () => typeof window !== 'undefined' && !!window.daimon
+const SOLO_ESCRITORIO = { ok: false as const, error: 'Solo en la app de escritorio' }
 let seq = 0
 const newId = () => `${Date.now().toString(36)}-${(seq++).toString(36)}`
 
@@ -135,6 +149,24 @@ export const bridge = {
     onAlerta: (fn: (e: EstadoUso['evaluacion']) => void): (() => void) => (isElectron() ? window.daimon!.uso.onAlerta(fn) : () => {}),
   },
   motores: { detectar: async (): Promise<MotorDetectado[]> => (isElectron() ? window.daimon!.motores.detectar() : []) },
+
+  taller: {
+    motores: async (): Promise<MotorTaller[]> => (isElectron() ? window.daimon!.taller.motores() : []),
+    lista: async (): Promise<TareaTaller[]> => (isElectron() ? window.daimon!.taller.lista() : []),
+    eventos: async (id: string): Promise<EventoTaller[]> => (isElectron() ? window.daimon!.taller.eventos(id) : []),
+    crear: async (p: { motor: string; carpeta: string | null; texto: string }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }> =>
+      (isElectron() ? window.daimon!.taller.crear(p) : SOLO_ESCRITORIO),
+    seguir: async (id: string, texto: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.seguir(id, texto) : SOLO_ESCRITORIO),
+    responder: async (id: string, opcion: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.responder(id, opcion) : SOLO_ESCRITORIO),
+    parar: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.parar(id) : SOLO_ESCRITORIO),
+    descartar: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.descartar(id) : SOLO_ESCRITORIO),
+    diff: async (id: string): Promise<{ texto: string; truncado: boolean }> => (isElectron() ? window.daimon!.taller.diff(id) : { texto: '', truncado: false }),
+    carpeta: async (): Promise<string | null> => (isElectron() ? window.daimon!.taller.carpeta() : null),
+    abrir: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.abrir(id) : SOLO_ESCRITORIO),
+    onCambio: (fn: (t: TareaTaller) => void): (() => void) => (isElectron() ? window.daimon!.taller.onCambio(fn) : () => {}),
+    onEvento: (fn: (e: { id: string; evento: EventoTaller }) => void): (() => void) => (isElectron() ? window.daimon!.taller.onEvento(fn) : () => {}),
+    onQuitada: (fn: (id: string) => void): (() => void) => (isElectron() ? window.daimon!.taller.onQuitada(fn) : () => {}),
+  },
 
   agents: async (): Promise<AgentView[]> => (isElectron() ? window.daimon!.agents.list() : []),
   pty: () => (isElectron() ? window.daimon!.pty : null),
