@@ -36,11 +36,11 @@ describe('abrirSesionACP', () => {
     const mcp = { nombre: 'esme', url: 'http://127.0.0.1:9/mcp', token: 'tok' }
     const a = base({ mcp }); const sa = await abrirSesionACP(a.o)
     await sa.preguntar('mcp'); sa.cerrar()
-    const recibido = JSON.parse((a.eventos[0] as { texto: string }).texto)
+    const recibido = JSON.parse((a.eventos.find((e) => e.tipo === 'texto') as { texto: string }).texto)
     expect(recibido).toEqual([{ type: 'http', name: 'esme', url: mcp.url, headers: [{ name: 'Authorization', value: 'Bearer tok' }] }])
     const b = base({ mcp, env: { FALSO_SIN_HTTP: '1' } }); const sb = await abrirSesionACP(b.o)
     await sb.preguntar('mcp'); sb.cerrar()
-    expect(JSON.parse((b.eventos[0] as { texto: string }).texto)).toEqual([])
+    expect(JSON.parse((b.eventos.find((e) => e.tipo === 'texto') as { texto: string }).texto)).toEqual([])
   })
   it('si el agente muere a mitad, preguntar rechaza con error claro y no deja procesos colgados', async () => {
     let pid = 0
@@ -73,7 +73,8 @@ describe('abrirSesionACP', () => {
     expect(eventos).toContainEqual({ tipo: 'herramienta', id: 't2', titulo: 'Ejecutar ls', estado: 'pending', clase: 'execute' })
     expect(eventos).toContainEqual({ tipo: 'contexto', usado: 1200, total: 200000, coste: { cantidad: 0.0123, moneda: 'USD' } })
     expect(eventos).toContainEqual({ tipo: 'uso', entrada: 100, salida: 50, pensamiento: 7, cacheLectura: 30, cacheEscritura: 5 })
-    expect(eventos.findIndex((e) => e.tipo === 'uso')).toBe(eventos.length - 1)
+    const sinOpciones = eventos.filter((e) => e.tipo !== 'opciones')
+    expect(sinOpciones.findIndex((e) => e.tipo === 'uso')).toBe(sinOpciones.length - 1)
   })
   it('un tool_call_update solo con estado no trae título', async () => {
     const { eventos, o } = base()
@@ -83,5 +84,39 @@ describe('abrirSesionACP', () => {
     const act = eventos.find((e) => e.tipo === 'herramienta' && e.id === 't1' && e.estado === 'completed')!
     expect(act).toEqual({ tipo: 'herramienta', id: 't1', estado: 'completed' })
     expect('titulo' in act).toBe(false)
+  })
+  it('traduce configOptions y config_option_update a opciones', async () => {
+    const { eventos, o } = base()
+    const s = await abrirSesionACP(o)
+    await new Promise((r) => setTimeout(r, 150))
+    s.cerrar()
+    const op = { id: 'model', nombre: 'Modelo', actual: 'lento', valores: [{ id: 'lento', nombre: 'Lento' }, { id: 'rapido', nombre: 'Rápido', descripcion: 'Responde antes' }] }
+    expect(eventos.filter((e) => e.tipo === 'opciones')).toEqual([{ tipo: 'opciones', opciones: [op] }, { tipo: 'opciones', opciones: [op] }])
+  })
+  it('la config deseada se aplica antes de preguntar aunque el motor la cambie al abrir', async () => {
+    const { eventos, o } = base({ config: { model: 'rapido' } })
+    const s = await abrirSesionACP(o)
+    await new Promise((r) => setTimeout(r, 150))   // el motor ya ha pisado el modelo
+    await s.preguntar('modelo')
+    s.cerrar()
+    expect(eventos.filter((e) => e.tipo === 'texto').map((e) => (e as { texto: string }).texto).join('')).toBe('rapido')
+  })
+  it('una opción desconocida o con valor inválido se ignora sin fallar', async () => {
+    const { eventos, o } = base({ config: { model: 'inexistente', otra: 'x' } })
+    const s = await abrirSesionACP(o)
+    await s.preguntar('modelo')
+    s.cerrar()
+    expect(eventos.filter((e) => e.tipo === 'fallo')).toEqual([])
+    expect(eventos.filter((e) => e.tipo === 'texto').map((e) => (e as { texto: string }).texto).join('')).toBe('lento')
+  })
+  it('configurar cambia el modelo de una sesión viva', async () => {
+    const { eventos, o } = base()
+    const s = await abrirSesionACP(o)
+    await new Promise((r) => setTimeout(r, 150))
+    await s.configurar('model', 'rapido')
+    expect(eventos.filter((e) => e.tipo === 'opciones').at(-1)).toMatchObject({ opciones: [{ id: 'model', actual: 'rapido' }] })
+    await s.preguntar('modelo')
+    s.cerrar()
+    expect(eventos.filter((e) => e.tipo === 'texto').map((e) => (e as { texto: string }).texto).join('')).toBe('rapido')
   })
 })

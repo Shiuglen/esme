@@ -1,9 +1,11 @@
 // Canales IPC del Taller: motores detectados, tareas, permisos, diff y eventos en vivo hacia las ventanas.
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
-import { access, constants } from 'node:fs/promises'
+import { access, constants, mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { detectarMotores, type Cumplimiento } from './motores/acp-motores'
 import { crearWhich, extsPlataforma } from './motores/which'
+import { abrirSesionACP, type OpcionConfig } from './motores/sesion-acp'
 import { Taller, type MotorElegido } from './taller/taller'
 
 export type MotorTaller = { id: string; nombre: string; instalado: boolean; cumplimiento: Cumplimiento; login: string; nota: string }
@@ -11,6 +13,39 @@ export type MotorTaller = { id: string; nombre: string; instalado: boolean; cump
 const ID = /^[a-z0-9]{6,16}$/
 const MAX_TEXTO = 20_000
 let taller: Taller | null = null
+
+const cacheOpciones = new Map<string, OpcionConfig[]>()
+const textoCorto = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 200
+
+// config: objeto plano de hasta 10 claves con valores string cortos; undefined si no es válido.
+function configValida(v: unknown): Record<string, string> | undefined | null {
+  if (v === undefined || v === null) return undefined
+  if (typeof v !== 'object' || Array.isArray(v)) return null
+  const e = Object.entries(v)
+  if (e.length > 10 || !e.every(([k, x]) => textoCorto(k) && textoCorto(x))) return null
+  return Object.fromEntries(e) as Record<string, string>
+}
+
+// Abre el motor en una carpeta temporal, recoge sus opciones (600 ms tras la última, máx. 3 s) y lo cierra.
+async function sondear(motor: MotorElegido): Promise<OpcionConfig[]> {
+  const cwd = await mkdtemp(join(tmpdir(), 'esme-sondeo-'))
+  let opciones: OpcionConfig[] = []
+  let sesion: Awaited<ReturnType<typeof abrirSesionACP>> | null = null
+  try {
+    await new Promise<void>((fin) => {
+      let calma: NodeJS.Timeout | undefined
+      const tope = setTimeout(fin, 3000)
+      const listo = () => { clearTimeout(tope); if (calma) clearTimeout(calma); fin() }
+      abrirSesionACP({ comando: motor.comando, args: motor.args, cwd, alPedirPermiso: async () => 'cancelar',
+        alEvento: (e) => { if (e.tipo === 'opciones') { opciones = e.opciones; if (calma) clearTimeout(calma); calma = setTimeout(listo, 600) } } })
+        .then((x) => { sesion = x }, listo)
+    })
+  } finally {
+    (sesion as { cerrar(): void } | null)?.cerrar()
+    await rm(cwd, { recursive: true, force: true })
+  }
+  return opciones
+}
 
 const emitir = (canal: string, dato: unknown) => { for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(canal, dato) }
 const mensaje = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -54,15 +89,30 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
   ipcMain.handle('taller:motores', () => motoresTaller())
   ipcMain.handle('taller:lista', () => t.lista())
   ipcMain.handle('taller:eventos', async (_e, id: unknown) => (idValido(id) ? t.eventos(id).catch(() => []) : []))
-  ipcMain.handle('taller:crear', async (_e, p: { motor?: unknown; carpeta?: unknown; texto?: unknown } | null) => {
-    if (!p || !textoValido(p.texto) || !(p.carpeta === null || (typeof p.carpeta === 'string' && p.carpeta.length > 0))) return entrada
+  ipcMain.handle('taller:crear', async (_e, p: { motor?: unknown; carpeta?: unknown; texto?: unknown; config?: unknown } | null) => {
+    const config = p ? configValida(p.config) : undefined
+    if (!p || config === null || !textoValido(p.texto) || !(p.carpeta === null || (typeof p.carpeta === 'string' && p.carpeta.length > 0))) return entrada
     const motor = await elegirMotor(p.motor)
     if ('error' in motor) return { ok: false, error: motor.error }
-    try { return { ok: true, tarea: t.crear({ motor, carpeta: p.carpeta, texto: p.texto }) } } catch (e) { return { ok: false, error: mensaje(e) } }
+    try { return { ok: true, tarea: t.crear({ motor, carpeta: p.carpeta, texto: p.texto, config }) } } catch (e) { return { ok: false, error: mensaje(e) } }
   })
   ipcMain.handle('taller:seguir', (_e, id: unknown, texto: unknown) => (idValido(id) && textoValido(texto) ? accion(() => t.seguir(id, texto)) : entrada))
   ipcMain.handle('taller:parar', (_e, id: unknown) => (idValido(id) ? accion(() => t.parar(id)) : entrada))
   ipcMain.handle('taller:descartar', (_e, id: unknown) => (idValido(id) ? accion(() => t.descartar(id)) : entrada))
+  ipcMain.handle('taller:configurar', (_e, id: unknown, opcion: unknown, valor: unknown) =>
+    (idValido(id) && textoCorto(opcion) && textoCorto(valor) ? accion(() => t.configurar(id, opcion, valor)) : entrada))
+  ipcMain.handle('taller:opcionesMotor', async (_e, motorId: unknown): Promise<OpcionConfig[]> => {
+    if (typeof motorId !== 'string') return []
+    const previo = cacheOpciones.get(motorId)
+    if (previo) return previo
+    const motor = await elegirMotor(motorId)
+    if ('error' in motor) return []
+    try {
+      const o = await sondear(motor)
+      if (o.length) cacheOpciones.set(motorId, o)
+      return o
+    } catch { return [] }
+  })
   ipcMain.handle('taller:responder', (_e, id: unknown, opcion: unknown) => {
     if (!idValido(id) || typeof opcion !== 'string' || opcion.length === 0 || opcion.length > 200) return entrada
     t.responder(id, opcion)

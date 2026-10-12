@@ -38,6 +38,8 @@ contextBridge.exposeInMainWorld('daimon', {
     motores: () => ipcRenderer.invoke('taller:motores'), lista: () => ipcRenderer.invoke('taller:lista'),
     eventos: (id: string) => ipcRenderer.invoke('taller:eventos', id), crear: (p: unknown) => ipcRenderer.invoke('taller:crear', p),
     seguir: (id: string, texto: string) => ipcRenderer.invoke('taller:seguir', id, texto), responder: (id: string, opcion: string) => ipcRenderer.invoke('taller:responder', id, opcion),
+    configurar: (id: string, opcion: string, valor: string) => ipcRenderer.invoke('taller:configurar', id, opcion, valor),
+    opcionesMotor: (motor: string) => ipcRenderer.invoke('taller:opcionesMotor', motor),
     parar: (id: string) => ipcRenderer.invoke('taller:parar', id), descartar: (id: string) => ipcRenderer.invoke('taller:descartar', id),
     diff: (id: string) => ipcRenderer.invoke('taller:diff', id), carpeta: () => ipcRenderer.invoke('taller:carpeta'), abrir: (id: string) => ipcRenderer.invoke('taller:abrir', id),
     onCambio: (fn: (t: unknown) => void) => on('taller:cambio', (t) => fn(t)),

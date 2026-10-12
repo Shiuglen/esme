@@ -1,20 +1,33 @@
-// Agente ACP falso para tests: usa el AgentSideConnection del SDK sobre stdio. Prompt "morir" mata el proceso; "mcp" devuelve los mcpServers recibidos; "uso" emite usage_update y devuelve usage.
+// Agente ACP falso para tests: usa el AgentSideConnection del SDK sobre stdio. Prompt "morir" mata el proceso; "mcp" devuelve los mcpServers recibidos; "uso" emite usage_update y devuelve usage; "modelo" responde con el modelo actual.
 import { AgentSideConnection, ndJsonStream, PROTOCOL_VERSION } from '@agentclientprotocol/sdk'
 import { Readable, Writable } from 'node:stream'
 
 const stream = ndJsonStream(Writable.toWeb(process.stdout), Readable.toWeb(process.stdin))
 let mcp = []
+let modelo = 'lento'
+const configOptions = () => [{ type: 'select', id: 'model', name: 'Modelo', category: 'model', currentValue: modelo,
+  options: [{ value: 'lento', name: 'Lento' }, { value: 'rapido', name: 'Rápido', description: 'Responde antes' }] }]
 new AgentSideConnection((conn) => ({
   async initialize() {
     return { protocolVersion: PROTOCOL_VERSION, agentCapabilities: { mcpCapabilities: { http: !process.env.FALSO_SIN_HTTP } } }
   },
-  async newSession(p) { mcp = p.mcpServers; return { sessionId: 's1' } },
+  async newSession(p) {
+    mcp = p.mcpServers
+    // Como OpenCode: poco después de abrir, el motor vuelve a poner su modelo de la configuración del usuario.
+    setTimeout(() => { modelo = 'lento'; conn.sessionUpdate({ sessionId: 's1', update: { sessionUpdate: 'config_option_update', configOptions: configOptions() } }).catch(() => {}) }, 50)
+    return { sessionId: 's1', configOptions: configOptions() }
+  },
+  async setSessionConfigOption(p) { if (p.configId === 'model') modelo = p.value; return { configOptions: configOptions() } },
   async authenticate() {},
   async cancel() {},
   async prompt(p) {
     const texto = p.prompt.map((b) => (b.type === 'text' ? b.text : '')).join('')
     const upd = (u) => conn.sessionUpdate({ sessionId: 's1', update: u })
     if (texto === 'morir') process.exit(3)
+    if (texto === 'modelo') {
+      await upd({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: modelo } })
+      return { stopReason: 'end_turn' }
+    }
     if (texto === 'mcp') {
       await upd({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: JSON.stringify(mcp) } })
       return { stopReason: 'end_turn' }

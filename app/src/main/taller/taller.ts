@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto'
 import { appendFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
-import { abrirSesionACP, type EventoMotor } from '../motores/sesion-acp'
+import { abrirSesionACP, type EventoMotor, type OpcionConfig } from '../motores/sesion-acp'
 import { cambiosCopia, crearCopia, diffCopia, quitarCopia, type Cambios, type Copia } from './copias'
 
 export type EstadoTarea = 'preparando' | 'trabajando' | 'esperando' | 'lista' | 'parada' | 'error'
@@ -15,11 +15,12 @@ export type Tarea = {
   primeraRespuestaMs?: number; herramientas: number; cambios: Cambios | null; uso: UsoTarea
   permiso: Permiso | null; error?: string
   actividad: number[]   // 40 cubos de 1,5 s con el número de eventos; el último es el cubo actual
+  opciones: OpcionConfig[]; modelo: string | null   // modelo: nombre del valor actual de la opción «model»
   actividadMs: number   // dónde acaba el último cubo: sin eventos nuevos, la interfaz desplaza la micrográfica sola
 }
 export type MotorElegido = { id: string; nombre: string; comando: string; args: string[] }
-export type SesionMotor = { preguntar(texto: string): Promise<string>; cancelar(): Promise<void>; cerrar(): void }
-export type AbrirSesion = (o: { comando: string; args: string[]; cwd: string; mcp?: { nombre: string; url: string; token: string }
+export type SesionMotor = { preguntar(texto: string): Promise<string>; cancelar(): Promise<void>; cerrar(): void; configurar(id: string, valor: string): Promise<void> }
+export type AbrirSesion = (o: { comando: string; args: string[]; cwd: string; mcp?: { nombre: string; url: string; token: string }; config?: Record<string, string>
   alEvento(e: EventoMotor): void; alPedirPermiso(p: Permiso): Promise<string | 'cancelar'> }) => Promise<SesionMotor>
 export type OperacionesCopia = { crear: typeof crearCopia; cambios: typeof cambiosCopia; diff: typeof diffCopia; quitar: typeof quitarCopia }
 type Mcp = { nombre: string; url: string; token: string }
@@ -33,7 +34,7 @@ const ACTIVAS: EstadoTarea[] = ['preparando', 'trabajando', 'esperando']
 
 // Estado interno de una tarea; solo `tarea` sale hacia fuera.
 type Registro = {
-  tarea: Tarea; motor?: MotorElegido; sesion?: SesionMotor; resolverPermiso?: (r: string | 'cancelar') => void
+  tarea: Tarea; motor?: MotorElegido; config: Record<string, string>; sesion?: SesionMotor; resolverPermiso?: (r: string | 'cancelar') => void
   total?: number   // eventos ya guardados en el historial; se cuenta del disco la primera vez tras recargar
   eventos: EventoMotor[]; parcial: boolean   // parcial: la memoria no tiene todos los eventos, hay que leer el disco
   ids: Set<string>; cubo: number; inicioTurno: number; cancelado: boolean; descartada: boolean
@@ -77,22 +78,22 @@ export class Taller {
     for (const t of guardadas) {
       if (!t || typeof t.id !== 'string') continue
       if (ACTIVAS.includes(t.estado)) { t.estado = 'parada'; t.fin = t.fin ?? this.ahora() }
-      t.permiso = null
+      t.permiso = null; t.opciones ??= []; t.modelo ??= null
       t.actividadMs ??= finCubo(t.fin ?? t.inicio)
       this.registros.set(t.id, this.registroNuevo(t, true))
     }
   }
 
-  crear(p: { motor: MotorElegido; carpeta: string | null; texto: string }): Tarea {
+  crear(p: { motor: MotorElegido; carpeta: string | null; texto: string; config?: Record<string, string> }): Tarea {
     let id = nuevoId()
     while (this.registros.has(id)) id = nuevoId()
     const titulo = (p.texto.split('\n').find((l) => l.trim()) ?? '').trim().slice(0, 120)
     const tarea: Tarea = { id, titulo, texto: p.texto, motor: p.motor.id, motorNombre: p.motor.nombre, carpeta: p.carpeta,
       estado: 'preparando', copia: null, inicio: this.ahora(), turnos: 0, herramientas: 0, cambios: null,
-      uso: { entrada: 0, salida: 0, pensamiento: 0 }, permiso: null, actividad: new Array(CUBOS).fill(0), actividadMs: 0 }
+      uso: { entrada: 0, salida: 0, pensamiento: 0 }, permiso: null, actividad: new Array(CUBOS).fill(0), actividadMs: 0, opciones: [], modelo: null }
     tarea.actividadMs = finCubo(tarea.inicio)
     const r = this.registroNuevo(tarea, false)
-    r.motor = p.motor
+    r.motor = p.motor; r.config = { ...p.config }
     this.registros.set(id, r)
     this.cambio(r, true)
     void this.ejecutar(r, p.texto)
@@ -112,6 +113,12 @@ export class Taller {
     r.tarea.error = undefined; r.tarea.fin = undefined
     this.cambio(r, true)
     void this.ejecutar(r, texto)
+  }
+
+  async configurar(id: string, opcion: string, valor: string): Promise<void> {
+    const r = this.registro(id)
+    r.config[opcion] = valor
+    await r.sesion?.configurar(opcion, valor)
   }
 
   responder(id: string, opcion: string | 'cancelar'): void {
@@ -183,7 +190,7 @@ export class Taller {
   // --- internos ---
 
   private registroNuevo(tarea: Tarea, parcial: boolean): Registro {
-    return { tarea, eventos: [], parcial, ids: new Set(), cubo: Math.floor((tarea.actividadMs || finCubo(this.ahora())) / MS_CUBO) - 1, inicioTurno: 0,
+    return { tarea, config: {}, eventos: [], parcial, ids: new Set(), cubo: Math.floor((tarea.actividadMs || finCubo(this.ahora())) / MS_CUBO) - 1, inicioTurno: 0,
       cancelado: false, descartada: false, ultimoEmitido: 0 }
   }
 
@@ -207,7 +214,7 @@ export class Taller {
       if (parada()) return
       if (!r.sesion) {
         const motor = r.motor!
-        r.sesion = await this.abrirSesion({ comando: motor.comando, args: motor.args, cwd: t.copia.ruta, mcp: this.mcp() ?? undefined,
+        r.sesion = await this.abrirSesion({ comando: motor.comando, args: motor.args, cwd: t.copia.ruta, mcp: this.mcp() ?? undefined, config: { ...r.config },
           alEvento: (e) => this.alEvento(r, e), alPedirPermiso: (p) => this.alPedirPermiso(r, p) })
       }
       if (r.descartada || this.cerrado || parada()) return
@@ -244,6 +251,13 @@ export class Taller {
   private alEvento(r: Registro, e: EventoMotor): void {
     if (r.descartada || this.cerrado) return
     const t = r.tarea
+    if (e.tipo === 'opciones') {
+      t.opciones = e.opciones
+      const m = e.opciones.find((x) => x.id === 'model')
+      t.modelo = m ? (m.valores.find((v) => v.id === m.actual)?.nombre ?? m.actual) : null
+      this.registrar(r, e); this.cambio(r, true)
+      return
+    }
     this.actividad(r)
     if (t.turnos === 0 && t.primeraRespuestaMs === undefined) t.primeraRespuestaMs = Math.max(0, this.ahora() - r.inicioTurno)
     if (e.tipo === 'herramienta') { r.ids.add(e.id); t.herramientas = Math.max(t.herramientas, r.ids.size) }

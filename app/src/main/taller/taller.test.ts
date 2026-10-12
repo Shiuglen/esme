@@ -29,8 +29,9 @@ const sesiones = (guion: Guion) => {
   const cancelar = vi.fn(async () => {})
   const cerrar = vi.fn()
   let n = 0
-  const abrir = vi.fn<AbrirSesion>(async (o) => ({ preguntar: (texto) => guion(o, texto, n++), cancelar, cerrar } satisfies SesionMotor))
-  return { abrir, cancelar, cerrar }
+  const configurar = vi.fn(async (_id: string, _valor: string) => {})
+  const abrir = vi.fn<AbrirSesion>(async (o) => ({ preguntar: (texto) => guion(o, texto, n++), cancelar, cerrar, configurar } satisfies SesionMotor))
+  return { abrir, cancelar, cerrar, configurar }
 }
 const crear = (abrirSesion: AbrirSesion, ops = copiasFalsas().ops, extra: object = {}) => {
   t = new Taller({ dir, emitir: (canal, dato) => { emisiones.push({ canal, dato }) }, abrirSesion, copias: ops, ahora: () => reloj,
@@ -256,5 +257,32 @@ describe('Taller: hallazgos de la revisión', () => {
     const f = t!.lista()[0]
     expect(f.actividadMs).toBe(13_500)
     expect(f.actividad.slice(-3)).toEqual([1, 0, 1])
+  })
+
+  it('la tarea refleja opciones y modelo', async () => {
+    const opcion = { id: 'model', nombre: 'Modelo', actual: 'b', valores: [{ id: 'a', nombre: 'Lento' }, { id: 'b', nombre: 'Rápido' }] }
+    const s = sesiones(async (o) => { o.alEvento({ tipo: 'opciones', opciones: [opcion] }); return 'end_turn' })
+    const tarea = crear(s.abrir).crear({ motor, carpeta: null, texto: 'x', config: { model: 'b' } })
+    expect(tarea.opciones).toEqual([]); expect(tarea.modelo).toBeNull()
+    await esperar(tarea.id, 'lista')
+    expect(t!.lista()[0]).toMatchObject({ opciones: [opcion], modelo: 'Rápido' })
+    expect(s.abrir).toHaveBeenCalledWith(expect.objectContaining({ config: { model: 'b' } }))
+    expect(t!.lista()[0].actividad[39]).toBe(0)   // las opciones no son actividad del motor
+  })
+
+  it('configurar guarda la config de la tarea y la aplica a la sesión viva', async () => {
+    let fallar = true
+    const s = sesiones(async () => { if (fallar) { fallar = false; throw new Error('cayó') } return 'end_turn' })
+    const resolverMotor = vi.fn(async () => motor)
+    const tarea = crear(s.abrir, undefined, { resolverMotor }).crear({ motor, carpeta: null, texto: 'x' })
+    await esperar(tarea.id, 'error')   // sin sesión viva: solo se guarda
+    await t!.configurar(tarea.id, 'model', 'a')
+    expect(s.configurar).not.toHaveBeenCalled()
+    await t!.seguir(tarea.id, 'otra')
+    await esperar(tarea.id, 'lista')
+    expect(s.abrir).toHaveBeenLastCalledWith(expect.objectContaining({ config: { model: 'a' } }))
+    await t!.configurar(tarea.id, 'model', 'b')   // ahora hay sesión viva
+    expect(s.configurar).toHaveBeenCalledWith('model', 'b')
+    await expect(t!.configurar('noexiste', 'model', 'b')).rejects.toThrow()
   })
 })
