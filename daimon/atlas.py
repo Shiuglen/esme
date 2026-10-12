@@ -7,7 +7,10 @@ from __future__ import annotations
 
 import json
 import math
+import re
+import unicodedata
 from collections import Counter
+from typing import Callable
 
 import numpy as np
 
@@ -18,7 +21,8 @@ _GENERIC = {"usuario", "user", "claude", "assistant", "the", "que", "para", "con
             "hacer", "bien", "ahora", "solo", "cada", "aqui", "asi", "pero", "como", "mas", "muy", "note", "doc",
             "antes", "despues", "miro", "medido", "aplicable", "codigo", "code", "have", "this", "with", "you", "your",
             "cuando", "donde", "entonces", "porque", "sobre", "hace", "hecho", "dice", "dijo", "tiene", "tener", "ver",
-            "vez", "sin", "son", "fue", "era", "ser", "estar", "esta", "este", "eso", "ese", "algo", "nada", "otro"}
+            "vez", "sin", "son", "fue", "era", "ser", "estar", "esta", "este", "eso", "ese", "algo", "nada", "otro",
+            "https", "http", "www", "com", "html"}   # trozos de URL: no nombran nada
 
 
 def _project(V: np.ndarray, seed: int) -> np.ndarray:
@@ -43,18 +47,55 @@ def _kde_heights(P: np.ndarray, bw: float = 0.08) -> np.ndarray:
     return (dens - lo) / (hi - lo) if hi > lo else np.zeros(len(P))
 
 
-def _labels(texts_by_cluster: dict[int, list[str]]) -> dict[int, str]:
+def _sin_acentos(w: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFKD", w) if not unicodedata.combining(c))
+
+
+def _formas(textos) -> dict[str, str]:
+    """Para cada palabra normalizada (sin acentos ni mayúsculas, como la cuenta tokenize), cómo la escribes tú más a menudo."""
+    vistas: dict[str, Counter] = {}
+    for t in textos:
+        for w in re.findall(r"\w+", t):
+            vistas.setdefault(_sin_acentos(w.lower()), Counter())[w] += 1
+    return {k: max(c.items(), key=lambda kv: (kv[1], kv[0] != _sin_acentos(kv[0])))[0] for k, c in vistas.items()}
+
+
+def _labels(texts_by_cluster: dict[int, list[str]], centroids: dict[int, np.ndarray] | None = None,
+            encode: Callable[[list[str]], np.ndarray] | None = None, k: int = 2) -> dict[int, list[str]]:
+    """Los términos de cada tema. Candidatos: las palabras más distintivas (tf-idf). Con lente, gana la que más se acerca
+    a lo que el tema significa (su centro), no la más repetida, y la segunda no puede ser casi la misma que la primera."""
     tf = {c: Counter(w for t in ts for w in set(tokenize(t)) if w not in _GENERIC and not w.isdigit() and len(w) > 2)
           for c, ts in texts_by_cluster.items()}
     df = Counter(w for c in tf for w in tf[c])
     n = len(tf)
-    out = {}
+    formas = _formas(t for ts in texts_by_cluster.values() for t in ts)
+    cands: dict[int, list[str]] = {}
     for c, counts in tf.items():
         size = max(len(texts_by_cluster[c]), 1)
         counts = Counter({w: f for w, f in counts.items() if f >= max(2, 0.08 * size) and "_" not in w
                           and not any(ch.isdigit() for ch in w)}) or counts
         scored = sorted(counts.items(), key=lambda kv: -kv[1] * math.log(n / df[kv[0]]) if n > 1 else -kv[1])
-        out[c] = " · ".join(w for w, _ in scored[:2]) or f"región {c}"
+        cands[c] = [formas.get(w, w) for w, _ in scored[:12]]
+    todas = sorted({w for ws in cands.values() for w in ws})
+    if encode is None or centroids is None or not todas:
+        return {c: ws[:k] for c, ws in cands.items()}
+    try:
+        E = np.asarray(encode(todas), dtype=np.float32)
+    except Exception:   # sin lente (el codificador no responde): el mapa no se cae por no saber nombrar; manda la frecuencia
+        return {c: ws[:k] for c, ws in cands.items()}
+    E /= np.maximum(np.linalg.norm(E, axis=1, keepdims=True), 1e-9)
+    fila = {w: i for i, w in enumerate(todas)}
+    out = {}
+    for c, ws in cands.items():
+        centro = centroids[c] / max(float(np.linalg.norm(centroids[c])), 1e-9)
+        elegidas: list[str] = []
+        for w in sorted(ws, key=lambda w: -float(E[fila[w]] @ centro)):
+            if any(float(E[fila[w]] @ E[fila[e]]) > 0.85 or _sin_acentos(w.lower())[:5] == _sin_acentos(e.lower())[:5] for e in elegidas):
+                continue
+            elegidas.append(w)
+            if len(elegidas) == k:
+                break
+        out[c] = elegidas
     return out
 
 
@@ -80,7 +121,8 @@ def _merge_similar(V: np.ndarray, lab: np.ndarray, thr: float = 0.9) -> np.ndarr
     return np.array([remap[int(c)] for c in lab])
 
 
-def compute_atlas(vectors: np.ndarray, events: list[Event], seed: int = 0) -> dict:
+def compute_atlas(vectors: np.ndarray, events: list[Event], seed: int = 0,
+                  encode: Callable[[list[str]], np.ndarray] | None = None) -> dict:
     if len(events) == 0:
         return {"points": [], "clusters": []}
     P = _project(np.asarray(vectors, dtype=np.float32), seed)
@@ -94,14 +136,21 @@ def compute_atlas(vectors: np.ndarray, events: list[Event], seed: int = 0) -> di
     by_c: dict[int, list[str]] = {}
     for e, c in zip(events, labels_idx):
         by_c.setdefault(int(c), []).append(e.text)
-    names = _labels(by_c)
+    # El nombre de un tema debe ser central en él y a la vez distinguirlo del resto de la mente: se compara cada palabra
+    # con la suma de dos direcciones unitarias, el centro del tema y lo que ese centro tiene de más que el de toda la mente.
+    V32 = np.asarray(vectors, dtype=np.float32)
+    unit = lambda x: x / max(float(np.linalg.norm(x)), 1e-9)
+    todo = V32.mean(0)
+    centros = {c: V32[labels_idx == c].mean(0) for c in by_c}
+    names = _labels(by_c, {c: unit(v) + unit(v - todo) for c, v in centros.items()}, encode)
     points = [{"id": e.id, "x": round(float(P[i, 0]), 4), "y": round(float(P[i, 1]), 4), "h": round(float(H[i]), 4),
-               "cluster": int(labels_idx[i]), "kind": e.kind, "source": e.source.split("/")[-1][:80]}
+               "cluster": int(labels_idx[i]), "kind": e.kind, "source": e.source.split("/")[-1][:80],
+               "ts": e.ts, "trust": round(float(e.trust), 3)}   # la tinta envejece con ts; la confianza es el trazo (tinta o grafito)
               for i, e in enumerate(events)]
     clusters = []
     for c in sorted(by_c):
         idx = np.where(labels_idx == c)[0]
-        clusters.append({"id": c, "label": names[c], "x": round(float(P[idx, 0].mean()), 4),
+        clusters.append({"id": c, "label": " · ".join(names[c]) or f"región {c}", "terms": names[c] or [f"región {c}"], "x": round(float(P[idx, 0].mean()), 4),
                          "y": round(float(P[idx, 1].mean()), 4), "size": int(len(idx))})
     return {"points": points, "clusters": clusters}
 
@@ -109,13 +158,13 @@ def compute_atlas(vectors: np.ndarray, events: list[Event], seed: int = 0) -> di
 def atlas_for(home) -> dict:
     """Atlas de un hogar, con caché en atlas.json mientras la memoria no cambie."""
     events = home.hippo.events()
-    sig = [len(events), events[-1].id if events else ""]
+    sig = ["v4", len(events), events[-1].id if events else ""]   # v2: ts y trust; v3: términos con la lente; v4: términos distintivos
     cache = home.path / "atlas.json"
     if cache.exists():
         data = json.loads(cache.read_text())
         if data.get("sig") == sig:
             return data["atlas"]
     V = np.stack([home.hippo.vector(e.id) for e in events]) if events else np.zeros((0, home.lens.dim), np.float32)
-    atlas = compute_atlas(V, events)
+    atlas = compute_atlas(V, events, encode=lambda ws: home.lens.encode(ws, role="query"))
     cache.write_text(json.dumps({"sig": sig, "atlas": atlas}))
     return atlas
