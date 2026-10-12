@@ -9,6 +9,7 @@ import { RedNeuronal, type Recordado, type RedHandle } from './memoria/RedNeuron
 import { Ajustes } from './paginas/Ajustes'
 import { Inicio, type EventoMente } from './paginas/Inicio'
 import { Proximamente } from './paginas/Proximamente'
+import { Uso } from './paginas/Uso'
 import { ChatPanel } from './panels/ChatPanel'
 import { MemoryPanel } from './panels/MemoryPanel'
 import { WorkshopPanel } from './panels/WorkshopPanel'
@@ -108,7 +109,7 @@ export function App() {
           <div className="relative min-h-0 overflow-hidden"><RedNeuronal ref={redRef} atlas={atlas} tema={tema} recordados={recordados} onPick={setEnfocado} /></div>
         </div>)
       case 'ajustes': return <Ajustes tema={tema} onTema={setTema} />
-      case 'uso': return <Proximamente titulo="Uso" texto="Aquí verás lo que gastas por modelo, tu actividad día a día como en GitHub, tus creaciones y cómo crece tu mente." />
+      case 'uso': return <Uso onIr={ir} />
       case 'tienda': return <Proximamente titulo="Tienda" texto="Aquí instalarás IAs, modelos locales, MCPs, plugins y compañeros para Esme, con un clic y con permiso." />
     }
   }
