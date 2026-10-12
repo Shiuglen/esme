@@ -3,9 +3,11 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { access, constants } from 'node:fs/promises'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { homedir } from 'node:os'
 import { cargarCatalogo, type ProveedorCatalogo } from './catalogo/modelsdev'
 import { RegistroUso, costeDe, type Consumo, type Presupuesto } from './uso/registro'
 import { buscarPrecio, calcularEstado, hayAlerta, normalizarPresupuesto, resumirProveedores, PRESUPUESTO_DEFECTO, type Evaluacion } from './uso/estado'
+import { usoExterno } from './uso/externo'
 import { detectarMotores } from './motores/acp-motores'
 import { crearWhich, extsPlataforma } from './motores/which'
 
@@ -60,6 +62,11 @@ export function registerProveedores() {
     await catalogo!.catch(() => undefined)
     const e = estado(); estadoPrevio = e.evaluacion.estado
     return e
+  })
+  // Uso fuera de Esme: solo contadores de los registros locales de Claude Code y Codex; nada sale del equipo.
+  ipcMain.handle('uso:externo', async () => {
+    await catalogo!.catch(() => undefined)
+    return usoExterno({ claudeCode: join(homedir(), '.claude', 'projects'), codex: join(homedir(), '.codex', 'sessions') }, Date.now(), (m) => buscarPrecio(proveedores, '', m))
   })
   ipcMain.handle('motores:detectar', () => {
     const existe = (r: string) => access(r, constants.X_OK).then(() => true, () => false)

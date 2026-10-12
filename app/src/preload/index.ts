@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld('daimon', {
     estado: () => ipcRenderer.invoke('uso:estado'),
     resumen: (desde: number, hasta: number) => ipcRenderer.invoke('uso:resumen', desde, hasta),
     presupuesto: (p: unknown) => ipcRenderer.invoke('uso:presupuesto', p),
+    externo: () => ipcRenderer.invoke('uso:externo'),
     onConsumo: (fn: (c: unknown) => void) => on('uso:consumo', (c) => fn(c)),
     onAlerta: (fn: (e: unknown) => void) => on('uso:alerta', (e) => fn(e)),
   },

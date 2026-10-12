@@ -1,6 +1,7 @@
 import type { ModeloCatalogo } from '../../main/catalogo/modelsdev'
 import type { MotorACP } from '../../main/motores/acp-motores'
 import type { Consumo, Presupuesto, RegistroUso } from '../../main/uso/registro'
+import type { UsoExterno as UsoExternoMain } from '../../main/uso/externo'
 import type { EstadoUso as EstadoUsoMain, ProveedorResumen as ProveedorResumenMain } from '../../main/uso/estado'
 
 // Puente: la misma interfaz funciona dentro de Electron (todo) y en el navegador (modo web, para verla y probarla).
@@ -13,6 +14,7 @@ export type ChatStream = { onChunk(fn: (d: string) => void): void; onDone(fn: ()
 export type { ModeloCatalogo, Presupuesto }
 export type ProveedorResumen = ProveedorResumenMain
 export type EstadoUso = EstadoUsoMain
+export type UsoExterno = UsoExternoMain
 export type ConsumoConCoste = Consumo & { costeUSD: number }
 export type MotorDetectado = MotorACP & { instalado: boolean; ruta?: string }
 export type ResumenUso = ReturnType<RegistroUso['resumen']>
@@ -30,7 +32,7 @@ type ElectronApi = {
   }
   catalogo: { proveedores(): Promise<ProveedorResumen[]>; modelos(id: string): Promise<ModeloCatalogo[]>; origen(): Promise<OrigenCatalogo> }
   uso: {
-    estado(): Promise<EstadoUso>; resumen(desde: number, hasta: number): Promise<ResumenUso>; presupuesto(p: Presupuesto): Promise<EstadoUso>
+    estado(): Promise<EstadoUso>; resumen(desde: number, hasta: number): Promise<ResumenUso>; presupuesto(p: Presupuesto): Promise<EstadoUso>; externo(): Promise<UsoExterno>
     onConsumo(fn: (c: ConsumoConCoste) => void): () => void; onAlerta(fn: (e: EstadoUso['evaluacion']) => void): () => void
   }
   motores: { detectar(): Promise<MotorDetectado[]> }
@@ -128,6 +130,7 @@ export const bridge = {
     estado: async (): Promise<EstadoUso | null> => (isElectron() ? window.daimon!.uso.estado() : null),
     resumen: async (desde: number, hasta: number): Promise<ResumenUso | null> => (isElectron() ? window.daimon!.uso.resumen(desde, hasta) : null),
     presupuesto: async (p: Presupuesto): Promise<EstadoUso | null> => (isElectron() ? window.daimon!.uso.presupuesto(p) : null),
+    externo: async (): Promise<UsoExterno | null> => (isElectron() ? window.daimon!.uso.externo() : null),
     onConsumo: (fn: (c: ConsumoConCoste) => void): (() => void) => (isElectron() ? window.daimon!.uso.onConsumo(fn) : () => {}),
     onAlerta: (fn: (e: EstadoUso['evaluacion']) => void): (() => void) => (isElectron() ? window.daimon!.uso.onAlerta(fn) : () => {}),
   },
