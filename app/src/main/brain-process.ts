@@ -13,7 +13,10 @@ export class BrainProcess {
 
   start(): Promise<BrainInfo> {
     return new Promise((resolve, reject) => {
-      const child = spawn(this.daimonBin, ['serve', '--home', this.home], { stdio: ['ignore', 'pipe', 'pipe'] })
+      const child = spawn(this.daimonBin, ['serve', '--home', this.home], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: { ...process.env, DAIMON_PARENT_PID: String(process.pid) },
+      })
       this.child = child
       const rl = createInterface({ input: child.stdout! })
       const timer = setTimeout(() => reject(new Error('el cerebro no respondió en 120 s')), 120_000)
@@ -30,11 +33,19 @@ export class BrainProcess {
       child.on('exit', (code) => {
         this.info = null
         this.onChange(null)
-        if (!this.stopping) setTimeout(() => this.start().catch(() => {}), 2000)   // reintento
+        if (code === 3) console.error('[cerebro] otra instancia usa esta mente')   // no reintentar en bucle
+        else if (!this.stopping) setTimeout(() => this.start().catch(() => {}), 2000)   // reintento
         if (code !== 0) clearTimeout(timer)
       })
     })
   }
 
-  stop() { this.stopping = true; this.child?.kill() }
+  stop() {
+    this.stopping = true
+    const child = this.child
+    if (!child || child.exitCode !== null || child.signalCode !== null) return
+    child.kill('SIGTERM')
+    const t = setTimeout(() => { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL') }, 5000)
+    child.once('exit', () => clearTimeout(t))
+  }
 }

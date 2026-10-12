@@ -16,14 +16,26 @@ def ingest_cmd(home_path: Path, sources: list[Path], encoder=None) -> int:
 
 def serve(home_path: Path, port: int = 0, token: str | None = None) -> None:
     """Arranca el cerebro y anuncia por stdout una línea JSON {port, token} para quien lo lanzó (la app)."""
+    import fcntl
+    import os
     import secrets
     import socket
     import sys
+    import threading
+    import time
 
     import uvicorn
 
     from .home import Home
     from .server import create_app
+    home_path = Path(home_path)
+    home_path.mkdir(parents=True, exist_ok=True)
+    lock = open(home_path / ".cerebro.lock", "a")          # se libera al salir el proceso
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        print("daimon: ya hay un cerebro usando esta mente", file=sys.stderr)
+        raise SystemExit(3)
     token = token or secrets.token_urlsafe(24)
     app, _ = create_app(Home(home_path), token)
     sock = socket.socket()
@@ -32,7 +44,22 @@ def serve(home_path: Path, port: int = 0, token: str | None = None) -> None:
     sock.listen(128)                      # ya escucha: las conexiones esperan en cola, no hay carrera
     print(json.dumps({"port": sock.getsockname()[1], "token": token}), flush=True)
     sys.stdout.flush()
-    uvicorn.Server(uvicorn.Config(app, log_level="warning")).run(sockets=[sock])
+    server = uvicorn.Server(uvicorn.Config(app, log_level="warning", timeout_graceful_shutdown=2))
+    parent = os.environ.get("DAIMON_PARENT_PID")
+    if parent:
+        ppid = int(parent)
+
+        def vigila() -> None:                 # si muere quien nos lanzó, apagado ordenado
+            while not server.should_exit:
+                time.sleep(1)
+                try:
+                    os.kill(ppid, 0)
+                except ProcessLookupError:
+                    server.should_exit = True
+                except PermissionError:
+                    pass
+        threading.Thread(target=vigila, daemon=True).start()
+    server.run(sockets=[sock])
 
 
 def main(argv: list[str] | None = None) -> None:

@@ -34,3 +34,84 @@ def test_serve_arranca_y_responde(tmp_path):
         assert json.loads(urllib.request.urlopen(req, timeout=10).read())["ok"] is True
     finally:
         p.terminate(); p.wait(10)
+
+
+def _arranca_serve(home, extra_env=None):
+    import subprocess, sys, os
+    env = dict(os.environ, **(extra_env or {}))
+    return subprocess.Popen([sys.executable, "-m", "daimon.cli", "serve", "--home", str(home), "--port", "0"],
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+
+
+def _home_tmp(tmp_path):
+    home = tmp_path / "home"; home.mkdir(exist_ok=True)
+    (home / "config.json").write_text('{"encoder": "hash:32"}')
+    return home
+
+
+def test_serve_se_apaga_con_sigterm(tmp_path):
+    import json, signal, socket
+    p = _arranca_serve(_home_tmp(tmp_path))
+    s = None
+    try:
+        info = json.loads(p.stdout.readline())
+        s = socket.create_connection(("127.0.0.1", info["port"]), timeout=10)
+        s.sendall(f"GET /events HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: Bearer {info['token']}\r\n\r\n".encode())
+        assert b"200" in s.recv(4096)      # el flujo SSE queda abierto
+        p.send_signal(signal.SIGTERM)
+        p.wait(5)                          # TimeoutExpired si se cuelga
+    finally:
+        if s: s.close()
+        if p.poll() is None: p.kill(); p.wait()
+
+
+def test_serve_muere_si_muere_su_padre(tmp_path):
+    import os, signal, subprocess, sys, time
+    home = _home_tmp(tmp_path)
+    codigo = (
+        "import subprocess, sys, os, time\n"
+        "env = dict(os.environ, DAIMON_PARENT_PID=str(os.getpid()))\n"
+        f"p = subprocess.Popen([sys.executable, '-m', 'daimon.cli', 'serve', '--home', {str(home)!r}, '--port', '0'],"
+        " stdout=subprocess.PIPE, env=env, text=True)\n"
+        "p.stdout.readline()\n"
+        "print(p.pid, flush=True)\n"
+        "time.sleep(60)\n")
+    padre = subprocess.Popen([sys.executable, "-c", codigo], stdout=subprocess.PIPE, text=True)
+    hijo = None
+    try:
+        hijo = int(padre.stdout.readline().split()[0])
+        padre.kill(); padre.wait()
+        fin = time.time() + 5
+        while time.time() < fin:
+            try:
+                os.kill(hijo, 0)
+                if open(f"/proc/{hijo}/stat").read().rsplit(")", 1)[1].split()[0] == "Z":
+                    break
+            except (ProcessLookupError, FileNotFoundError):
+                break
+            time.sleep(0.2)
+        else:
+            raise AssertionError("serve sigue vivo tras morir su padre")
+    finally:
+        if hijo:
+            try: os.kill(hijo, signal.SIGKILL)
+            except ProcessLookupError: pass
+
+
+def test_dos_cerebros_no_comparten_mente(tmp_path):
+    import json
+    home = _home_tmp(tmp_path)
+    p1 = _arranca_serve(home)
+    try:
+        json.loads(p1.stdout.readline())
+        snap = lambda: {f.name: (f.stat().st_mtime_ns, f.stat().st_size) for f in home.iterdir() if f.name != ".cerebro.lock"}
+        antes = snap()
+        p2 = _arranca_serve(home)
+        _, err = p2.communicate(timeout=5)
+        assert p2.returncode == 3
+        assert "ya hay un cerebro usando esta mente" in err
+        assert antes == snap()
+    finally:
+        p1.terminate()
+        try: p1.wait(10)
+        except Exception: p1.kill()
