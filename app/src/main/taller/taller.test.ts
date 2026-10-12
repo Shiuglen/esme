@@ -218,3 +218,43 @@ describe('Taller', () => {
     await expect(stat(f.copia!.ruta)).rejects.toThrow()
   })
 })
+
+describe('Taller: hallazgos de la revisión', () => {
+  it('parar mientras se prepara la copia no deja que el motor empiece', async () => {
+    let soltar!: () => void
+    const listo = new Promise<void>((r) => { soltar = r })
+    const guion = vi.fn(async () => 'end_turn')
+    const s = sesiones(guion)
+    const abrir = vi.fn<AbrirSesion>(async (o) => { await listo; return s.abrir(o) })
+    const tarea = crear(abrir).crear({ motor, carpeta: null, texto: 'x' })
+    await t!.parar(tarea.id)
+    soltar()
+    await esperar(tarea.id, 'parada')
+    expect(guion).not.toHaveBeenCalled()
+    expect(t!.lista()[0].fin).toBeDefined()
+  })
+
+  it('descartar una tarea en marcha no la hace pasar por error', async () => {
+    let romper!: (e: Error) => void
+    const s = sesiones(() => new Promise<string>((_, rej) => { romper = rej }))
+    s.cerrar.mockImplementation(() => romper(new Error('La sesión del motor está cerrada.')))
+    const tarea = crear(s.abrir).crear({ motor, carpeta: null, texto: 'x' })
+    await esperar(tarea.id, 'trabajando')
+    await t!.descartar(tarea.id)
+    await new Promise((r) => setTimeout(r, 20))
+    expect(estados()).not.toContain('error')
+    expect(emisiones.some((e) => e.canal === 'evento' && e.dato.evento.tipo === 'fallo')).toBe(false)
+    expect(emisiones.at(-1)).toEqual({ canal: 'quitada', dato: tarea.id })
+  })
+
+  it('la actividad dice hasta cuándo llega, para que la interfaz la desplace aunque no haya eventos', async () => {
+    reloj = 10_000
+    const s = sesiones(async (o) => { o.alEvento({ tipo: 'texto', texto: 'a' }); reloj = 13_100; o.alEvento({ tipo: 'texto', texto: 'b' }); return 'end_turn' })
+    const tarea = crear(s.abrir).crear({ motor, carpeta: null, texto: 'x' })
+    expect(tarea.actividadMs).toBe(10_500)
+    await esperar(tarea.id, 'lista')
+    const f = t!.lista()[0]
+    expect(f.actividadMs).toBe(13_500)
+    expect(f.actividad.slice(-3)).toEqual([1, 0, 1])
+  })
+})

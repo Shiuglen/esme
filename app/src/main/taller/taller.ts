@@ -15,6 +15,7 @@ export type Tarea = {
   primeraRespuestaMs?: number; herramientas: number; cambios: Cambios | null; uso: UsoTarea
   permiso: Permiso | null; error?: string
   actividad: number[]   // 40 cubos de 1,5 s con el número de eventos; el último es el cubo actual
+  actividadMs: number   // dónde acaba el último cubo: sin eventos nuevos, la interfaz desplaza la micrográfica sola
 }
 export type MotorElegido = { id: string; nombre: string; comando: string; args: string[] }
 export type SesionMotor = { preguntar(texto: string): Promise<string>; cancelar(): Promise<void>; cerrar(): void }
@@ -39,6 +40,7 @@ type Registro = {
   ultimoEmitido: number; temporizador?: NodeJS.Timeout
 }
 
+const finCubo = (ms: number) => (Math.floor(ms / MS_CUBO) + 1) * MS_CUBO
 const nuevoId = () => Array.from(randomBytes(8), (b) => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('')
 const instantanea = (t: Tarea): Tarea => ({ ...t, uso: { ...t.uso }, actividad: [...t.actividad] })
 
@@ -76,6 +78,7 @@ export class Taller {
       if (!t || typeof t.id !== 'string') continue
       if (ACTIVAS.includes(t.estado)) { t.estado = 'parada'; t.fin = t.fin ?? this.ahora() }
       t.permiso = null
+      t.actividadMs ??= finCubo(t.fin ?? t.inicio)
       this.registros.set(t.id, this.registroNuevo(t, true))
     }
   }
@@ -86,7 +89,8 @@ export class Taller {
     const titulo = (p.texto.split('\n').find((l) => l.trim()) ?? '').trim().slice(0, 120)
     const tarea: Tarea = { id, titulo, texto: p.texto, motor: p.motor.id, motorNombre: p.motor.nombre, carpeta: p.carpeta,
       estado: 'preparando', copia: null, inicio: this.ahora(), turnos: 0, herramientas: 0, cambios: null,
-      uso: { entrada: 0, salida: 0, pensamiento: 0 }, permiso: null, actividad: new Array(CUBOS).fill(0) }
+      uso: { entrada: 0, salida: 0, pensamiento: 0 }, permiso: null, actividad: new Array(CUBOS).fill(0), actividadMs: 0 }
+    tarea.actividadMs = finCubo(tarea.inicio)
     const r = this.registroNuevo(tarea, false)
     r.motor = p.motor
     this.registros.set(id, r)
@@ -132,9 +136,16 @@ export class Taller {
   async descartar(id: string): Promise<void> {
     const r = this.registro(id)
     await this.parar(id)
+    r.descartada = true   // antes de cerrar: que el cierre de la sesión no se lea como un fallo
     r.sesion?.cerrar(); r.sesion = undefined
-    if (r.tarea.copia) await this.copias.quitar(r.tarea.copia, { dirCopias: this.dirCopias })
-    r.descartada = true
+    try {
+      if (r.tarea.copia) await this.copias.quitar(r.tarea.copia, { dirCopias: this.dirCopias })
+    } catch (e) {
+      r.descartada = false
+      if (ACTIVAS.includes(r.tarea.estado)) { r.tarea.estado = 'parada'; r.tarea.fin ??= this.ahora() }
+      this.cambio(r, true)
+      throw e
+    }
     if (r.temporizador) clearTimeout(r.temporizador)
     await rm(this.archivoEventos(id), { force: true })
     this.registros.delete(id)
@@ -172,7 +183,7 @@ export class Taller {
   // --- internos ---
 
   private registroNuevo(tarea: Tarea, parcial: boolean): Registro {
-    return { tarea, eventos: [], parcial, ids: new Set(), cubo: Math.floor(this.ahora() / MS_CUBO), inicioTurno: 0,
+    return { tarea, eventos: [], parcial, ids: new Set(), cubo: Math.floor((tarea.actividadMs || finCubo(this.ahora())) / MS_CUBO) - 1, inicioTurno: 0,
       cancelado: false, descartada: false, ultimoEmitido: 0 }
   }
 
@@ -186,14 +197,20 @@ export class Taller {
 
   private async ejecutar(r: Registro, texto: string): Promise<void> {
     const t = r.tarea
+    const parada = () => {
+      if (!r.cancelado || r.descartada || this.cerrado) return false
+      t.estado = 'parada'; t.fin = this.ahora(); this.cambio(r, true)
+      return true
+    }
     try {
       if (!t.copia) t.copia = await this.copias.crear({ carpeta: t.carpeta, id: t.id, dirCopias: this.dirCopias })
+      if (parada()) return
       if (!r.sesion) {
         const motor = r.motor!
         r.sesion = await this.abrirSesion({ comando: motor.comando, args: motor.args, cwd: t.copia.ruta, mcp: this.mcp() ?? undefined,
           alEvento: (e) => this.alEvento(r, e), alPedirPermiso: (p) => this.alPedirPermiso(r, p) })
       }
-      if (r.descartada || this.cerrado) return
+      if (r.descartada || this.cerrado || parada()) return
       t.estado = 'trabajando'; this.cambio(r, true)
       r.inicioTurno = this.ahora()
       this.registrar(r, { tipo: 'usuario', texto })
@@ -253,6 +270,7 @@ export class Taller {
     const saltos = Math.min(Math.max(actual - r.cubo, 0), CUBOS)
     for (let i = 0; i < saltos; i++) { a.shift(); a.push(0) }
     r.cubo = Math.max(actual, r.cubo)
+    r.tarea.actividadMs = (r.cubo + 1) * MS_CUBO
     a[CUBOS - 1]++
   }
 
