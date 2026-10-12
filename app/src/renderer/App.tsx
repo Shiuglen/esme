@@ -123,7 +123,7 @@ export function App() {
     <FondoVivo tema={tema} estado={estadoEsme} />
     <div className="relative z-10 grid h-full grid-rows-[48px_minmax(0,1fr)]">
       <BarraSuperior seccion={nombreDe(seccion)} estado={{ conectado: !!brain && recuerdos !== null, recuerdos, pensando }} tema={tema}
-        onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} onBuscar={() => setPaleta(true)} />
+        onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} onBuscar={() => setPaleta(true)} paletaAbierta={paleta} />
       <div className="flex min-h-0">
         <Riel actual={seccion} onIr={ir} cuentas={{ memoria: recuerdos !== null ? { texto: recuerdos.toLocaleString('es-ES') } : undefined }} />
         <main className="relative min-w-0 flex-1">
