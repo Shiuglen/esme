@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path'
 import { agentCommand, listAgents } from './agents'
 import { BrainProcess, type BrainInfo } from './brain-process'
 import { registerChat } from './chat'
+import { registerProveedores } from './ipc-proveedores'
 import { keys } from './keys'
 import { listModels, PROVIDERS, type ProviderId } from './providers'
 
@@ -62,6 +63,7 @@ function registerIpc() {
   ipcMain.on('pty:write', (_e, id: string, data: string) => ptyHost?.postMessage({ type: 'write', id, data }))
   ipcMain.on('pty:resize', (_e, id: string, cols: number, rows: number) => ptyHost?.postMessage({ type: 'resize', id, cols, rows }))
   ipcMain.on('pty:kill', (_e, id: string) => ptyHost?.postMessage({ type: 'kill', id }))
+  registerProveedores()
   registerChat()
 }
 
