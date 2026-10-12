@@ -123,3 +123,23 @@ Se vieron unos 150 posts más y se marcaron otros 47 como «No me interesa». To
   - Repo de 475 demos de vídeo hechas con Opus 5.5.
   - Linus usa Claude Code en el kernel.
   - GPT-6.1 Sol con 500k de contexto en Codex.
+
+## Tercera pasada (12-oct, noche): dos piezas que se adoptan tal cual
+- **Autonomía que se gana (Reeve)**: cuatro niveles por agente o motor. **Mirar** (observa e informa), **Sugerir** (redacta y tú actúas), **Preguntar primero** (actúa tras tu aprobación; es el recomendado al empezar) y **Actuar e informar** (dentro de límites, con deshacer).
+  - Cuando casi todas sus propuestas se aprueban sin cambios, Esme *sugiere* darle más margen. La decisión siempre es del usuario.
+  - **Reglas que ningún agente puede saltarse**, editables, con algunas bloqueadas siempre: nunca borrar registros, nunca ver tarjetas ni cuentas bancarias, gasto máximo por acción y horas de silencio.
+  → Así son los permisos de Esme y el paso «Autonomía» de la bienvenida.
+- **Equipo en tres niveles** (notas de @Mahaximus_ basadas en la documentación de Anthropic). El modelo caro planifica y decide, el medio construye y el barato carga con el volumen: leer, ordenar, condensar y enrutar.
+  - **Escalado:** barato → medio si la confianza es menor de 0,7 o falla la comprobación de «hecho»; medio → caro tras 2 intentos fallidos; caro → persona para dinero, clientes, borrados o cualquier cosa pública.
+  - **Condensación:** toda salida de herramienta pasa por el modelo barato (300 tokens como máximo, conservando rutas, números y errores exactos) antes de que la vea el caro.
+  - **Coste:** prefijo cacheado idéntico en cada turno, tope de 20 turnos y 2 reintentos por herramienta. Los tokens de cada nivel se registran en `costs.jsonl`.
+  - **Traspasos:** como ficheros, con objetivo, entradas, nivel responsable y comprobación de «hecho».
+  - En su ejemplo, una ejecución de 30 turnos baja de 22,42 a 2,37 USD.
+  → Esto es el **router de Esme**, generalizado a cualquier proveedor: los niveles salen de models.dev y la mente de Esme hace de condensador y de memoria entre turnos.
+- Librerías para el Taller y el sistema de diseño:
+  - **termcn** (terminales bonitas en React).
+  - **audiocn** (UI de audio, para la fase de voz).
+  - **uiarc.dev** («la librería que tus agentes pueden usar», con MCP).
+  - **23rd.dev** (shaders y fondos).
+  - **beautifului**, **bencho** y **boardui**.
+  - La skill `/animation-performance` de Emil Kowalski: reglas de animación que los agentes suelen saltarse (blur pequeño, no animar sombras…). Se instala en Esme como habilidad.
