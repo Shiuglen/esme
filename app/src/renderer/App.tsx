@@ -1,143 +1,129 @@
-// Daimon — trabajas dentro de tu mente. El Atlas es el fondo; el trabajo flota encima.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+// esme — la carcasa: barra superior, riel y secciones. Las secciones se montan una vez y se ocultan al salir,
+// para que la conversación y las terminales del Taller sigan vivas mientras navegas.
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Toaster } from 'sonner'
 import { Atlas, type AtlasHandle } from './atlas/Atlas'
-import { CoreView, type CoreHandle } from './core/CoreView'
-import { CommandPalette, type Command } from './components/CommandPalette'
-import { Panel } from './components/Panel'
 import { BrainClient, type Atlas as AtlasData, type MindEvent } from './lib/brain'
-import { bridge } from './lib/bridge'
+import { bridge, type AgentView } from './lib/bridge'
+import { cn } from './lib/cn'
+import { Inicio, type EventoMente } from './paginas/Inicio'
+import { Proximamente } from './paginas/Proximamente'
 import { ChatPanel } from './panels/ChatPanel'
 import { MemoryPanel } from './panels/MemoryPanel'
 import { SettingsPanel } from './panels/SettingsPanel'
 import { WorkshopPanel } from './panels/WorkshopPanel'
+import { BarraSuperior } from './shell/BarraSuperior'
+import { Paleta } from './shell/Paleta'
+import { Riel } from './shell/Riel'
+import { AJUSTES, SECCIONES, nombreDe, type SeccionId } from './shell/secciones'
 
-type PanelId = 'chat' | 'taller' | 'memoria' | 'ias'
-const TITLES: Record<PanelId, string> = { chat: 'Conversación', taller: 'Taller', memoria: 'Memoria', ias: 'IAs y claves' }
-const initial = (id: PanelId) => {
-  const W = innerWidth, H = innerHeight
-  return {
-    chat: { x: W - 470, y: 70, w: 440, h: H - 180 },
-    taller: { x: 24, y: H - 430, w: Math.min(820, W - 520), h: 340 },
-    memoria: { x: 24, y: 76, w: 380, h: Math.max(320, H - 540) },
-    ias: { x: W / 2 - 260, y: 110, w: 520, h: 560 },
-  }[id]
-}
-const load = <T,>(k: string, d: T): T => { try { return JSON.parse(localStorage.getItem(k) ?? '') as T } catch { return d } }
-const save = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch { /* sin almacenamiento */ } }
+const cargar = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(`esme:${k}`); return v === null ? d : (JSON.parse(v) as T) } catch { return d } }
+const guardar = (k: string, v: unknown) => { try { localStorage.setItem(`esme:${k}`, JSON.stringify(v)) } catch { /* sin almacenamiento */ } }
 
 export function App() {
+  const [seccion, setSeccion] = useState<SeccionId>(() => cargar('seccion', 'inicio'))
+  const [visitadas, setVisitadas] = useState<Set<SeccionId>>(() => new Set([cargar<SeccionId>('seccion', 'inicio')]))
+  const [tema, setTema] = useState<'noche' | 'dia'>(() => cargar('tema', 'noche'))
+  const [acento, setAcento] = useState<string>(() => cargar('acento', 'esmeralda'))
+  const [paleta, setPaleta] = useState(false)
   const [brain, setBrain] = useState<BrainClient | null>(null)
-  const [memories, setMemories] = useState<number | null>(null)
+  const [recuerdos, setRecuerdos] = useState<number | null>(null)
   const [atlas, setAtlas] = useState<AtlasData | null>(null)
-  const [day, setDay] = useState<boolean>(() => load('day', false))
-  const [open, setOpen] = useState<PanelId[]>(() => load('open', ['chat', 'memoria']))
-  const [front, setFront] = useState<PanelId>('chat')
-  const [palette, setPalette] = useState(false)
-  const [focusId, setFocusId] = useState<string | null>(null)
-  const [saved, setSaved] = useState(0)
-  const [seed, setSeed] = useState<{ q: string; n: number }>({ q: '', n: 0 })
-  const [ask, setAsk] = useState('')
-  const [thinking, setThinking] = useState(false)
+  const [eventos, setEventos] = useState<EventoMente[]>([])
+  const [agentes, setAgentes] = useState<AgentView[]>([])
+  const [ahorrados, setAhorrados] = useState(0)
+  const [preguntas, setPreguntas] = useState(0)
+  const [pensando, setPensando] = useState(false)
+  const [memoria, setMemoria] = useState(true)
+  const [semilla, setSemilla] = useState<{ q: string; n: number }>({ q: '', n: 0 })
+  const [enfocado, setEnfocado] = useState<string | null>(null)
   const atlasRef = useRef<AtlasHandle>(null)
-  const coreRef = useRef<CoreHandle>(null)
-  const [view, setView] = useState<'nucleo' | 'mapa'>(() => load('view', 'nucleo'))
-  useEffect(() => { save('view', view) }, [view])
+  const seqEvento = useRef(0)
 
-  // conexión con el cerebro (y reconexión si se reinicia)
+  const ir = useCallback((id: SeccionId) => { setSeccion(id); setVisitadas((v) => (v.has(id) ? v : new Set(v).add(id))) }, [])
+  useEffect(() => { guardar('seccion', seccion) }, [seccion])
+  useEffect(() => { document.documentElement.dataset.theme = tema; guardar('tema', tema) }, [tema])
+  useEffect(() => { document.documentElement.dataset.acento = acento; guardar('acento', acento) }, [acento])
+
+  // atajos: Ctrl K paleta, Ctrl 1…6 secciones, Ctrl , ajustes
   useEffect(() => {
-    const connect = (info: { url: string; token: string } | null) => setBrain(info ? new BrainClient(info.url, info.token) : null)
-    void bridge.brainInfo().then(connect)
-    const off = bridge.onBrainChange(connect)
-    const retry = setInterval(() => { if (!brain) void bridge.brainInfo().then((i) => i && connect(i)) }, 3000)
-    return () => { off(); clearInterval(retry) }
-  }, [])
+    const k = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return
+      const t = e.key.toLowerCase()
+      if (t === 'k') { e.preventDefault(); setPaleta((p) => !p) }
+      else if (t === ',') { e.preventDefault(); ir('ajustes') }
+      else if (/^[1-6]$/.test(t)) { e.preventDefault(); ir(SECCIONES[Number(t) - 1].id) }
+    }
+    addEventListener('keydown', k); return () => removeEventListener('keydown', k)
+  }, [ir])
 
-  const refreshAtlas = useCallback(() => {
+  // el cerebro: conexión, reconexión y lo que hace en vivo
+  useEffect(() => {
+    const conectar = (i: { url: string; token: string } | null) => setBrain(i ? new BrainClient(i.url, i.token) : null)
+    void bridge.brainInfo().then(conectar)
+    const off = bridge.onBrainChange(conectar)
+    return off
+  }, [])
+  const refrescar = useCallback(() => {
     if (!brain) return
-    void brain.health().then((h) => setMemories(h.memories)).catch(() => setMemories(null))
+    void brain.health().then((h) => setRecuerdos(h.memories)).catch(() => setRecuerdos(null))
     void brain.atlas().then(setAtlas).catch(() => {})
   }, [brain])
-  useEffect(refreshAtlas, [refreshAtlas])
-
-  // lo que hace la mente, en vivo: quién recordó qué
+  useEffect(refrescar, [refrescar])
   useEffect(() => {
     if (!brain) return
     return brain.events((e: MindEvent) => {
-      if (e.type === 'recall' && e.ids.length) { atlasRef.current?.light(e.ids, e.who, `recordó ${e.ids.length}`); coreRef.current?.recall(e.ids) }
-      if (e.type === 'forget' || e.type === 'ingest' || e.type === 'remember') refreshAtlas()
+      const nuevo = (tipo: EventoMente['tipo'], texto: string, detalle?: string) =>
+        setEventos((v) => [{ id: ++seqEvento.current, ts: Date.now(), tipo, texto, detalle }, ...v].slice(0, 40))
+      if (e.type === 'recall') { if (e.ids.length) { atlasRef.current?.light(e.ids, e.who, `recordó ${e.ids.length}`); nuevo('recall', `Recordé ${e.ids.length} ${e.ids.length === 1 ? 'cosa' : 'cosas'} para «${e.query.slice(0, 60)}»`, e.who) } }
+      if (e.type === 'remember') nuevo('remember', 'Guardé un recuerdo nuevo')
+      if (e.type === 'forget') nuevo('forget', `Olvidé ${e.ids.length} ${e.ids.length === 1 ? 'recuerdo' : 'recuerdos'}`)
+      if (e.type === 'ingest') nuevo('ingest', `Absorbí ${e.added} recuerdos nuevos`)
+      if (e.type === 'forget' || e.type === 'ingest' || e.type === 'remember') refrescar()
     })
-  }, [brain, refreshAtlas])
+  }, [brain, refrescar])
+  useEffect(() => { void bridge.agents?.().then(setAgentes).catch(() => setAgentes([])) }, [])
 
-  useEffect(() => { document.documentElement.dataset.theme = day ? 'day' : 'night'; save('day', day) }, [day])
-  useEffect(() => { save('open', open) }, [open])
-  useEffect(() => {
-    const k = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette((p) => !p) } }
-    addEventListener('keydown', k); return () => removeEventListener('keydown', k)
-  }, [])
+  const preguntar = (q: string) => { setSemilla((s) => ({ q, n: s.n + 1 })); setPreguntas((n) => n + 1); ir('conversacion') }
+  const enfocarRecuerdo = (id: string) => { setEnfocado(id); ir('memoria'); setTimeout(() => atlasRef.current?.focus(id), 60) }
 
-  const show = (id: PanelId) => { setOpen((o) => (o.includes(id) ? o : [...o, id])); setFront(id) }
-  const toggle = (id: PanelId) => setOpen((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id]))
-  const focusMemory = (id: string) => { atlasRef.current?.focus(id); setFocusId(id); show('memoria') }
-
-  const commands: Command[] = useMemo(() => [
-    { id: 'ask', label: 'Preguntar a tu mente…', hint: 'Enter', run: (q) => { show('chat'); if (q.trim()) setSeed((s) => ({ q, n: s.n + 1 })) } },
-    { id: 'taller', label: 'Abrir el Taller de agentes', hint: 'Claude · OpenCode · terminal', run: () => show('taller') },
-    { id: 'memoria', label: 'Buscar en la memoria', run: () => show('memoria') },
-    { id: 'ias', label: 'IAs y claves', run: () => show('ias') },
-    { id: 'dia', label: day ? 'Pasar a la noche (luz)' : 'Pasar al día (tinta)', run: () => setDay((d) => !d) },
-    { id: 'mapa', label: 'Recalcular el mapa', run: refreshAtlas },
-  ], [day, refreshAtlas])
-
-  const body = (id: PanelId) => {
-    if (id === 'chat') return <ChatPanel brain={brain} onCite={focusMemory} onRecalled={(t) => setSaved((s) => s + Math.max(0, 1500 - t))} seed={seed} onBusy={setThinking} />
-    if (id === 'taller') return <WorkshopPanel day={day} />
-    if (id === 'memoria') return <MemoryPanel brain={brain} focusId={focusId} onFocus={(i) => atlasRef.current?.focus(i)} onChanged={refreshAtlas} />
-    return <SettingsPanel />
+  const pagina = (id: SeccionId) => {
+    switch (id) {
+      case 'inicio': return <Inicio conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} eventos={eventos} agentes={agentes} ahorrados={ahorrados} preguntas={preguntas}
+        memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar} onIr={ir} />
+      case 'conversacion': return (
+        <div className="mx-auto flex h-full max-w-[880px] flex-col px-6 pt-4 pb-5">
+          <ChatPanel brain={memoria ? brain : null} onCite={enfocarRecuerdo} onRecalled={(t) => setAhorrados((s) => s + Math.max(0, 1500 - t))} seed={semilla} onBusy={setPensando} />
+        </div>)
+      case 'taller': return <div className="flex h-full flex-col p-5"><WorkshopPanel day={tema === 'dia'} /></div>
+      case 'memoria': return (
+        <div className="grid h-full grid-cols-[400px_minmax(0,1fr)]">
+          <div className="flex min-h-0 flex-col border-r border-linea bg-s1"><MemoryPanel brain={brain} focusId={enfocado} onFocus={(i) => atlasRef.current?.focus(i)} onChanged={refrescar} /></div>
+          <div className="atlas-contenida relative min-h-0 overflow-hidden"><Atlas ref={atlasRef} data={atlas} day={tema === 'dia'} brain={brain} onPick={(i) => { setEnfocado(i); atlasRef.current?.focus(i) }} /></div>
+        </div>)
+      case 'ajustes': return <div className="mx-auto h-full max-w-[760px] overflow-y-auto px-6 py-6"><SettingsPanel /></div>
+      case 'uso': return <Proximamente titulo="Uso" texto="Aquí verás lo que gastas por modelo, tu actividad día a día como en GitHub, tus creaciones y cómo crece tu mente." />
+      case 'tienda': return <Proximamente titulo="Tienda" texto="Aquí instalarás IAs, modelos locales, MCPs, plugins y compañeros para Esme, con un clic y con permiso." />
+    }
   }
 
   return (
-    <>
-      {view === 'mapa' ? <Atlas ref={atlasRef} data={atlas} day={day} brain={brain} onPick={focusMemory} /> : <CoreView ref={coreRef} data={atlas} shift={open.includes('chat') ? 0.2 : 0} />}
-      <div className="brand"><h1>Daimon</h1></div>
-
-      {open.map((id) => (
-        <Panel key={id} id={id} title={TITLES[id]} initial={initial(id)} front={front === id} onFront={() => setFront(id)} onClose={() => toggle(id)}>
-          {body(id)}
-        </Panel>
-      ))}
-
-      <div className="meta">
-        <span title={brain ? brain.url : 'buscando el cerebro…'}>{brain && memories !== null ? <><b>{memories.toLocaleString('es')}</b> recuerdos</> : 'cerebro desconectado'}</span>
-        {saved > 0 && <span title="Tokens que no hizo falta enviar a la IA"><b>{saved.toLocaleString('es')}</b> tokens ahorrados</span>}
-        <button onClick={() => setPalette(true)}>Ctrl K</button>
-      </div>
-      <form className="dock" onSubmit={(e) => { e.preventDefault(); if (ask.trim()) { show('chat'); setSeed((s) => ({ q: ask, n: s.n + 1 })); setAsk('') } }}>
-        <span className={`orb${brain && memories !== null ? '' : ' off'}${thinking ? ' thinking' : ''}`} aria-hidden="true" />
-        <input value={ask} onChange={(e) => setAsk(e.target.value)} placeholder="Pregúntale a tu mente…" aria-label="Pregúntale a tu mente" />
-        <div className="tools">
-          {(['taller', 'memoria'] as PanelId[]).map((id) => (
-            <button type="button" key={id} className={`tool${open.includes(id) ? ' on' : ''}`} onClick={() => toggle(id)}>{TITLES[id]}</button>
+    <div className="grid h-full grid-rows-[48px_minmax(0,1fr)]">
+      <BarraSuperior seccion={nombreDe(seccion)} estado={{ conectado: !!brain && recuerdos !== null, recuerdos, pensando }} tema={tema}
+        onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} onBuscar={() => setPaleta(true)} />
+      <div className="flex min-h-0">
+        <Riel actual={seccion} onIr={ir} cuentas={{ memoria: recuerdos !== null ? { texto: recuerdos.toLocaleString('es-ES') } : undefined }} />
+        <main className="relative min-w-0 flex-1">
+          {[...SECCIONES, AJUSTES].map(({ id }) => visitadas.has(id) && (
+            <section key={id} hidden={seccion !== id} aria-label={nombreDe(id)} className={cn('absolute inset-0', seccion === id && 'animate-[aparecer_.22s_cubic-bezier(.16,1,.3,1)]')}>
+              {pagina(id)}
+            </section>
           ))}
-          <button type="button" className={`tool${view === 'mapa' ? ' on' : ''}`} onClick={() => setView((v) => (v === 'nucleo' ? 'mapa' : 'nucleo'))}>Mapa</button>
-        </div>
-        <button className="send" disabled={!ask.trim()} aria-label="Preguntar">↑</button>
-      </form>
-      <nav className="statusbar" aria-label="Barra de estado">
-        <span className="chip" title={brain ? brain.url : 'buscando el cerebro…'}>
-          <span className={`dot${brain && memories !== null ? '' : ' off'}`} />
-          {brain && memories !== null ? `${memories.toLocaleString('es')} recuerdos` : 'cerebro desconectado'}
-        </span>
-        <span className="sep" />
-        {(['chat', 'taller', 'memoria', 'ias'] as PanelId[]).map((id) => (
-          <button key={id} className={`chip${open.includes(id) ? ' on' : ''}`} onClick={() => toggle(id)}>{TITLES[id]}</button>
-        ))}
-        <span className="sep" />
-        <button className="chip" onClick={() => setView((v) => (v === 'nucleo' ? 'mapa' : 'nucleo'))}>{view === 'nucleo' ? 'mapa' : 'núcleo'}</button>
-        <button className="chip" onClick={() => setPalette(true)}>buscar <span className="kbd">Ctrl K</span></button>
-        {saved > 0 && <span className="chip" title="Tokens que el Tálamo no tuvo que mandar">−{saved.toLocaleString('es')} tokens</span>}
-      </nav>
-
-      <CommandPalette open={palette} commands={commands} onClose={() => setPalette(false)} />
-    </>
+        </main>
+      </div>
+      <Paleta abierta={paleta} onCerrar={() => setPaleta(false)} onIr={ir} onPreguntar={preguntar}
+        onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} onAcento={setAcento} />
+      <Toaster theme={tema === 'noche' ? 'dark' : 'light'} position="bottom-right" toastOptions={{ style: { background: 'var(--superficie-2)', border: '1px solid var(--linea)', color: 'var(--texto)', fontFamily: 'inherit' } }} />
+    </div>
   )
 }

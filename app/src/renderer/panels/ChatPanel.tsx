@@ -75,13 +75,13 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
         <select className="field" value={model} onChange={(e) => setModel(e.target.value)} aria-label="Modelo">
           {models.map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
-        <button className={`chip${memoryOn ? ' on' : ''}`} onClick={() => setMemoryOn((v) => !v)} title="Usar la memoria de Daimon">
+        <button className={`chip${memoryOn ? ' on' : ''}`} onClick={() => setMemoryOn((v) => !v)} title="Usar la memoria de Esme">
           <span className={`dot${memoryOn ? '' : ' off'}`} /> memoria
         </button>
       </div>
       <div ref={log} className="chat-log scroll" aria-live="polite">
         {!turns.length && <p className="muted" style={{ margin: 'auto', textAlign: 'center', maxWidth: 300 }}>
-          Pregunta lo que quieras. Daimon le da a la IA solo lo que necesita de tu memoria, y verás en el mapa qué recordó.</p>}
+          Pregunta lo que quieras. Esme le da a la IA solo lo que necesita de tu memoria, y verás en el mapa qué recordó.</p>}
         {turns.map((t, i) => (
           <div key={i} className={`msg ${t.role}${t.error ? ' error' : ''}`}>
             {t.role === 'assistant' && <div className="who">{t.who}</div>}
