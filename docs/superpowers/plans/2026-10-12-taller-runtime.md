@@ -295,3 +295,87 @@ configurar(id: string, opcion: string, valor: string): Promise<void>   // guarda
 - [ ] `la tarea refleja opciones y modelo`
 
 **Commit:** `feat(taller): ver y elegir el modelo, el esfuerzo y el modo de cada motor`.
+
+### Tarea B6: llevar los cambios a casa (aplicar, deshacer, guardar en rama, exportar) y veredictos
+**Por qué:** hasta ahora los cambios se quedan en la copia y no hay forma de traerlos de vuelta. Además, aplicar o descartar es la señal con la que aprenderá el router (paso 3).
+
+**Ficheros:** `taller/copias.ts` (+ test con git real), `taller/taller.ts` (+ test), `ipc-taller.ts`, `preload/index.ts` y `renderer/lib/bridge.ts`.
+
+**Produce:**
+```ts
+// copias.ts
+export function parcheCopia(c: Copia, git?: Git): Promise<string>   // diff binario completo frente a base con índice temporal: `diff --cached --binary --no-renames <base>`; sin truncar
+export function aplicarParche(repo: string, parche: string, o?: { inverso?: boolean; git?: Git }): Promise<{ ok: true } | { ok: false; ficheros: string[]; mensaje: string }>
+export function commitCopia(c: Copia, mensaje: string, git?: Git): Promise<string | null>   // add -A + commit en la copia; null si no había nada; devuelve el sha
+export function exportarCopia(c: Copia, destino: string): Promise<void>   // solo carpeta nueva (repo null)
+// taller.ts
+Tarea gana: aplicada?: { cuando: number; modo: 'carpeta' | 'rama' | 'exportada'; ficheros: number; destino?: string; commit?: string }
+aplicar(id: string): Promise<{ ok: true; ficheros: number } | { ok: false; error: string; ficheros?: string[] }>
+deshacer(id: string): Promise<{ ok: true } | { ok: false; error: string; ficheros?: string[] }>
+guardarEnRama(id: string, mensaje?: string): Promise<{ ok: true; commit: string } | { ok: false; error: string }>
+exportar(id: string, destino: string): Promise<{ ok: true } | { ok: false; error: string }>
+veredictos(): Promise<{ ts: number; motor: string; modelo: string | null; exito: boolean }[]>
+```
+
+**Reglas de las operaciones de copia:**
+- **`aplicarParche`:**
+  1. Escribe el parche en un temporal (en `os.tmpdir()`, borrado en `finally`).
+  2. Ejecuta `git -C repo apply --check [-R] <parche>`. Solo si pasa ejecuta `git apply [-R] <parche>`, que toca solo el árbol de trabajo, nunca el índice. Nada de `--3way` ni `--index`.
+  3. Si la comprobación falla, no toca nada y devuelve las rutas que chocan, leídas de las líneas `error: patch failed: <ruta>:<n>`, `error: <ruta>: does not match index`, `error: <ruta>: already exists in working directory` y `error: <ruta>: No such file or directory`. `mensaje` es el stderr recortado.
+- **`commitCopia`:**
+  - Usa la identidad que tenga git. Si no hay (el commit falla por identidad), reintenta con `-c user.name=Esme -c user.email=esme@localhost`.
+  - Si `git status --porcelain` está vacío, devuelve `null` y no crea ningún commit.
+- **`exportarCopia`:**
+  - Si `c.repo` no es `null`, lanza `Solo se exporta una tarea hecha en una carpeta nueva.`
+  - Si `destino` ya existe, lanza `«<destino>» ya existe: elige otro nombre.`
+  - Copia con `fs.cp(c.ruta, destino, { recursive: true, errorOnExist: true, force: false })`, incluido `.git`, para que la historia viaje.
+
+**Reglas del runtime:**
+- **`aplicar`:**
+  - Errores que comprueba antes, en este orden:
+    - si no hay repo: `Esta tarea está en una carpeta nueva: guárdala donde quieras.`;
+    - si la tarea está activa: `Espera a que termine.`;
+    - si el parche está vacío: `No hay cambios que aplicar.`;
+    - si ya está aplicada en la carpeta: `Ya está aplicada.`
+  - Después:
+    1. Llama a `aplicarParche(repo, parche)`.
+    2. Guarda el parche en `<dir>/<id>.aplicado.patch`.
+    3. Fija `aplicada = { cuando, modo: 'carpeta', ficheros: cambios?.ficheros ?? n }`.
+    4. Emite `cambio` y registra el veredicto con `exito: true`.
+  - Si el parche no aplica: `{ ok: false, error: 'Tu carpeta ha cambiado en esos ficheros: no se aplicó nada.', ficheros }`.
+- **`deshacer`:**
+  - Solo si `aplicada?.modo === 'carpeta'`.
+  - Llama a `aplicarParche(repo, parche, { inverso: true })`, borra el `.patch`, deja `aplicada` en `undefined` y emite.
+  - No borra el veredicto.
+- **`guardarEnRama`:**
+  - Solo con repo y tarea no activa. Mensaje por defecto: `Esme: <titulo>`.
+  - Si `commitCopia` devuelve `null`, el error es `No hay cambios que guardar.`
+  - Si sale bien: `aplicada = { modo: 'rama', commit, ficheros }`, se emite y se registra el veredicto con `exito: true`.
+- **`exportar`:** solo para carpeta nueva y tarea no activa. Fija `aplicada = { modo: 'exportada', destino }` y registra el veredicto con `exito: true`.
+- **Veredictos:**
+  - Se guardan en `<dir>/veredictos.jsonl` con `{ ts, motor, modelo, exito }`.
+  - `descartar` añade uno con `exito: false`, pero solo si la tarea no estaba aplicada y tenía `turnos > 0`.
+  - `veredictos()` lee el fichero e ignora las líneas rotas.
+
+**IPC:**
+- `taller:aplicar(id)`, `taller:deshacer(id)` y `taller:guardarRama(id, mensaje?)`. El mensaje es opcional, como `string` de 300 caracteres como máximo.
+- `taller:exportar(id)`:
+  - Abre `dialog.showSaveDialog` con `defaultPath` en `~/Documentos/<titulo-en-slug>`. Si no existe `Documentos`, usa `home`.
+  - Si se cancela: `{ ok: false, error: 'cancelado' }`.
+  - Si no, llama a `exportar(id, ruta)`.
+- `taller:veredictos()`.
+- Todo va al preload y al bridge (en modo web devuelve `SOLO_ESCRITORIO` o `[]`).
+
+**Tests:**
+- [ ] `copias`: `aplicarParche lleva cambios, ficheros nuevos, borrados y binarios al árbol de trabajo sin tocar el índice`.
+- [ ] `copias`: `si tu carpeta cambió en esos ficheros, no toca nada y dice cuáles chocan`.
+- [ ] `copias`: `el parche inverso deja la carpeta como estaba`.
+- [ ] `copias`: `commitCopia hace un commit y devuelve null si no hay nada`.
+- [ ] `copias`: `exportarCopia copia la carpeta con su historia y no pisa un destino existente`.
+- [ ] `taller` (copias falsas): `aplicar guarda el parche, marca la tarea y anota un veredicto`.
+- [ ] `taller`: `aplicar se niega si la tarea está en marcha o en una carpeta nueva`.
+- [ ] `taller`: `deshacer revierte y quita la marca`.
+- [ ] `taller`: `descartar sin aplicar anota un veredicto negativo`.
+- [ ] `taller`: `guardarEnRama y exportar marcan la tarea`.
+
+**Commit:** `feat(taller): aplicar los cambios a tu carpeta (con deshacer), guardarlos en su rama o exportarlos, y veredictos para el router`.
