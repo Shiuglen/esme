@@ -9,6 +9,7 @@ const on = (channel: string, fn: (...a: unknown[]) => void) => {
 
 contextBridge.exposeInMainWorld('daimon', {
   brain: { info: () => ipcRenderer.invoke('brain:info'), onChange: (fn: (i: unknown) => void) => on('brain:changed', fn) },
+  ventana: { plataforma: process.platform, colores: (c: { fondo: string; simbolos: string }) => ipcRenderer.send('ventana:colores', c) },
   providers: { list: () => ipcRenderer.invoke('providers:list'), models: (id: string) => ipcRenderer.invoke('models:list', id) },
   keys: {
     status: () => ipcRenderer.invoke('keys:status'),

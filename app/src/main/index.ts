@@ -15,12 +15,19 @@ let ptyHost: UtilityProcess | null = null
 
 const brain = new BrainProcess(join(ROOT, '.venv', 'bin', 'daimon'), HOME, (info: BrainInfo | null) => win?.webContents.send('brain:changed', info))
 
+const MAC = process.platform === 'darwin'
+const ALTO_BARRA = 48
+
+// Sin barra del sistema: la barra superior de esme hace de barra de la ventana. En macOS quedan los semáforos;
+// en Windows y Linux, los botones del sistema se superponen a la derecha y la interfaz les pone el color del tema.
 function createWindow() {
   win = new BrowserWindow({
-    width: 1480, height: 940, minWidth: 980, minHeight: 640, backgroundColor: '#05080a', title: 'Daimon',
-    autoHideMenuBar: true,
+    width: 1480, height: 940, minWidth: 980, minHeight: 640, backgroundColor: '#07080b', title: 'esme', show: false,
+    autoHideMenuBar: true, titleBarStyle: 'hidden',
+    ...(MAC ? { trafficLightPosition: { x: 18, y: 16 } } : { titleBarOverlay: { color: '#0e1015', symbolColor: '#a3a9b4', height: ALTO_BARRA } }),
     webPreferences: { preload: join(__dirname, '../preload/index.mjs'), contextIsolation: true, sandbox: false, nodeIntegration: false },
   })
+  win.once('ready-to-show', () => win?.show())
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL)
   else void win.loadFile(join(__dirname, '../renderer/index.html'))
 }
@@ -35,6 +42,9 @@ function startPtyHost() {
 
 function registerIpc() {
   ipcMain.handle('brain:info', () => brain.info)
+  ipcMain.on('ventana:colores', (_e, c: { fondo: string; simbolos: string }) => {
+    if (!MAC && win && !win.isDestroyed()) win.setTitleBarOverlay({ color: c.fondo, symbolColor: c.simbolos, height: ALTO_BARRA })
+  })
   ipcMain.handle('providers:list', () => PROVIDERS.map((p) => ({ ...p, hasKey: !p.needsKey || keys.has(p.id) })))
   ipcMain.handle('models:list', async (_e, id: ProviderId) => {
     try { return { ok: true, models: await listModels(id, (k) => keys.get(k)) } }

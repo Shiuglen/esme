@@ -7,6 +7,7 @@ export type ChatStream = { onChunk(fn: (d: string) => void): void; onDone(fn: ()
 
 type ElectronApi = {
   brain: { info(): Promise<BrainInfo | null>; onChange(fn: (i: BrainInfo | null) => void): () => void }
+  ventana: { plataforma: string; colores(c: { fondo: string; simbolos: string }): void }
   providers: { list(): Promise<ProviderView[]>; models(id: string): Promise<{ ok: boolean; models?: string[]; error?: string }> }
   keys: { status(): Promise<{ secure: boolean; backend: string }>; set(id: string, v: string): Promise<unknown>; remove(id: string): Promise<unknown> }
   chat: {
@@ -28,6 +29,7 @@ const newId = () => `${Date.now().toString(36)}-${(seq++).toString(36)}`
 
 export const bridge = {
   mode: (): 'electron' | 'web' => (isElectron() ? 'electron' : 'web'),
+  ventana: () => (isElectron() ? window.daimon!.ventana : null),
 
   async brainInfo(): Promise<BrainInfo | null> {
     if (isElectron()) return window.daimon!.brain.info()

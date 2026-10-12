@@ -6,7 +6,7 @@ export type Estado = { conectado: boolean; recuerdos: number | null; pensando: b
 
 export function BarraSuperior({ seccion, estado, tema, onTema, onBuscar }: { seccion: string; estado: Estado; tema: 'noche' | 'dia'; onTema(): void; onBuscar(): void }) {
   return (
-    <header className="flex h-12 shrink-0 items-center gap-3.5 border-b border-linea bg-s1 pr-3.5 pl-[18px]">
+    <header className="barra-ventana flex h-12 shrink-0 items-center gap-3.5 border-b border-linea bg-s1 pl-[18px]">
       <span className="font-display text-[21px] leading-none font-[650] tracking-[-0.045em]">esme</span>
       <span className="text-texto-3">/</span>
       <span className="font-medium text-texto-2">{seccion}</span>

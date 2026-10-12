@@ -98,3 +98,12 @@
 .atlas-contenida .atlas, .atlas-contenida .atlas-overlay, .atlas-contenida .atlas-empty { position: absolute }
 
 @keyframes aparecer { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+
+/* La barra superior es la barra de la ventana: se arrastra desde ella y deja sitio a los botones del sistema
+   (Window Controls Overlay en Windows y Linux, semáforos en macOS). En el navegador las env() no existen y queda 14px. */
+.barra-ventana {
+  -webkit-app-region: drag; app-region: drag;
+  padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 14px);
+}
+.barra-ventana :is(button, a, input, kbd, [title], [role="button"]) { -webkit-app-region: no-drag; app-region: no-drag }
+[data-plataforma="darwin"] .barra-ventana { padding-left: 86px }

@@ -45,6 +45,13 @@ export function App() {
   useEffect(() => { guardar('seccion', seccion) }, [seccion])
   useEffect(() => { document.documentElement.dataset.theme = tema; guardar('tema', tema) }, [tema])
   useEffect(() => { document.documentElement.dataset.acento = acento; guardar('acento', acento) }, [acento])
+  // en escritorio, los botones de la ventana toman el color de la barra del tema activo
+  useEffect(() => {
+    const v = bridge.ventana(); if (!v) return
+    document.documentElement.dataset.plataforma = v.plataforma
+    const css = getComputedStyle(document.documentElement)
+    v.colores({ fondo: css.getPropertyValue('--superficie-1').trim(), simbolos: css.getPropertyValue('--texto-2').trim() })
+  }, [tema, acento])
 
   // atajos: Ctrl K paleta, Ctrl 1…6 secciones, Ctrl , ajustes
   useEffect(() => {
