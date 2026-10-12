@@ -102,7 +102,7 @@
 
 | Área | Estado | Nota |
 |---|---|---|
-| Red neuronal en la app | ⚠️ | Python con Lente EmbeddingGemma **vía Ollama**: con Ollama roto, la app dice «sin cerebro». **Prioridad 1: que no dependa de Ollama.** |
+| Red neuronal en la app | ✅ | **12-oct: ya no depende de Ollama.** La Lente corre dentro del cerebro con ONNX Runtime (EmbeddingGemma-300M int8, 309 MB, CPU con la mitad de los núcleos, lotes por presupuesto de tokens y caché). Los vectores siguen siendo compatibles (coseno 0,990 con los guardados). Recuerda en 160–290 ms. La app vuelve a mostrar 2.122 recuerdos. Pendientes: recodificar en el Sueño con el motor nuevo, medir otros codificadores con la Prueba 0 y arreglar la vista de Memoria (Inicio en blanco en el riel y red cortada). |
 | Prueba 0 (examen de «me conoce») | 🟡 | Hecho el 11-oct (recall 0,77 con EmbeddingGemma). Falta la validación humana del oro y la comparación de punta a punta. |
 | Tálamo que reemplaza los `.md` (MCP para Claude Code) | 🟡 | Hay puerta MCP en el cerebro. No está empaquetado como producto (M1). |
 | Corteza, sueño, desaprender con certificado, Prefrontal, Parlamento, simulador | ❌ | Fases F4–F6. |
@@ -121,8 +121,8 @@
 | Absorción total del FYP | 🟡 | Hay 55 publicaciones analizadas en `specs/2026-10-12-lenguaje-visual-v2.md` y `esme-concepto-v3.md`. **Falta una biblioteca completa y estructurada de TODO**, no solo capturas. |
 
 ## 4. Orden de trabajo (decidido por Esme con la regla madre)
-1. **Esta fuente de verdad** y su copia en el vault y en la memoria (para no perder nada).
-2. **Revivir el corazón:** red neuronal sin Ollama (EmbeddingGemma en un motor propio, local y ligero) y vuelta a medir con la Prueba 0.
+1. ✅ **Esta fuente de verdad** y su copia en el vault y en la memoria (para no perder nada).
+2. ✅ **Revivir el corazón:** red neuronal sin Ollama (EmbeddingGemma en un motor propio, local y ligero) y vuelta a medir con la Prueba 0.
 3. **Absorción total del FYP:** biblioteca estructurada de cada publicación (técnica, por qué es buena, cómo la supera Esme), guardada en el repo y en el vault.
 4. **Identidad «Tinta y Luz» escalada**, nacida de la red real y no de una moda. Rehacer el sistema visual y la Señal dentro de ella.
 5. **Modos visibles, cambio de modelo ante negativa y agente propio** (con la clave del usuario).

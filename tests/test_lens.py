@@ -102,3 +102,39 @@ def test_ollama_encoder_cae_a_cpu_si_la_gpu_no_carga():
     assert dim == 3 and enc(["a", "b"]).shape == (2, 3)
     assert seen == [None, 0, 0]     # un fallo en GPU, después todo en CPU
     srv.shutdown()
+
+
+# --- Lente propia (ONNX Runtime en proceso): sin Ollama ni servidores externos ---
+import os as _os
+from pathlib import Path as _Path
+import pytest as _pytest
+
+_MODELO = _Path(_os.environ.get("ESME_MODELOS", _Path.home() / ".local/share/esme/modelos")) / "embeddinggemma-300m-onnx"
+_hay_modelo = _pytest.mark.skipif(not (_MODELO / "tokenizer.json").exists(), reason="modelo ONNX no descargado")
+
+
+@_hay_modelo
+def test_onnx_encoder_normaliza_y_conserva_el_orden_aunque_agrupe_por_longitud():
+    from daimon.lens import onnx_encoder
+    enc, dim = onnx_encoder("embeddinggemma-300m")
+    assert dim == 768
+    textos = ["una frase bastante más larga que las otras para que el lote se reordene por longitud " * 3, "hola", "adiós mundo"]
+    juntos = enc(textos)
+    assert juntos.shape == (3, 768)
+    assert np.allclose(np.linalg.norm(juntos, axis=1), 1, atol=1e-3)
+    sueltos = np.vstack([enc([t]) for t in textos])
+    assert np.allclose(juntos, sueltos, atol=2e-3)
+
+
+@_hay_modelo
+def test_config_con_ollama_usa_el_motor_propio_sin_tocar_ollama(monkeypatch):
+    import daimon.home as home
+    monkeypatch.setattr(home, "ollama_encoder", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no debe usar Ollama")))
+    enc, dim = home.encoder_from_config({"encoder": "ollama:embeddinggemma"})
+    assert dim == 768 and enc(["hola"]).shape == (1, 768)
+
+
+def test_ruta_de_modelos_por_entorno(monkeypatch, tmp_path):
+    from daimon.lens import ruta_modelo
+    monkeypatch.setenv("ESME_MODELOS", str(tmp_path))
+    assert ruta_modelo("x") == tmp_path / "x-onnx"

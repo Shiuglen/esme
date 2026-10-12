@@ -1,6 +1,8 @@
 """Lente personal: codificador de significado + adaptador residual que se entrena con el usuario."""
 from __future__ import annotations
 
+import os
+from collections import OrderedDict
 from pathlib import Path
 from typing import Callable
 
@@ -94,6 +96,68 @@ def ollama_encoder(model: str = "embeddinggemma", host: str = "http://127.0.0.1:
 
     dim = int(call(["x"]).shape[1])
     return call, dim
+
+
+def ruta_modelo(nombre: str) -> Path:
+    """Carpeta de un modelo propio de Esme (por defecto ~/.local/share/esme/modelos/<nombre>-onnx)."""
+    base = Path(os.environ.get("ESME_MODELOS", Path.home() / ".local/share/esme/modelos"))
+    return base / f"{nombre}-onnx"
+
+
+def onnx_encoder(nombre: str = "embeddinggemma-300m", variante: str = "model_quantized", hilos: int | None = None,
+                 tokens_por_lote: int = 8192, max_tokens: int = 2048, cache: int = 4096) -> tuple[Encoder, int]:
+    """La Lente propia: el modelo corre dentro del cerebro con ONNX Runtime (CPU), sin Ollama ni servidores aparte.
+    Agrupa por longitud y llena cada lote hasta un presupuesto de tokens (no rellena en balde), usa la mitad de
+    los núcleos para no acaparar el equipo y recuerda lo ya codificado (los textos repetidos no se recalculan)."""
+    import onnxruntime as ort
+    from tokenizers import Tokenizer
+
+    d = ruta_modelo(nombre)
+    so = ort.SessionOptions()
+    so.intra_op_num_threads = hilos or max(1, (os.cpu_count() or 2) // 2)
+    so.inter_op_num_threads = 1
+    sesion = ort.InferenceSession(str(d / "onnx" / f"{variante}.onnx"), so, providers=["CPUExecutionProvider"])
+    tok = Tokenizer.from_file(str(d / "tokenizer.json"))
+    tok.enable_truncation(max_tokens)
+    tok.no_padding()
+    dim = int(sesion.get_outputs()[-1].shape[-1])
+    recuerdo: OrderedDict[str, np.ndarray] = OrderedDict()
+
+    def correr(cod: list) -> np.ndarray:
+        largo = max(len(e.ids) for e in cod)
+        ids = np.zeros((len(cod), largo), np.int64)
+        mascara = np.zeros((len(cod), largo), np.int64)
+        for j, e in enumerate(cod):
+            ids[j, :len(e.ids)] = e.ids
+            mascara[j, :len(e.ids)] = 1
+        return sesion.run(["sentence_embedding"], {"input_ids": ids, "attention_mask": mascara})[0]
+
+    def enc(texts: list[str]) -> np.ndarray:
+        out = np.zeros((len(texts), dim), np.float32)
+        faltan = [i for i, t in enumerate(texts) if t not in recuerdo]
+        for i, t in enumerate(texts):
+            if t in recuerdo:
+                out[i] = recuerdo[t]; recuerdo.move_to_end(t)
+        if faltan:
+            cod = tok.encode_batch([texts[i] for i in faltan])
+            orden = sorted(range(len(faltan)), key=lambda k: len(cod[k].ids))
+            lote: list[int] = []
+            for k in orden + [None]:
+                if k is not None and (not lote or (len(lote) + 1) * len(cod[k].ids) <= tokens_por_lote):
+                    lote.append(k); continue
+                if lote:
+                    vecs = correr([cod[q] for q in lote])
+                    for q, v in zip(lote, vecs):
+                        out[faltan[q]] = v
+                if k is not None:
+                    lote = [k]
+            for i in faltan:
+                recuerdo[texts[i]] = out[i]
+                if len(recuerdo) > cache:
+                    recuerdo.popitem(last=False)
+        return _normalize(out) if len(texts) else out
+
+    return enc, dim
 
 
 # Prefijos recomendados por EmbeddingGemma para búsqueda

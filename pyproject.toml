@@ -3,7 +3,7 @@ name = "daimon"
 version = "0.1.0"
 description = "Sistema cognitivo con red neuronal propia que envuelve a cualquier IA"
 requires-python = ">=3.12"
-dependencies = ["numpy", "model2vec", "mcp"]
+dependencies = ["numpy", "model2vec", "mcp", "onnxruntime>=1.20", "tokenizers>=0.20", "huggingface_hub>=0.30"]
 
 [project.scripts]
 daimon = "daimon.cli:main"
