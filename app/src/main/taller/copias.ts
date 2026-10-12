@@ -1,6 +1,6 @@
 // Copias aisladas del Taller: worktrees de git, y cambios medidos con un índice temporal (nunca el real).
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 
@@ -13,7 +13,7 @@ const MAX_DIFF = 1_500_000
 
 export const gitReal: Git = (args, o) => new Promise((ok, no) => {
   execFile('git', args, { cwd: o.cwd, env: { ...process.env, ...o.env }, maxBuffer: 64 * 1024 * 1024 }, (err, salida, stderr) => {
-    if (err) no(new Error((String(stderr).trim() || err.message).slice(0, 500)))
+    if (err) no(new Error((String(stderr).trim() || err.message).slice(0, 4000)))
     else ok(salida)
   })
 })
@@ -83,4 +83,49 @@ export async function quitarCopia(c: Copia, o: { dirCopias: string; git?: Git })
     await git(['worktree', 'prune'], { cwd: c.repo })
   }
   if (c.rama) await git(['branch', '-D', c.rama], { cwd: c.repo }).catch(() => undefined)
+}
+
+// Diff binario completo frente a base (con índice temporal), sin truncar: es lo que se aplica de verdad.
+export function parcheCopia(c: Copia, git: Git = gitReal): Promise<string> {
+  return conIndiceTemporal(c, git, ['diff', '--cached', '--binary', '--no-renames', c.base])
+}
+
+const PATRONES_CHOQUE = [/^error: patch failed: (.+):\d+$/, /^error: (.+): does not match index$/, /^error: (.+): already exists in working directory$/,
+  /^error: (.+): No such file or directory$/, /^error: (.+): patch does not apply$/]
+
+// Aplica (o revierte) un parche en el árbol de trabajo de la carpeta real. Nunca --3way ni --index: primero --check y, si falla, no toca nada.
+export async function aplicarParche(repo: string, parche: string, o: { inverso?: boolean; git?: Git } = {}): Promise<{ ok: true } | { ok: false; ficheros: string[]; mensaje: string }> {
+  const git = o.git ?? gitReal
+  const dir = await mkdtemp(join(tmpdir(), 'esme-parche-'))
+  const fichero = join(dir, 'cambios.patch')
+  const inv = o.inverso ? ['-R'] : []
+  const env = { LC_ALL: 'C', LANGUAGE: 'C' }   // los mensajes de git se leen para saber qué ficheros chocan: sin traducir
+  try {
+    await writeFile(fichero, parche)
+    try { await git(['apply', '--check', ...inv, fichero], { cwd: repo, env }) } catch (e) {
+      const mensaje = e instanceof Error ? e.message : String(e)
+      const ficheros = new Set<string>()
+      for (const l of mensaje.split('\n')) for (const p of PATRONES_CHOQUE) { const m = p.exec(l.trim()); if (m) { ficheros.add(m[1]); break } }
+      return { ok: false, ficheros: [...ficheros], mensaje: mensaje.slice(0, 500) }
+    }
+    await git(['apply', ...inv, fichero], { cwd: repo, env })
+    return { ok: true }
+  } finally { await rm(dir, { recursive: true, force: true }) }
+}
+
+const IDENTIDAD = ['-c', 'user.name=Esme', '-c', 'user.email=esme@localhost']
+
+// Commit de todo lo que haya en la copia; null si no había nada. Si git no tiene identidad, usa la de Esme.
+export async function commitCopia(c: Copia, mensaje: string, git: Git = gitReal): Promise<string | null> {
+  await git(['add', '-A'], { cwd: c.ruta })
+  if (!(await git(['status', '--porcelain'], { cwd: c.ruta })).trim()) return null
+  try { await git(['commit', '-q', '-m', mensaje], { cwd: c.ruta }) }
+  catch { await git([...IDENTIDAD, 'commit', '-q', '-m', mensaje], { cwd: c.ruta }) }
+  return (await git(['rev-parse', 'HEAD'], { cwd: c.ruta })).trim()
+}
+
+export async function exportarCopia(c: Copia, destino: string): Promise<void> {
+  if (c.repo !== null) throw new Error('Solo se exporta una tarea hecha en una carpeta nueva.')
+  if (await stat(destino).then(() => true, () => false)) throw new Error(`«${destino}» ya existe: elige otro nombre.`)
+  await cp(c.ruta, destino, { recursive: true, errorOnExist: true, force: false })
 }

@@ -1,7 +1,7 @@
 // Canales IPC del Taller: motores detectados, tareas, permisos, diff y eventos en vivo hacia las ventanas.
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { access, constants, mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { detectarMotores, type Cumplimiento } from './motores/acp-motores'
 import { crearWhich, extsPlataforma } from './motores/which'
@@ -113,6 +113,24 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
       return o
     } catch { return [] }
   })
+  ipcMain.handle('taller:aplicar', (_e, id: unknown) => (idValido(id) ? t.aplicar(id) : entrada))
+  ipcMain.handle('taller:deshacer', (_e, id: unknown) => (idValido(id) ? t.deshacer(id) : entrada))
+  ipcMain.handle('taller:guardarRama', (_e, id: unknown, mensaje: unknown) => {
+    if (!idValido(id) || !(mensaje === undefined || mensaje === null || (typeof mensaje === 'string' && mensaje.length <= 300))) return entrada
+    return t.guardarEnRama(id, typeof mensaje === 'string' ? mensaje : undefined)
+  })
+  ipcMain.handle('taller:exportar', async (_e, id: unknown) => {
+    if (!idValido(id)) return entrada
+    const tarea = t.lista().find((x) => x.id === id)
+    if (!tarea) return { ok: false, error: 'La tarea no existe.' }
+    const documentos = join(homedir(), 'Documentos')
+    const base = await access(documentos).then(() => documentos, () => homedir())
+    const slug = tarea.titulo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'tarea'
+    const r = await dialog.showSaveDialog({ defaultPath: join(base, slug) })
+    if (r.canceled || !r.filePath) return { ok: false, error: 'cancelado' }
+    return t.exportar(id, r.filePath)
+  })
+  ipcMain.handle('taller:veredictos', () => t.veredictos())
   ipcMain.handle('taller:responder', (_e, id: unknown, opcion: unknown) => {
     if (!idValido(id) || typeof opcion !== 'string' || opcion.length === 0 || opcion.length > 200) return entrada
     t.responder(id, opcion)

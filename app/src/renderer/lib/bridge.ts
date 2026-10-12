@@ -2,7 +2,7 @@ import type { ModeloCatalogo } from '../../main/catalogo/modelsdev'
 import type { MotorACP } from '../../main/motores/acp-motores'
 import type { MotorTaller } from '../../main/ipc-taller'
 import type { EventoMotor as EventoTaller, OpcionConfig as OpcionMotor } from '../../main/motores/sesion-acp'
-import type { Tarea as TareaTaller } from '../../main/taller/taller'
+import type { Tarea as TareaTaller, Veredicto as VeredictoTaller } from '../../main/taller/taller'
 import type { Consumo, Presupuesto, RegistroUso } from '../../main/uso/registro'
 import type { UsoExterno as UsoExternoMain } from '../../main/uso/externo'
 import type { EstadoUso as EstadoUsoMain, ProveedorResumen as ProveedorResumenMain } from '../../main/uso/estado'
@@ -21,8 +21,8 @@ export type UsoExterno = UsoExternoMain
 export type ConsumoConCoste = Consumo & { costeUSD: number }
 export type MotorDetectado = MotorACP & { instalado: boolean; ruta?: string }
 export type ResumenUso = ReturnType<RegistroUso['resumen']>
-export type { EventoTaller, OpcionMotor, MotorTaller, TareaTaller }
-export type ResultadoTaller = { ok: true } | { ok: false; error: string }
+export type { VeredictoTaller, EventoTaller, OpcionMotor, MotorTaller, TareaTaller }
+export type ResultadoTaller = { ok: true } | { ok: false; error: string; ficheros?: string[] }
 export type OrigenCatalogo = { origen: 'red' | 'cache' | 'semilla'; fecha: number }
 
 type ElectronApi = {
@@ -46,6 +46,9 @@ type ElectronApi = {
     crear(p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string> }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }>
     seguir(id: string, texto: string): Promise<ResultadoTaller>; responder(id: string, opcion: string): Promise<ResultadoTaller>
     configurar(id: string, opcion: string, valor: string): Promise<ResultadoTaller>; opcionesMotor(motor: string): Promise<OpcionMotor[]>
+    aplicar(id: string): Promise<{ ok: true; ficheros: number } | { ok: false; error: string; ficheros?: string[] }>; deshacer(id: string): Promise<ResultadoTaller>
+    guardarRama(id: string, mensaje?: string): Promise<{ ok: true; commit: string } | { ok: false; error: string }>; exportar(id: string): Promise<ResultadoTaller>
+    veredictos(): Promise<VeredictoTaller[]>
     parar(id: string): Promise<ResultadoTaller>; descartar(id: string): Promise<ResultadoTaller>
     diff(id: string): Promise<{ texto: string; truncado: boolean }>; carpeta(): Promise<string | null>; abrir(id: string): Promise<ResultadoTaller>
     onCambio(fn: (t: TareaTaller) => void): () => void; onEvento(fn: (e: { id: string; n: number; evento: EventoTaller }) => void): () => void; onQuitada(fn: (id: string) => void): () => void
@@ -161,6 +164,11 @@ export const bridge = {
     responder: async (id: string, opcion: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.responder(id, opcion) : SOLO_ESCRITORIO),
     configurar: async (id: string, opcion: string, valor: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.configurar(id, opcion, valor) : SOLO_ESCRITORIO),
     opcionesMotor: async (motor: string): Promise<OpcionMotor[]> => (isElectron() ? window.daimon!.taller.opcionesMotor(motor) : []),
+    aplicar: async (id: string): Promise<{ ok: true; ficheros: number } | { ok: false; error: string; ficheros?: string[] }> => (isElectron() ? window.daimon!.taller.aplicar(id) : SOLO_ESCRITORIO),
+    deshacer: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.deshacer(id) : SOLO_ESCRITORIO),
+    guardarRama: async (id: string, mensaje?: string): Promise<{ ok: true; commit: string } | { ok: false; error: string }> => (isElectron() ? window.daimon!.taller.guardarRama(id, mensaje) : SOLO_ESCRITORIO),
+    exportar: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.exportar(id) : SOLO_ESCRITORIO),
+    veredictos: async (): Promise<VeredictoTaller[]> => (isElectron() ? window.daimon!.taller.veredictos() : []),
     parar: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.parar(id) : SOLO_ESCRITORIO),
     descartar: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.descartar(id) : SOLO_ESCRITORIO),
     diff: async (id: string): Promise<{ texto: string; truncado: boolean }> => (isElectron() ? window.daimon!.taller.diff(id) : { texto: '', truncado: false }),

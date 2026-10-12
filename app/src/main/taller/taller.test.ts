@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { mkdtemp, rm, stat } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -19,8 +19,9 @@ let reloj = 1000
 const copiasFalsas = () => {
   const quitar = vi.fn(async () => {})
   const ops: OperacionesCopia = {
-    crear: vi.fn(async (o: { id: string; dirCopias: string }) => ({ id: o.id, ruta: join(o.dirCopias, o.id), rama: `esme/${o.id}`, base: 'b', repo: '/r' })) as any,
+    crear: vi.fn(async (o: { id: string; dirCopias: string; carpeta: string | null }) => ({ id: o.id, ruta: join(o.dirCopias, o.id), rama: o.carpeta === null ? null : `esme/${o.id}`, base: 'b', repo: o.carpeta === null ? null : '/r' })) as any,
     cambios: vi.fn(async () => CAMBIOS), diff: vi.fn(async () => ({ texto: 'diff', truncado: false })), quitar,
+    parche: vi.fn(async () => 'PARCHE'), aplicar: vi.fn(async () => ({ ok: true as const })), commit: vi.fn(async () => 'abc1234'), exportar: vi.fn(async () => {}),
   }
   return { ops, quitar }
 }
@@ -284,5 +285,98 @@ describe('Taller: hallazgos de la revisión', () => {
     await t!.configurar(tarea.id, 'model', 'b')   // ahora hay sesión viva
     expect(s.configurar).toHaveBeenCalledWith('model', 'b')
     await expect(t!.configurar('noexiste', 'model', 'b')).rejects.toThrow()
+  })
+
+  describe('llevar los cambios a casa', () => {
+    let ctx: ReturnType<typeof copiasFalsas> & { s: ReturnType<typeof sesiones> }
+    beforeEach(() => { ctx = { ...copiasFalsas(), s: sesiones(async (_o, texto) => { if (texto === 'fallo') throw new Error('x'); return 'end_turn' }) } })
+    const lista = async (carpeta: string | null = '/proyecto', texto = 'Mi tarea') => {
+      if (!t) crear(ctx.s.abrir, ctx.ops)
+      const tarea = t!.crear({ motor, carpeta, texto })
+      await esperar(tarea.id, texto === 'fallo' ? 'error' : 'lista')
+      return { ops: ctx.ops, tarea }
+    }
+
+    it('aplicar guarda el parche, marca la tarea y anota un veredicto', async () => {
+      const { ops, tarea } = await lista()
+      expect(await t!.aplicar(tarea.id)).toEqual({ ok: true, ficheros: 1 })
+      expect(ops.aplicar).toHaveBeenCalledWith('/r', 'PARCHE')
+      expect(await readFile(join(dir, `${tarea.id}.aplicado.patch`), 'utf8')).toBe('PARCHE')
+      expect(t!.lista()[0].aplicada).toEqual({ cuando: reloj, modo: 'carpeta', ficheros: 1 })
+      expect(emisiones.filter((e) => e.canal === 'cambio').at(-1)!.dato.aplicada?.modo).toBe('carpeta')
+      expect(await t!.veredictos()).toEqual([{ ts: reloj, motor: 'falso', modelo: null, exito: true }])
+      expect(await t!.aplicar(tarea.id)).toEqual({ ok: false, error: 'Ya está aplicada.' })
+    })
+
+    it('aplicar se niega si la tarea está en marcha o en una carpeta nueva', async () => {
+      const s = sesiones(() => new Promise<string>(() => {}))
+      const enMarcha = crear(s.abrir, ctx.ops).crear({ motor, carpeta: '/p', texto: 'x' })
+      await esperar(enMarcha.id, 'trabajando')
+      expect(await t!.aplicar(enMarcha.id)).toEqual({ ok: false, error: 'Espera a que termine.' })
+      t!.cerrarTodo(); t = null
+
+      const nueva = await lista(null)
+      expect(await t!.aplicar(nueva.tarea.id)).toEqual({ ok: false, error: 'Esta tarea está en una carpeta nueva: guárdala donde quieras.' })
+
+      const vacia = await lista()
+      ;(vacia.ops.parche as any).mockResolvedValueOnce('')
+      expect(await t!.aplicar(vacia.tarea.id)).toEqual({ ok: false, error: 'No hay cambios que aplicar.' })
+
+      const choca = await lista()
+      ;(choca.ops.aplicar as any).mockResolvedValueOnce({ ok: false, ficheros: ['a.txt'], mensaje: 'x' })
+      expect(await t!.aplicar(choca.tarea.id)).toEqual({ ok: false, error: 'Tu carpeta ha cambiado en esos ficheros: no se aplicó nada.', ficheros: ['a.txt'] })
+      expect(t!.lista().find((x) => x.id === choca.tarea.id)!.aplicada).toBeUndefined()
+      expect(await t!.veredictos()).toEqual([])
+    })
+
+    it('deshacer revierte y quita la marca', async () => {
+      const { ops, tarea } = await lista()
+      expect(await t!.deshacer(tarea.id)).toEqual({ ok: false, error: 'No hay nada que deshacer.' })
+      await t!.aplicar(tarea.id)
+      expect(await t!.deshacer(tarea.id)).toEqual({ ok: true })
+      expect(ops.aplicar).toHaveBeenLastCalledWith('/r', 'PARCHE', { inverso: true })
+      await expect(stat(join(dir, `${tarea.id}.aplicado.patch`))).rejects.toThrow()
+      expect(t!.lista()[0].aplicada).toBeUndefined()
+      expect(await t!.veredictos()).toHaveLength(1)   // el veredicto no se borra
+
+      await t!.aplicar(tarea.id)
+      ;(ops.aplicar as any).mockResolvedValueOnce({ ok: false, ficheros: ['a.txt'], mensaje: 'x' })
+      const r = await t!.deshacer(tarea.id)
+      expect(r).toMatchObject({ ok: false, ficheros: ['a.txt'] })
+      expect(t!.lista()[0].aplicada?.modo).toBe('carpeta')
+    })
+
+    it('descartar sin aplicar anota un veredicto negativo', async () => {
+      const a = await lista()
+      await t!.descartar(a.tarea.id)
+      expect(await t!.veredictos()).toEqual([{ ts: reloj, motor: 'falso', modelo: null, exito: false }])
+      const b = await lista()
+      await t!.aplicar(b.tarea.id)
+      await t!.descartar(b.tarea.id)
+      expect(await t!.veredictos()).toHaveLength(2)   // la aplicada solo suma su positivo
+      expect((await t!.veredictos()).map((v) => v.exito)).toEqual([false, true])
+      await expect(stat(join(dir, `${b.tarea.id}.aplicado.patch`))).rejects.toThrow()
+      const fallida = await lista('/proyecto', 'fallo')
+      await t!.descartar(fallida.tarea.id)
+      expect(await t!.veredictos()).toHaveLength(2)   // sin turnos no hay veredicto
+    })
+
+    it('guardarEnRama y exportar marcan la tarea', async () => {
+      const a = await lista()
+      expect(await t!.exportar(a.tarea.id, '/x')).toEqual({ ok: false, error: 'Solo se exporta una tarea hecha en una carpeta nueva.' })
+      expect(await t!.guardarEnRama(a.tarea.id)).toEqual({ ok: true, commit: 'abc1234' })
+      expect(a.ops.commit).toHaveBeenCalledWith(expect.objectContaining({ id: a.tarea.id }), 'Esme: Mi tarea')
+      expect(t!.lista()[0].aplicada).toMatchObject({ modo: 'rama', commit: 'abc1234', ficheros: 1 })
+      ;(a.ops.commit as any).mockResolvedValueOnce(null)
+      expect(await t!.guardarEnRama(a.tarea.id, 'otro')).toEqual({ ok: false, error: 'No hay cambios que guardar.' })
+
+      const b = await lista(null)
+      expect(await t!.guardarEnRama(b.tarea.id)).toEqual({ ok: false, error: 'Esta tarea está en una carpeta nueva: guárdala donde quieras.' })
+      expect(await t!.exportar(b.tarea.id, '/destino')).toEqual({ ok: true })
+      expect(b.ops.exportar).toHaveBeenCalledWith(expect.objectContaining({ id: b.tarea.id }), '/destino')
+      expect(t!.lista().find((x) => x.id === b.tarea.id)!.aplicada).toMatchObject({ modo: 'exportada', destino: '/destino' })
+      expect((await t!.veredictos()).every((v) => v.exito)).toBe(true)
+      expect(await t!.veredictos()).toHaveLength(2)
+    })
   })
 })

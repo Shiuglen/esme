@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { mkdir, mkdtemp, rm, writeFile, stat } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { cambiosCopia, crearCopia, diffCopia, gitReal, quitarCopia, raizRepo } from './copias'
+import { aplicarParche, cambiosCopia, commitCopia, crearCopia, diffCopia, exportarCopia, gitReal, parcheCopia, quitarCopia, raizRepo } from './copias'
 
 let raiz = ''
 let repo = ''
@@ -116,5 +116,74 @@ describe('copias', () => {
 
     await expect(quitarCopia({ id: 'x', ruta: repo, rama: null, base: 'x', repo: null }, { dirCopias })).rejects.toThrow('Ruta fuera del Taller: no se borra.')
     expect((await stat(repo)).isDirectory()).toBe(true)
+  })
+
+  describe('llevar los cambios a casa', () => {
+    const preparar = async () => {
+      await writeFile(join(repo, 'borrar.txt'), 'adiós\n')
+      await g(repo, 'add', '-A'); await g(repo, 'commit', '-q', '-m', 'más')
+      const c = await crearCopia({ carpeta: repo, id: 'abc123', dirCopias })
+      await writeFile(join(c.ruta, 'a.txt'), 'uno\nDOS\ntres\n')
+      await writeFile(join(c.ruta, 'nuevo.txt'), 'hola\n')
+      await writeFile(join(c.ruta, 'img.bin'), Buffer.from([0, 1, 2, 0, 255, 0, 9]))
+      await rm(join(c.ruta, 'borrar.txt'))
+      return c
+    }
+
+    it('aplicarParche lleva cambios, ficheros nuevos, borrados y binarios al árbol de trabajo sin tocar el índice', async () => {
+      const c = await preparar()
+      const parche = await parcheCopia(c)
+      const r = await aplicarParche(repo, parche)
+      expect(r).toEqual({ ok: true })
+      expect(await readFile(join(repo, 'a.txt'), 'utf8')).toBe('uno\nDOS\ntres\n')
+      expect(await readFile(join(repo, 'nuevo.txt'), 'utf8')).toBe('hola\n')
+      expect([...await readFile(join(repo, 'img.bin'))]).toEqual([0, 1, 2, 0, 255, 0, 9])
+      await expect(stat(join(repo, 'borrar.txt'))).rejects.toThrow()
+      expect((await g(repo, 'diff', '--cached', '--name-only')).trim()).toBe('')   // el índice sigue limpio
+    })
+
+    it('si tu carpeta cambió en esos ficheros, no toca nada y dice cuáles chocan', async () => {
+      const c = await preparar()
+      const parche = await parcheCopia(c)
+      await writeFile(join(repo, 'a.txt'), 'uno\nOTRA COSA\ntres\n')
+      const r = await aplicarParche(repo, parche)
+      expect(r.ok).toBe(false)
+      if (!r.ok) { expect(r.ficheros).toContain('a.txt'); expect(r.mensaje.length).toBeGreaterThan(0) }
+      await expect(stat(join(repo, 'nuevo.txt'))).rejects.toThrow()
+      expect(await readFile(join(repo, 'a.txt'), 'utf8')).toBe('uno\nOTRA COSA\ntres\n')
+      await expect(stat(join(repo, 'borrar.txt'))).resolves.toBeTruthy()
+    })
+
+    it('el parche inverso deja la carpeta como estaba', async () => {
+      const c = await preparar()
+      const parche = await parcheCopia(c)
+      const antes = await g(repo, 'status', '--porcelain')
+      expect((await aplicarParche(repo, parche)).ok).toBe(true)
+      expect(await aplicarParche(repo, parche, { inverso: true })).toEqual({ ok: true })
+      expect(await g(repo, 'status', '--porcelain')).toBe(antes)
+      expect(await readFile(join(repo, 'a.txt'), 'utf8')).toBe('uno\ndos\ntres\n')
+    })
+
+    it('commitCopia hace un commit y devuelve null si no hay nada', async () => {
+      const c = await crearCopia({ carpeta: repo, id: 'abc123', dirCopias })
+      expect(await commitCopia(c, 'nada')).toBeNull()
+      await writeFile(join(c.ruta, 'x.txt'), 'x\n')
+      const sha = await commitCopia(c, 'Esme: prueba')
+      expect(sha).toBe((await g(c.ruta, 'rev-parse', 'HEAD')).trim())
+      expect((await g(c.ruta, 'log', '-1', '--format=%s')).trim()).toBe('Esme: prueba')
+      expect(await commitCopia(c, 'otra')).toBeNull()
+    })
+
+    it('exportarCopia copia la carpeta con su historia y no pisa un destino existente', async () => {
+      const c = await crearCopia({ carpeta: null, id: 'nuevo1', dirCopias })
+      await writeFile(join(c.ruta, 'x.txt'), 'x\n')
+      const destino = join(raiz, 'salida')
+      await exportarCopia(c, destino)
+      expect(await readFile(join(destino, 'x.txt'), 'utf8')).toBe('x\n')
+      expect((await g(destino, 'log', '--format=%s')).trim()).toBe('Esme: punto de partida')
+      await expect(exportarCopia(c, destino)).rejects.toThrow(`«${destino}» ya existe: elige otro nombre.`)
+      const w = await crearCopia({ carpeta: repo, id: 'abc123', dirCopias })
+      await expect(exportarCopia(w, join(raiz, 'otra'))).rejects.toThrow('Solo se exporta una tarea hecha en una carpeta nueva.')
+    })
   })
 })

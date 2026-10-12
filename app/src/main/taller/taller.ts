@@ -4,7 +4,7 @@ import { appendFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } fr
 import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { abrirSesionACP, type EventoMotor, type OpcionConfig } from '../motores/sesion-acp'
-import { cambiosCopia, crearCopia, diffCopia, quitarCopia, type Cambios, type Copia } from './copias'
+import { aplicarParche, cambiosCopia, commitCopia, crearCopia, diffCopia, exportarCopia, parcheCopia, quitarCopia, type Cambios, type Copia } from './copias'
 
 export type EstadoTarea = 'preparando' | 'trabajando' | 'esperando' | 'lista' | 'parada' | 'error'
 export type Permiso = { titulo: string; opciones: { id: string; nombre: string; tipo: string }[] }
@@ -16,13 +16,18 @@ export type Tarea = {
   permiso: Permiso | null; error?: string
   actividad: number[]   // 40 cubos de 1,5 s con el número de eventos; el último es el cubo actual
   opciones: OpcionConfig[]; modelo: string | null   // modelo: nombre del valor actual de la opción «model»
+  aplicada?: Aplicada   // adónde se llevaron los cambios: carpeta (con deshacer), rama o exportada
   actividadMs: number   // dónde acaba el último cubo: sin eventos nuevos, la interfaz desplaza la micrográfica sola
 }
 export type MotorElegido = { id: string; nombre: string; comando: string; args: string[] }
 export type SesionMotor = { preguntar(texto: string): Promise<string>; cancelar(): Promise<void>; cerrar(): void; configurar(id: string, valor: string): Promise<void> }
 export type AbrirSesion = (o: { comando: string; args: string[]; cwd: string; mcp?: { nombre: string; url: string; token: string }; config?: Record<string, string>
   alEvento(e: EventoMotor): void; alPedirPermiso(p: Permiso): Promise<string | 'cancelar'> }) => Promise<SesionMotor>
-export type OperacionesCopia = { crear: typeof crearCopia; cambios: typeof cambiosCopia; diff: typeof diffCopia; quitar: typeof quitarCopia }
+export type OperacionesCopia = { crear: typeof crearCopia; cambios: typeof cambiosCopia; diff: typeof diffCopia; quitar: typeof quitarCopia
+  parche: typeof parcheCopia; aplicar: typeof aplicarParche; commit: typeof commitCopia; exportar: typeof exportarCopia }
+export type Aplicada = { cuando: number; modo: 'carpeta' | 'rama' | 'exportada'; ficheros: number; destino?: string; commit?: string }
+export type Veredicto = { ts: number; motor: string; modelo: string | null; exito: boolean }
+type Fallo = { ok: false; error: string; ficheros?: string[] }
 type Mcp = { nombre: string; url: string; token: string }
 
 const CUBOS = 40
@@ -42,6 +47,7 @@ type Registro = {
 }
 
 const finCubo = (ms: number) => (Math.floor(ms / MS_CUBO) + 1) * MS_CUBO
+const mensajeDe = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const nuevoId = () => Array.from(randomBytes(8), (b) => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('')
 const instantanea = (t: Tarea): Tarea => ({ ...t, uso: { ...t.uso }, actividad: [...t.actividad] })
 
@@ -65,7 +71,7 @@ export class Taller {
     this.dirCopias = join(o.dir, 'copias')
     this.emitir = o.emitir
     this.abrirSesion = o.abrirSesion ?? ((x) => abrirSesionACP(x))
-    this.copias = o.copias ?? { crear: crearCopia, cambios: cambiosCopia, diff: diffCopia, quitar: quitarCopia }
+    this.copias = o.copias ?? { crear: crearCopia, cambios: cambiosCopia, diff: diffCopia, quitar: quitarCopia, parche: parcheCopia, aplicar: aplicarParche, commit: commitCopia, exportar: exportarCopia }
     this.mcp = o.mcp ?? (() => null)
     this.resolverMotor = o.resolverMotor
     this.ahora = o.ahora ?? Date.now
@@ -154,10 +160,78 @@ export class Taller {
       throw e
     }
     if (r.temporizador) clearTimeout(r.temporizador)
+    if (!r.tarea.aplicada && r.tarea.turnos > 0) this.veredicto(r, false)
     await rm(this.archivoEventos(id), { force: true })
+    await rm(this.archivoParche(id), { force: true })
     this.registros.delete(id)
     this.emitir('quitada', id)
     this.guardarPronto()
+  }
+
+  // Trae los cambios a la carpeta real del usuario (solo el árbol de trabajo). Si algo choca, no se toca nada.
+  async aplicar(id: string): Promise<{ ok: true; ficheros: number } | Fallo> {
+    const r = this.registro(id)
+    const previo = this.puedeLlevar(r, true)
+    if (previo) return previo
+    const copia = r.tarea.copia!
+    let parche: string
+    try { parche = await this.copias.parche(copia) } catch (e) { return { ok: false, error: mensajeDe(e) } }
+    if (!parche.trim()) return { ok: false, error: 'No hay cambios que aplicar.' }
+    if (r.tarea.aplicada?.modo === 'carpeta') return { ok: false, error: 'Ya está aplicada.' }
+    const res = await this.copias.aplicar(copia.repo!, parche)
+    if (!res.ok) return { ok: false, error: 'Tu carpeta ha cambiado en esos ficheros: no se aplicó nada.', ficheros: res.ficheros }
+    const ficheros = r.tarea.cambios?.ficheros ?? (parche.match(/^diff --git /gm)?.length ?? 0)
+    this.escribirParche(id, parche)
+    r.tarea.aplicada = { cuando: this.ahora(), modo: 'carpeta', ficheros }
+    this.cambio(r, true)
+    this.veredicto(r, true)
+    return { ok: true, ficheros }
+  }
+
+  async deshacer(id: string): Promise<{ ok: true } | Fallo> {
+    const r = this.registro(id)
+    if (r.tarea.aplicada?.modo !== 'carpeta' || !r.tarea.copia?.repo) return { ok: false, error: 'No hay nada que deshacer.' }
+    let parche: string
+    try { parche = await readFile(this.archivoParche(id), 'utf8') } catch { return { ok: false, error: 'No se encuentra el parche aplicado: no se puede deshacer.' } }
+    const res = await this.copias.aplicar(r.tarea.copia.repo, parche, { inverso: true })
+    if (!res.ok) return { ok: false, error: 'Tu carpeta ha cambiado en esos ficheros: no se deshizo nada.', ficheros: res.ficheros }
+    await rm(this.archivoParche(id), { force: true })
+    r.tarea.aplicada = undefined
+    this.cambio(r, true)
+    return { ok: true }
+  }
+
+  async guardarEnRama(id: string, mensaje?: string): Promise<{ ok: true; commit: string } | Fallo> {
+    const r = this.registro(id)
+    const previo = this.puedeLlevar(r, true)
+    if (previo) return previo
+    try {
+      const commit = await this.copias.commit(r.tarea.copia!, mensaje?.trim() || `Esme: ${r.tarea.titulo}`)
+      if (!commit) return { ok: false, error: 'No hay cambios que guardar.' }
+      r.tarea.aplicada = { cuando: this.ahora(), modo: 'rama', commit, ficheros: r.tarea.cambios?.ficheros ?? 0 }
+      this.cambio(r, true)
+      this.veredicto(r, true)
+      return { ok: true, commit }
+    } catch (e) { return { ok: false, error: mensajeDe(e) } }
+  }
+
+  async exportar(id: string, destino: string): Promise<{ ok: true } | Fallo> {
+    const r = this.registro(id)
+    const previo = this.puedeLlevar(r, false)
+    if (previo) return previo
+    try {
+      await this.copias.exportar(r.tarea.copia!, destino)
+      r.tarea.aplicada = { cuando: this.ahora(), modo: 'exportada', ficheros: r.tarea.cambios?.ficheros ?? 0, destino }
+      this.cambio(r, true)
+      this.veredicto(r, true)
+      return { ok: true }
+    } catch (e) { return { ok: false, error: mensajeDe(e) } }
+  }
+
+  async veredictos(): Promise<Veredicto[]> {
+    let texto = ''
+    try { texto = await readFile(join(this.dir, 'veredictos.jsonl'), 'utf8') } catch { return [] }
+    return texto.split('\n').filter(Boolean).flatMap((l) => { try { return [JSON.parse(l) as Veredicto] } catch { return [] } })
   }
 
   lista(): Tarea[] {
@@ -199,6 +273,27 @@ export class Taller {
     if (!r) throw new Error('La tarea no existe.')
     return r
   }
+
+  // Comprobaciones comunes de aplicar, guardar en rama y exportar, en el orden del plan.
+  private puedeLlevar(r: Registro, conRepo: boolean): Fallo | null {
+    const c = r.tarea.copia
+    if (conRepo && (!c || c.repo === null)) return { ok: false, error: 'Esta tarea está en una carpeta nueva: guárdala donde quieras.' }
+    if (!conRepo && c && c.repo !== null) return { ok: false, error: 'Solo se exporta una tarea hecha en una carpeta nueva.' }
+    if (ACTIVAS.includes(r.tarea.estado)) return { ok: false, error: 'Espera a que termine.' }
+    if (!c) return { ok: false, error: 'La tarea no tiene copia.' }
+    return null
+  }
+
+  private veredicto(r: Registro, exito: boolean): void {
+    const v: Veredicto = { ts: this.ahora(), motor: r.tarea.motor, modelo: r.tarea.modelo, exito }
+    try { mkdirSync(this.dir, { recursive: true }); appendFileSync(join(this.dir, 'veredictos.jsonl'), JSON.stringify(v) + '\n') } catch { /* no debe romper la operación */ }
+  }
+
+  private escribirParche(id: string, parche: string): void {
+    try { mkdirSync(this.dir, { recursive: true }); writeFileSync(this.archivoParche(id), parche) } catch { /* sin parche no habrá deshacer */ }
+  }
+
+  private archivoParche = (id: string) => join(this.dir, `${id}.aplicado.patch`)
 
   private archivoEventos = (id: string) => join(this.dir, `${id}.jsonl`)
 
