@@ -1,6 +1,11 @@
 // Chat con cualquier IA y con tu memoria. Ves qué recuerdos usó y le enseñas si sirvieron.
 import { useEffect, useRef, useState } from 'react'
 import type { BrainClient } from '../lib/brain'
+import { ChevronDown } from 'lucide-react'
+import { Markdown } from '../chat/Markdown'
+import { TiraUso, type UsoSesion } from '../chat/TiraUso'
+import { cn } from '../lib/cn'
+import { Compositor } from '../shell/Compositor'
 import { bridge, type ChatMsg, type ProviderView } from '../lib/bridge'
 
 type Turn = { role: 'user' | 'assistant'; content: string; query?: string; ids?: string[]; abstained?: boolean; tokens?: number; error?: boolean; judged?: boolean; who?: string }
@@ -12,8 +17,8 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
   const [model, setModel] = useState('')
   const [memoryOn, setMemoryOn] = useState(true)
   const [turns, setTurns] = useState<Turn[]>([])
-  const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  const [sesion, setSesion] = useState<UsoSesion>({ costeUSD: 0, ultimaEntrada: 0, memoria: 0 })
   const log = useRef<HTMLDivElement>(null)
 
   useEffect(() => { void bridge.providers().then(setProviders) }, [])
@@ -37,9 +42,10 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
   async function send(text: string) {
     const q = text.trim()
     if (!q || busy || !model) return
-    setInput(''); setBusy(true)
+    setBusy(true)
     let memory: { context: string; ids: string[] } | null = null
     let meta: Partial<Turn> = {}
+    let memTokens = 0
     if (memoryOn && props.brain) {
       if (current?.retainsData && !confirm(`${current.label} puede retener datos. ¿Enviarle tu memoria para esta pregunta?`)) memory = null
       else {
@@ -48,12 +54,14 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
           memory = r.abstained ? null : { context: r.context, ids: r.ids }
           meta = { query: q, ids: r.ids, abstained: r.abstained, tokens: r.tokens }
           props.onRecalled(r.tokens)
+          memTokens = r.abstained ? 0 : r.tokens
         } catch (e) { meta = { abstained: true }; console.warn(e) }
       }
     }
     const history: ChatMsg[] = [...turns.filter((t) => !t.error).map((t) => ({ role: t.role, content: t.content })), { role: 'user', content: q }]
     setTurns((t) => [...t, { role: 'user', content: q }, { role: 'assistant', content: '', who: `${current?.label ?? provider} · ${model}`, ...meta }])
     const s = bridge.chat(provider, model, history, memory)
+    s.onUsage((u) => setSesion((v) => ({ costeUSD: v.costeUSD + u.costeUSD, ultimaEntrada: u.entrada, memoria: memTokens })))
     s.onChunk((d) => setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + d }; return c }))
     s.onDone(() => setBusy(false))
     s.onError((m) => { setBusy(false); setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: m, error: true }; return c }) })
@@ -66,46 +74,63 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
     setTurns((all) => all.map((x, k) => (k === i ? { ...x, judged: true } : x)))
   }
 
+  const selector = 'h-8 min-w-0 appearance-none truncate rounded-2 border border-linea bg-s1 pr-7 pl-3 text-[13px] text-texto-2 outline-none transition-colors hover:border-linea-fuerte focus-visible:border-foco'
   return (
     <>
-      <div className="row" style={{ padding: '8px 10px', borderBottom: '1px solid var(--edge)' }}>
-        <select className="field" value={provider} onChange={(e) => setProvider(e.target.value)} aria-label="IA">
-          {providers.map((p) => <option key={p.id} value={p.id} disabled={!p.hasKey}>{p.label}{p.hasKey ? '' : ' (sin clave)'}</option>)}
-        </select>
-        <select className="field" value={model} onChange={(e) => setModel(e.target.value)} aria-label="Modelo">
-          {models.map((m) => <option key={m} value={m}>{m}</option>)}
-        </select>
-        <button className={`chip${memoryOn ? ' on' : ''}`} onClick={() => setMemoryOn((v) => !v)} title="Usar la memoria de Esme">
-          <span className={`dot${memoryOn ? '' : ' off'}`} /> memoria
-        </button>
+      <div className="flex items-center gap-2 pb-3">
+        <label className="relative">
+          <span className="sr-only">IA</span>
+          <select className={cn(selector, 'max-w-[220px]')} value={provider} onChange={(e) => setProvider(e.target.value)}>
+            {providers.map((p) => <option key={p.id} value={p.id} disabled={!p.hasKey}>{p.label}{p.hasKey ? '' : ' (sin clave)'}</option>)}
+          </select>
+          <ChevronDown className="pointer-events-none absolute top-2 right-2 size-4 text-texto-3" strokeWidth={1.5} aria-hidden />
+        </label>
+        <label className="relative min-w-0 max-w-[360px] flex-1">
+          <span className="sr-only">Modelo</span>
+          <select className={cn(selector, 'w-full')} value={model} onChange={(e) => setModel(e.target.value)}>
+            {models.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <ChevronDown className="pointer-events-none absolute top-2 right-2 size-4 text-texto-3" strokeWidth={1.5} aria-hidden />
+        </label>
       </div>
-      <div ref={log} className="chat-log scroll" aria-live="polite">
-        {!turns.length && <p className="muted" style={{ margin: 'auto', textAlign: 'center', maxWidth: 300 }}>
-          Pregunta lo que quieras. Esme le da a la IA solo lo que necesita de tu memoria, y verás en el mapa qué recordó.</p>}
-        {turns.map((t, i) => (
-          <div key={i} className={`msg ${t.role}${t.error ? ' error' : ''}`}>
-            {t.role === 'assistant' && <div className="who">{t.who}</div>}
-            {t.content || (busy && i === turns.length - 1 ? '…' : '')}
-            {t.role === 'assistant' && t.abstained && <div className="muted" style={{ marginTop: 6 }}>sin memoria relevante · respondió solo con lo que sabe</div>}
-            {t.role === 'assistant' && !!t.ids?.length && (
-              <>
-                <div className="cites">{t.ids.map((id, k) => <button key={id} className="cite" onClick={() => props.onCite(id)}>recuerdo {k + 1}</button>)}
-                  <span className="muted">{t.tokens} tokens de memoria</span></div>
+      <div ref={log} className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto py-4" aria-live="polite">
+        {!turns.length && (
+          <div className="m-auto grid max-w-[380px] gap-2 text-center">
+            <p className="font-display text-[22px] font-[600] tracking-[-0.02em] text-texto">¿En qué piensas?</p>
+            <p className="text-sm text-texto-3">Esme le da a la IA solo lo que necesita de tu memoria. Verás qué recordó y podrás decirle si sirvió.</p>
+          </div>
+        )}
+        {turns.map((t, i) => t.role === 'user' ? (
+          <div key={i} className="max-w-[78%] self-end rounded-3 rounded-br-1 bg-s2 px-4 py-2.5 text-[15px] leading-6 whitespace-pre-wrap text-texto">{t.content}</div>
+        ) : (
+          <div key={i} className="grid max-w-[92%] gap-2 self-start">
+            <span className="text-xs text-texto-3">{t.who}</span>
+            <div className={cn('text-[15px] leading-7', t.error ? 'text-peligro whitespace-pre-wrap' : 'text-texto')}>
+              {t.content ? (t.error ? t.content : <Markdown texto={t.content} />) : (busy && i === turns.length - 1 ? <span className="inline-flex gap-1 py-2" aria-label="Pensando">{[0, 1, 2].map((d) => <span key={d} className="size-1.5 animate-pulse rounded-full bg-texto-3" style={{ animationDelay: `${d * 160}ms` }} />)}</span> : '')}
+            </div>
+            {t.abstained && <span className="text-xs text-texto-3">Sin memoria relevante: respondió solo con lo que sabe.</span>}
+            {!!t.ids?.length && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {t.ids.map((id, k) => (
+                  <button key={id} type="button" onClick={() => props.onCite(id)}
+                    className="inline-flex h-6 items-center rounded-full bg-memoria-velo px-2.5 text-xs font-medium text-memoria transition-opacity hover:opacity-80">recuerdo {k + 1}</button>
+                ))}
+                <span className="text-xs text-texto-3 tabular-nums">{t.tokens} tokens de memoria</span>
                 {!t.judged && !(busy && i === turns.length - 1) && (
-                  <div className="verdict">
-                    <button className="btn ghost" onClick={() => judge(i, true)}>sirvió</button>
-                    <button className="btn ghost" onClick={() => judge(i, false)}>no sirvió</button>
-                  </div>
+                  <span className="ml-1 flex gap-1">
+                    <button type="button" onClick={() => judge(i, true)} className="h-6 rounded-full px-2.5 text-xs text-texto-2 transition-colors hover:bg-s2 hover:text-texto">sirvió</button>
+                    <button type="button" onClick={() => judge(i, false)} className="h-6 rounded-full px-2.5 text-xs text-texto-2 transition-colors hover:bg-s2 hover:text-texto">no sirvió</button>
+                  </span>
                 )}
-              </>
+              </div>
             )}
           </div>
         ))}
       </div>
-      <form className="chat-input" onSubmit={(e) => { e.preventDefault(); void send(input) }}>
-        <textarea className="field" value={input} rows={2} placeholder="Escribe… (Enter envía, Shift+Enter salto)" onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(input) } }} />
-      </form>
+      <div className="grid gap-1.5 pt-2">
+        <Compositor onEnviar={(q) => void send(q)} memoria={memoryOn} onMemoria={setMemoryOn} />
+        <TiraUso proveedor={provider} modelo={model} etiqueta={`${current?.label ?? provider} · ${model || 'sin modelo'}`} sesion={sesion} />
+      </div>
     </>
   )
 }
