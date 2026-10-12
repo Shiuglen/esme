@@ -1,5 +1,6 @@
 // Red neuronal de la memoria: recuerdos (nodos), temas (centros) y conexiones por significado.
 // Cuando Esme recuerda, sus nodos se encienden y viajan impulsos de luz por las conexiones.
+import { luzViva } from '../tinta/luz'
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d'
 import type { Atlas } from '../lib/brain'
@@ -12,9 +13,9 @@ type L = LinkObject<NodoRed, EnlaceRed>
 
 const leer = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim()
 const ENCENDIDO_MS = 3500
-// La luz de un recuerdo encendido es aurora: cada nodo tiene su matiz y todos viajan con el tiempo
+// La luz de un recuerdo encendido es bioluminiscente (tinta/luz.ts): cada nodo tiene su fase y todos viajan con el tiempo
 const matiz = (id: string) => { let h = 0; for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 360; return h }
-const aurora = (id = '') => `oklch(0.82 0.16 ${((performance.now() / 40 + matiz(id)) % 360).toFixed(0)})`
+const aurora = (id = '') => luzViva(performance.now() / 1000, matiz(id) / 360)
 
 export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: string; recordados: Recordado[]; onPick(id: string): void }>(
   function RedNeuronal({ atlas, tema, recordados, onPick }, ref) {

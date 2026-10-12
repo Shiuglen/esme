@@ -2,6 +2,7 @@
 // alrededor, una máquina por tarea unida al núcleo por un conducto. Cuando un motor trabaja, un potencial de acción recorre
 // su conducto —la línea del suelo se levanta como una neurona que dispara— y su luz aurora se derrama en el suelo.
 // Si te necesita, se enciende una baliza. El suelo se pierde en los bordes: solo importa lo que pasa cerca de la mente.
+import { luzViva } from '../tinta/luz'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { TareaTaller } from '../lib/bridge'
@@ -14,7 +15,7 @@ const LUGARES = lugares()
 const ALTO_PULSO = 0.42
 const reducido = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
 const semilla = (id: string) => [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) / 4294967295
-const aurora = (s: number, fase: number) => `oklch(0.84 0.16 ${((s * 55 + fase * 360) % 360).toFixed(0)})`
+const aurora = (s: number, fase: number) => luzViva(s, fase)   // luz bioluminiscente del tema (tinta/luz.ts)
 const xy = (p: [number, number]) => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`
 
 const ALTURA: Record<TareaTaller['estado'], number> = { preparando: 0.34, trabajando: 0.62, esperando: 0.62, lista: 0.48, parada: 0.48, error: 0.48 }
@@ -101,7 +102,7 @@ export function Escena({ tareas, seleccion, resaltada, ahora, compacta = false, 
           <filter id="planta-brillo" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3.4" /></filter>
           {maquinas.map((m) => m.t.estado === 'trabajando' ? (
             <radialGradient key={`v${m.t.id}`} id={`planta-luz-viva-${m.t.id}`} ref={(el) => { vivo(m.t.id).luz = el }}>
-              <stop offset="0" stopColor="#8b6cff" stopOpacity={0.55} /><stop offset="1" stopColor="#8b6cff" stopOpacity={0} />
+              <stop offset="0" style={{ stopColor: 'var(--luz)' }} stopOpacity={0.55} /><stop offset="1" style={{ stopColor: 'var(--luz)' }} stopOpacity={0} />
             </radialGradient>
           ) : (
             <radialGradient key={m.t.id} id={`planta-luz-${m.t.id}`}>
@@ -206,7 +207,7 @@ function Pieza({ m, elegida, resaltada, ahora, vivo, etiqueta, onElegir, onResal
           <path d={ranura} style={{ fill: COLOR[t.estado] ?? 'var(--texto-3)' }} opacity={t.estado === 'lista' ? 0.55 : 0.95} />
         )}
         {t.estado === 'trabajando' && (
-          <path key="viva" ref={(el) => { vivo.ranura = el }} d={ranura} fill="#8b6cff" className="animate-[respirar_2.4s_ease-in-out_infinite]" />
+          <path key="viva" ref={(el) => { vivo.ranura = el }} d={ranura} style={{ fill: 'var(--luz)' }} className="animate-[respirar_2.4s_ease-in-out_infinite]" />
         )}
         {baliza && (
           <g className="animate-[baliza_1.3s_ease-in-out_infinite]">

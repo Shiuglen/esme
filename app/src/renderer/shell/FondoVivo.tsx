@@ -1,34 +1,57 @@
-// El fondo vivo: una malla de gradiente con grano que respira despacio detrás de todo el cristal.
-// Casi negro (o papel) con velos de aurora; se acelera cuando Esme piensa o recuerda. Se para sin foco o si pides menos movimiento.
-import { MeshGradient } from '@paper-design/shaders-react'
+// El papel de Esme («Tinta y Luz», ver docs/superpowers/specs/2026-10-12-tinta-y-luz.md).
+// De día: papel de algodón con fibras y relieve, iluminado con el ángulo del sol de tu hora local.
+// De noche: papel de tinta; mientras la mente piensa o recuerda, se enciende una luz bioluminiscente, como plancton.
+// Sin foco, sin pestaña visible o con «menos movimiento», todo queda quieto (y la GPU descansa).
+import { NeuroNoise, PaperTexture } from '@paper-design/shaders-react'
 import { useEffect, useState } from 'react'
 import type { EstadoSenal } from '../marca/Senal'
+import { anguloSol } from '../tinta/sol'
 
-const PALETA = {
-  noche: ['#06070a', '#0b0e16', '#191338', '#0a2630', '#2a0f2c', '#07080b'],
-  dia: ['#f6f6f4', '#edf0f7', '#ebe4f8', '#e1f3f2', '#f7e6ef', '#f6f6f4'],
+const LUZ: Record<EstadoSenal, { brillo: number; velocidad: number; opacidad: number }> = {
+  reposo: { brillo: 0, velocidad: 0, opacidad: 0 },
+  pensando: { brillo: 0.035, velocidad: 0.22, opacidad: 0.9 },
+  recordando: { brillo: 0.07, velocidad: 0.45, opacidad: 1 },
 }
-const VELOCIDAD: Record<EstadoSenal, number> = { reposo: 0.08, pensando: 0.32, recordando: 0.6 }
 
 export function FondoVivo({ tema, estado }: { tema: 'noche' | 'dia'; estado: EstadoSenal }) {
   const [activo, setActivo] = useState(() => (typeof document === 'undefined' ? true : document.hasFocus() && !document.hidden))
   const [quieto] = useState(() => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const [sol, setSol] = useState(() => anguloSol(new Date()))
   useEffect(() => {
     const ver = () => setActivo(document.hasFocus() && !document.hidden)
     addEventListener('focus', ver); addEventListener('blur', ver); document.addEventListener('visibilitychange', ver)
-    return () => { removeEventListener('focus', ver); removeEventListener('blur', ver); document.removeEventListener('visibilitychange', ver) }
+    const k = setInterval(() => setSol(anguloSol(new Date())), 5 * 60_000)
+    return () => { removeEventListener('focus', ver); removeEventListener('blur', ver); document.removeEventListener('visibilitychange', ver); clearInterval(k) }
   }, [])
-  const velocidad = quieto || !activo ? 0 : VELOCIDAD[estado]
+  const luz = LUZ[estado]
+  const mueve = !quieto && activo
+
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-0 transition-opacity duration-1000"
-      style={{ opacity: tema === 'noche' ? (estado === 'reposo' ? 0.9 : 1) : estado === 'reposo' ? 0.75 : 0.95 }}>
-      <MeshGradient className="size-full" colors={PALETA[tema]} distortion={0.85} swirl={0.18} grainMixer={0.02} grainOverlay={tema === 'noche' ? 0.07 : 0.05}
-        speed={velocidad} maxPixelCount={1_100_000} minPixelRatio={1} />
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
+      {tema === 'dia' ? (
+        <PaperTexture className="size-full" fit="cover" scale={1} speed={0} angle={sol} seed={7}
+          colorBack="#f3f3ef" colorPaper="#f6f6f2" colorShadow="#d6d6cd" blending={1} distortion={0.15}
+          roughness={0.32} roughnessSize={0.45} fiber={0.55} fiberSize={0.45} folds={0.1} foldSizeX={1} foldSizeY={1}
+          wrinkles={0.18} wrinkleSize={0.7} crumples={0} crumpleCount={6} drops={0} />
+      ) : (
+        <>
+          <PaperTexture className="absolute inset-0 size-full" fit="cover" scale={1} speed={0} angle={sol} seed={7}
+            colorBack="#08090d" colorPaper="#0a0b10" colorShadow="#040508" blending={1} distortion={0.1}
+            roughness={0.28} roughnessSize={0.45} fiber={0.45} fiberSize={0.45} folds={0.06} foldSizeX={1} foldSizeY={1}
+            wrinkles={0.1} wrinkleSize={0.7} crumples={0} crumpleCount={6} drops={0} />
+          <div className="absolute inset-0 mix-blend-screen transition-opacity duration-[1600ms]" style={{ opacity: luz.opacidad }}>
+            {luz.opacidad > 0 && (
+              <NeuroNoise className="size-full" scale={0.75} speed={mueve ? luz.velocidad : 0}
+                colorBack="#000000" colorMid="#0b3a37" colorFront="#5ef0d4" brightness={luz.brillo} contrast={0.32} />
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }
 
-/** Un solo oyente para todos los halos: escribe la posición del cursor en la tarjeta de cristal que tiene debajo. */
+/** Un solo oyente para todos los halos: escribe la posición del cursor en la hoja que tiene debajo. */
 export function useHalos() {
   useEffect(() => {
     const mover = (e: PointerEvent) => {

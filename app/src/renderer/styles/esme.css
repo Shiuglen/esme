@@ -27,6 +27,15 @@
   --color-peligro-velo: var(--peligro-velo);
   --color-info: var(--info);
   --color-exito: var(--exito);
+  --color-papel: var(--papel);
+  --color-hoja: var(--hoja);
+  --color-tinta-fresca: var(--tinta-fresca);
+  --color-tinta-vieja: var(--tinta-vieja);
+  --color-grafito: var(--grafito);
+  --color-luz: var(--luz);
+  --color-luz-2: var(--luz-2);
+  --color-luz-3: var(--luz-3);
+  --color-sello: var(--sello);
   --color-exito-velo: var(--exito-velo);
   --color-cristal: var(--cristal);
   --font-display: "Funnel Display Variable", "Helvetica Neue", Arial, sans-serif;
@@ -46,10 +55,13 @@
 /* Noche (por defecto) */
 :root, [data-theme="noche"] {
   color-scheme: dark;
-  --fondo: #07080b; --superficie-1: #0e1015; --superficie-2: #15181f; --superficie-3: #1c2029;
-  --linea: #22262f; --linea-fuerte: #626a7c;
-  --texto: #f2f3f5; --texto-2: #a3a9b4; --texto-3: #7d8491;
-  --acento: #f2f3f5; --sobre-acento: #0b0c0f; --acento-velo: #1a1d24; --foco: #f2f3f5;
+  /* Tinta y Luz, noche: papel de tinta; el texto es tinta de luz; la vida es bioluminiscente (ver specs/2026-10-12-tinta-y-luz.md) */
+  --papel: #08090d; --hoja: #0f1117; --tinta: #e8ebf0; --tinta-fresca: #dfe7f5; --tinta-vieja: #b89a74; --grafito: #6b717c;
+  --luz: #5ef0d4; --luz-2: #6cc6ff; --luz-3: #a68cff; --sello: #e85a43;
+  --fondo: var(--papel); --superficie-1: var(--hoja); --superficie-2: #161921; --superficie-3: #1d2029;
+  --linea: #1f222b; --linea-fuerte: #5d6370;
+  --texto: var(--tinta); --texto-2: #a4aab4; --texto-3: #7d838e;
+  --acento: #e8ebf0; --sobre-acento: #0b0c0f; --acento-velo: #191c24; --foco: #e8ebf0;
   --memoria: #d6dce8; --memoria-velo: #161a22; --atencion: #f2b661; --atencion-velo: #2a2113;
   --peligro: #f27a8c; --peligro-velo: #2c1520; --info: #9ab0d6; --exito: #7fd6a4; --exito-velo: #13261c;
   --cara-arriba: #222631; --cara-izquierda: #171a21; --cara-derecha: #0f1116;
@@ -60,10 +72,13 @@
 /* Día */
 [data-theme="dia"] {
   color-scheme: light;
-  --fondo: #f6f6f4; --superficie-1: #ffffff; --superficie-2: #f0f0ed; --superficie-3: #e6e6e2;
-  --linea: #e0e0dc; --linea-fuerte: #7f848f;
-  --texto: #0b0c0f; --texto-2: #454a54; --texto-3: #62676f;
-  --acento: #0b0c0f; --sobre-acento: #ffffff; --acento-velo: #ececea; --foco: #0b0c0f;
+  /* Tinta y Luz, día: papel de algodón frío (nunca crema) y tinta ferrogálica: azul-negro reciente, pardo con la edad */
+  --papel: #f3f3ef; --hoja: #fbfbf9; --tinta: #141a26; --tinta-fresca: #15233d; --tinta-vieja: #6e5235; --grafito: #7a7f89;
+  --luz: #077567; --luz-2: #1d6aa3; --luz-3: #5a48c2; --sello: #c2361e;
+  --fondo: var(--papel); --superficie-1: var(--hoja); --superficie-2: #eeeee9; --superficie-3: #e4e4de;
+  --linea: #e0e0d9; --linea-fuerte: #7f848f;
+  --texto: var(--tinta); --texto-2: #3f4653; --texto-3: #636974;
+  --acento: #141a26; --sobre-acento: #ffffff; --acento-velo: #e9e9e3; --foco: #141a26;
   --memoria: #3f4654; --memoria-velo: #eceef2; --atencion: #8a5300; --atencion-velo: #fbf0dc;
   --peligro: #a4213a; --peligro-velo: #fbe6ea; --info: #3a5487; --exito: #1f6b3e; --exito-velo: #e3f4ea;
   --cara-arriba: #ffffff; --cara-izquierda: #ecece8; --cara-derecha: #dcdcd6;
@@ -74,8 +89,8 @@
 /* La aurora: el único color de la app, y está vivo. Gira sola (14 s por vuelta) y se queda quieta si pides menos movimiento. */
 @property --giro { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
 :root {
-  --aurora: conic-gradient(from var(--giro), #ff7ac6, #8b6cff, #45d9ff, #8dffb0, #ffd36e, #ff7ac6);
-  --aurora-lineal: linear-gradient(100deg, #ff7ac6, #8b6cff 30%, #45d9ff 55%, #8dffb0 78%, #ffd36e);
+  --aurora: conic-gradient(from var(--giro), var(--luz), var(--luz-2), var(--luz-3), var(--luz-2), var(--luz));
+  --aurora-lineal: linear-gradient(100deg, var(--luz), var(--luz-2) 55%, var(--luz-3));
   animation: aurora-giro 14s linear infinite;
 }
 @keyframes aurora-giro { to { --giro: 360deg } }
@@ -132,19 +147,22 @@
 .aurora-foco:focus-within::before { opacity: 0.9 }
 
 /* Cristal: superficies translúcidas sobre el fondo vivo, con un brillo interior de 1 px. */
+/* Hoja: papel apoyado sobre papel (de noche, hoja de tinta con un filo de luz casi invisible). Sin desenfoques. */
 .vidrio {
-  background: color-mix(in oklab, var(--superficie-1) 68%, transparent);
-  -webkit-backdrop-filter: blur(22px) saturate(1.25); backdrop-filter: blur(22px) saturate(1.25);
-  border-color: color-mix(in oklab, var(--linea) 85%, transparent);
-  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--texto) 6%, transparent), 0 1px 2px rgb(0 0 0 / 0.18);
+  background: var(--hoja);
+  border-color: var(--linea);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--luz) 7%, transparent), 0 1px 0 rgb(0 0 0 / 0.35), 0 10px 28px -14px rgb(0 0 0 / 0.6);
 }
-:root[data-theme="dia"] .vidrio { background: color-mix(in oklab, #ffffff 74%, transparent); box-shadow: inset 0 1px 0 #ffffffcc, 0 1px 3px rgb(20 22 28 / 0.06) }
-.vidrio-fino { background: color-mix(in oklab, var(--superficie-1) 55%, transparent); -webkit-backdrop-filter: blur(26px) saturate(1.3); backdrop-filter: blur(26px) saturate(1.3) }
+:root[data-theme="dia"] .vidrio {
+  background: var(--hoja);
+  box-shadow: inset 0 1px 0 #ffffff, 0 1px 1px rgb(20 24 32 / 0.05), 0 2px 3px rgb(20 24 32 / 0.04), 0 14px 30px -18px rgb(20 24 32 / 0.18);
+}
+.vidrio-fino { background: color-mix(in oklab, var(--papel) 86%, transparent) }
 /* Halo: la aurora asoma por el borde donde está el cursor (--mx/--my los escribe useHalos). */
 .halo { position: relative; isolation: isolate }
 .halo::after {
   content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; opacity: 0;
-  background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), color-mix(in oklab, #8b6cff 85%, transparent), color-mix(in oklab, #45d9ff 55%, transparent) 40%, transparent 70%);
+  background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%), color-mix(in oklab, var(--luz) 70%, transparent), color-mix(in oklab, var(--luz-2) 40%, transparent) 40%, transparent 70%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
   transition: opacity 0.4s var(--ease-salida);
 }
@@ -168,3 +186,6 @@
   --shiki-token-constant: #94540a; --shiki-token-function: #1f55b3; --shiki-token-comment: #5c626c; --shiki-token-parameter: #1b1e24;
   --shiki-token-punctuation: #575d68; --shiki-token-link: #1f55b3;
 }
+
+/* Tinta y Luz: la selección es un trazo de tinta, no un degradado */
+.aurora-borde::before { background: var(--tinta); padding: 1.5px; opacity: 0.9 }

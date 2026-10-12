@@ -118,7 +118,10 @@ export function App() {
 
   useHalos()
   const tallerOcupado = tl.tareas.some((t) => t.estado === 'trabajando' || t.estado === 'preparando')
-  const estadoEsme = pensando || tallerOcupado ? 'pensando' : recordando ? 'recordando' : 'reposo'
+  // Solo en desarrollo: forzar el estado de la mente para revisar el diseño (window.__estadoEsme('pensando'))
+  const [forzado, setForzado] = useState<'reposo' | 'pensando' | 'recordando' | null>(null)
+  useEffect(() => { if (import.meta.env.DEV) (window as unknown as { __estadoEsme?: typeof setForzado }).__estadoEsme = setForzado }, [])
+  const estadoEsme = forzado ?? (pensando || tallerOcupado ? 'pensando' : recordando ? 'recordando' : 'reposo')
 
   const pagina = (id: SeccionId) => {
     switch (id) {

@@ -22,12 +22,12 @@ export function Micrografica({ valores, viva, ancho = 132, alto = 30 }: { valore
     <svg width={ancho} height={alto} viewBox={`0 0 ${ancho} ${alto}`} aria-hidden className="shrink-0 overflow-visible">
       <defs>
         <linearGradient id={`${id}t`} x1="0" x2="1">
-          {viva ? ['#ff7ac6', '#8b6cff', '#45d9ff', '#8dffb0'].map((c, i) => <stop key={c} offset={i / 3} stopColor={c} />)
+          {viva ? ['var(--luz)', 'var(--luz-2)', 'var(--luz-3)'].map((c, i) => <stop key={c} offset={i / 2} style={{ stopColor: c }} />)
             : <><stop offset="0" style={{ stopColor: 'var(--texto-3)' }} /><stop offset="1" style={{ stopColor: 'var(--texto-3)' }} /></>}
         </linearGradient>
         <linearGradient id={`${id}a`} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor={viva ? '#8b6cff' : 'currentColor'} stopOpacity={viva ? 0.28 : 0.1} />
-          <stop offset="1" stopColor={viva ? '#45d9ff' : 'currentColor'} stopOpacity="0" />
+          <stop offset="0" style={{ stopColor: viva ? 'var(--luz)' : 'currentColor' }} stopOpacity={viva ? 0.26 : 0.1} />
+          <stop offset="1" style={{ stopColor: viva ? 'var(--luz-2)' : 'currentColor' }} stopOpacity="0" />
         </linearGradient>
         <linearGradient id={`${id}f`} x1="0" x2="1"><stop offset="0" stopColor="#fff" stopOpacity="0" /><stop offset=".18" stopColor="#fff" /></linearGradient>
         <mask id={`${id}m`}><rect width={ancho} height={alto} fill={`url(#${id}f)`} /></mask>
@@ -36,7 +36,7 @@ export function Micrografica({ valores, viva, ancho = 132, alto = 30 }: { valore
         <path d={`${linea}L${ancho} ${alto}L0 ${alto}Z`} fill={`url(#${id}a)`} />
         <path d={linea} fill="none" stroke={`url(#${id}t)`} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
       </g>
-      {viva && <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r={2.2} fill="#8dffb0" className="animate-[respirar_1.6s_ease-in-out_infinite]" />}
+      {viva && <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r={2.2} style={{ fill: 'var(--luz)' }} className="animate-[respirar_1.6s_ease-in-out_infinite]" />}
     </svg>
   )
 }
