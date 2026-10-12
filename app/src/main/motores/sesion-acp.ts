@@ -8,6 +8,7 @@ export type EventoMotor =
   | { tipo: 'herramienta'; id: string; titulo?: string; estado?: string; clase?: string; diff?: { ruta: string; antes?: string; despues: string }[] }
   | { tipo: 'plan'; pasos: { texto: string; estado: string }[] }
   | { tipo: 'contexto'; usado: number; total: number; coste?: { cantidad: number; moneda: string } }
+  | { tipo: 'usuario'; texto: string } | { tipo: 'fin'; motivo: string; ms: number } | { tipo: 'fallo'; mensaje: string }   // solo los emite el runtime del Taller, nunca la sesión ACP
   | { tipo: 'uso'; entrada: number; salida: number; pensamiento?: number; cacheLectura?: number; cacheEscritura?: number }
 
 type Opciones = { comando: string; args: string[]; cwd: string; env?: Record<string, string>
