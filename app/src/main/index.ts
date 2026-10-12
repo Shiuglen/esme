@@ -1,5 +1,5 @@
 // Proceso principal: lanza el cerebro, abre la ventana y conecta chat, claves y terminales con la interfaz.
-import { app, BrowserWindow, ipcMain, utilityProcess, type UtilityProcess } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, utilityProcess, type UtilityProcess } from 'electron'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { agentCommand, listAgents } from './agents'
@@ -30,6 +30,17 @@ function createWindow() {
     webPreferences: { preload: join(__dirname, '../preload/index.mjs'), contextIsolation: true, sandbox: false, nodeIntegration: false },
   })
   win.once('ready-to-show', () => win?.show())
+  // Ni ventanas nuevas ni navegar fuera de la app: los enlaces web (por ejemplo, los que escribe una IA) se abren en tu navegador.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
+    return { action: 'deny' }
+  })
+  win.webContents.on('will-navigate', (e, url) => {
+    const propia = process.env.ELECTRON_RENDERER_URL ? url.startsWith(process.env.ELECTRON_RENDERER_URL) : url.startsWith('file://')
+    if (propia) return
+    e.preventDefault()
+    if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
+  })
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL)
   else void win.loadFile(join(__dirname, '../renderer/index.html'))
 }

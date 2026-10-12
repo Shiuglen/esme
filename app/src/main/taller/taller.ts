@@ -89,7 +89,10 @@ export class Taller {
       if (ACTIVAS.includes(t.estado)) { t.estado = 'parada'; t.fin = t.fin ?? this.ahora() }
       t.permiso = null; t.opciones ??= []; t.modelo ??= null
       t.actividadMs ??= finCubo(t.fin ?? t.inicio)
-      this.registros.set(t.id, this.registroNuevo(t, true))
+      const r = this.registroNuevo(t, true)
+      // tras reiniciar, la sesión que se reabra debe pedir el modelo y el modo que la tarea usaba, no los de la config del motor
+      r.config = Object.fromEntries((t.opciones ?? []).filter((o) => o.id === 'model' || o.id === 'mode').map((o) => [o.id, o.actual]))
+      this.registros.set(t.id, r)
     }
   }
 

@@ -420,3 +420,22 @@ describe('Taller: límites de peticiones', () => {
     expect(intentos).toBe(1)
   })
 })
+
+describe('Taller: seguir tras reiniciar', () => {
+  it('la sesión reabierta pide el modelo y el modo que la tarea usaba (no los de la config del motor)', async () => {
+    const opciones = [
+      { id: 'model', nombre: 'Model', actual: 'opencode/ling-3.1-flash-free', valores: [{ id: 'opencode/ling-3.1-flash-free', nombre: 'Ling' }, { id: 'llamacpp/lento', nombre: 'Lento' }] },
+      { id: 'mode', nombre: 'Mode', actual: 'build', valores: [{ id: 'build', nombre: 'Build' }, { id: 'plan', nombre: 'Plan' }] },
+    ]
+    const s = sesiones(async (o) => { o.alEvento({ tipo: 'opciones', opciones }); return 'end_turn' })
+    const tarea = crear(s.abrir).crear({ motor, carpeta: null, texto: 'x' })
+    await esperar(tarea.id, 'lista')
+    t!.cerrarTodo()
+    const s2 = sesiones(async () => 'end_turn')
+    t = new Taller({ dir, emitir: () => {}, abrirSesion: s2.abrir, copias: copiasFalsas().ops, resolverMotor: async () => motor })
+    await t.cargar()
+    await t.seguir(tarea.id, 'otra cosa')
+    await esperar(tarea.id, 'lista')
+    expect(s2.abrir.mock.calls[0][0].config).toEqual({ model: 'opencode/ling-3.1-flash-free', mode: 'build' })
+  })
+})

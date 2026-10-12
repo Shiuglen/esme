@@ -11,6 +11,7 @@ import type { TareaTaller } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { Revision, type AccionesRevision } from './Revision'
 import { Arena } from './Arena'
+import { VistaPrevia } from './VistaPrevia'
 import { contarLineas } from './diff'
 import { PastillaEstado } from './FilaMotor'
 import { describirHerramienta, type ItemLinea } from './linea'
@@ -22,7 +23,7 @@ const ICONO_CLASE: Record<string, LucideIcon> = {
 }
 const PERMISO: Record<string, string> = { allow_once: 'Permitir', allow_always: 'Permitir siempre', reject_once: 'Rechazar', reject_always: 'Rechazar siempre' }
 
-export type Pestana = 'vivo' | 'revision' | 'arena'
+export type Pestana = 'vivo' | 'revision' | 'previa' | 'arena'
 export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, onDescartar, onAbrir, onConfigurar, onTerminal, revision, onPestana, arena, pedida }: {
   t: TareaTaller; linea: ItemLinea[] | undefined; login?: string; onTerminal(): void; revision: AccionesRevision; onPestana?(p: Pestana): void
   arena?: Omit<React.ComponentProps<typeof Arena>, 'actual'>; pedida?: { p: Pestana; n: number } | null
@@ -77,10 +78,10 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
           </span>
         </div>
         <nav className="mt-3 flex gap-1" aria-label="Vista de la tarea">
-          {(['vivo', 'revision', ...(arena && arena.tareas.length > 1 ? ['arena' as const] : [])] as Pestana[]).map((p) => (
+          {(['vivo', 'revision', 'previa', ...(arena && arena.tareas.length > 1 ? ['arena' as const] : [])] as Pestana[]).map((p) => (
             <button key={p} type="button" onClick={() => setPestana(p)} aria-current={pestana === p}
               className={cn('relative h-8 rounded-2 px-3 text-[13px] transition-colors', pestana === p ? 'bg-s2 text-texto' : 'text-texto-3 hover:text-texto-2')}>
-              {p === 'vivo' ? 'En vivo' : p === 'revision' ? 'Revisión' : 'Arena'}
+              {p === 'vivo' ? 'En vivo' : p === 'revision' ? 'Revisión' : p === 'previa' ? 'Vista previa' : 'Arena'}
               {p === 'arena' && arena && <span className="ml-1.5 rounded-full bg-s3 px-1.5 text-[11px] tabular-nums text-texto-2">{arena.tareas.length}</span>}
               {p === 'revision' && !!t.cambios?.ficheros && <span className="ml-1.5 rounded-full bg-s3 px-1.5 text-[11px] tabular-nums text-texto-2">{t.cambios.ficheros}</span>}
             </button>
@@ -104,7 +105,7 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
         )
       })()}
       <div className="min-h-0 flex-1">
-        {pestana === 'arena' && arena ? <Arena {...arena} actual={t.id} /> : pestana === 'revision' ? <Revision t={t} linea={linea} acciones={revision} /> : <EnVivo t={t} linea={linea} />}
+        {pestana === 'arena' && arena ? <Arena {...arena} actual={t.id} /> : pestana === 'previa' ? <VistaPrevia t={t} linea={linea} onPedir={onSeguir} /> : pestana === 'revision' ? <Revision t={t} linea={linea} acciones={revision} /> : <EnVivo t={t} linea={linea} />}
       </div>
 
       {t.permiso && (

@@ -39,6 +39,8 @@ contextBridge.exposeInMainWorld('daimon', {
     eventos: (id: string) => ipcRenderer.invoke('taller:eventos', id), crear: (p: unknown) => ipcRenderer.invoke('taller:crear', p),
     seguir: (id: string, texto: string) => ipcRenderer.invoke('taller:seguir', id, texto), responder: (id: string, opcion: string) => ipcRenderer.invoke('taller:responder', id, opcion),
     configurar: (id: string, opcion: string, valor: string) => ipcRenderer.invoke('taller:configurar', id, opcion, valor),
+    vistaPrevia: (id: string) => ipcRenderer.invoke('taller:vistaPrevia', id),
+    cerrarVista: (id: string) => ipcRenderer.invoke('taller:cerrarVista', id),
     opcionesMotor: (motor: string) => ipcRenderer.invoke('taller:opcionesMotor', motor),
     aplicar: (id: string) => ipcRenderer.invoke('taller:aplicar', id), deshacer: (id: string) => ipcRenderer.invoke('taller:deshacer', id),
     guardarRama: (id: string, mensaje?: string) => ipcRenderer.invoke('taller:guardarRama', id, mensaje),

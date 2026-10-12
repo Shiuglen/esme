@@ -7,12 +7,22 @@ import { detectarMotores, type Cumplimiento } from './motores/acp-motores'
 import { crearWhich, extsPlataforma } from './motores/which'
 import { abrirSesionACP, type OpcionConfig } from './motores/sesion-acp'
 import { Taller, type MotorElegido } from './taller/taller'
+import { servirCopia, type Servidor } from './taller/vista-previa'
 
 export type MotorTaller = { id: string; nombre: string; instalado: boolean; cumplimiento: Cumplimiento; login: string; nota: string }
 
 const ID = /^[a-z0-9]{6,16}$/
 const MAX_TEXTO = 20_000
 let taller: Taller | null = null
+const vistas = new Map<string, Servidor>()
+const cerrarVista = (id: string) => { vistas.get(id)?.cerrar(); vistas.delete(id) }
+// Dónde está la web dentro de la copia: la raíz o una de las carpetas habituales.
+async function buscarIndice(raiz: string): Promise<string | null> {
+  for (const dir of ['', 'public', 'dist', 'docs', 'site', 'www', 'src', 'build']) {
+    if (await access(join(raiz, dir, 'index.html'), constants.R_OK).then(() => true, () => false)) return dir
+  }
+  return null
+}
 
 const cacheOpciones = new Map<string, OpcionConfig[]>()
 const textoCorto = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 200
@@ -98,7 +108,7 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
   })
   ipcMain.handle('taller:seguir', (_e, id: unknown, texto: unknown) => (idValido(id) && textoValido(texto) ? accion(() => t.seguir(id, texto)) : entrada))
   ipcMain.handle('taller:parar', (_e, id: unknown) => (idValido(id) ? accion(() => t.parar(id)) : entrada))
-  ipcMain.handle('taller:descartar', (_e, id: unknown) => (idValido(id) ? accion(() => t.descartar(id)) : entrada))
+  ipcMain.handle('taller:descartar', (_e, id: unknown) => (idValido(id) ? accion(() => { cerrarVista(id); return t.descartar(id) }) : entrada))
   ipcMain.handle('taller:configurar', (_e, id: unknown, opcion: unknown, valor: unknown) =>
     (idValido(id) && textoCorto(opcion) && textoCorto(valor) ? accion(() => t.configurar(id, opcion, valor)) : entrada))
   ipcMain.handle('taller:opcionesMotor', async (_e, motorId: unknown): Promise<OpcionConfig[]> => {
@@ -144,6 +154,20 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
     const r = await dialog.showOpenDialog({ properties: ['openDirectory'] })
     return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
   })
+  // Vista previa: un servidor por tarea (solo 127.0.0.1) que sirve su copia, abierto en su index.html.
+  ipcMain.handle('taller:vistaPrevia', async (_e, id: unknown) => {
+    if (!idValido(id)) return entrada
+    const copia = t.lista().find((x) => x.id === id)?.copia
+    if (!copia) return { ok: false, error: 'La tarea no tiene copia.' }
+    const dir = await buscarIndice(copia.ruta)
+    if (dir === null) return { ok: false, error: 'No encuentro un index.html en la copia: la vista previa es para webs.' }
+    try {
+      let s = vistas.get(id)
+      if (!s) { s = await servirCopia(copia.ruta); vistas.set(id, s) }
+      return { ok: true, url: s.url + (dir ? `${dir}/` : '') }
+    } catch (e) { return { ok: false, error: mensaje(e) } }
+  })
+  ipcMain.handle('taller:cerrarVista', (_e, id: unknown) => { if (idValido(id)) cerrarVista(id); return { ok: true } })
   ipcMain.handle('taller:abrir', async (_e, id: unknown) => {
     if (!idValido(id)) return entrada
     const copia = t.lista().find((x) => x.id === id)?.copia
@@ -153,4 +177,4 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
   })
 }
 
-export function cerrar() { taller?.cerrarTodo() }
+export function cerrar() { for (const s of vistas.values()) s.cerrar(); vistas.clear(); taller?.cerrarTodo() }
