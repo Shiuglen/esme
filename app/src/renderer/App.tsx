@@ -1,7 +1,7 @@
 // esme — la carcasa: barra superior, riel y secciones. Las secciones se montan una vez y se ocultan al salir,
 // para que la conversación y las terminales del Taller sigan vivas mientras navegas.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Toaster } from 'sonner'
+import { Toaster, toast } from 'sonner'
 import { BrainClient, type Atlas as AtlasData, type MindEvent } from './lib/brain'
 import { bridge } from './lib/bridge'
 import { cn } from './lib/cn'
@@ -10,6 +10,9 @@ import { Ajustes } from './paginas/Ajustes'
 import { Inicio, type EventoMente } from './paginas/Inicio'
 import { Proximamente } from './paginas/Proximamente'
 import { Taller } from './paginas/Taller'
+import { avisosDe } from './taller/avisos'
+import { useTaller } from './taller/useTaller'
+import type { TareaTaller } from './lib/bridge'
 import { Uso } from './paginas/Uso'
 import { ChatPanel } from './panels/ChatPanel'
 import { MemoryPanel } from './panels/MemoryPanel'
@@ -35,7 +38,10 @@ export function App() {
   const [recordando, setRecordando] = useState(false)
   const [preguntas, setPreguntas] = useState(0)
   const [pensando, setPensando] = useState(false)
-  const [tallerOcupado, setTallerOcupado] = useState(false)
+  const tl = useTaller()
+  const [focoTaller, setFocoTaller] = useState<{ id: string; n: number } | null>(null)
+  const vistas = useRef(new Map<string, TareaTaller>())
+  const seccionRef = useRef(seccion); seccionRef.current = seccion
   const [memoria, setMemoria] = useState(true)
   const [semilla, setSemilla] = useState<{ q: string; n: number }>({ q: '', n: 0 })
   const [enfocado, setEnfocado] = useState<string | null>(null)
@@ -46,6 +52,20 @@ export function App() {
 
   const ir = useCallback((id: SeccionId) => { setSeccion(id); setVisitadas((v) => (v.has(id) ? v : new Set(v).add(id))) }, [])
   useEffect(() => { guardar('seccion', seccion) }, [seccion])
+
+  // Avisos del Taller: al Inicio siempre; fuera del Taller, también un aviso con «Ver»; sin foco en la ventana, notificación del sistema.
+  const verTarea = useCallback((id: string) => { ir('taller'); setFocoTaller((f) => ({ id, n: (f?.n ?? 0) + 1 })) }, [ir])
+  useEffect(() => {
+    for (const t of tl.tareas) {
+      const avisos = avisosDe(vistas.current.get(t.id), t)
+      vistas.current.set(t.id, t)
+      for (const a of avisos) {
+        setEventos((v) => [{ id: ++seqEvento.current, ts: Date.now(), tipo: `taller-${a.tipo}` as const, texto: a.texto, detalle: a.detalle, onVer: () => verTarea(a.id) }, ...v].slice(0, 40))
+        if (seccionRef.current !== 'taller') (a.tipo === 'error' ? toast.error : toast)(a.texto, { description: a.detalle, action: { label: 'Ver', onClick: () => verTarea(a.id) } })
+        if (!document.hasFocus() && typeof Notification !== 'undefined') { try { new Notification('esme', { body: a.detalle ? `${a.texto}\n${a.detalle}` : a.texto, silent: a.tipo === 'lista' }) } catch { /* sin notificaciones */ } }
+      }
+    }
+  }, [tl.tareas, verTarea])
   useEffect(() => { document.documentElement.dataset.theme = tema; guardar('tema', tema) }, [tema])
   // en escritorio, los botones de la ventana toman el color de la barra del tema activo
   useEffect(() => {
@@ -97,6 +117,7 @@ export function App() {
   const enfocarRecuerdo = (id: string) => { setEnfocado(id); ir('memoria'); setTimeout(() => redRef.current?.enfocar(id), 60) }
 
   useHalos()
+  const tallerOcupado = tl.tareas.some((t) => t.estado === 'trabajando' || t.estado === 'preparando')
   const estadoEsme = pensando || tallerOcupado ? 'pensando' : recordando ? 'recordando' : 'reposo'
 
   const pagina = (id: SeccionId) => {
@@ -107,7 +128,7 @@ export function App() {
         <div className="mx-auto flex h-full max-w-[880px] flex-col px-6 pt-4 pb-5">
           <ChatPanel brain={memoria ? brain : null} onCite={enfocarRecuerdo} onRecalled={(t) => setMemoriaUsada((s) => s + t)} seed={semilla} onBusy={setPensando} />
         </div>)
-      case 'taller': return <Taller tema={tema} onOcupado={setTallerOcupado} onIr={ir} />
+      case 'taller': return <Taller tema={tema} tl={tl} foco={focoTaller} onIr={ir} />
       case 'memoria': return (
         <div className="grid h-full grid-cols-[400px_minmax(0,1fr)]">
           <div className="vidrio-fino flex min-h-0 flex-col border-r border-linea"><MemoryPanel brain={brain} focusId={enfocado} onFocus={(i) => redRef.current?.enfocar(i)} onChanged={refrescar} /></div>
@@ -124,7 +145,9 @@ export function App() {
     <FondoVivo tema={tema} estado={estadoEsme} />
     <div className="relative z-10 grid h-full grid-rows-[48px_minmax(0,1fr)]">
       <BarraSuperior seccion={nombreDe(seccion)} estado={{ conectado: !!brain && recuerdos !== null, recuerdos, pensando }} tema={tema}
-        onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} onBuscar={() => setPaleta(true)} paletaAbierta={paleta} />
+        onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} onBuscar={() => setPaleta(true)} paletaAbierta={paleta}
+        taller={{ trabajando: tl.tareas.filter((t) => t.estado === 'trabajando' || t.estado === 'preparando').length, esperando: tl.tareas.filter((t) => t.estado === 'esperando').length }}
+        onTaller={() => ir('taller')} />
       <div className="flex min-h-0">
         <Riel actual={seccion} onIr={ir} cuentas={{ memoria: recuerdos !== null ? { texto: recuerdos.toLocaleString('es-ES') } : undefined }} />
         <main className="relative min-w-0 flex-1">

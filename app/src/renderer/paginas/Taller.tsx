@@ -10,7 +10,7 @@ import { FilaMotor } from '../taller/FilaMotor'
 import { actividadActual } from '../taller/linea'
 import { NuevaTarea } from '../taller/NuevaTarea'
 import { Terminales } from '../taller/Terminales'
-import { useTaller } from '../taller/useTaller'
+import type { useTaller } from '../taller/useTaller'
 import { activa, explicarError } from '../taller/vista'
 import { cn } from '../lib/cn'
 
@@ -25,16 +25,15 @@ function useAhora(cada: number) {
   return ahora
 }
 
-export function Taller({ tema, onOcupado, onIr }: { tema: string; onOcupado(ocupado: boolean): void; onIr(id: SeccionId): void }) {
-  const tl = useTaller()
+export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<typeof useTaller>; foco: { id: string; n: number } | null; onIr(id: SeccionId): void }) {
   const [seleccion, setSeleccion] = useState<string | null>(null)
   const [resaltada, setResaltada] = useState<string | null>(null)
   const [terminal, setTerminal] = useState(false)
   const [pestana, setPestana] = useState<'vivo' | 'revision'>('vivo')
   const ahora = useAhora(tl.tareas.some(activa) ? 1000 : 0)
 
-  const ocupado = tl.tareas.some((t) => t.estado === 'trabajando' || t.estado === 'preparando')
-  useEffect(() => { onOcupado(ocupado) }, [ocupado, onOcupado])
+  // desde un aviso de fuera («Ver»): abre esa tarea
+  useEffect(() => { if (foco) { setSeleccion(foco.id); void tl.cargar(foco.id) } }, [foco?.n])   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (seleccion && !tl.tareas.some((t) => t.id === seleccion)) setSeleccion(null) }, [tl.tareas, seleccion])
   // Un modelo que el motor rechaza por retirado o caído no se vuelve a proponer.
   useEffect(() => {

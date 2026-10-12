@@ -1,7 +1,7 @@
 // Inicio, el centro de mando: Esme viva, lo que sabe y lo que ha hecho, cuánto llevas gastado y qué motores tienes listos.
 // Solo datos reales; lo que aún no hay se dice tal cual.
 import NumberFlow from '@number-flow/react'
-import { ArrowRight, BrainCircuit, Eraser, FilePlus2, KeyRound, Plug, Waypoints } from 'lucide-react'
+import { ArrowRight, BrainCircuit, CircleAlert, CircleCheck, Eraser, FilePlus2, KeyRound, Plug, ShieldQuestion, Waypoints } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { fmtTokens, fmtUSD } from '../chat/formatos'
@@ -10,14 +10,14 @@ import { cn } from '../lib/cn'
 import { Senal, type EstadoSenal } from '../marca/Senal'
 import { Compositor } from '../shell/Compositor'
 
-export type EventoMente = { id: number; ts: number; tipo: 'recall' | 'remember' | 'forget' | 'ingest'; texto: string; detalle?: string }
+export type EventoMente = { id: number; ts: number; tipo: 'recall' | 'remember' | 'forget' | 'ingest' | 'taller-lista' | 'taller-permiso' | 'taller-error'; texto: string; detalle?: string; onVer?: () => void }
 
 const saludo = (h = new Date().getHours()) => (h < 6 ? 'Buenas noches' : h < 13 ? 'Buenos días' : h < 20 ? 'Buenas tardes' : 'Buenas noches')
 const hace = (ts: number) => {
   const s = Math.round((Date.now() - ts) / 1000), rtf = new Intl.RelativeTimeFormat('es', { numeric: 'auto' })
   return s < 60 ? 'ahora' : s < 3600 ? rtf.format(-Math.round(s / 60), 'minute') : rtf.format(-Math.round(s / 3600), 'hour')
 }
-const ICONO = { recall: Waypoints, remember: FilePlus2, forget: Eraser, ingest: FilePlus2 }
+const ICONO = { recall: Waypoints, remember: FilePlus2, forget: Eraser, ingest: FilePlus2, 'taller-lista': CircleCheck, 'taller-permiso': ShieldQuestion, 'taller-error': CircleAlert }
 const FRASE: Record<EstadoSenal, string> = { reposo: 'En calma, atenta a lo que necesites.', pensando: 'Pensando contigo…', recordando: 'Recordando: tu memoria se está encendiendo.' }
 const entrada = (i: number) => ({ initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.5, delay: 0.05 * i, ease: [0.16, 1, 0.3, 1] as const } })
 
@@ -100,12 +100,16 @@ export function Inicio({ conectado, recuerdos, eventos, estadoEsme, memoriaUsada
               <ul className="m-0 grid list-none gap-2 p-0">
                 {eventos.slice(0, 6).map((ev) => { const I = ICONO[ev.tipo]; return (
                   <li key={ev.id} className="flex min-w-0 items-start gap-3 rounded-2 border border-linea bg-fondo/40 px-3 py-2.5">
-                    <span className={cn('grid size-7 shrink-0 place-items-center rounded-2', ev.tipo === 'recall' ? 'bg-memoria-velo text-memoria' : 'bg-acento-velo text-acento')}><I className="size-4" strokeWidth={1.5} /></span>
+                    <span className={cn('grid size-7 shrink-0 place-items-center rounded-2', ev.tipo === 'recall' ? 'bg-memoria-velo text-memoria'
+                      : ev.tipo === 'taller-permiso' ? 'bg-atencion-velo text-atencion' : ev.tipo === 'taller-error' ? 'bg-peligro-velo text-peligro' : 'bg-acento-velo text-acento')}><I className="size-4" strokeWidth={1.5} /></span>
                     <span className="grid min-w-0 gap-0.5">
                       <span className="truncate text-sm text-texto">{ev.texto}</span>
                       {ev.detalle && <span className="truncate text-xs text-texto-3">{ev.detalle}</span>}
                     </span>
-                    <span className="ml-auto shrink-0 pt-0.5 text-xs text-texto-3">{hace(ev.ts)}</span>
+                    <span className="ml-auto flex shrink-0 items-center gap-2 pt-0.5 text-xs text-texto-3">
+                      {ev.onVer && <button type="button" onClick={ev.onVer} className="rounded-full px-2 py-0.5 text-texto-2 hover:bg-s2 hover:text-texto">Ver</button>}
+                      {hace(ev.ts)}
+                    </span>
                   </li>) })}
               </ul>
             )}

@@ -7,7 +7,8 @@ import { MUELLE } from './Paleta'
 
 export type Estado = { conectado: boolean; recuerdos: number | null; pensando: boolean }
 
-export function BarraSuperior({ seccion, estado, tema, onTema, onBuscar, paletaAbierta }: { seccion: string; estado: Estado; tema: 'noche' | 'dia'; onTema(): void; onBuscar(): void; paletaAbierta: boolean }) {
+export function BarraSuperior({ seccion, estado, tema, onTema, onBuscar, paletaAbierta, taller, onTaller }: { seccion: string; estado: Estado; tema: 'noche' | 'dia'; onTema(): void; onBuscar(): void; paletaAbierta: boolean
+  taller: { trabajando: number; esperando: number }; onTaller(): void }) {
   return (
     <header className="barra-ventana flex h-12 shrink-0 items-center gap-3.5 vidrio-fino border-b border-linea pl-[18px]">
       <span className="flex items-center gap-2"><Senal tam={22} estado={estado.pensando ? 'pensando' : 'reposo'} tapa="var(--superficie-1)" /><span className="font-display text-[21px] leading-none font-[650] tracking-[-0.045em]">esme</span></span>
@@ -20,6 +21,14 @@ export function BarraSuperior({ seccion, estado, tema, onTema, onBuscar, paletaA
           <Search className="size-4" strokeWidth={1.5} aria-hidden />Busca o pregunta
           <kbd className="ml-auto rounded-[5px] border border-linea bg-s1 px-1.5 py-0.5 font-sans text-[11px] text-texto-3">Ctrl K</kbd>
         </motion.button>
+      )}
+      {(taller.esperando > 0 || taller.trabajando > 0) && (
+        <button type="button" onClick={onTaller} title="Ir al Taller"
+          className={cn('inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors',
+            taller.esperando ? 'bg-atencion-velo text-atencion hover:brightness-110' : 'border border-linea bg-s2 text-texto-2 hover:text-texto')}>
+          <span className={cn('size-1.5 rounded-full', taller.esperando ? 'animate-[baliza_1.3s_ease-in-out_infinite] bg-atencion' : 'animate-[respirar_1.4s_ease-in-out_infinite] [background:var(--aurora)]')} />
+          {taller.esperando ? `${taller.esperando} te ${taller.esperando === 1 ? 'necesita' : 'necesitan'}` : `${taller.trabajando} trabajando`}
+        </button>
       )}
       <span className={cn('inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium',
         estado.conectado ? 'bg-acento-velo text-acento' : 'border border-linea bg-s2 text-texto-3')}
