@@ -12,6 +12,7 @@ import { NuevaTarea } from '../taller/NuevaTarea'
 import { Terminales } from '../taller/Terminales'
 import { useTaller } from '../taller/useTaller'
 import { activa, explicarError } from '../taller/vista'
+import { cn } from '../lib/cn'
 
 function useAhora(cada: number) {
   const [ahora, setAhora] = useState(() => Date.now())
@@ -29,6 +30,7 @@ export function Taller({ tema, onOcupado, onIr }: { tema: string; onOcupado(ocup
   const [seleccion, setSeleccion] = useState<string | null>(null)
   const [resaltada, setResaltada] = useState<string | null>(null)
   const [terminal, setTerminal] = useState(false)
+  const [pestana, setPestana] = useState<'vivo' | 'revision'>('vivo')
   const ahora = useAhora(tl.tareas.some(activa) ? 1000 : 0)
 
   const ocupado = tl.tareas.some((t) => t.estado === 'trabajando' || t.estado === 'preparando')
@@ -48,6 +50,7 @@ export function Taller({ tema, onOcupado, onIr }: { tema: string; onOcupado(ocup
   const ordenadas = useMemo(() => [...tl.tareas].sort((a, b) => Number(activa(b)) - Number(activa(a)) || b.inicio - a.inicio), [tl.tareas])
   const elegir = (id: string) => { setSeleccion(id); void tl.cargar(id) }
   const t = tl.tareas.find((x) => x.id === seleccion)
+  const enfoque = !!t && pestana === 'revision'   // al revisar, la planta se recoge y el detalle gana sitio
   const cuenta = (e: string) => tl.tareas.filter((x) => x.estado === e).length
   const chips = [
     { n: cuenta('trabajando') + cuenta('preparando'), texto: 'trabajando', punto: '[background:var(--aurora)]' },
@@ -58,8 +61,8 @@ export function Taller({ tema, onOcupado, onIr }: { tema: string; onOcupado(ocup
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden">
-      <div className="relative h-[clamp(240px,40vh,420px)] shrink-0">
-        <Escena tareas={tl.tareas} seleccion={seleccion} resaltada={resaltada} ahora={ahora}
+      <div className={cn('relative shrink-0 transition-[height] duration-500 ease-salida', enfoque ? 'h-[150px]' : 'h-[clamp(240px,40vh,420px)]')}>
+        <Escena tareas={tl.tareas} seleccion={seleccion} resaltada={resaltada} ahora={ahora} compacta={enfoque}
           onElegir={elegir} onResaltar={setResaltada} onNueva={() => setSeleccion(null)} />
         <div className="pointer-events-none absolute top-4 left-5 flex flex-wrap gap-2">
           {chips.map((c) => (
@@ -74,7 +77,7 @@ export function Taller({ tema, onOcupado, onIr }: { tema: string; onOcupado(ocup
         </button>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(360px,0.92fr)_minmax(0,1.08fr)] gap-4 px-5 pb-5">
+      <div className={cn('grid min-h-0 flex-1 gap-4 px-5 pb-5 transition-[grid-template-columns] duration-500 ease-salida', enfoque ? 'grid-cols-[minmax(320px,0.62fr)_minmax(0,1.38fr)]' : 'grid-cols-[minmax(360px,0.92fr)_minmax(0,1.08fr)]')}>
         <section aria-label="Tareas" className="flex min-h-0 flex-col">
           <div className="flex h-9 items-center justify-between">
             <h2 className="text-[13px] font-medium text-texto-2">Tareas{tl.tareas.length > 0 && <span className="ml-1.5 tabular-nums text-texto-3">{tl.tareas.length}</span>}</h2>
@@ -105,7 +108,9 @@ export function Taller({ tema, onOcupado, onIr }: { tema: string; onOcupado(ocup
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={t?.id ?? 'nueva'} className="h-full" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.18 }}>
               {t ? (
-                <Detalle t={t} linea={tl.lineas[t.id]} login={login(t.motor)} onTerminal={() => setTerminal(true)} onSeguir={(q) => tl.seguir(t.id, q)} onResponder={(o) => tl.responder(t.id, o)}
+                <Detalle t={t} linea={tl.lineas[t.id]} onPestana={setPestana} login={login(t.motor)} onTerminal={() => setTerminal(true)}
+                  revision={{ onAplicar: () => tl.aplicar(t.id, () => void tl.deshacer(t.id)), onDeshacer: () => tl.deshacer(t.id),
+                    onGuardarRama: () => tl.guardarRama(t.id), onExportar: () => tl.exportar(t.id), onAbrir: () => tl.abrir(t.id) }} onSeguir={(q) => tl.seguir(t.id, q)} onResponder={(o) => tl.responder(t.id, o)}
                   onParar={() => void tl.parar(t.id)} onDescartar={() => void tl.descartar(t.id)} onAbrir={() => tl.abrir(t.id)}
                   onConfigurar={(o, v) => void tl.configurar(t.id, o, v)} />
               ) : (

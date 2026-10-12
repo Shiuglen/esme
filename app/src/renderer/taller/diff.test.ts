@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { contarLineas, leerDiff } from './diff'
+import { contarLineas, lados, leerDiff } from './diff'
 
 const DIFF = `diff --git a/src/a.ts b/src/a.ts
 index 111..222 100644
@@ -61,5 +61,15 @@ describe('contarLineas', () => {
   })
   it('las líneas repetidas cuentan cada una', () => {
     expect(contarLineas('}\n}', '}\n}\n}')).toEqual({ mas: 1, menos: 0 })
+  })
+})
+
+describe('lados', () => {
+  it('separa el antes y el después de un fichero y dice de dónde sale cada línea', () => {
+    const [f] = leerDiff(DIFF)
+    const l = lados(f)
+    expect(l.viejo).toEqual(['uno', 'dos', 'cuatro'])
+    expect(l.nuevo).toEqual(['uno', 'DOS', 'tres', 'cuatro'])
+    expect(l.indice).toEqual([null, { lado: 'nuevo', k: 0 }, { lado: 'viejo', k: 1 }, { lado: 'nuevo', k: 1 }, { lado: 'nuevo', k: 2 }, { lado: 'nuevo', k: 3 }])
   })
 })

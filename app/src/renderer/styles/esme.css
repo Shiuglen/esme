@@ -156,3 +156,15 @@
 @keyframes girar { to { transform: rotate(360deg) } }
 .planta-maquina { transition: transform 0.35s var(--ease-salida) }
 .planta-maquina:hover, .planta-maquina[data-resaltada="true"] { transform: translateY(-5px) }
+
+/* Código: los tonos de la aurora muy rebajados (Shiki con tema de variables). Contraste AA comprobado sobre superficie y diffs. */
+:root, [data-theme="noche"] {
+  --shiki-foreground: #c9ced6; --shiki-background: transparent; --shiki-token-keyword: #c4b5ff; --shiki-token-string: #94dcbc;
+  --shiki-token-string-expression: #94dcbc; --shiki-token-constant: #f3c48e; --shiki-token-function: #9cc7ff; --shiki-token-comment: #8b919d;
+  --shiki-token-parameter: #e3e6eb; --shiki-token-punctuation: #9aa0ab; --shiki-token-link: #9cc7ff;
+}
+[data-theme="dia"] {
+  --shiki-foreground: #2f343c; --shiki-token-keyword: #5b3fd0; --shiki-token-string: #17714e; --shiki-token-string-expression: #17714e;
+  --shiki-token-constant: #94540a; --shiki-token-function: #1f55b3; --shiki-token-comment: #5c626c; --shiki-token-parameter: #1b1e24;
+  --shiki-token-punctuation: #575d68; --shiki-token-link: #1f55b3;
+}

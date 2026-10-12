@@ -42,3 +42,16 @@ export function contarLineas(antes?: string, despues?: string): { mas: number; m
   for (const n of quedan.values()) menos += n
   return { mas, menos }
 }
+
+/** El antes y el después de un fichero como bloques seguidos (para colorearlos con su contexto) y, por cada línea del diff, de qué lado sale. */
+export function lados(f: FicheroDiff): { viejo: string[]; nuevo: string[]; indice: ({ lado: 'viejo' | 'nuevo'; k: number } | null)[] } {
+  const viejo: string[] = [], nuevo: string[] = []
+  const indice = f.lineas.map((l) => {
+    if (l.tipo === 'trozo') return null
+    if (l.tipo === 'menos') { viejo.push(l.texto); return { lado: 'viejo' as const, k: viejo.length - 1 } }
+    if (l.tipo === 'igual') viejo.push(l.texto)
+    nuevo.push(l.texto)
+    return { lado: 'nuevo' as const, k: nuevo.length - 1 }
+  })
+  return { viejo, nuevo, indice }
+}

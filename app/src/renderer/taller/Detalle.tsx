@@ -9,7 +9,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Markdown } from '../chat/Markdown'
 import type { TareaTaller } from '../lib/bridge'
 import { cn } from '../lib/cn'
-import { Cambios } from './Cambios'
+import { Revision, type AccionesRevision } from './Revision'
 import { contarLineas } from './diff'
 import { PastillaEstado } from './FilaMotor'
 import { describirHerramienta, type ItemLinea } from './linea'
@@ -21,14 +21,15 @@ const ICONO_CLASE: Record<string, LucideIcon> = {
 }
 const PERMISO: Record<string, string> = { allow_once: 'Permitir', allow_always: 'Permitir siempre', reject_once: 'Rechazar', reject_always: 'Rechazar siempre' }
 
-export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, onDescartar, onAbrir, onConfigurar, onTerminal }: {
-  t: TareaTaller; linea: ItemLinea[] | undefined; login?: string; onTerminal(): void
+export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, onDescartar, onAbrir, onConfigurar, onTerminal, revision, onPestana }: {
+  t: TareaTaller; linea: ItemLinea[] | undefined; login?: string; onTerminal(): void; revision: AccionesRevision; onPestana?(p: 'vivo' | 'revision'): void
   onSeguir(texto: string): Promise<boolean>; onResponder(opcion: string): void; onParar(): void; onDescartar(): void; onAbrir(): void
   onConfigurar(opcion: string, valor: string): void
 }) {
-  const [pestana, setPestana] = useState<'vivo' | 'cambios'>('vivo')
+  const [pestana, setPestana] = useState<'vivo' | 'revision'>('vivo')
   const [confirmar, setConfirmar] = useState(false)
   useEffect(() => { setPestana('vivo'); setConfirmar(false) }, [t.id])
+  useEffect(() => { onPestana?.(pestana) }, [pestana, onPestana])
   useEffect(() => { if (!confirmar) return; const k = setTimeout(() => setConfirmar(false), 4500); return () => clearTimeout(k) }, [confirmar])
   const enMarcha = activa(t)
   const carpeta = t.carpeta ? t.carpeta.split(/[\\/]/).filter(Boolean).pop() : null
@@ -72,11 +73,11 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
           </span>
         </div>
         <nav className="mt-3 flex gap-1" aria-label="Vista de la tarea">
-          {(['vivo', 'cambios'] as const).map((p) => (
+          {(['vivo', 'revision'] as const).map((p) => (
             <button key={p} type="button" onClick={() => setPestana(p)} aria-current={pestana === p}
               className={cn('relative h-8 rounded-2 px-3 text-[13px] transition-colors', pestana === p ? 'bg-s2 text-texto' : 'text-texto-3 hover:text-texto-2')}>
-              {p === 'vivo' ? 'En vivo' : 'Cambios'}
-              {p === 'cambios' && !!t.cambios?.ficheros && <span className="ml-1.5 rounded-full bg-s3 px-1.5 text-[11px] tabular-nums text-texto-2">{t.cambios.ficheros}</span>}
+              {p === 'vivo' ? 'En vivo' : 'Revisión'}
+              {p === 'revision' && !!t.cambios?.ficheros && <span className="ml-1.5 rounded-full bg-s3 px-1.5 text-[11px] tabular-nums text-texto-2">{t.cambios.ficheros}</span>}
             </button>
           ))}
         </nav>
@@ -98,7 +99,7 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
         )
       })()}
       <div className="min-h-0 flex-1">
-        {pestana === 'cambios' ? <div className="h-full overflow-y-auto"><Cambios t={t} /></div> : <EnVivo t={t} linea={linea} />}
+        {pestana === 'revision' ? <Revision t={t} linea={linea} acciones={revision} /> : <EnVivo t={t} linea={linea} />}
       </div>
 
       {t.permiso && (

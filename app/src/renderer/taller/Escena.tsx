@@ -5,6 +5,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { TareaTaller } from '../lib/bridge'
+import { cn } from '../lib/cn'
 import { Senal } from '../marca/Senal'
 import { asignarLugares, caja, conducto, iso, lugares, ruta, type Punto } from './iso'
 import { duracion, ordenPlanta, textoCambios } from './vista'
@@ -26,8 +27,8 @@ const SUELO = Array.from({ length: 22 }, (_, i) => i - 6)
 type Maquina = { t: TareaTaller; lugar: Punto; ruta: Punto[]; fase: number }
 type Vivos = { linea: SVGPathElement | null; cresta: SVGPathElement | null; brillo: SVGPathElement | null; ranura: SVGPathElement | null; luz: SVGRadialGradientElement | null }
 
-export function Escena({ tareas, seleccion, resaltada, ahora, onElegir, onResaltar, onNueva }: {
-  tareas: TareaTaller[]; seleccion: string | null; resaltada: string | null; ahora: number
+export function Escena({ tareas, seleccion, resaltada, ahora, compacta = false, onElegir, onResaltar, onNueva }: {
+  tareas: TareaTaller[]; seleccion: string | null; resaltada: string | null; ahora: number; compacta?: boolean
   onElegir(id: string): void; onResaltar(id: string | null): void; onNueva(): void
 }) {
   const marco = useRef<HTMLDivElement>(null)
@@ -47,7 +48,7 @@ export function Escena({ tareas, seleccion, resaltada, ahora, onElegir, onResalt
       return { t: tareas.find((x) => x.id === id)!, lugar, ruta: ruta(lugar), fase: semilla(id) }
     })
   }, [tareas])
-  const libres = LUGARES.filter((_, k) => ![...sitios.current.values()].includes(k)).slice(0, maquinas.length ? 1 : 4)
+  const libres = compacta ? [] : LUGARES.filter((_, k) => ![...sitios.current.values()].includes(k)).slice(0, maquinas.length ? 1 : 4)
 
   // El pulso: un solo bucle para todas las máquinas que trabajan, escribiendo directamente en el SVG (sin re-render).
   const vivos = useRef(new Map<string, Vivos>())
@@ -158,7 +159,7 @@ export function Escena({ tareas, seleccion, resaltada, ahora, onElegir, onResalt
             </g>
           ) : (
             <Pieza key={o.m.t.id} m={o.m} elegida={o.m.t.id === seleccion} resaltada={o.m.t.id === resaltada} ahora={ahora}
-              vivo={vivo(o.m.t.id)} onElegir={onElegir} onResaltar={onResaltar} />
+              vivo={vivo(o.m.t.id)} onElegir={onElegir} onResaltar={onResaltar} etiqueta={!compacta} />
           ))}
         </AnimatePresence>
       </svg>
@@ -178,8 +179,8 @@ function Caras({ c, punteada }: { c: ReturnType<typeof caja>; punteada?: boolean
   )
 }
 
-function Pieza({ m, elegida, resaltada, ahora, vivo, onElegir, onResaltar }: {
-  m: Maquina; elegida: boolean; resaltada: boolean; ahora: number; vivo: Vivos; onElegir(id: string): void; onResaltar(id: string | null): void
+function Pieza({ m, elegida, resaltada, ahora, vivo, etiqueta, onElegir, onResaltar }: {
+  m: Maquina; elegida: boolean; resaltada: boolean; ahora: number; vivo: Vivos; etiqueta: boolean; onElegir(id: string): void; onResaltar(id: string | null): void
 }) {
   const t = m.t, h = ALTURA[t.estado]
   const x0 = m.lugar.x + 0.16, y0 = m.lugar.y + 0.16, w = 0.68
@@ -212,7 +213,7 @@ function Pieza({ m, elegida, resaltada, ahora, vivo, onElegir, onResaltar }: {
             <path d={`M${tx} ${ty - 40}L${tx + 5} ${ty - 34}L${tx} ${ty - 28}L${tx - 5} ${ty - 34}Z`} style={{ fill: 'var(--atencion)' }} />
           </g>
         )}
-        <g transform={`translate(${tx} ${ty - (baliza ? 50 : 14)})`} className="pointer-events-none">
+        <g transform={`translate(${tx} ${ty - (baliza ? 50 : 14)})`} className={cn('pointer-events-none transition-opacity duration-300', !etiqueta && 'opacity-0')}>
           <text textAnchor="middle" y={-13} className="fill-texto-3 font-mono" fontSize={9.5} style={{ paintOrder: 'stroke', stroke: 'var(--fondo)', strokeWidth: 3, strokeLinejoin: 'round' }}>
             {t.motorNombre.toLowerCase()}
           </text>

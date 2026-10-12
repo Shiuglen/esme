@@ -108,5 +108,29 @@ export function useTaller() {
     descartar: async (id: string) => hecho(await bridge.taller.descartar(id), 'Copia descartada: su carpeta y su rama ya no existen.'),
     configurar: async (id: string, opcion: string, valor: string) => hecho(await bridge.taller.configurar(id, opcion, valor)),
     abrir: (id: string) => { void bridge.taller.abrir(id) },
+    aplicar: async (id: string, deshacer: () => void) => {
+      const r = await bridge.taller.aplicar(id)
+      if (!r.ok) { toast.error(r.error, r.ficheros?.length ? { description: r.ficheros.slice(0, 6).join(', ') + (r.ficheros.length > 6 ? '…' : '') } : undefined); return false }
+      toast(`${r.ficheros} ${r.ficheros === 1 ? 'fichero aplicado' : 'ficheros aplicados'} a tu carpeta`, { description: 'Quedan como cambios sin commitear.', action: { label: 'Deshacer', onClick: deshacer } })
+      return true
+    },
+    deshacer: async (id: string) => {
+      const r = await bridge.taller.deshacer(id)
+      if (!r.ok) { toast.error(r.error, r.ficheros?.length ? { description: r.ficheros.slice(0, 6).join(', ') } : undefined); return false }
+      toast('Deshecho: tu carpeta está como antes.')
+      return true
+    },
+    guardarRama: async (id: string) => {
+      const r = await bridge.taller.guardarRama(id)
+      if (!r.ok) { toast.error(r.error); return false }
+      toast('Guardada en su rama', { description: `Commit ${r.commit.slice(0, 7)}: fusiónala cuando quieras.` })
+      return true
+    },
+    exportar: async (id: string) => {
+      const r = await bridge.taller.exportar(id)
+      if (!r.ok) { if (r.error !== 'cancelado') toast.error(r.error); return false }
+      toast('Guardada como proyecto')
+      return true
+    },
   }
 }
