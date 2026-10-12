@@ -3,14 +3,18 @@
 // y tema ↔ el tema más cercano, para que la red sea una sola.
 import type { Atlas } from '../lib/brain'
 
-export type NodoRed = { id: string; tipo: 'recuerdo' | 'tema'; etiqueta?: string; tema: number; tam: number; x: number; y: number }
+// fecha (ms) y confianza solo en los recuerdos: son la edad de la tinta y el grosor del trazo (tinta/trazo.ts)
+export type NodoRed = { id: string; tipo: 'recuerdo' | 'tema'; etiqueta?: string; tema: number; tam: number; x: number; y: number; fecha?: number; confianza?: number; clase?: string; terminos?: string[] }
 export type EnlaceRed = { source: string; target: string; tipo: 'tema' | 'vecino' | 'puente' }
 export type Red = { nodes: NodoRed[]; links: EnlaceRed[] }
 
 export function construirRed(atlas: Pick<Atlas, 'points' | 'clusters'>, { vecinos = 2, escala = 60 }: { vecinos?: number; escala?: number } = {}): Red {
   if (!atlas.points.length && !atlas.clusters.length) return { nodes: [], links: [] }
-  const temas: NodoRed[] = atlas.clusters.map((c) => ({ id: `tema:${c.id}`, tipo: 'tema', etiqueta: c.label, tema: c.id, tam: c.size, x: c.x * escala, y: c.y * escala }))
-  const recuerdos: NodoRed[] = atlas.points.map((p) => ({ id: p.id, tipo: 'recuerdo', tema: p.cluster, tam: 1, x: p.x * escala, y: p.y * escala }))
+  const temas: NodoRed[] = atlas.clusters.map((c) => ({ id: `tema:${c.id}`, tipo: 'tema', etiqueta: c.label, terminos: c.terms?.length ? c.terms : [c.label], tema: c.id, tam: c.size, x: c.x * escala, y: c.y * escala }))
+  const recuerdos: NodoRed[] = atlas.points.map((p) => {
+    const fecha = p.ts ? Date.parse(p.ts) : NaN
+    return { id: p.id, tipo: 'recuerdo', tema: p.cluster, tam: 1, x: p.x * escala, y: p.y * escala, fecha: Number.isFinite(fecha) ? fecha : undefined, confianza: p.trust, clase: p.kind }
+  })
   const links: EnlaceRed[] = []
   const hayTema = new Set(atlas.clusters.map((c) => c.id))
   for (const r of recuerdos) if (hayTema.has(r.tema)) links.push({ source: r.id, target: `tema:${r.tema}`, tipo: 'tema' })

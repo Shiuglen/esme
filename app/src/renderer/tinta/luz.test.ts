@@ -19,3 +19,10 @@ describe('cicloLuz', () => {
     expect(cicloLuz(tonos, 1)).toBe('rgb(0 0 0)')
   })
 })
+
+describe('mezclar (rgb)', () => {
+  it('mezcla también colores ya mezclados (rgb), para teñir una tinta con el papel', () => {
+    expect(mezclar('rgb(0 0 0)', '#ffffff', 0.5)).toBe('rgb(128 128 128)')
+    expect(mezclar('rgb(10 20 30 / 0.5)', 'rgb(10 20 30)', 1)).toBe('rgb(10 20 30)')
+  })
+})

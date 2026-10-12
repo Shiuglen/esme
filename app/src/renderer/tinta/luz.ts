@@ -1,6 +1,10 @@
 // La luz de Esme: la vida no es un arcoíris, es bioluminiscencia. Tres tonos por tema (--luz, --luz-2, --luz-3):
 // profundos sobre el papel de día, brillantes sobre el papel de tinta de noche. Sirve para SVG y para canvas.
-const rgb = (h: string) => { const n = parseInt(h.replace('#', '').slice(0, 6), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255] }
+const rgb = (c: string) => {
+  const m = c.match(/^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/)
+  if (m) return [Number(m[1]), Number(m[2]), Number(m[3])]
+  const n = parseInt(c.replace('#', '').slice(0, 6), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
 
 export function mezclar(a: string, b: string, t: number): string {
   const x = rgb(a), y = rgb(b)

@@ -3,8 +3,8 @@
 export type Recall = { context: string; tokens: number; ids: string[]; abstained: boolean }
 export type Memory = { id: string; text: string; source: string; kind: string; ts: string; trust: number; compartment: string; score?: number }
 export type Certificate = { forgotten: string[]; sha256: string; ts: string }
-export type AtlasPoint = { id: string; x: number; y: number; h: number; cluster: number; kind: string; source: string }
-export type AtlasCluster = { id: number; label: string; x: number; y: number; size: number }
+export type AtlasPoint = { id: string; x: number; y: number; h: number; cluster: number; kind: string; source: string; ts?: string; trust?: number }
+export type AtlasCluster = { id: number; label: string; terms?: string[]; x: number; y: number; size: number }
 export type Atlas = { points: AtlasPoint[]; clusters: AtlasCluster[] }
 export type MindEvent =
   | { type: 'recall'; who: string; query: string; ids: string[]; tokens: number; abstained: boolean }
