@@ -22,3 +22,10 @@
 - Conflictos (búsqueda web, 3 rondas): sin producto de IA con el nombre exacto. Pendiente antes de lanzar: cribado formal en TMview/USPTO (clases 9, 35, 42) y estrategia de dominio (el .com exacto no se comprobó; usar variante tipo esme.app/hello… al inicio).
 - Descartados por choque con productos de IA: Athanor, Numen, Orrery, Loci, Nacre, Lapis, Apeiron, Kleos, Awen, Pharos, Reverie, Empyrean, Kleo, Lior, Nika, Thea, Rune, Alva. El usuario rechazó además Rebis, Idunn, Oriel, Noumen y Rubedo por poco amables.
 - "Daimon" queda como nombre interno del repositorio/código; la marca visible es Esme.
+
+## Logo (abierto) y compañeros
+- **Logo: pendiente.** Requisitos del usuario: monocromo (el color es una capa intercambiable; nada de atarlo a la esmeralda), único, «bestial» (impresionante), de otro mundo, sofisticado, limpio, que se ame, animable con funciones, mejor que Deska/Claude/OpenAI.
+- Descartado (no repetir): gema 3D realista; gema plana; «e» tallada; anillos; jardín; eclipse/anillo de diamante («triste»); medusa pixel y vectorial; centinela de placas con ojo («geométrico y raro»); dragona pixel; formas orgánicas (mercurio, ferrofluido, flor, rayo, murmuración, S viva: «muertas»); kitsune emblema («bien malo»).
+- Lección: los logos dibujados con código tienen techo de oficio. Camino propuesto: explorar con un generador de imágenes de logos (Recraft/Firefly/FLUX) + referentes del usuario, y después vectorizar y animar.
+- **Compañeros («bichitos») personalizables**: criaturas que viven en los chats y los agentes, al estilo de los mods/buddy de Claude Code (especie, color, accesorios, estados). Especies iniciales posibles: dragona, medusa, centinela, kitsune (prototipos en el scratchpad de la sesión del 11-oct).
+- Identidad provisional: la palabra «esme» (Funnel Display, minúsculas) sin símbolo.
