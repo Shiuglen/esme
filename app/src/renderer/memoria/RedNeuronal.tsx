@@ -12,6 +12,9 @@ type L = LinkObject<NodoRed, EnlaceRed>
 
 const leer = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim()
 const ENCENDIDO_MS = 3500
+// La luz de un recuerdo encendido es aurora: cada nodo tiene su matiz y todos viajan con el tiempo
+const matiz = (id: string) => { let h = 0; for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 360; return h }
+const aurora = (id = '') => `oklch(0.82 0.16 ${((performance.now() / 40 + matiz(id)) % 360).toFixed(0)})`
 
 export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: string; recordados: Recordado[]; onPick(id: string): void }>(
   function RedNeuronal({ atlas, tema, recordados, onPick }, ref) {
@@ -60,7 +63,7 @@ export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: st
             warmupTicks={60} cooldownTicks={160} d3VelocityDecay={0.35} autoPauseRedraw={false} enableNodeDrag={false}
             linkColor={(l) => (l.tipo === 'puente' ? `${colores.texto3}70` : l.tipo === 'tema' ? `${colores.texto3}1c` : `${colores.memoria}40`)}
             linkWidth={(l) => (l.tipo === 'puente' ? 1 : 0.6)}
-            linkDirectionalParticles={0} linkDirectionalParticleWidth={2.4} linkDirectionalParticleSpeed={0.018} linkDirectionalParticleColor={() => colores.acento}
+            linkDirectionalParticles={0} linkDirectionalParticleWidth={2.4} linkDirectionalParticleSpeed={0.018} linkDirectionalParticleColor={(l) => aurora(String(typeof l.source === 'object' ? (l.source as N).id : l.source))}
             nodeRelSize={1} nodeVal={(n) => (n.tipo === 'tema' ? 8 + Math.min(40, n.tam / 6) : 1.6)}
             onNodeClick={(n) => { if (n.tipo === 'recuerdo') onPick(n.id) }}
             nodeLabel={(n) => (n.tipo === 'tema' ? `${n.etiqueta}: ${n.tam} recuerdos` : 'Abrir este recuerdo')}
@@ -79,11 +82,12 @@ export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: st
                 const r = 2 + v * 4.5
                 if (v > 0) {
                   ctx.beginPath(); ctx.arc(x, y, r + 3 + (1 - v) * 10, 0, Math.PI * 2)
-                  ctx.strokeStyle = colores.acento; ctx.globalAlpha = v * 0.6; ctx.lineWidth = 1.2; ctx.stroke(); ctx.globalAlpha = 1
-                  ctx.shadowColor = colores.acento; ctx.shadowBlur = 26 * v
+                  const luz = aurora(n.id)
+                  ctx.strokeStyle = luz; ctx.globalAlpha = v * 0.6; ctx.lineWidth = 1.2; ctx.stroke(); ctx.globalAlpha = 1
+                  ctx.shadowColor = luz; ctx.shadowBlur = 26 * v
                 }
                 ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2)
-                ctx.fillStyle = v > 0 ? colores.acento : `${colores.memoria}e6`; ctx.fill(); ctx.shadowBlur = 0
+                ctx.fillStyle = v > 0 ? aurora(n.id) : `${colores.memoria}d9`; ctx.fill(); ctx.shadowBlur = 0
               }
             }}
           />
@@ -91,14 +95,14 @@ export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: st
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between px-5 pt-4 text-xs">
           <span className="text-texto-3">Red neuronal de tu memoria</span>
           <span className="flex gap-3 text-texto-2 tabular-nums">
-            <span><b className="font-semibold text-acento">{red.nodes.length - temas}</b> recuerdos</span>
+            <span><b className="aurora-texto font-semibold">{red.nodes.length - temas}</b> recuerdos</span>
             <span><b className="font-semibold text-texto">{temas}</b> temas</span>
             <span><b className="font-semibold text-texto">{red.links.length}</b> conexiones</span>
           </span>
         </div>
         <div className="pointer-events-none absolute bottom-4 left-5 grid max-w-[60%] gap-1 font-mono text-[12px] leading-[18px]">
           {recordados.slice(0, 4).map((r) => (
-            <span key={r.id} className="truncate text-texto-2"><span className="text-memoria">[recuerdo]</span> «{r.consulta}» → <span className="text-acento">{r.cuantos}</span></span>
+            <span key={r.id} className="truncate text-texto-2"><span className="text-memoria">[recuerdo]</span> «{r.consulta}» → <span className="aurora-texto">{r.cuantos}</span></span>
           ))}
           <span className="text-atencion">recuerda&gt;<span className="ml-1 inline-block h-3 w-1.5 translate-y-0.5 animate-late bg-atencion" /></span>
         </div>

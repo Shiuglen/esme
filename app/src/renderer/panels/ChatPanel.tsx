@@ -34,8 +34,9 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
   useEffect(() => { log.current?.scrollTo({ top: log.current.scrollHeight, behavior: 'smooth' }) }, [turns])
   const handledSeed = useRef(0)
   useEffect(() => {   // preguntas desde el dock o Cmd+K: esperan a que haya modelo, nunca se pierden
-    if (props.seed?.q && props.seed.n !== handledSeed.current && model && !busy) { handledSeed.current = props.seed.n; void send(props.seed.q) }
-  }, [props.seed?.n, model, busy])
+    // espera a que el motor y su modelo por defecto estén resueltos: si no, saldría con el primero de la lista
+    if (props.seed?.q && props.seed.n !== handledSeed.current && providers.length && model && models.includes(model) && !busy) { handledSeed.current = props.seed.n; void send(props.seed.q) }
+  }, [props.seed?.n, model, models, providers, busy])
 
   const current = providers.find((p) => p.id === provider)
 
@@ -113,7 +114,7 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
               <div className="flex flex-wrap items-center gap-1.5">
                 {t.ids.map((id, k) => (
                   <button key={id} type="button" onClick={() => props.onCite(id)}
-                    className="inline-flex h-6 items-center rounded-full bg-memoria-velo px-2.5 text-xs font-medium text-memoria transition-opacity hover:opacity-80">recuerdo {k + 1}</button>
+                    className="aurora-borde inline-flex h-6 items-center rounded-full bg-memoria-velo px-2.5 text-xs font-medium text-memoria transition-opacity hover:opacity-80">recuerdo {k + 1}</button>
                 ))}
                 <span className="text-xs text-texto-3 tabular-nums">{t.tokens} tokens de memoria</span>
                 {!t.judged && !(busy && i === turns.length - 1) && (

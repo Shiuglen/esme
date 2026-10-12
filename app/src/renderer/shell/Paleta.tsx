@@ -1,15 +1,14 @@
 // Paleta (Ctrl K): busca, navega y actúa. Lo que no sea una acción se convierte en una pregunta para Esme.
 import { Command } from 'cmdk'
-import { CornerDownLeft, MessageSquare, Palette, Search, SunMoon } from 'lucide-react'
+import { CornerDownLeft, MessageSquare, Search, SunMoon } from 'lucide-react'
 import { useState } from 'react'
 import { AJUSTES, SECCIONES, type SeccionId } from './secciones'
 
-const ACENTOS = [['violeta', 'Violeta aurora'], ['esmeralda', 'Esmeralda'], ['zafiro', 'Zafiro'], ['coral', 'Coral']] as const
 const fila = 'flex h-[38px] cursor-pointer items-center gap-2.5 rounded-2 px-2.5 text-texto-2 data-[selected=true]:bg-s3 data-[selected=true]:text-texto'
 const titulo = '[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-texto-3'
 
-export function Paleta({ abierta, onCerrar, onIr, onPreguntar, onTema, onAcento }: {
-  abierta: boolean; onCerrar(): void; onIr(id: SeccionId): void; onPreguntar(q: string): void; onTema(): void; onAcento(a: string): void
+export function Paleta({ abierta, onCerrar, onIr, onPreguntar, onTema }: {
+  abierta: boolean; onCerrar(): void; onIr(id: SeccionId): void; onPreguntar(q: string): void; onTema(): void
 }) {
   const [texto, setTexto] = useState('')
   const hecho = (f: () => void) => () => { f(); setTexto(''); onCerrar() }
@@ -40,9 +39,6 @@ export function Paleta({ abierta, onCerrar, onIr, onPreguntar, onTema, onAcento 
         </Command.Group>
         <Command.Group heading="Apariencia" className={titulo}>
           <Command.Item value="cambiar tema día noche" onSelect={hecho(onTema)} className={fila}><SunMoon className="size-4" strokeWidth={1.5} />Cambiar entre día y noche</Command.Item>
-          {ACENTOS.map(([id, nombre]) => (
-            <Command.Item key={id} value={`acento ${nombre}`} onSelect={hecho(() => onAcento(id))} className={fila}><Palette className="size-4" strokeWidth={1.5} />Acento {nombre.toLowerCase()}</Command.Item>
-          ))}
         </Command.Group>
       </Command.List>
     </Command.Dialog>

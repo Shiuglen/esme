@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Toaster } from 'sonner'
 import { BrainClient, type Atlas as AtlasData, type MindEvent } from './lib/brain'
-import { bridge, type AgentView } from './lib/bridge'
+import { bridge } from './lib/bridge'
 import { cn } from './lib/cn'
 import { RedNeuronal, type Recordado, type RedHandle } from './memoria/RedNeuronal'
 import { Inicio, type EventoMente } from './paginas/Inicio'
@@ -24,14 +24,13 @@ export function App() {
   const [seccion, setSeccion] = useState<SeccionId>(() => cargar('seccion', 'inicio'))
   const [visitadas, setVisitadas] = useState<Set<SeccionId>>(() => new Set([cargar<SeccionId>('seccion', 'inicio')]))
   const [tema, setTema] = useState<'noche' | 'dia'>(() => cargar('tema', 'noche'))
-  const [acento, setAcento] = useState<string>(() => cargar('acento-marca', 'violeta'))
   const [paleta, setPaleta] = useState(false)
   const [brain, setBrain] = useState<BrainClient | null>(null)
   const [recuerdos, setRecuerdos] = useState<number | null>(null)
   const [atlas, setAtlas] = useState<AtlasData | null>(null)
   const [eventos, setEventos] = useState<EventoMente[]>([])
-  const [agentes, setAgentes] = useState<AgentView[]>([])
-  const [ahorrados, setAhorrados] = useState(0)
+  const [memoriaUsada, setMemoriaUsada] = useState(0)
+  const [recordando, setRecordando] = useState(false)
   const [preguntas, setPreguntas] = useState(0)
   const [pensando, setPensando] = useState(false)
   const [memoria, setMemoria] = useState(true)
@@ -40,18 +39,18 @@ export function App() {
   const redRef = useRef<RedHandle>(null)
   const [recordados, setRecordados] = useState<Recordado[]>([])
   const seqEvento = useRef(0)
+  const recordandoT = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const ir = useCallback((id: SeccionId) => { setSeccion(id); setVisitadas((v) => (v.has(id) ? v : new Set(v).add(id))) }, [])
   useEffect(() => { guardar('seccion', seccion) }, [seccion])
   useEffect(() => { document.documentElement.dataset.theme = tema; guardar('tema', tema) }, [tema])
-  useEffect(() => { document.documentElement.dataset.acento = acento; guardar('acento-marca', acento) }, [acento])
   // en escritorio, los botones de la ventana toman el color de la barra del tema activo
   useEffect(() => {
     const v = bridge.ventana(); if (!v) return
     document.documentElement.dataset.plataforma = v.plataforma
     const css = getComputedStyle(document.documentElement)
     v.colores({ fondo: css.getPropertyValue('--superficie-1').trim(), simbolos: css.getPropertyValue('--texto-2').trim() })
-  }, [tema, acento])
+  }, [tema])
 
   // atajos: Ctrl K paleta, Ctrl 1…6 secciones, Ctrl , ajustes
   useEffect(() => {
@@ -83,31 +82,30 @@ export function App() {
     return brain.events((e: MindEvent) => {
       const nuevo = (tipo: EventoMente['tipo'], texto: string, detalle?: string) =>
         setEventos((v) => [{ id: ++seqEvento.current, ts: Date.now(), tipo, texto, detalle }, ...v].slice(0, 40))
-      if (e.type === 'recall') { if (e.ids.length) { redRef.current?.encender(e.ids); setRecordados((v) => [{ id: ++seqEvento.current, consulta: e.query.slice(0, 80), cuantos: e.ids.length }, ...v].slice(0, 10)); nuevo('recall', `Recordé ${e.ids.length} ${e.ids.length === 1 ? 'cosa' : 'cosas'} para «${e.query.slice(0, 60)}»`, e.who) } }
+      if (e.type === 'recall') { if (e.ids.length) { redRef.current?.encender(e.ids); setRecordando(true); clearTimeout(recordandoT.current); recordandoT.current = setTimeout(() => setRecordando(false), 2600); setRecordados((v) => [{ id: ++seqEvento.current, consulta: e.query.slice(0, 80), cuantos: e.ids.length }, ...v].slice(0, 10)); nuevo('recall', `Recordé ${e.ids.length} ${e.ids.length === 1 ? 'cosa' : 'cosas'} para «${e.query.slice(0, 60)}»`, e.who) } }
       if (e.type === 'remember') nuevo('remember', 'Guardé un recuerdo nuevo')
       if (e.type === 'forget') nuevo('forget', `Olvidé ${e.ids.length} ${e.ids.length === 1 ? 'recuerdo' : 'recuerdos'}`)
       if (e.type === 'ingest') nuevo('ingest', `Absorbí ${e.added} recuerdos nuevos`)
       if (e.type === 'forget' || e.type === 'ingest' || e.type === 'remember') refrescar()
     })
   }, [brain, refrescar])
-  useEffect(() => { void bridge.agents?.().then(setAgentes).catch(() => setAgentes([])) }, [])
 
   const preguntar = (q: string) => { setSemilla((s) => ({ q, n: s.n + 1 })); setPreguntas((n) => n + 1); ir('conversacion') }
   const enfocarRecuerdo = (id: string) => { setEnfocado(id); ir('memoria'); setTimeout(() => redRef.current?.enfocar(id), 60) }
 
   const pagina = (id: SeccionId) => {
     switch (id) {
-      case 'inicio': return <Inicio conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} eventos={eventos} agentes={agentes} ahorrados={ahorrados} preguntas={preguntas}
+      case 'inicio': return <Inicio conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} eventos={eventos} estadoEsme={pensando ? 'pensando' : recordando ? 'recordando' : 'reposo'} memoriaUsada={memoriaUsada} preguntas={preguntas}
         memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar} onIr={ir} />
       case 'conversacion': return (
         <div className="mx-auto flex h-full max-w-[880px] flex-col px-6 pt-4 pb-5">
-          <ChatPanel brain={memoria ? brain : null} onCite={enfocarRecuerdo} onRecalled={(t) => setAhorrados((s) => s + Math.max(0, 1500 - t))} seed={semilla} onBusy={setPensando} />
+          <ChatPanel brain={memoria ? brain : null} onCite={enfocarRecuerdo} onRecalled={(t) => setMemoriaUsada((s) => s + t)} seed={semilla} onBusy={setPensando} />
         </div>)
       case 'taller': return <div className="flex h-full flex-col p-5"><WorkshopPanel day={tema === 'dia'} /></div>
       case 'memoria': return (
         <div className="grid h-full grid-cols-[400px_minmax(0,1fr)]">
           <div className="flex min-h-0 flex-col border-r border-linea bg-s1"><MemoryPanel brain={brain} focusId={enfocado} onFocus={(i) => redRef.current?.enfocar(i)} onChanged={refrescar} /></div>
-          <div className="relative min-h-0 overflow-hidden"><RedNeuronal ref={redRef} atlas={atlas} tema={`${tema}-${acento}`} recordados={recordados} onPick={setEnfocado} /></div>
+          <div className="relative min-h-0 overflow-hidden"><RedNeuronal ref={redRef} atlas={atlas} tema={tema} recordados={recordados} onPick={setEnfocado} /></div>
         </div>)
       case 'ajustes': return <div className="mx-auto h-full max-w-[760px] overflow-y-auto px-6 py-6"><SettingsPanel /></div>
       case 'uso': return <Proximamente titulo="Uso" texto="Aquí verás lo que gastas por modelo, tu actividad día a día como en GitHub, tus creaciones y cómo crece tu mente." />
@@ -130,7 +128,7 @@ export function App() {
         </main>
       </div>
       <Paleta abierta={paleta} onCerrar={() => setPaleta(false)} onIr={ir} onPreguntar={preguntar}
-        onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} onAcento={setAcento} />
+        onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} />
       <Toaster theme={tema === 'noche' ? 'dark' : 'light'} position="bottom-right" toastOptions={{ style: { background: 'var(--superficie-2)', border: '1px solid var(--linea)', color: 'var(--texto)', fontFamily: 'inherit' } }} />
     </div>
   )

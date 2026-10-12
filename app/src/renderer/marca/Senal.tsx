@@ -1,5 +1,5 @@
 // Esme viva: el símbolo «Señal». En reposo está quieto; al pensar, un impulso de luz recorre la línea más cercana;
-// al recordar, la cresta se eleva. El color es una capa: --senal-fondo, --senal-frente, --senal-impulso.
+// al recordar, la cresta se eleva. Las líneas son blanco y negro (--senal-fondo, --senal-frente); el impulso es aurora.
 import { useEffect, useId, useState } from 'react'
 import { impulso, lineasSenal } from './senal'
 
@@ -25,6 +25,7 @@ export function Senal({ tam = 24, estado = 'reposo', tapa = 'var(--fondo)', titu
   const alto = estado === 'recordando' ? 33 + 3 * Math.sin(t * 4) : 30
   const ls = lineasSenal({ lineas, t: estado === 'reposo' ? 0 : t * 1.1, alto, ancho: mini ? [4.2, 6.4] : [1, 2.8], muestras: mini ? 48 : 96 })
   const imp = estado === 'pensando' ? impulso((((t / 1.5) % 1.3) / 1.3) * 1.15 - 0.05, t * 1.1, alto, lineas) : null
+  const aurora = `oklch(0.84 0.16 ${((300 + t * 55) % 360).toFixed(0)})`
 
   return (
     <svg viewBox="6 8 88 86" width={tam} height={tam} role="img" aria-label={titulo} className={className}>
@@ -46,7 +47,7 @@ export function Senal({ tam = 24, estado = 'reposo', tapa = 'var(--fondo)', titu
       ))}
       {imp && imp.luz > 0 && (
         <>
-          <circle cx={imp.x} cy={imp.y} r={mini ? 7 : 3.4} style={{ fill: 'var(--senal-impulso)' }} filter={`url(#${id}b)`} opacity={0.95 * imp.luz} />
+          <circle cx={imp.x} cy={imp.y} r={mini ? 7 : 3.4} style={{ fill: aurora }} filter={`url(#${id}b)`} opacity={0.95 * imp.luz} />
           <circle cx={imp.x} cy={imp.y} r={mini ? 3.2 : 1.5} fill="#fff" opacity={imp.luz} />
         </>
       )}

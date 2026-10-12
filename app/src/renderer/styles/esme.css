@@ -1,5 +1,6 @@
-/* esme — sistema de diseño en la app. Fuente de verdad: el artefacto «esme» (tokens.json).
-   El color es una capa: los componentes solo usan roles; el acento cambia con data-acento. */
+/* esme — sistema de diseño en la app. La interfaz es neutra (claro y oscuro): no tiene un color de marca.
+   El color solo aparece donde hay vida —Esme pensando, la memoria encendiéndose, el foco— y nunca es fijo:
+   es la aurora (--aurora), que gira sola. Los componentes solo usan roles. */
 @layer legado;
 @import "./app.css" layer(legado);
 @import "tailwindcss";
@@ -46,10 +47,10 @@
   --fondo: #07080b; --superficie-1: #0e1015; --superficie-2: #15181f; --superficie-3: #1c2029;
   --linea: #22262f; --linea-fuerte: #626a7c;
   --texto: #f2f3f5; --texto-2: #a3a9b4; --texto-3: #7d8491;
-  --acento: #b9a6ff; --sobre-acento: #170f38; --acento-velo: #1e1834; --foco: #f2f3f5;
-  --memoria: #7fdcd0; --memoria-velo: #0f2826; --atencion: #f2b661; --atencion-velo: #2a2113;
+  --acento: #f2f3f5; --sobre-acento: #0b0c0f; --acento-velo: #1a1d24; --foco: #f2f3f5;
+  --memoria: #d6dce8; --memoria-velo: #161a22; --atencion: #f2b661; --atencion-velo: #2a2113;
   --peligro: #f27a8c; --peligro-velo: #2c1520; --info: #9ab0d6;
-  --actividad-0: #14171e; --actividad-1: #2a2350; --actividad-2: #4a3a8f; --actividad-3: #7a63cf; --actividad-4: var(--acento);
+  --actividad-0: #14171e; --actividad-1: #262a33; --actividad-2: #3e4451; --actividad-3: #737a88; --actividad-4: #d6dce8;
   --cristal: rgba(14, 16, 21, 0.78);
   --sombra-flotante: 0 18px 48px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.45);
 }
@@ -59,17 +60,21 @@
   --fondo: #f6f6f4; --superficie-1: #ffffff; --superficie-2: #f0f0ed; --superficie-3: #e6e6e2;
   --linea: #e0e0dc; --linea-fuerte: #7f848f;
   --texto: #0b0c0f; --texto-2: #454a54; --texto-3: #62676f;
-  --acento: #5b3fd6; --sobre-acento: #ffffff; --acento-velo: #ece8fb; --foco: #0b0c0f;
-  --memoria: #0f766e; --memoria-velo: #e1f3f0; --atencion: #8a5300; --atencion-velo: #fbf0dc;
+  --acento: #0b0c0f; --sobre-acento: #ffffff; --acento-velo: #ececea; --foco: #0b0c0f;
+  --memoria: #3f4654; --memoria-velo: #eceef2; --atencion: #8a5300; --atencion-velo: #fbf0dc;
   --peligro: #a4213a; --peligro-velo: #fbe6ea; --info: #3a5487;
-  --actividad-0: #ececea; --actividad-1: #c8ece0; --actividad-2: #86d3b7; --actividad-3: #2ea582;
+  --actividad-0: #ececea; --actividad-1: #d6d8dc; --actividad-2: #a6abb4; --actividad-3: #5d6370; --actividad-4: #0b0c0f;
   --cristal: rgba(255, 255, 255, 0.82);
   --sombra-flotante: 0 18px 48px rgba(20, 22, 28, 0.14), 0 2px 8px rgba(20, 22, 28, 0.08);
 }
-/* El acento es una capa: cambia solo estos tokens */
-[data-theme="noche"][data-acento="zafiro"] { --acento: #7fa8ff; --sobre-acento: #0a1838; --acento-velo: #141f38; --actividad-1: #1a2a4d; --actividad-2: #2c4b8a; --actividad-3: #4f78c9 }
-[data-theme="noche"][data-acento="esmeralda"] { --acento: #19c79a; --sobre-acento: #03241b; --acento-velo: #0d2a24; --actividad-1: #0f3a30; --actividad-2: #0f6550; --actividad-3: #139a76 }
-[data-theme="noche"][data-acento="coral"] { --acento: #ff8a6b; --sobre-acento: #3a1208; --acento-velo: #2e1712; --actividad-1: #46241a; --actividad-2: #7a3a26; --actividad-3: #c45a3c }
+/* La aurora: el único color de la app, y está vivo. Gira sola (14 s por vuelta) y se queda quieta si pides menos movimiento. */
+@property --giro { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
+:root {
+  --aurora: conic-gradient(from var(--giro), #ff7ac6, #8b6cff, #45d9ff, #8dffb0, #ffd36e, #ff7ac6);
+  --aurora-lineal: linear-gradient(100deg, #ff7ac6, #8b6cff 30%, #45d9ff 55%, #8dffb0 78%, #ffd36e);
+  animation: aurora-giro 14s linear infinite;
+}
+@keyframes aurora-giro { to { --giro: 360deg } }
 
 /* Puente: los paneles antiguos adoptan los roles nuevos sin reescribirse todavía */
 :root, [data-theme] {
@@ -108,10 +113,16 @@
 .barra-ventana :is(button, a, input, kbd, [title], [role="button"]) { -webkit-app-region: no-drag; app-region: no-drag }
 [data-plataforma="darwin"] .barra-ventana { padding-left: 86px }
 
-/* «Señal», el símbolo de Esme. Paleta provisional: aurora (violeta). data-marca cambia solo la marca. */
-:root { --senal-fondo: #2a2470; --senal-frente: #c9bbff; --senal-impulso: #b9a6ff; }
-:root[data-marca="solar"] { --senal-fondo: #4a1608; --senal-frente: #ffc26e; --senal-impulso: #ffb347; }
-:root[data-marca="luz"] { --senal-fondo: #34343c; --senal-frente: #f4f1ea; --senal-impulso: #ffffff; }
-:root[data-theme="dia"] { --senal-fondo: #c4bfe6; --senal-frente: #2a1f73; --senal-impulso: #6d5bd0; }
-:root[data-theme="dia"][data-marca="solar"] { --senal-fondo: #f0cfae; --senal-frente: #8a2f0b; --senal-impulso: #d9620f; }
-:root[data-theme="dia"][data-marca="luz"] { --senal-fondo: #c9c6bd; --senal-frente: #0b0b0d; --senal-impulso: #0b0b0d; }
+/* «Señal», el símbolo de Esme: líneas en blanco y negro; su impulso es aurora (lo pinta el componente). */
+:root { --senal-fondo: #2e3038; --senal-frente: #f4f1ea; }
+:root[data-theme="dia"] { --senal-fondo: #c9c6bd; --senal-frente: #0b0b0d; }
+
+/* Detalles de aurora */
+.aurora-texto { background: var(--aurora-lineal); -webkit-background-clip: text; background-clip: text; color: transparent }
+.aurora-borde, .aurora-foco { position: relative; isolation: isolate }
+.aurora-borde::before, .aurora-foco::before {
+  content: ""; position: absolute; inset: 0; padding: 1px; border-radius: inherit; background: var(--aurora); pointer-events: none;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.aurora-foco::before { opacity: 0; transition: opacity 0.35s var(--ease-salida) }
+.aurora-foco:focus-within::before { opacity: 0.9 }

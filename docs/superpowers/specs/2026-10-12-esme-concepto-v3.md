@@ -143,3 +143,14 @@ Se vieron unos 150 posts más y se marcaron otros 47 como «No me interesa». To
   - **23rd.dev** (shaders y fondos).
   - **beautifului**, **bencho** y **boardui**.
   - La skill `/animation-performance` de Emil Kowalski: reglas de animación que los agentes suelen saltarse (blur pequeño, no animar sombras…). Se instala en Esme como habilidad.
+
+## Sistema visual (12-oct, decisión del usuario)
+- **La interfaz es neutra, en claro y oscuro. No tiene un color de marca:** las acciones van en blanco (noche) o negro (día) y la memoria en perla. Atención, peligro e info son solo estados.
+- **El único color es la aurora, y está viva:** un gradiente cónico (`--aurora`) cuyo ángulo gira solo, más su versión lineal. Aparece solo donde hay vida:
+  - el borde del compositor al escribir;
+  - el hilo del menú activo;
+  - los recuerdos citados;
+  - las luces y los impulsos de la red neuronal, cada nodo con su matiz;
+  - el halo de Esme;
+  - el impulso de la Señal.
+- **Marca, la «Señal»:** líneas en blanco y negro (potencial de acción que se propaga en un plano isométrico). Su impulso de luz es aurora. Se descarta la paleta fija: violeta, ámbar y esmeralda dejan de ser color de marca.
