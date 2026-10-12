@@ -380,3 +380,43 @@ describe('Taller: hallazgos de la revisión', () => {
     })
   })
 })
+
+describe('Taller: arena', () => {
+  it('las tareas de una arena comparten su id y lo conservan al recargar', async () => {
+    const s = sesiones(async () => 'end_turn')
+    const a = crear(s.abrir).crear({ motor, carpeta: null, texto: 'x', arena: 'arena001' })
+    const b = t!.crear({ motor, carpeta: null, texto: 'x', arena: 'arena001' })
+    expect(a.arena).toBe('arena001'); expect(b.arena).toBe('arena001')
+    await esperar(a.id, 'lista'); await esperar(b.id, 'lista')
+    t!.cerrarTodo()
+    const otro = new Taller({ dir, emitir: () => {} }); await otro.cargar()
+    expect(otro.lista().map((x) => x.arena)).toEqual(['arena001', 'arena001'])
+    otro.cerrarTodo()
+  })
+})
+
+describe('Taller: límites de peticiones', () => {
+  it('ante un límite del proveedor reintenta con espera, lo cuenta en la línea de tiempo y termina bien', async () => {
+    let intentos = 0
+    const s = sesiones(async () => { if (++intentos < 3) throw new Error('Internal error: Rate limit exceeded. Please try again later.'); return 'end_turn' })
+    const tarea = crear(s.abrir, undefined, { esperasReintento: [5, 5, 5] }).crear({ motor, carpeta: null, texto: 'x' })
+    await esperar(tarea.id, 'lista')
+    expect(intentos).toBe(3)
+    const ev = await t!.eventos(tarea.id)
+    expect(ev.filter((e) => e.tipo === 'reintento')).toHaveLength(2)
+    expect(ev.some((e) => e.tipo === 'fallo')).toBe(false)
+  })
+  it('si el límite sigue después de los reintentos, falla con el mensaje del proveedor', async () => {
+    const s = sesiones(async () => { throw new Error('429 Too Many Requests') })
+    const tarea = crear(s.abrir, undefined, { esperasReintento: [5] }).crear({ motor, carpeta: null, texto: 'x' })
+    await esperar(tarea.id, 'error')
+    expect(t!.lista()[0].error).toContain('429')
+  })
+  it('otros errores no se reintentan', async () => {
+    let intentos = 0
+    const s = sesiones(async () => { intentos++; throw new Error('Model is unavailable') })
+    const tarea = crear(s.abrir, undefined, { esperasReintento: [5, 5] }).crear({ motor, carpeta: null, texto: 'x' })
+    await esperar(tarea.id, 'error')
+    expect(intentos).toBe(1)
+  })
+})

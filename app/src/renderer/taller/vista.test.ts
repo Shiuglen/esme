@@ -76,3 +76,9 @@ describe('explicarError', () => {
   })
   it('otro error: sin explicación especial', () => expect(explicarError('ENOENT', 'OpenCode', '')).toBeNull())
 })
+
+describe('explicarError: límites', () => {
+  it('el límite de peticiones se explica aparte (no es culpa del modelo)', () => {
+    expect(explicarError('Internal error: Rate limit exceeded. Please try again later.', 'OpenCode', '')).toMatchObject({ tipo: 'limite', titulo: 'El proveedor ha limitado las peticiones' })
+  })
+})

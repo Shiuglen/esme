@@ -18,6 +18,7 @@ export type Tarea = {
   opciones: OpcionConfig[]; modelo: string | null   // modelo: nombre del valor actual de la opción «model»
   aplicada?: Aplicada   // adónde se llevaron los cambios: carpeta (con deshacer), rama o exportada
   actividadMs: number   // dónde acaba el último cubo: sin eventos nuevos, la interfaz desplaza la micrográfica sola
+  arena?: string   // las tareas que compiten con el mismo encargo comparten este id
 }
 export type MotorElegido = { id: string; nombre: string; comando: string; args: string[] }
 export type SesionMotor = { preguntar(texto: string): Promise<string>; cancelar(): Promise<void>; cerrar(): void; configurar(id: string, valor: string): Promise<void> }
@@ -61,12 +62,13 @@ export class Taller {
   private readonly mcp: () => Mcp | null
   private readonly resolverMotor?: (id: string) => Promise<MotorElegido | null>
   private readonly ahora: () => number
+  private readonly esperas: number[]
   private guardado?: NodeJS.Timeout
   private cerrado = false
 
   constructor(o: { dir: string; emitir(canal: 'cambio' | 'evento' | 'quitada', dato: unknown): void
     abrirSesion?: AbrirSesion; copias?: OperacionesCopia; mcp?: () => Mcp | null
-    resolverMotor?: (id: string) => Promise<MotorElegido | null>; ahora?: () => number }) {
+    resolverMotor?: (id: string) => Promise<MotorElegido | null>; ahora?: () => number; esperasReintento?: number[] }) {
     this.dir = o.dir
     this.dirCopias = join(o.dir, 'copias')
     this.emitir = o.emitir
@@ -75,6 +77,7 @@ export class Taller {
     this.mcp = o.mcp ?? (() => null)
     this.resolverMotor = o.resolverMotor
     this.ahora = o.ahora ?? Date.now
+    this.esperas = o.esperasReintento ?? [8000, 20_000, 45_000]
   }
 
   async cargar(): Promise<void> {
@@ -90,11 +93,11 @@ export class Taller {
     }
   }
 
-  crear(p: { motor: MotorElegido; carpeta: string | null; texto: string; config?: Record<string, string> }): Tarea {
+  crear(p: { motor: MotorElegido; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string }): Tarea {
     let id = nuevoId()
     while (this.registros.has(id)) id = nuevoId()
     const titulo = (p.texto.split('\n').find((l) => l.trim()) ?? '').trim().slice(0, 120)
-    const tarea: Tarea = { id, titulo, texto: p.texto, motor: p.motor.id, motorNombre: p.motor.nombre, carpeta: p.carpeta,
+    const tarea: Tarea = { id, titulo, texto: p.texto, motor: p.motor.id, motorNombre: p.motor.nombre, carpeta: p.carpeta, ...(p.arena ? { arena: p.arena } : {}),
       estado: 'preparando', copia: null, inicio: this.ahora(), turnos: 0, herramientas: 0, cambios: null,
       uso: { entrada: 0, salida: 0, pensamiento: 0 }, permiso: null, actividad: new Array(CUBOS).fill(0), actividadMs: 0, opciones: [], modelo: null }
     tarea.actividadMs = finCubo(tarea.inicio)
@@ -316,7 +319,7 @@ export class Taller {
       t.estado = 'trabajando'; this.cambio(r, true)
       r.inicioTurno = this.ahora()
       this.registrar(r, { tipo: 'usuario', texto })
-      const motivo = await r.sesion.preguntar(texto)
+      const motivo = await this.preguntar(r, texto)
       if (r.descartada || this.cerrado) return
       this.registrar(r, { tipo: 'fin', motivo, ms: this.ahora() - r.inicioTurno })
       const cambios = await this.copias.cambios(t.copia).catch(() => null)
@@ -331,6 +334,23 @@ export class Taller {
     }
     r.resolverPermiso = undefined; t.permiso = null
     this.cambio(r, true)
+  }
+
+  // Los proveedores gratis limitan las peticiones a la vez: ante un límite se reintenta con espera creciente, y se cuenta.
+  private async preguntar(r: Registro, texto: string): Promise<string> {
+    for (let intento = 0; ; intento++) {
+      try { return await r.sesion!.preguntar(texto) } catch (e) {
+        const motivo = e instanceof Error ? e.message : String(e)
+        const limite = /rate limit|too many requests|\b429\b|quota exceeded/i.test(motivo)
+        if (!limite || intento >= this.esperas.length || r.cancelado || r.descartada || this.cerrado) throw e
+        const ms = this.esperas[intento]
+        this.registrar(r, { tipo: 'reintento', ms, motivo })
+        this.cambio(r, true)
+        const fin = Date.now() + ms
+        while (Date.now() < fin && !r.cancelado && !r.descartada && !this.cerrado) await new Promise((ok) => setTimeout(ok, Math.min(250, fin - Date.now())))
+        if (r.cancelado) return 'cancelled'
+      }
+    }
   }
 
   private alPedirPermiso(r: Registro, p: Permiso): Promise<string | 'cancelar'> {

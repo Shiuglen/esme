@@ -47,11 +47,13 @@ export const ESTADOS: Record<TareaTaller['estado'], { texto: string; tono: 'vida
   error: { texto: 'Error', tono: 'peligro' },
 }
 
-export type Explicacion = { tipo: 'sesion' | 'modelo'; titulo: string; consejo: string }
+export type Explicacion = { tipo: 'sesion' | 'modelo' | 'limite'; titulo: string; consejo: string }
 /** Traduce los errores típicos de los motores a qué pasa y qué hacer. null si no es uno conocido. */
 export function explicarError(error: string, motor: string, login: string): Explicacion | null {
   if (/auth(entication|enticate)? required|not authenticated|unauthori[sz]ed|sign in|log ?in required/i.test(error))
     return { tipo: 'sesion', titulo: `${motor} necesita que inicies sesión`, consejo: login || `Inicia sesión en ${motor} desde una terminal.` }
+  if (/rate limit|too many requests|\b429\b|quota exceeded/i.test(error))
+    return { tipo: 'limite', titulo: 'El proveedor ha limitado las peticiones', consejo: 'Los modelos gratis aceptan pocas peticiones a la vez. Espera un poco y pídeselo de nuevo, o usa otro modelo.' }
   if (/deprecated|unavailable|not (found|supported)|no (such|longer) model|model .* (retired|disabled)/i.test(error))
     return { tipo: 'modelo', titulo: 'Ese modelo no está disponible', consejo: 'Elige otro modelo en el selector y pídeselo de nuevo.' }
   return null

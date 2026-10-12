@@ -71,3 +71,11 @@ describe('describirHerramienta', () => {
     expect(describirHerramienta(h({ titulo: '' }))).toEqual({ texto: 'Usa una herramienta' })
   })
 })
+
+describe('reintentos', () => {
+  it('un reintento por límite del proveedor aparece en la línea y explica la espera', () => {
+    const l = plegar([{ tipo: 'usuario', texto: 'a' }, { tipo: 'reintento', ms: 20000, motivo: 'Rate limit exceeded' }])
+    expect(l[1]).toMatchObject({ tipo: 'reintento', ms: 20000 })
+    expect(actividadActual(l)).toBe('Esperando al proveedor: límite de peticiones')
+  })
+})

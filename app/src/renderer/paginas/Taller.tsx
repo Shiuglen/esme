@@ -4,7 +4,7 @@ import { Plus, SquareTerminal } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import type { SeccionId } from '../shell/secciones'
-import { Detalle } from '../taller/Detalle'
+import { Detalle, type Pestana } from '../taller/Detalle'
 import { Escena } from '../taller/Escena'
 import { FilaMotor } from '../taller/FilaMotor'
 import { actividadActual } from '../taller/linea'
@@ -29,7 +29,8 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
   const [seleccion, setSeleccion] = useState<string | null>(null)
   const [resaltada, setResaltada] = useState<string | null>(null)
   const [terminal, setTerminal] = useState(false)
-  const [pestana, setPestana] = useState<'vivo' | 'revision'>('vivo')
+  const [pestana, setPestana] = useState<Pestana>('vivo')
+  const [pedida, setPedida] = useState<{ p: Pestana; n: number } | null>(null)
   const ahora = useAhora(tl.tareas.some(activa) ? 1000 : 0)
 
   // desde un aviso de fuera («Ver»): abre esa tarea
@@ -49,7 +50,13 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
   const ordenadas = useMemo(() => [...tl.tareas].sort((a, b) => Number(activa(b)) - Number(activa(a)) || b.inicio - a.inicio), [tl.tareas])
   const elegir = (id: string) => { setSeleccion(id); void tl.cargar(id) }
   const t = tl.tareas.find((x) => x.id === seleccion)
-  const enfoque = !!t && pestana === 'revision'   // al revisar, la planta se recoge y el detalle gana sitio
+  const enfoque = !!t && pestana !== 'vivo'   // al revisar o comparar, la planta se recoge y el detalle gana sitio
+  const rivales = t?.arena ? tl.tareas.filter((x) => x.arena === t.arena).sort((a, b) => a.inicio - b.inicio) : []
+  // quedarse con una de la arena: las demás se descartan (veredicto negativo para su modelo) y se abre su revisión
+  const quedarme = async (id: string) => {
+    for (const x of rivales) if (x.id !== id) await tl.descartar(x.id)
+    setSeleccion(id); setPedida((v) => ({ p: 'revision', n: (v?.n ?? 0) + 1 }))
+  }
   const cuenta = (e: string) => tl.tareas.filter((x) => x.estado === e).length
   const chips = [
     { n: cuenta('trabajando') + cuenta('preparando'), texto: 'trabajando', punto: '[background:var(--aurora)]' },
@@ -107,14 +114,24 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={t?.id ?? 'nueva'} className="h-full" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.18 }}>
               {t ? (
-                <Detalle t={t} linea={tl.lineas[t.id]} onPestana={setPestana} login={login(t.motor)} onTerminal={() => setTerminal(true)}
+                <Detalle t={t} linea={tl.lineas[t.id]} onPestana={setPestana} pedida={pedida}
+                  arena={rivales.length > 1 ? { tareas: rivales, lineas: tl.lineas, ahora, onVer: (id) => { elegir(id); setPedida((v) => ({ p: 'revision', n: (v?.n ?? 0) + 1 })) }, onQuedarme: quedarme, onCargar: (id) => void tl.cargar(id) } : undefined} login={login(t.motor)} onTerminal={() => setTerminal(true)}
                   revision={{ onAplicar: () => tl.aplicar(t.id, () => void tl.deshacer(t.id)), onDeshacer: () => tl.deshacer(t.id),
                     onGuardarRama: () => tl.guardarRama(t.id), onExportar: () => tl.exportar(t.id), onAbrir: () => tl.abrir(t.id) }} onSeguir={(q) => tl.seguir(t.id, q)} onResponder={(o) => tl.responder(t.id, o)}
                   onParar={() => void tl.parar(t.id)} onDescartar={() => void tl.descartar(t.id)} onAbrir={() => tl.abrir(t.id)}
                   onConfigurar={(o, v) => void tl.configurar(t.id, o, v)} />
               ) : (
                 <NuevaTarea motores={tl.motores} onIrMotores={() => onIr('ajustes')}
-                  onCrear={async (p) => { const id = await tl.crear(p); if (id) setSeleccion(id); return !!id }} />
+                  onCrear={async (ps) => {
+                    // en arena, los competidores salen escalonados: los proveedores gratis limitan las peticiones a la vez
+                    let primera: string | null = null
+                    for (const [i, p] of ps.entries()) {
+                      if (i) await new Promise((ok) => setTimeout(ok, 6000))
+                      const id = await tl.crear(p)
+                      if (id && !primera) { primera = id; elegir(id) }
+                    }
+                    return !!primera
+                  }} />
               )}
             </motion.div>
           </AnimatePresence>

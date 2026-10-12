@@ -43,7 +43,7 @@ type ElectronApi = {
   motores: { detectar(): Promise<MotorDetectado[]> }
   taller: {
     motores(): Promise<MotorTaller[]>; lista(): Promise<TareaTaller[]>; eventos(id: string): Promise<EventoTaller[]>
-    crear(p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string> }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }>
+    crear(p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }>
     seguir(id: string, texto: string): Promise<ResultadoTaller>; responder(id: string, opcion: string): Promise<ResultadoTaller>
     configurar(id: string, opcion: string, valor: string): Promise<ResultadoTaller>; opcionesMotor(motor: string): Promise<OpcionMotor[]>
     aplicar(id: string): Promise<{ ok: true; ficheros: number } | { ok: false; error: string; ficheros?: string[] }>; deshacer(id: string): Promise<ResultadoTaller>
@@ -158,7 +158,7 @@ export const bridge = {
     motores: async (): Promise<MotorTaller[]> => (isElectron() ? window.daimon!.taller.motores() : []),
     lista: async (): Promise<TareaTaller[]> => (isElectron() ? window.daimon!.taller.lista() : []),
     eventos: async (id: string): Promise<EventoTaller[]> => (isElectron() ? window.daimon!.taller.eventos(id) : []),
-    crear: async (p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string> }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }> =>
+    crear: async (p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }> =>
       (isElectron() ? window.daimon!.taller.crear(p) : SOLO_ESCRITORIO),
     seguir: async (id: string, texto: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.seguir(id, texto) : SOLO_ESCRITORIO),
     responder: async (id: string, opcion: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.responder(id, opcion) : SOLO_ESCRITORIO),

@@ -1,7 +1,7 @@
 // El detalle de una tarea: qué se pidió, qué hace el motor en vivo (plan, herramientas, texto), los permisos que pide,
 // los cambios en su copia y cómo seguir. Descartar es en dos pasos: borra la copia y su rama, y eso no se deshace.
 import {
-  ArrowUp, Brain, Check, ChevronRight, Circle, CircleCheck, Eye, FolderOpen, GitBranch, Globe, LoaderCircle, MoveRight, PencilLine,
+  ArrowUp, Brain, Hourglass, Check, ChevronRight, Circle, CircleCheck, Eye, FolderOpen, GitBranch, Globe, LoaderCircle, MoveRight, PencilLine,
   Search, ShieldCheck, Square, SquareTerminal, Trash2, Wrench, X, type LucideIcon,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -10,6 +10,7 @@ import { Markdown } from '../chat/Markdown'
 import type { TareaTaller } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { Revision, type AccionesRevision } from './Revision'
+import { Arena } from './Arena'
 import { contarLineas } from './diff'
 import { PastillaEstado } from './FilaMotor'
 import { describirHerramienta, type ItemLinea } from './linea'
@@ -21,14 +22,17 @@ const ICONO_CLASE: Record<string, LucideIcon> = {
 }
 const PERMISO: Record<string, string> = { allow_once: 'Permitir', allow_always: 'Permitir siempre', reject_once: 'Rechazar', reject_always: 'Rechazar siempre' }
 
-export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, onDescartar, onAbrir, onConfigurar, onTerminal, revision, onPestana }: {
-  t: TareaTaller; linea: ItemLinea[] | undefined; login?: string; onTerminal(): void; revision: AccionesRevision; onPestana?(p: 'vivo' | 'revision'): void
+export type Pestana = 'vivo' | 'revision' | 'arena'
+export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, onDescartar, onAbrir, onConfigurar, onTerminal, revision, onPestana, arena, pedida }: {
+  t: TareaTaller; linea: ItemLinea[] | undefined; login?: string; onTerminal(): void; revision: AccionesRevision; onPestana?(p: Pestana): void
+  arena?: Omit<React.ComponentProps<typeof Arena>, 'actual'>; pedida?: { p: Pestana; n: number } | null
   onSeguir(texto: string): Promise<boolean>; onResponder(opcion: string): void; onParar(): void; onDescartar(): void; onAbrir(): void
   onConfigurar(opcion: string, valor: string): void
 }) {
-  const [pestana, setPestana] = useState<'vivo' | 'revision'>('vivo')
+  const [pestana, setPestana] = useState<Pestana>(t.arena ? 'arena' : 'vivo')
   const [confirmar, setConfirmar] = useState(false)
-  useEffect(() => { setPestana('vivo'); setConfirmar(false) }, [t.id])
+  useEffect(() => { setPestana(t.arena && arena && arena.tareas.length > 1 ? 'arena' : 'vivo'); setConfirmar(false) }, [t.id])   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (pedida) setPestana(pedida.p) }, [pedida?.n])   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { onPestana?.(pestana) }, [pestana, onPestana])
   useEffect(() => { if (!confirmar) return; const k = setTimeout(() => setConfirmar(false), 4500); return () => clearTimeout(k) }, [confirmar])
   const enMarcha = activa(t)
@@ -73,10 +77,11 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
           </span>
         </div>
         <nav className="mt-3 flex gap-1" aria-label="Vista de la tarea">
-          {(['vivo', 'revision'] as const).map((p) => (
+          {(['vivo', 'revision', ...(arena && arena.tareas.length > 1 ? ['arena' as const] : [])] as Pestana[]).map((p) => (
             <button key={p} type="button" onClick={() => setPestana(p)} aria-current={pestana === p}
               className={cn('relative h-8 rounded-2 px-3 text-[13px] transition-colors', pestana === p ? 'bg-s2 text-texto' : 'text-texto-3 hover:text-texto-2')}>
-              {p === 'vivo' ? 'En vivo' : 'Revisión'}
+              {p === 'vivo' ? 'En vivo' : p === 'revision' ? 'Revisión' : 'Arena'}
+              {p === 'arena' && arena && <span className="ml-1.5 rounded-full bg-s3 px-1.5 text-[11px] tabular-nums text-texto-2">{arena.tareas.length}</span>}
               {p === 'revision' && !!t.cambios?.ficheros && <span className="ml-1.5 rounded-full bg-s3 px-1.5 text-[11px] tabular-nums text-texto-2">{t.cambios.ficheros}</span>}
             </button>
           ))}
@@ -99,7 +104,7 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
         )
       })()}
       <div className="min-h-0 flex-1">
-        {pestana === 'revision' ? <Revision t={t} linea={linea} acciones={revision} /> : <EnVivo t={t} linea={linea} />}
+        {pestana === 'arena' && arena ? <Arena {...arena} actual={t.id} /> : pestana === 'revision' ? <Revision t={t} linea={linea} acciones={revision} /> : <EnVivo t={t} linea={linea} />}
       </div>
 
       {t.permiso && (
@@ -174,6 +179,10 @@ function Item({ i }: { i: ItemLinea }) {
         <span className="h-px flex-1 bg-linea" />{motivoFin(i.motivo)} en {duracion(i.ms)}<span className="h-px flex-1 bg-linea" />
       </div>)
     case 'fallo': return <div className="rounded-3 border border-peligro/40 bg-peligro-velo px-3.5 py-2.5 text-[13px] text-peligro">{i.mensaje}</div>
+    case 'reintento': return (
+      <p className="flex items-center gap-2 text-[12.5px] text-atencion" title={i.motivo}>
+        <Hourglass className="size-3.5 shrink-0" strokeWidth={1.75} />El proveedor limita las peticiones: lo reintento en {Math.round(i.ms / 1000)} s
+      </p>)
   }
 }
 

@@ -45,7 +45,8 @@ export function Escena({ tareas, seleccion, resaltada, ahora, compacta = false, 
     sitios.current = asignarLugares(sitios.current, ids)
     return ids.map((id) => {
       const lugar = LUGARES[sitios.current.get(id)!]
-      return { t: tareas.find((x) => x.id === id)!, lugar, ruta: ruta(lugar), fase: semilla(id) }
+      const t = tareas.find((x) => x.id === id)!
+      return { t, lugar, ruta: ruta(lugar), fase: semilla(t.arena ?? id) }   // las de una arena laten a la vez: es una carrera
     })
   }, [tareas])
   const libres = compacta ? [] : LUGARES.filter((_, k) => ![...sitios.current.values()].includes(k)).slice(0, maquinas.length ? 1 : 4)

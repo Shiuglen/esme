@@ -96,7 +96,7 @@ export function useTaller() {
   const hecho = (r: ResultadoTaller, ok?: string) => { if (!r.ok) toast.error(r.error); else if (ok) toast(ok); return r.ok }
   return {
     motores, tareas, lineas, inicioTurno: inicioTurno.current, cargar,
-    crear: async (p: { motor: string; carpeta: string | null; texto: string; config: Record<string, string> }) => {
+    crear: async (p: { motor: string; carpeta: string | null; texto: string; config: Record<string, string>; arena?: string }) => {
       const r = await bridge.taller.crear(p)
       if (!r.ok) { toast.error(r.error); return null }
       setTareas((v) => (v.some((x) => x.id === r.tarea.id) ? v : [r.tarea, ...v]))

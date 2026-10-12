@@ -1,5 +1,6 @@
 // Una fila del Taller por tarea, con densidad de HUD: motor y modelo, estado, la cifra grande (el tiempo), la micrográfica,
 // qué hace ahora mismo y cuatro métricas. Si un motor lleva rato sin dar señales, lo dice y propone qué mirar.
+import { Swords } from 'lucide-react'
 import type { TareaTaller } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { fmtTokens, fmtUSD } from '../chat/formatos'
@@ -53,6 +54,7 @@ export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida
         <span className="text-[13px] font-medium text-texto">{t.motorNombre}</span>
         {t.modelo && <span className="min-w-0 truncate font-mono text-[11px] text-texto-3">{modeloCorto(t.modelo)}</span>}
         <PastillaEstado estado={t.estado} />
+        {t.arena && <span className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full border border-linea px-1.5 text-[11px] text-texto-3" title="Compite en una arena"><Swords className="size-3" strokeWidth={1.75} />arena</span>}
         <span className={cn('ml-auto font-display text-[26px] leading-none font-light tabular-nums', enMarcha ? 'text-texto' : 'text-texto-2')}>{grande}</span>
       </div>
       <div className="mt-1.5 flex items-center gap-3">

@@ -12,6 +12,7 @@ export type ItemLinea =
   | { tipo: 'plan'; clave: string; pasos: { texto: string; estado: string }[] }
   | { tipo: 'fin'; clave: string; motivo: string; ms: number }
   | { tipo: 'fallo'; clave: string; mensaje: string }
+  | { tipo: 'reintento'; clave: string; ms: number; motivo: string }
 
 const cambiar = (l: ItemLinea[], i: number, nuevo: ItemLinea) => { const c = l.slice(); c[i] = nuevo; return c }
 
@@ -39,6 +40,7 @@ export function aplicar(l: ItemLinea[], e: Evento): ItemLinea[] {
     case 'usuario': return [...l, { tipo: 'usuario', clave: `usuario-${l.length}`, texto: e.texto }]
     case 'fin': return [...l, { tipo: 'fin', clave: `fin-${l.length}`, motivo: e.motivo, ms: e.ms }]
     case 'fallo': return [...l, { tipo: 'fallo', clave: `fallo-${l.length}`, mensaje: e.mensaje }]
+    case 'reintento': return [...l, { tipo: 'reintento', clave: `reintento-${l.length}`, ms: e.ms, motivo: e.motivo }]
     default: return l
   }
 }
@@ -50,6 +52,7 @@ export function actividadActual(l: ItemLinea[]): string | null {
   const u = l[l.length - 1]
   if (!u || u.tipo === 'fin' || u.tipo === 'fallo' || u.tipo === 'usuario') return null
   if (u.tipo === 'pensamiento') return 'Pensando…'
+  if (u.tipo === 'reintento') return 'Esperando al proveedor: límite de peticiones'
   if (u.tipo === 'texto') return u.texto.trim().split('\n').filter(Boolean).pop() ?? null
   if (u.tipo === 'plan') return u.pasos.find((p) => p.estado === 'in_progress')?.texto ?? 'Planeando'
   const enCurso = l.findLast((x) => x.tipo === 'herramienta' && (x.estado === 'in_progress' || x.estado === 'pending'))
