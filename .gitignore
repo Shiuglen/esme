@@ -11,3 +11,4 @@ out/
 dist/
 *.tsbuildinfo
 marca/exploracion/
+app/src/renderer/laboratorio/datos/
