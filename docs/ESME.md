@@ -92,7 +92,7 @@
 - **Base visual:** «Usa todo y más». beUI, Motion, shadcn, Arc UI, Kobra, skills de Emil y Jakub, y Spline/Unicorn para 3D, convertidos en un sistema **propio**.
 
 ### Restricciones permanentes
-- **Fuera de todo:** FirmeDigital (datos, servidor 172.20.1.101 y ejemplos).
+- **Fuera de todo:** el proyecto de la empresa del creador, con sus datos, su servidor y sus ejemplos. El nombre está en la configuración global del agente (`~/.claude/CLAUDE.md`) y aquí no se escribe, para que la mente de Esme pueda absorber este documento.
 - **Nunca publicar** en la X del creador. Sí se puede leer y pulsar «No me interesa».
 - **Secretos:** nunca en el vault ni en logs. Se redactan.
 - **Ollama del creador:** está roto. No arrancarlo ni arreglarlo. La memoria no puede depender de él.
@@ -103,6 +103,7 @@
 | Área | Estado | Nota |
 |---|---|---|
 | Red neuronal en la app | ✅ | **12-oct: ya no depende de Ollama.** La Lente corre dentro del cerebro con ONNX Runtime (EmbeddingGemma-300M int8, 309 MB, CPU con la mitad de los núcleos, lotes por presupuesto de tokens y caché). Los vectores siguen siendo compatibles (coseno 0,990 con los guardados). Recuerda en 160–290 ms. La app vuelve a mostrar 2.122 recuerdos. Pendientes: recodificar en el Sueño con el motor nuevo, medir otros codificadores con la Prueba 0 y arreglar la vista de Memoria (Inicio en blanco en el riel y red cortada). |
+| Absorción de la propia Esme | ✅ | **12-oct:** la mente absorbió `docs/` con el botón «absorber» de la app: 212 recuerdos nuevos (2.334 en total), entre ellos ESME.md, la biblioteca del FYP y las specs. **Hallazgo:** la búsqueda solo por significado acierta en unas preguntas («¿qué hace el ser con los modos?») y falla en otras («¿competidor directo?» no encuentra TencentDB). Fallan las tablas y los fragmentos largos. Hay que trocear por filas de tabla y por apartados, recuperar de forma híbrida en todo el camino y medirlo con la Prueba 0 (paso 9). |
 | Prueba 0 (examen de «me conoce») | 🟡 | Hecho el 11-oct (recall 0,77 con EmbeddingGemma). Falta la validación humana del oro y la comparación de punta a punta. |
 | Tálamo que reemplaza los `.md` (MCP para Claude Code) | 🟡 | Hay puerta MCP en el cerebro. No está empaquetado como producto (M1). |
 | Corteza, sueño, desaprender con certificado, Prefrontal, Parlamento, simulador | ❌ | Fases F4–F6. |

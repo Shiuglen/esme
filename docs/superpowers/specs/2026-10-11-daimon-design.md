@@ -35,7 +35,7 @@ Las IAs ponen el lenguaje y el conocimiento general. Daimon pone lo que les falt
 7. **Agnóstico de modelos y de proveedores.** Ninguna pieza externa es imprescindible.
 8. **Honestidad.** Se separan hechos, afirmaciones de terceros e hipótesis. No se inventan cifras.
 9. **La belleza sigue a la sustancia.** La parte visual muestra la red real y se diseña después de que la red funcione.
-10. **FirmeDigital queda fuera de todo**: datos, ejemplos, pruebas y documentación.
+10. **El proyecto de la empresa del creador queda fuera de todo (nombre en la configuración global del agente)**: datos, ejemplos, pruebas y documentación.
 
 ---
 
@@ -168,7 +168,7 @@ Cualquier cambio de la propia mente pasa por modo sombra y por el guardián de i
 - **«¿Cabe en tu PC?»:** antes de descargar un modelo se estiman RAM/VRAM, velocidad y disco. Solo se aceptan formatos seguros (safetensors).
 - **Gobernador:** prioridad mínima del sistema (nice/cgroups) y pausa cuando el usuario usa GPU, juega o ejecuta su modelo local.
 - **Nube elástica:** opcional, con tope de gasto fijado por el usuario (0 $ por defecto) y GPU confidencial (TEE).
-- **Alma:** estado cifrado con la llave del usuario (*zero-knowledge*), versiones con máquina del tiempo, respaldo local y, opcionalmente, en un relevo cifrado en los servidores propios del usuario (nunca el servidor de FirmeDigital), exportable, y recuperación social Shamir 3-de-5.
+- **Alma:** estado cifrado con la llave del usuario (*zero-knowledge*), versiones con máquina del tiempo, respaldo local y, opcionalmente, en un relevo cifrado en los servidores propios del usuario (nunca el servidor de la empresa del creador), exportable, y recuperación social Shamir 3-de-5.
 
 ---
 
@@ -227,7 +227,7 @@ Cualquier cambio de la propia mente pasa por modo sombra y por el guardián de i
 
 **Filtros obligatorios:**
 - Redacción de secretos.
-- **Exclusión total de cualquier fragmento que mencione FirmeDigital** o su ruta.
+- **Exclusión total de cualquier fragmento que mencione el proyecto de la empresa del creador** o su ruta.
 - Exclusión de datos de terceros.
 
 **Construcción del examen:**
@@ -267,7 +267,7 @@ El juez es un modelo distinto del que responde, con rúbrica. Una muestra se rev
 
 | Unidad | Hace | Interfaz | Depende de |
 |---|---|---|---|
-| `ingest` | Lee fuentes, redacta secretos, excluye FirmeDigital, trocea y asigna procedencia | `ingest(fuente) -> [Evento]` | `immune.redact`, `immune.exclude` |
+| `ingest` | Lee fuentes, redacta secretos, excluye el proyecto de la empresa, trocea y asigna procedencia | `ingest(fuente) -> [Evento]` | `immune.redact`, `immune.exclude` |
 | `immune` | Redacción, exclusiones, confianza, compartimentos | Funciones puras + reglas | — |
 | `lens` | Codificador + adaptador personal | `encode(textos) -> vectores`; `train_adapter(pares)` | modelo estático local |
 | `hippocampus` | Almacén exacto, índice, recuperación iterativa, grafo de dependencias, borrado propagado | `store(evento)`, `recall(consulta, k, saltos)`, `forget(id) -> certificado` | `lens`, SQLite |

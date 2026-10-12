@@ -79,7 +79,7 @@ Desde la v1 se usará para seguir desarrollando Daimon.
 - El contenido de la memoria es **dato no confiable** para los agentes: se entrega como contexto citado, nunca como instrucciones.
 - Ninguna clave de proveedor ni ningún token de suscripción pasa por el renderer ni por el cerebro.
 - La app no lee ni guarda credenciales de Claude: el login es del binario.
-- FirmeDigital y los secretos ya están filtrados por el sistema inmune. El ingest de la app usa la misma ruta (`collect`).
+- El proyecto de la empresa y los secretos ya están filtrados por el sistema inmune. El ingest de la app usa la misma ruta (`collect`).
 
 ## 5. Pruebas y verificación
 
