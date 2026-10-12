@@ -7,7 +7,7 @@
 - Librerías/diseño: absorber bookmarks de X, beui.dev y lo mejor → sistema de diseño propio.
 - Inicio de la app: lo decide el diseñador (propuesta visual antes de construir).
 - Taller: agentes en paralelo (worktrees), revisión de diff, aprobaciones visuales, vista previa en vivo.
-- Primera IA: Claude del usuario (binario `claude` sin modificar en PTY, su login).
+- ~~Primera IA: Claude en PTY~~ → corregido el 12-oct: Esme es el agente y los demás son proveedores (ver `2026-10-12-esme-concepto-v3.md`).
 - Ordenador de la mente: lo mejor posible en local ahora; nube después con planes de servicio.
 - Permisos de la mente: niveles elegidos por el usuario; diseñar un sistema ambicioso.
 - GitHub: repos locales + GitHub (gh CLI con login del usuario, nunca guardar token).
