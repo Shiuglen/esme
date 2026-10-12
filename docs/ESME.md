@@ -110,25 +110,35 @@
 | Taller | ✅ | Runtime ACP, planta, HUD, revisión, aplicar con deshacer, router, arena, vista previa con inspector y avisos. |
 | Agente propio de Esme para API | ❌ | Necesita una clave (OpenCode Zen, OpenRouter o Gemini gratis) que pondrá el usuario. |
 | Cambio de modelo ante negativa | ❌ | |
-| Modos visibles | ❌ | |
+| Modos visibles | ❌ | Se ven en el taller del ser (Explorar, Construir, Evolucionar, Sombra) más una página de Autonomía y permisos por mente y motor, estilo Atlas, con «lo que no puede ver». |
 | Tienda | ❌ | Solo la página «Próximamente». |
 | Detección automática de IAs locales | 🟡 | La lista es fija; falta detectar. |
-| Uso | 🟡 | Gasto, actividad y fuera de Esme están. Faltan el uso de los motores del Taller, creaciones, crecimiento de la mente y GitHub. |
-| Identidad «Tinta y Luz» | ❌ | **La interfaz actual (cristal más malla de gradiente) es una tendencia, no nuestra identidad: rehacerla.** |
-| Personaje, bichitos y mini ordenador animal | ❌ | |
+| Uso | 🟡 | Gasto, actividad y fuera de Esme están. Faltan el uso de los motores del Taller, creaciones, crecimiento de la mente y GitHub. Del FYP: historias («dónde se fue tu dinero»), ranking por motor, auditoría y KPI con acción. |
+| Identidad «Tinta y Luz» | ❌ | **La interfaz actual (cristal más malla de gradiente) es una tendencia, no nuestra identidad: rehacerla.** El FYP lo confirma: lo que más brilla es materia impresa (grabado, trama de puntos, tinta electrónica, pixel art). **Lo nuestro: la tinta la traza la red real del usuario.** |
+| Personaje, bichitos y mini ordenador animal | ❌ | Del FYP: el taller del personaje cambia con el modo (son los modos visibles), vive en notificaciones y bordes, y hay un bichito por motor. **Lo nuestro: el ser nace de la red de cada usuario (no hay dos iguales).** |
 | Bienvenida «la mente despierta» | ❌ | |
 | Voz, móvil y mensajería | ❌ | En fases. |
-| Absorción total del FYP | 🟡 | Hay 55 publicaciones analizadas en `specs/2026-10-12-lenguaje-visual-v2.md` y `esme-concepto-v3.md`. **Falta una biblioteca completa y estructurada de TODO**, no solo capturas. |
+| Absorción total del FYP | ✅ | **12-oct (tarde):** 215 publicaciones leídas, 52 de oro analizadas con imágenes y fotogramas. Biblioteca en `docs/investigacion/fyp-2026-10-12-biblioteca.md` (con hojas y JSON en bruto). Antes había 55 en `specs/2026-10-12-lenguaje-visual-v2.md`. **Se repite cada semana:** el FYP cambia y la regla es lo más nuevo, días o una semana como mucho. |
 
 ## 4. Orden de trabajo (decidido por Esme con la regla madre)
 1. ✅ **Esta fuente de verdad** y su copia en el vault y en la memoria (para no perder nada).
 2. ✅ **Revivir el corazón:** red neuronal sin Ollama (EmbeddingGemma en un motor propio, local y ligero) y vuelta a medir con la Prueba 0.
-3. **Absorción total del FYP:** biblioteca estructurada de cada publicación (técnica, por qué es buena, cómo la supera Esme), guardada en el repo y en el vault.
+3. ✅ **Absorción total del FYP:** biblioteca estructurada de cada publicación (técnica, por qué es buena, cómo la supera Esme), guardada en el repo y en el vault.
 4. **Identidad «Tinta y Luz» escalada**, nacida de la red real y no de una moda. Rehacer el sistema visual y la Señal dentro de ella.
+   - De día es grabado vivo; de noche, luz.
+   - La red se dibuja como plumilla.
+   - El chat responde con interfaz generativa en la misma tinta.
 5. **Modos visibles, cambio de modelo ante negativa y agente propio** (con la clave del usuario).
 6. **Bienvenida «la mente despierta»**, el personaje y el mini ordenador animal.
 7. **Tienda con escudo**, detección de IAs locales y uso completo.
 8. **Corteza, sueño, Parlamento**: las fases F4–F6 de la spec.
+9. **Memoria que supera a TencentDB Agent Memory** (competidor directo, MIT):
+   - informe de absorción con conflictos;
+   - personas y escenas;
+   - Tálamo que condensa los registros en símbolos;
+   - paquete de contexto visible;
+   - cifras de la Prueba 0 a la vista.
+10. **Taller pro:** cascada de trazas, bandeja de borradores para aprobar, y negativas con los modelos que sí pueden (elige el usuario).
 
 ## 5. Documentos de detalle
 - Arquitectura y red: `docs/superpowers/specs/2026-10-11-daimon-design.md`

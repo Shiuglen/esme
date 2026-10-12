@@ -1,0 +1,504 @@
+[
+ {
+  "i": 4,
+  "autor": "Charles Postiaux @PostiauxCharles",
+  "enlace": "/PostiauxCharles/status/2109606436527366235",
+  "ficheros": [
+   "fyp2/m/4-1.jpg",
+   "fyp2/m/4-2.jpg",
+   "fyp2/m/4-3.jpg"
+  ],
+  "texto": "Deploy status https://t.co/Dw0ply4jze"
+ },
+ {
+  "i": 7,
+  "autor": "Luke Parker @LukeParkerDev",
+  "enlace": "/LukeParkerDev/status/2109554523316646147",
+  "ficheros": [
+   "fyp2/m/7-1-tira.jpg"
+  ],
+  "texto": "gen UI is VERY cool!!!!\n\nmight ship this as experimental really soon\n\nwe can do this because\n- built in server plugins are easy\n- built in GUI plugins are easy\n\nso its really decoupled from the start https://t.co/FLXgM3BCay"
+ },
+ {
+  "i": 10,
+  "autor": "Nizam @nizamdesign",
+  "enlace": "/nizamdesign/status/2109587379732251019",
+  "ficheros": [
+   "fyp2/m/10-1.jpg"
+  ],
+  "texto": "Designing Intuitive UI for Complex AI-Powered Consulting Workflows. https://t.co/gRrKurB2I3"
+ },
+ {
+  "i": 13,
+  "autor": "Genex @genex_games",
+  "enlace": "/genex_games/status/2109677060981748028",
+  "ficheros": [
+   "fyp2/m/13-1-tira.jpg"
+  ],
+  "texto": "Genex Desktop 0.1.7 is out! 🎮\n\n→ Make games via @opencode or @OpenRouter \n→ 74 PRs merged since launch\n→ 500+ ⭐ and 74 forks on GitHub\n\nThanks for the feedback, and to our first contributors!\nWindows app and a big update are on the way\n\nhttps://t.co/SLnYUcE62O https://t.co/ZWKli8NPt9"
+ },
+ {
+  "i": 14,
+  "autor": "Orvena @orvenaAI",
+  "enlace": "/orvenaAI/status/2109730964226380042",
+  "ficheros": [
+   "fyp2/m/14-x0.jpg",
+   "fyp2/m/14-x1.jpg"
+  ],
+  "texto": "Or just try Orvena, available today in the App Store.\nPrivate Local and Cloud models, MCP, voice, scheduled tasks, Apple Private Cloud Compute and more."
+ },
+ {
+  "i": 27,
+  "autor": "FeiZ @Fei2411",
+  "enlace": "/Fei2411/status/2109555288609317297",
+  "ficheros": [
+   "fyp2/m/27-1.jpg",
+   "fyp2/m/27-2.jpg",
+   "fyp2/m/27-3.jpg"
+  ],
+  "texto": "这真的是 Tui 吗🥲@cccch1mneyyyy 做的 dsh-TUI，还支持 claude code 和 codex的后端，有鼠标交互 、图片渲染和 mermaid Latex 渲染。\n\n而且页面真的很美观，第一眼我都没反应过来这是 tui。喜欢 tui 的朋友可以试试！\n\n仓库：https://t.co/gMcYymRCVk https://t.co/x2dbz67tPe"
+ },
+ {
+  "i": 33,
+  "autor": "Charm @charmcli",
+  "enlace": "/charmcli/status/2109670621693300741",
+  "ficheros": [
+   "fyp2/m/33-1-tira.jpg"
+  ],
+  "texto": "Alrighty, @superlogical’s Program Status Protocol is now live in Crush.\n\nTerminals and multiplexers that support it now get updates on what Crush is up to and when it needs your attention.\n\nHere it is in Rex Beta ✌️ https://t.co/GhZ0Hp34TB"
+ },
+ {
+  "i": 37,
+  "autor": "Nizam @nizamdesign",
+  "enlace": "/nizamdesign/status/2109647778355814646",
+  "ficheros": [
+   "fyp2/m/37-1.jpg",
+   "fyp2/m/37-2.jpg"
+  ],
+  "texto": "AI Home Care Scheduling and EVV Platform. https://t.co/bgXViIjEay"
+ },
+ {
+  "i": 42,
+  "autor": "Nars @narsagna",
+  "enlace": "/narsagna/status/2109674712897053076",
+  "ficheros": [
+   "fyp2/m/42-1-tira.jpg"
+  ],
+  "texto": "Search so fast it feels like memory https://t.co/psOQu58uhQ"
+ },
+ {
+  "i": 43,
+  "autor": "Kartik Bansal @TheKartikBansal",
+  "enlace": "/TheKartikBansal/status/2109637950632067166",
+  "ficheros": [
+   "fyp2/m/43-1.jpg"
+  ],
+  "texto": "a lot of you have asked how we design our footers.\n\nso, I’m dropping a free Figma file with some of our footer designs.\n\nfully editable. grab it and make it yours 👇\nhttps://t.co/PBWowV5XoR https://t.co/n36mfhY4ao"
+ },
+ {
+  "i": 54,
+  "autor": "Ado @adocomplete",
+  "enlace": "/adocomplete/status/2109671905733341559",
+  "ficheros": [
+   "fyp2/m/54-1-tira.jpg"
+  ],
+  "texto": "A visualization of the different effort levels for Claude models.\n\nI find myself using medium for 80% of the tasks, high for ~15%, and occasionally will reach for xhigh or max when working on something super complex, but Opus 5.5 on medium I find perfect for most coding work. https://t.co/7yPnweZJ97"
+ },
+ {
+  "i": 55,
+  "autor": "Orca ADE @orca_build",
+  "enlace": "/orca_build/status/2109720160345182587",
+  "ficheros": [
+   "fyp2/m/55-1.jpg"
+  ],
+  "texto": "Introducing inline visuals in Orca Chat \n\nAsk your agent to show you, and charts, diagrams and mini-apps render right in the conversation, on desktop and on your phone.\n\nUpdate to v1.4.224, turn on Chat UI, and try \"show me a chart\". https://t.co/Ri1KQI0aKq"
+ },
+ {
+  "i": 58,
+  "autor": "Ryan Wright @IQReactorAI",
+  "enlace": "/IQReactorAI/status/2109689466621407400",
+  "ficheros": [
+   "fyp2/m/58-1.jpg",
+   "fyp2/m/58-2.jpg",
+   "fyp2/m/58-3.jpg"
+  ],
+  "texto": "Spent all weekend orchestrating models across both the 2x  Strix Halo 128GB APUs and AMD R9700 32GB VRAM GPUs in my home k8s Compound AI System Homelab. \n\nCan't want to show you the AI / Software side of what I am building. https://t.co/Zgun4Mi1uN"
+ },
+ {
+  "i": 61,
+  "autor": "BlackBit@BlackBit",
+  "enlace": "",
+  "ficheros": [
+   "fyp2/m/61-x0.jpg"
+  ],
+  "texto": "Si OpenAI lo rechaza y Anthropic lo rechaza, cambiar entre ellos no es “multi-modelo”.\n\nSon dos formas de quedar bloqueado.\n\nVOID existe para las cargas de trabajo donde eso importa.\n↓"
+ },
+ {
+  "i": 69,
+  "autor": "unixporn @bot_unixporn",
+  "enlace": "/bot_unixporn/status/2109720648209891736",
+  "ficheros": [
+   "fyp2/m/69-1-tira.jpg"
+  ],
+  "texto": "[KDE] A real Konsole melted into my wallpaper — just a blinking cursor, always ready\nLink: https://t.co/X96FKdrxhA\n\n#unixporn #linux #screenshot https://t.co/zF7wsl4zHT"
+ },
+ {
+  "i": 72,
+  "autor": "Tanjim @Tanjim38",
+  "enlace": "/Tanjim38/status/2109668211885048318",
+  "ficheros": [
+   "fyp2/m/72-1-tira.jpg"
+  ],
+  "texto": "Meet Aurora, Multi agent working for you while you sleep! \n\nDemo: https://t.co/NlOCBmLsGG https://t.co/8FzKwJaYEW"
+ },
+ {
+  "i": 74,
+  "autor": "rico @_heyrico",
+  "enlace": "/_heyrico/status/2109659622114288121",
+  "ficheros": [
+   "fyp2/m/74-1.jpg"
+  ],
+  "texto": "What agentic design looks like 🦙 https://t.co/anBzCCwpYN"
+ },
+ {
+  "i": 75,
+  "autor": "Angelo Libero @angeloldesigns",
+  "enlace": "/angeloldesigns/status/2109653684221079883",
+  "ficheros": [
+   "fyp2/m/75-1-tira.jpg"
+  ],
+  "texto": "A little menu bar window I can’t stop polishing 👀 Thoughts? https://t.co/dkN7f5OgTm"
+ },
+ {
+  "i": 77,
+  "autor": "Zahra @zahragr8r",
+  "enlace": "/zahragr8r/status/2109584995849540062",
+  "ficheros": [
+   "fyp2/m/77-1.jpg",
+   "fyp2/m/77-2.jpg",
+   "fyp2/m/77-3.jpg",
+   "fyp2/m/77-4.jpg"
+  ],
+  "texto": "Components UI card design. ✨ https://t.co/Q64yRM5MPw"
+ },
+ {
+  "i": 78,
+  "autor": "Ludvig Rask @ludvigrask_",
+  "enlace": "/ludvigrask_/status/2109657592800694706",
+  "ficheros": [
+   "fyp2/m/78-1.jpg",
+   "fyp2/m/78-2.jpg",
+   "fyp2/m/78-3.jpg"
+  ],
+  "texto": "We merged a couple of areas into a new one called Activity. Fewer tabs, but still easy to access what you need. https://t.co/NwRdeJrxni"
+ },
+ {
+  "i": 80,
+  "autor": "0xAI42.exe @0xAI42exe",
+  "enlace": "/0xAI42exe/status/2109618586008404456",
+  "ficheros": [
+   "fyp2/m/80-1-tira.jpg",
+   "fyp2/m/80-2.jpg",
+   "fyp2/m/80-3.jpg"
+  ],
+  "texto": "I got 6,625 followers in 9 posts on my third AI character \n\nEarly days. But he’s already verified.\n\n-&gt; Came up with a character\n-&gt; Generated the sheet in Nano Banana 2\n-&gt; Picked the vibe  bucktoothed farmer in suspenders with a curly handlebar mustache, perpetually confused\n-&gt; https://t.co/BtyA5i7VaA"
+ },
+ {
+  "i": 90,
+  "autor": "Lasse @lassejv",
+  "enlace": "/lassejv/status/2109709815459229868",
+  "ficheros": [
+   "fyp2/m/90-1-tira.jpg"
+  ],
+  "texto": "Rex by @superlogical is so sexy ngl 🫪 https://t.co/Rt6UDyN5Rg"
+ },
+ {
+  "i": 95,
+  "autor": "Adam @_adamboyle",
+  "enlace": "/_adamboyle/status/2109619321081299435",
+  "ficheros": [
+   "fyp2/m/95-1-tira.jpg"
+  ],
+  "texto": "Dynamic filtering in Claude https://t.co/5wNnrwLzP5"
+ },
+ {
+  "i": 105,
+  "autor": "Nizam @nizamdesign",
+  "enlace": "/nizamdesign/status/2109728308237631619",
+  "ficheros": [
+   "fyp2/m/105-1-tira.jpg"
+  ],
+  "texto": "One job. Quoted at a 36% margin. \nFinished at 12.3%.\nI designed a screen that shows exactly where the money went.\n\nWatch till the end. https://t.co/UVSvgd4xry"
+ },
+ {
+  "i": 107,
+  "autor": "Sajibur Rahman Sagor @sajiburdesign",
+  "enlace": "/sajiburdesign/status/2109681202991120577",
+  "ficheros": [
+   "fyp2/m/107-1.jpg"
+  ],
+  "texto": "Premium 😘 https://t.co/ubGHIOvrvX"
+ },
+ {
+  "i": 110,
+  "autor": "Shuh @shuxer",
+  "enlace": "/shuxer/status/2109660659466076394",
+  "ficheros": [
+   "fyp2/m/110-1.jpg"
+  ],
+  "texto": "Your charts. Your colors. Your rules. 🎨\n\nFully customizable charts, coming to @reui_io! https://t.co/voGusavIfc"
+ },
+ {
+  "i": 113,
+  "autor": "Hassan @uixhassan",
+  "enlace": "/uixhassan/status/2109598086582714386",
+  "ficheros": [
+   "fyp2/m/113-1.jpg",
+   "fyp2/m/113-2.jpg",
+   "fyp2/m/113-3.jpg",
+   "fyp2/m/113-4.jpg"
+  ],
+  "texto": "Most loved designs from last week https://t.co/xgvLp0BmnT"
+ },
+ {
+  "i": 115,
+  "autor": "Elia @eliakuratli",
+  "enlace": "/eliakuratli/status/2109699913676361839",
+  "ficheros": [
+   "fyp2/m/115-1-tira.jpg"
+  ],
+  "texto": "Built a full CRM with Claude Code and the Arc MCP\n\nClaude did the wiring\nI did the details\n\nDropping Wednesday https://t.co/tEfB4wcA41"
+ },
+ {
+  "i": 117,
+  "autor": "UxUi Tega (Design & Ai) @Tegadesigns",
+  "enlace": "/Tegadesigns/status/2109688215477121217",
+  "ficheros": [
+   "fyp2/m/117-1.jpg"
+  ],
+  "texto": "Same prompt . Claude vs ChatGPT vs Figma Make Pick your winner 👇 https://t.co/VtV2I4sthc"
+ },
+ {
+  "i": 118,
+  "autor": "Drapz @drapzdesigns",
+  "enlace": "/drapzdesigns/status/2109576538656243718",
+  "ficheros": [
+   "fyp2/m/118-1.jpg"
+  ],
+  "texto": "Brand guidelines for a crypto dex. https://t.co/76ZoEmDQZI"
+ },
+ {
+  "i": 122,
+  "autor": "Ilias Miah @iliasconfidency",
+  "enlace": "/iliasconfidency/status/2109690566111883377",
+  "ficheros": [
+   "fyp2/m/122-1.jpg"
+  ],
+  "texto": "AI automation needs more than capability. It needs controlled access, clear boundaries, and accountability at every step.\n\nWhat should an AI agent never have access to in your business? https://t.co/gEjn7UnqCP"
+ },
+ {
+  "i": 123,
+  "autor": "sergio @sergiorocaa",
+  "enlace": "/sergiorocaa/status/2109670401122947128",
+  "ficheros": [
+   "fyp2/m/123-1-tira.jpg"
+  ],
+  "texto": "An AI agent can return a 200 status code and still give the wrong answer.\n\nThat’s the hard part of debugging agents: failures don’t always look like failures.\n\nDigitalOcean’s new Signals and Simulations previews help teams catch these issues in real sessions and test fixes before https://t.co/AhLfCCwUMC"
+ },
+ {
+  "i": 125,
+  "autor": "Bora @bborakurtt",
+  "enlace": "/bborakurtt/status/2109675721073606889",
+  "ficheros": [
+   "fyp2/m/125-1-tira.jpg"
+  ],
+  "texto": "Something news cookin 🔥🔉 https://t.co/WAmzFeJx2y"
+ },
+ {
+  "i": 130,
+  "autor": "Iconly Pro | Premium icons @Iconlypro",
+  "enlace": "/Iconlypro/status/2109652812749770897",
+  "ficheros": [
+   "fyp2/m/130-1.jpg",
+   "fyp2/m/130-2-tira.jpg",
+   "fyp2/m/130-3.jpg",
+   "fyp2/m/130-4.jpg"
+  ],
+  "texto": "Period Tracker! 🌸 https://t.co/LCaxQXiplh"
+ },
+ {
+  "i": 132,
+  "autor": "Argona @Argona0x",
+  "enlace": "/Argona0x/status/2109705574371774667",
+  "ficheros": [
+   "fyp2/m/132-1-tira.jpg"
+  ],
+  "texto": "🚨this is SERIOUSLY dangerous.\n\ni just watched an 18-year-old calmly explain how he turned Opus 5.5 into a personal Bloomberg Terminal (traders pay nearly $32,000 a year for one), and i'm convinced 99% of people still aren't seeing this\n\nit's the screen wall street traders stare https://t.co/FI0w73ofY0"
+ },
+ {
+  "i": 133,
+  "autor": "Wildan Wari @mwildanwari",
+  "enlace": "/mwildanwari/status/2109579830194733476",
+  "ficheros": [
+   "fyp2/m/133-1.jpg",
+   "fyp2/m/133-2.jpg",
+   "fyp2/m/133-3.jpg"
+  ],
+  "texto": "Settings Modal ⚙️ https://t.co/zzyLLPLU67"
+ },
+ {
+  "i": 135,
+  "autor": "Milo Smith @mil000",
+  "enlace": "/mil000/status/2109717389801836986",
+  "ficheros": [
+   "fyp2/m/135-1.jpg"
+  ],
+  "texto": "too much screen for 1 man https://t.co/OQvv9FEBFB"
+ },
+ {
+  "i": 144,
+  "autor": "Nizam @nizamdesign",
+  "enlace": "/nizamdesign/status/2109617578633257306",
+  "ficheros": [
+   "fyp2/m/144-1.jpg"
+  ],
+  "texto": "Designing Clarity Into Complex Business Operations. https://t.co/4ADmQ0m5Xx"
+ },
+ {
+  "i": 146,
+  "autor": "Ali Dalton @alidalton",
+  "enlace": "/alidalton/status/2109667950399787088",
+  "ficheros": [
+   "fyp2/m/146-1.jpg",
+   "fyp2/m/146-2.jpg"
+  ],
+  "texto": "Fundraising tracker for a Fintech Startup\n\nLight vs Dark mode 💡 https://t.co/thwC72qAKV"
+ },
+ {
+  "i": 149,
+  "autor": "Zahra @zahragr8r",
+  "enlace": "/zahragr8r/status/2109603979416277359",
+  "ficheros": [
+   "fyp2/m/149-1.jpg"
+  ],
+  "texto": "Great search isn’t a feature. \nIt’s how fast your team gets back to work.\n\nFilters, recents, and suggested queries in one command bar.\n\nBuilt by the Gr8r Studio team. https://t.co/3iOruQFCKt"
+ },
+ {
+  "i": 153,
+  "autor": "Noah @itsnoahd",
+  "enlace": "/itsnoahd/status/2109675745408930191",
+  "ficheros": [
+   "fyp2/m/153-1-tira.jpg"
+  ],
+  "texto": "FSearch 0.2\n\n150x faster to grep a file you just edited\n74% smaller index (for me 1.5g -&gt; 388mb)\n35% more files covered\n65% less daemon memory (on chromium)\n32% less peak memory while indexing https://t.co/2EdJUC6xeF"
+ },
+ {
+  "i": 158,
+  "autor": "Divyanshi @Divyyanshishrma",
+  "enlace": "/Divyyanshishrma/status/2109620371628622158",
+  "ficheros": [
+   "fyp2/m/158-1.jpg"
+  ],
+  "texto": "China has killed the entire vector database industry.\n\nThey open-sourced TencentDB Agent Memory. It gives any AI agent long-term memory that runs 100% locally.\n\nNo Pinecone. No cloud APIs. No repeating yourself every session.\n\n- 61% fewer tokens\n- PersonaMem accuracy: 48% → 76% https://t.co/2FY7YznlYZ"
+ },
+ {
+  "i": 159,
+  "autor": "Becky Isjwara @beckyisj",
+  "enlace": "/beckyisj/status/2109652054633250997",
+  "ficheros": [
+   "fyp2/m/159-1-tira.jpg"
+  ],
+  "texto": "I made a Codex-native app that can transfer highlights from my paperbacks to my ebook copies.\n\nOsmo Pocket takes photos and sees the highlight. Takes a pic, uses OCR, then uses computer use to highlight my Kindle copy.\n\nEverything syncs on @readwise ✨ https://t.co/wTD80t9QpA"
+ },
+ {
+  "i": 160,
+  "autor": "Frantz Jean@ThatSplash19",
+  "enlace": "",
+  "ficheros": [],
+  "texto": "Build log: my app's workflow runner now builds a bounded context package for every run. One objective, a token budget, a cap on how sensitive the data can be. The agent gets what the task needs, not my whole vault. The run log keeps a fingerprint, never the text."
+ },
+ {
+  "i": 163,
+  "autor": "Nero @neropursue",
+  "enlace": "/neropursue/status/2109623602639183983",
+  "ficheros": [
+   "fyp2/m/163-1-tira.jpg"
+  ],
+  "texto": "Top UI Skills for design engineering, Save this 👇\n\nEmil Design Engineer -https://t.co/MeeDdLiapK\nMake Interfaces Feel Better -https://t.co/lTRR6E5Aba\nPlaywright CLI -https://t.co/CRcSwdReub\nReact Doctor -https://t.co/SrAF3N0Adc\nFixing Accessibility -https://t.co/3CESCtM2Gs\n12 https://t.co/gjEV7GkBJ3"
+ },
+ {
+  "i": 172,
+  "autor": "Leon Lin @LexnLin",
+  "enlace": "/LexnLin/status/2109718604883370450",
+  "ficheros": [
+   "fyp2/m/172-1-tira.jpg"
+  ],
+  "texto": "This is made by Opus 5.5 high. \n\nsfx improved https://t.co/YElgm7agUx"
+ },
+ {
+  "i": 174,
+  "autor": "fimmonaci @fimmonaci",
+  "enlace": "/fimmonaci/status/2109721753190887649",
+  "ficheros": [
+   "fyp2/m/174-1-tira.jpg"
+  ],
+  "texto": "🚨 BREAKING: Claude can finally draw images from your prompts. https://t.co/4hxNKdn1uP"
+ },
+ {
+  "i": 178,
+  "autor": "Zahra @zahragr8r",
+  "enlace": "/zahragr8r/status/2109623048479666294",
+  "ficheros": [
+   "fyp2/m/178-1.jpg",
+   "fyp2/m/178-2.jpg",
+   "fyp2/m/178-3.jpg",
+   "fyp2/m/178-4.jpg"
+  ],
+  "texto": "Enterprise website deserves this level of design. 😏 https://t.co/998hPZKvq2"
+ },
+ {
+  "i": 181,
+  "autor": "Maxim Kuznetsov @disarto_max",
+  "enlace": "/disarto_max/status/2109734796675223605",
+  "ficheros": [
+   "fyp2/m/181-1-tira.jpg"
+  ],
+  "texto": "Cost calculator (dark mode) https://t.co/xySXhkPqtO"
+ },
+ {
+  "i": 184,
+  "autor": "Ikram Sakib @ikramhsakib",
+  "enlace": "/ikramhsakib/status/2109630741181292806",
+  "ficheros": [
+   "fyp2/m/184-1.jpg"
+  ],
+  "texto": "A cleaner way to manage every shipment. 📦 https://t.co/6ochCpPiMN"
+ },
+ {
+  "i": 187,
+  "autor": "Jason D @JasonUXUI",
+  "enlace": "/JasonUXUI/status/2109541349758501055",
+  "ficheros": [
+   "fyp2/m/187-1-tira.jpg"
+  ],
+  "texto": "A peek at the document review experience in RelayGuard ✨ https://t.co/sEuJooJYJK"
+ },
+ {
+  "i": 192,
+  "autor": "adafruit industries @adafruit",
+  "enlace": "/adafruit/status/2109730750224589079",
+  "ficheros": [
+   "fyp2/m/192-1-tira.jpg"
+  ],
+  "texto": "Paperboy reaches 60 FPS pixel draws without a full refresh\n\nhttps://t.co/tCsuuh1sZR https://t.co/3LSIiP1lbU"
+ },
+ {
+  "i": 198,
+  "autor": "Synara @trySynara",
+  "enlace": "/trySynara/status/2109660628369694937",
+  "ficheros": [
+   "fyp2/m/198-1.jpg"
+  ],
+  "texto": "Opus 5.5 helped make Synara faster.\n\nIn a 3-hour run it profiled how chats open, load and scroll, found 4 bottlenecks and benchmarked every fix.\n\n→ Big chats open up to 27% faster (176ms → 129ms)\n→ Switching back to a chat is 2x faster (93ms → 45ms)\n→ Scrolling through https://t.co/8NITNCm7tQ"
+ }
+]
