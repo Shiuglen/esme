@@ -108,6 +108,17 @@ describe('abrirSesionACP', () => {
     s.cerrar()
     expect(eventos.filter((e) => e.tipo === 'texto').map((e) => (e as { texto: string }).texto).join('')).toBe('rapido')
   })
+  it('las herramientas traen sus rutas relativas, su nombre y un detalle seguro de la entrada (nunca el contenido)', async () => {
+    const { eventos, o } = base()
+    const s = await abrirSesionACP(o)
+    await s.preguntar('herramientas-ricas')
+    s.cerrar()
+    const h = eventos.filter((e) => e.tipo === 'herramienta')
+    expect(h[0]).toMatchObject({ id: 'w1', nombre: 'write', clase: 'edit', rutas: ['src/a.txt'] })
+    expect(h[1]).toMatchObject({ id: 'x1', nombre: 'bash', clase: 'execute', detalle: 'npm test' })
+    expect(h[2]).toMatchObject({ id: 'r1', rutas: ['/etc/fuera.txt'] })
+    expect(JSON.stringify(eventos)).not.toContain('SECRETO-NO-SALE')
+  })
   it('una opción desconocida o con valor inválido se ignora sin fallar', async () => {
     const { eventos, o } = base({ config: { model: 'inexistente', otra: 'x' } })
     const s = await abrirSesionACP(o)

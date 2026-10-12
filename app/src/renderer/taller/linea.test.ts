@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { actividadActual, aplicar, plegar, type Evento } from './linea'
+import { actividadActual, aplicar, describirHerramienta, plegar, type Evento, type ItemLinea } from './linea'
 
 describe('plegar', () => {
   it('une los trozos de texto seguidos y separa por tipo', () => {
@@ -50,5 +50,24 @@ describe('actividadActual', () => {
     expect(actividadActual(plegar([{ tipo: 'pensamiento', texto: 'mmm' }]))).toBe('Pensando…')
     expect(actividadActual(plegar([{ tipo: 'texto', texto: 'Primera línea\nÚltima línea' }]))).toBe('Última línea')
     expect(actividadActual(plegar([{ tipo: 'texto', texto: 'x' }, { tipo: 'fin', motivo: 'end_turn', ms: 9 }]))).toBeNull()
+  })
+})
+
+describe('describirHerramienta', () => {
+  const h = (p: Partial<Extract<ItemLinea, { tipo: 'herramienta' }>>) => ({ tipo: 'herramienta' as const, clave: 'h', id: 'h', titulo: '', estado: 'completed', ...p })
+  it('los títulos escuetos se cuentan en castellano con su fichero u orden', () => {
+    expect(describirHerramienta(h({ titulo: 'write', nombre: 'write', clase: 'edit', rutas: ['src/a.txt'] }))).toEqual({ texto: 'Escribe', objeto: 'src/a.txt' })
+    expect(describirHerramienta(h({ titulo: 'edit', clase: 'edit', rutas: ['b.ts'] }))).toEqual({ texto: 'Edita', objeto: 'b.ts' })
+    expect(describirHerramienta(h({ titulo: 'read', clase: 'read', rutas: ['c.md'] }))).toEqual({ texto: 'Lee', objeto: 'c.md' })
+    expect(describirHerramienta(h({ titulo: 'bash', clase: 'execute', detalle: 'npm test' }))).toEqual({ texto: 'Ejecuta', codigo: 'npm test' })
+    expect(describirHerramienta(h({ titulo: 'grep', clase: 'search', detalle: 'TODO' }))).toEqual({ texto: 'Busca', objeto: '«TODO»' })
+    expect(describirHerramienta(h({ titulo: 'webfetch', clase: 'fetch', detalle: 'https://docs.ejemplo.com/a/b' }))).toEqual({ texto: 'Consulta', objeto: 'docs.ejemplo.com' })
+    expect(describirHerramienta(h({ titulo: 'todowrite', nombre: 'todowrite', clase: 'other' }))).toEqual({ texto: 'Actualiza su lista de pasos' })
+  })
+  it('un título que ya es una frase se respeta', () => {
+    expect(describirHerramienta(h({ titulo: 'Editar a.txt', clase: 'edit', rutas: ['a.txt'] }))).toEqual({ texto: 'Editar a.txt' })
+  })
+  it('sin nada que contar, una palabra neutra', () => {
+    expect(describirHerramienta(h({ titulo: '' }))).toEqual({ texto: 'Usa una herramienta' })
   })
 })

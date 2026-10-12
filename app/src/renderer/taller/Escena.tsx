@@ -97,10 +97,14 @@ export function Escena({ tareas, seleccion, resaltada, ahora, onElegir, onResalt
             <rect x="-1400" y="-500" width="2800" height="1500" fill="url(#planta-fundido)" />
           </mask>
           <filter id="planta-brillo" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3.4" /></filter>
-          {maquinas.map((m) => (
-            <radialGradient key={m.t.id} id={`planta-luz-${m.t.id}`} ref={(el) => { vivo(m.t.id).luz = el }}>
-              <stop offset="0" style={{ stopColor: COLOR[m.t.estado] ?? '#8b6cff', stopOpacity: 0.55 }} />
-              <stop offset="1" style={{ stopColor: COLOR[m.t.estado] ?? '#8b6cff', stopOpacity: 0 }} />
+          {maquinas.map((m) => m.t.estado === 'trabajando' ? (
+            <radialGradient key={`v${m.t.id}`} id={`planta-luz-viva-${m.t.id}`} ref={(el) => { vivo(m.t.id).luz = el }}>
+              <stop offset="0" stopColor="#8b6cff" stopOpacity={0.55} /><stop offset="1" stopColor="#8b6cff" stopOpacity={0} />
+            </radialGradient>
+          ) : (
+            <radialGradient key={m.t.id} id={`planta-luz-${m.t.id}`}>
+              <stop offset="0" style={{ stopColor: COLOR[m.t.estado] ?? 'var(--texto-3)', stopOpacity: 0.55 }} />
+              <stop offset="1" style={{ stopColor: COLOR[m.t.estado] ?? 'var(--texto-3)', stopOpacity: 0 }} />
             </radialGradient>
           ))}
         </defs>
@@ -121,7 +125,7 @@ export function Escena({ tareas, seleccion, resaltada, ahora, onElegir, onResalt
         {/* la luz de cada motor derramada en el suelo */}
         {maquinas.filter((m) => m.t.estado === 'trabajando' || m.t.estado === 'esperando' || m.t.estado === 'error').map((m) => {
           const [cx, cy] = iso(m.lugar.x + 0.5, m.lugar.y + 0.5)
-          return <ellipse key={m.t.id} cx={cx} cy={cy} rx={84} ry={42} fill={`url(#planta-luz-${m.t.id})`} className="planta-luz" opacity={m.t.estado === 'error' ? 0.45 : 0.85} />
+          return <ellipse key={m.t.id} cx={cx} cy={cy} rx={84} ry={42} fill={`url(#planta-luz-${m.t.estado === 'trabajando' ? 'viva-' : ''}${m.t.id})`} className="planta-luz" opacity={m.t.estado === 'error' ? 0.45 : 0.85} />
         })}
 
         {/* conductos: del núcleo a cada máquina, como pistas de un circuito */}
@@ -196,9 +200,11 @@ function Pieza({ m, elegida, resaltada, ahora, vivo, onElegir, onResaltar }: {
         )}
         <Caras c={c} punteada={t.estado === 'preparando'} />
         <path d={filo} fill="none" style={{ stroke: 'var(--texto)' }} strokeOpacity={0.22} strokeWidth={1} vectorEffect="non-scaling-stroke" />
-        {t.estado !== 'preparando' && (
-          <path ref={(el) => { vivo.ranura = el }} d={ranura} style={{ fill: COLOR[t.estado] ?? '#8b6cff' }}
-            className={t.estado === 'trabajando' ? 'animate-[respirar_2.4s_ease-in-out_infinite]' : undefined} opacity={t.estado === 'lista' ? 0.55 : 0.95} />
+        {t.estado !== 'preparando' && t.estado !== 'trabajando' && (
+          <path d={ranura} style={{ fill: COLOR[t.estado] ?? 'var(--texto-3)' }} opacity={t.estado === 'lista' ? 0.55 : 0.95} />
+        )}
+        {t.estado === 'trabajando' && (
+          <path key="viva" ref={(el) => { vivo.ranura = el }} d={ranura} fill="#8b6cff" className="animate-[respirar_2.4s_ease-in-out_infinite]" />
         )}
         {baliza && (
           <g className="animate-[baliza_1.3s_ease-in-out_infinite]">

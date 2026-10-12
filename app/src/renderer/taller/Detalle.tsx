@@ -12,7 +12,7 @@ import { cn } from '../lib/cn'
 import { Cambios } from './Cambios'
 import { contarLineas } from './diff'
 import { PastillaEstado } from './FilaMotor'
-import type { ItemLinea } from './linea'
+import { describirHerramienta, type ItemLinea } from './linea'
 import { SelectorOpcion } from './Opciones'
 import { activa, duracion, explicarError, motivoFin } from './vista'
 
@@ -196,7 +196,15 @@ function Herramienta({ i }: { i: Extract<ItemLinea, { tipo: 'herramienta' }> }) 
     <div className="flex items-start gap-2.5 rounded-2 px-1 py-0.5 text-[13px]">
       <Icono className="mt-0.5 size-4 shrink-0 text-texto-3" strokeWidth={1.5} />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-texto-2">{i.titulo || 'Herramienta'}</p>
+        <p className="flex min-w-0 items-baseline gap-1.5 text-texto-2">
+          {(() => { const d = describirHerramienta(i); return (
+            <>
+              <span className="shrink-0">{d.texto}</span>
+              {d.objeto && <span className="min-w-0 truncate font-mono text-[12px] text-texto" title={i.rutas?.join('\n')}>{d.objeto}</span>}
+              {d.codigo && <code className="min-w-0 truncate rounded-1 bg-s2 px-1.5 py-px font-mono text-[12px] text-texto" title={d.codigo}>{d.codigo}</code>}
+            </>
+          ) })()}
+        </p>
         {i.diff && (
           <div className="mt-1 flex flex-wrap gap-1.5">
             {i.diff.map((d) => {

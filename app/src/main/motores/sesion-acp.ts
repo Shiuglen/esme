@@ -1,13 +1,14 @@
 // Cliente ACP sobre stdio (ClientSideConnection del SDK): abre un motor, traduce sus eventos y reenvía permisos.
 import { spawn as spawnReal } from 'node:child_process'
 import { Readable, Writable } from 'node:stream'
+import { isAbsolute, relative } from 'node:path'
 import { ClientSideConnection, ndJsonStream, PROTOCOL_VERSION, type McpServer, type SessionConfigOption, type SessionNotification } from '@agentclientprotocol/sdk'
 
 export type OpcionConfig = { id: string; nombre: string; actual: string; valores: { id: string; nombre: string; descripcion?: string }[] }   // solo las de tipo 'select'
 
 export type EventoMotor =
   | { tipo: 'texto'; texto: string } | { tipo: 'pensamiento'; texto: string }
-  | { tipo: 'herramienta'; id: string; titulo?: string; estado?: string; clase?: string; diff?: { ruta: string; antes?: string; despues: string }[] }
+  | { tipo: 'herramienta'; id: string; titulo?: string; estado?: string; clase?: string; nombre?: string; rutas?: string[]; detalle?: string; diff?: { ruta: string; antes?: string; despues: string }[] }
   | { tipo: 'plan'; pasos: { texto: string; estado: string }[] }
   | { tipo: 'contexto'; usado: number; total: number; coste?: { cantidad: number; moneda: string } }
   | { tipo: 'opciones'; opciones: OpcionConfig[] }
@@ -30,7 +31,20 @@ export function traducirOpciones(cfg: SessionConfigOption[]): OpcionConfig[] {
   })
 }
 
-function traducir(n: SessionNotification): EventoMotor | null {
+// De la entrada cruda de una herramienta solo sale lo que la describe (orden, búsqueda, URL…), nunca contenidos de ficheros.
+const CLAVES_DETALLE = ['command', 'cmd', 'pattern', 'query', 'regex', 'url', 'description']
+function detalleDe(entrada: unknown): string | undefined {
+  if (!entrada || typeof entrada !== 'object') return undefined
+  for (const k of CLAVES_DETALLE) {
+    const v = (entrada as Record<string, unknown>)[k]
+    if (typeof v === 'string' && v.trim()) return v.trim().replace(/\s+/g, ' ').slice(0, 160)
+    if (Array.isArray(v) && v.every((x) => typeof x === 'string')) return v.join(' ').slice(0, 160)
+  }
+  return undefined
+}
+const relativa = (ruta: string, cwd: string) => { const r = relative(cwd, ruta); return r && !r.startsWith('..') && !isAbsolute(r) ? r : ruta }
+
+function traducir(n: SessionNotification, cwd = ''): EventoMotor | null {
   const u = n.update
   switch (u.sessionUpdate) {
     case 'agent_message_chunk': return u.content.type === 'text' ? { tipo: 'texto', texto: u.content.text } : null
@@ -38,8 +52,11 @@ function traducir(n: SessionNotification): EventoMotor | null {
     case 'plan': return { tipo: 'plan', pasos: u.entries.map((e) => ({ texto: e.content, estado: e.status })) }
     case 'tool_call': case 'tool_call_update': {
       const diff = (u.content ?? []).flatMap((c) => c.type === 'diff' ? [{ ruta: c.path, ...(c.oldText != null ? { antes: c.oldText } : {}), despues: c.newText }] : [])
+      const rutas = (u.locations ?? []).map((l) => (cwd ? relativa(l.path, cwd) : l.path))
+      const detalle = detalleDe(u.rawInput)
       return { tipo: 'herramienta', id: u.toolCallId, ...(u.title ? { titulo: u.title } : {}), ...(u.status ? { estado: u.status } : {}),
-        ...(u.kind ? { clase: u.kind } : {}), ...(diff.length ? { diff } : {}) }
+        ...(u.kind ? { clase: u.kind } : {}), ...('name' in u && u.name ? { nombre: u.name } : {}), ...(rutas.length ? { rutas } : {}),
+        ...(detalle ? { detalle } : {}), ...(diff.length ? { diff } : {}) }
     }
     case 'usage_update': return { tipo: 'contexto', usado: u.used, total: u.size, ...(u.cost ? { coste: { cantidad: u.cost.amount, moneda: u.cost.currency } } : {}) }
     case 'config_option_update': return { tipo: 'opciones', opciones: traducirOpciones(u.configOptions) }
@@ -69,7 +86,7 @@ export async function abrirSesionACP(o: Opciones): Promise<{ preguntar(texto: st
 
   const stream = ndJsonStream(Writable.toWeb(hijo.stdin!) as WritableStream<Uint8Array>, Readable.toWeb(hijo.stdout!) as ReadableStream<Uint8Array>)
   const conn = new ClientSideConnection(() => ({
-    sessionUpdate: (n) => { const e = traducir(n); if (e?.tipo === 'opciones') nuevasOpciones(e); else if (e) o.alEvento(e) },
+    sessionUpdate: (n) => { const e = traducir(n, o.cwd); if (e?.tipo === 'opciones') nuevasOpciones(e); else if (e) o.alEvento(e) },
     requestPermission: async (p) => {
       const r = await o.alPedirPermiso({ titulo: p.toolCall.title ?? '', opciones: p.options.map((x) => ({ id: x.optionId, nombre: x.name, tipo: x.kind })) })
       return { outcome: r === 'cancelar' ? { outcome: 'cancelled' } : { outcome: 'selected', optionId: r } }
