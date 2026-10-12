@@ -5,8 +5,10 @@ import { ClientSideConnection, ndJsonStream, PROTOCOL_VERSION, type McpServer, t
 
 export type EventoMotor =
   | { tipo: 'texto'; texto: string } | { tipo: 'pensamiento'; texto: string }
-  | { tipo: 'herramienta'; id: string; titulo: string; estado: string; diff?: { ruta: string; antes?: string; despues: string }[] }
+  | { tipo: 'herramienta'; id: string; titulo?: string; estado?: string; clase?: string; diff?: { ruta: string; antes?: string; despues: string }[] }
   | { tipo: 'plan'; pasos: { texto: string; estado: string }[] }
+  | { tipo: 'contexto'; usado: number; total: number; coste?: { cantidad: number; moneda: string } }
+  | { tipo: 'uso'; entrada: number; salida: number; pensamiento?: number; cacheLectura?: number; cacheEscritura?: number }
 
 type Opciones = { comando: string; args: string[]; cwd: string; env?: Record<string, string>
   mcp?: { nombre: string; url: string; token: string }
@@ -22,8 +24,10 @@ function traducir(n: SessionNotification): EventoMotor | null {
     case 'plan': return { tipo: 'plan', pasos: u.entries.map((e) => ({ texto: e.content, estado: e.status })) }
     case 'tool_call': case 'tool_call_update': {
       const diff = (u.content ?? []).flatMap((c) => c.type === 'diff' ? [{ ruta: c.path, ...(c.oldText != null ? { antes: c.oldText } : {}), despues: c.newText }] : [])
-      return { tipo: 'herramienta', id: u.toolCallId, titulo: u.title ?? '', estado: u.status ?? '', ...(diff.length ? { diff } : {}) }
+      return { tipo: 'herramienta', id: u.toolCallId, ...(u.title ? { titulo: u.title } : {}), ...(u.status ? { estado: u.status } : {}),
+        ...(u.kind ? { clase: u.kind } : {}), ...(diff.length ? { diff } : {}) }
     }
+    case 'usage_update': return { tipo: 'contexto', usado: u.used, total: u.size, ...(u.cost ? { coste: { cantidad: u.cost.amount, moneda: u.cost.currency } } : {}) }
     default: return null
   }
 }
@@ -61,7 +65,13 @@ export async function abrirSesionACP(o: Opciones): Promise<{ preguntar(texto: st
     return {
       preguntar: async (texto) => {
         if (causa) throw causa
-        return (await vivo(conn.prompt({ sessionId, prompt: [{ type: 'text', text: texto }] }))).stopReason
+        const r = await vivo(conn.prompt({ sessionId, prompt: [{ type: 'text', text: texto }] }))
+        if (r.usage) {
+          const x = r.usage
+          o.alEvento({ tipo: 'uso', entrada: x.inputTokens, salida: x.outputTokens, ...(x.thoughtTokens != null ? { pensamiento: x.thoughtTokens } : {}),
+            ...(x.cachedReadTokens != null ? { cacheLectura: x.cachedReadTokens } : {}), ...(x.cachedWriteTokens != null ? { cacheEscritura: x.cachedWriteTokens } : {}) })
+        }
+        return r.stopReason
       },
       cancelar: async () => { if (!causa) await conn.cancel({ sessionId }) },
       cerrar,

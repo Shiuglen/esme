@@ -65,4 +65,23 @@ describe('abrirSesionACP', () => {
     const { o } = base({ comando: '/no/existe/motor' })
     await expect(abrirSesionACP(o)).rejects.toThrow(/motor/i)
   })
+  it('traduce usage_update a contexto y la usage del prompt a uso', async () => {
+    const { eventos, o } = base()
+    const s = await abrirSesionACP(o)
+    expect(await s.preguntar('uso')).toBe('end_turn')
+    s.cerrar()
+    expect(eventos).toContainEqual({ tipo: 'herramienta', id: 't2', titulo: 'Ejecutar ls', estado: 'pending', clase: 'execute' })
+    expect(eventos).toContainEqual({ tipo: 'contexto', usado: 1200, total: 200000, coste: { cantidad: 0.0123, moneda: 'USD' } })
+    expect(eventos).toContainEqual({ tipo: 'uso', entrada: 100, salida: 50, pensamiento: 7, cacheLectura: 30, cacheEscritura: 5 })
+    expect(eventos.findIndex((e) => e.tipo === 'uso')).toBe(eventos.length - 1)
+  })
+  it('un tool_call_update solo con estado no trae título', async () => {
+    const { eventos, o } = base()
+    const s = await abrirSesionACP(o)
+    await s.preguntar('hola')
+    s.cerrar()
+    const act = eventos.find((e) => e.tipo === 'herramienta' && e.id === 't1' && e.estado === 'completed')!
+    expect(act).toEqual({ tipo: 'herramienta', id: 't1', estado: 'completed' })
+    expect('titulo' in act).toBe(false)
+  })
 })

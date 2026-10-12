@@ -1,4 +1,4 @@
-// Agente ACP falso para tests: usa el AgentSideConnection del SDK sobre stdio. Prompt "morir" mata el proceso; "mcp" devuelve los mcpServers recibidos.
+// Agente ACP falso para tests: usa el AgentSideConnection del SDK sobre stdio. Prompt "morir" mata el proceso; "mcp" devuelve los mcpServers recibidos; "uso" emite usage_update y devuelve usage.
 import { AgentSideConnection, ndJsonStream, PROTOCOL_VERSION } from '@agentclientprotocol/sdk'
 import { Readable, Writable } from 'node:stream'
 
@@ -18,6 +18,11 @@ new AgentSideConnection((conn) => ({
     if (texto === 'mcp') {
       await upd({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: JSON.stringify(mcp) } })
       return { stopReason: 'end_turn' }
+    }
+    if (texto === 'uso') {
+      await upd({ sessionUpdate: 'tool_call', toolCallId: 't2', title: 'Ejecutar ls', kind: 'execute', status: 'pending' })
+      await upd({ sessionUpdate: 'usage_update', used: 1200, size: 200000, cost: { amount: 0.0123, currency: 'USD' } })
+      return { stopReason: 'end_turn', usage: { totalTokens: 150, inputTokens: 100, outputTokens: 50, thoughtTokens: 7, cachedReadTokens: 30, cachedWriteTokens: 5 } }
     }
     await upd({ sessionUpdate: 'agent_thought_chunk', content: { type: 'text', text: 'pienso' } })
     await upd({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'hola ' } })
