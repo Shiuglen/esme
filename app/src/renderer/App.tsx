@@ -9,10 +9,10 @@ import { RedNeuronal, type Recordado, type RedHandle } from './memoria/RedNeuron
 import { Ajustes } from './paginas/Ajustes'
 import { Inicio, type EventoMente } from './paginas/Inicio'
 import { Proximamente } from './paginas/Proximamente'
+import { Taller } from './paginas/Taller'
 import { Uso } from './paginas/Uso'
 import { ChatPanel } from './panels/ChatPanel'
 import { MemoryPanel } from './panels/MemoryPanel'
-import { WorkshopPanel } from './panels/WorkshopPanel'
 import { BarraSuperior } from './shell/BarraSuperior'
 import { Paleta } from './shell/Paleta'
 import { FondoVivo, useHalos } from './shell/FondoVivo'
@@ -35,6 +35,7 @@ export function App() {
   const [recordando, setRecordando] = useState(false)
   const [preguntas, setPreguntas] = useState(0)
   const [pensando, setPensando] = useState(false)
+  const [tallerOcupado, setTallerOcupado] = useState(false)
   const [memoria, setMemoria] = useState(true)
   const [semilla, setSemilla] = useState<{ q: string; n: number }>({ q: '', n: 0 })
   const [enfocado, setEnfocado] = useState<string | null>(null)
@@ -96,7 +97,7 @@ export function App() {
   const enfocarRecuerdo = (id: string) => { setEnfocado(id); ir('memoria'); setTimeout(() => redRef.current?.enfocar(id), 60) }
 
   useHalos()
-  const estadoEsme = pensando ? 'pensando' : recordando ? 'recordando' : 'reposo'
+  const estadoEsme = pensando || tallerOcupado ? 'pensando' : recordando ? 'recordando' : 'reposo'
 
   const pagina = (id: SeccionId) => {
     switch (id) {
@@ -106,7 +107,7 @@ export function App() {
         <div className="mx-auto flex h-full max-w-[880px] flex-col px-6 pt-4 pb-5">
           <ChatPanel brain={memoria ? brain : null} onCite={enfocarRecuerdo} onRecalled={(t) => setMemoriaUsada((s) => s + t)} seed={semilla} onBusy={setPensando} />
         </div>)
-      case 'taller': return <div className="flex h-full flex-col p-5"><WorkshopPanel day={tema === 'dia'} /></div>
+      case 'taller': return <Taller tema={tema} onOcupado={setTallerOcupado} onIr={ir} />
       case 'memoria': return (
         <div className="grid h-full grid-cols-[400px_minmax(0,1fr)]">
           <div className="vidrio-fino flex min-h-0 flex-col border-r border-linea"><MemoryPanel brain={brain} focusId={enfocado} onFocus={(i) => redRef.current?.enfocar(i)} onChanged={refrescar} /></div>

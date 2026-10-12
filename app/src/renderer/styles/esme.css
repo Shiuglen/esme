@@ -26,6 +26,8 @@
   --color-peligro: var(--peligro);
   --color-peligro-velo: var(--peligro-velo);
   --color-info: var(--info);
+  --color-exito: var(--exito);
+  --color-exito-velo: var(--exito-velo);
   --color-cristal: var(--cristal);
   --font-display: "Funnel Display Variable", "Helvetica Neue", Arial, sans-serif;
   --font-sans: "Funnel Sans Variable", "Helvetica Neue", Arial, sans-serif;
@@ -49,7 +51,8 @@
   --texto: #f2f3f5; --texto-2: #a3a9b4; --texto-3: #7d8491;
   --acento: #f2f3f5; --sobre-acento: #0b0c0f; --acento-velo: #1a1d24; --foco: #f2f3f5;
   --memoria: #d6dce8; --memoria-velo: #161a22; --atencion: #f2b661; --atencion-velo: #2a2113;
-  --peligro: #f27a8c; --peligro-velo: #2c1520; --info: #9ab0d6;
+  --peligro: #f27a8c; --peligro-velo: #2c1520; --info: #9ab0d6; --exito: #7fd6a4; --exito-velo: #13261c;
+  --cara-arriba: #222631; --cara-izquierda: #171a21; --cara-derecha: #0f1116;
   --actividad-0: #1a1d24; --actividad-1: #5a6170; --actividad-2: #858d9c; --actividad-3: #b6bdca; --actividad-4: #f2f3f5;
   --cristal: rgba(14, 16, 21, 0.78);
   --sombra-flotante: 0 18px 48px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.45);
@@ -62,7 +65,8 @@
   --texto: #0b0c0f; --texto-2: #454a54; --texto-3: #62676f;
   --acento: #0b0c0f; --sobre-acento: #ffffff; --acento-velo: #ececea; --foco: #0b0c0f;
   --memoria: #3f4654; --memoria-velo: #eceef2; --atencion: #8a5300; --atencion-velo: #fbf0dc;
-  --peligro: #a4213a; --peligro-velo: #fbe6ea; --info: #3a5487;
+  --peligro: #a4213a; --peligro-velo: #fbe6ea; --info: #3a5487; --exito: #1f6b3e; --exito-velo: #e3f4ea;
+  --cara-arriba: #ffffff; --cara-izquierda: #ecece8; --cara-derecha: #dcdcd6;
   --actividad-0: #ececea; --actividad-1: #8f959f; --actividad-2: #666c77; --actividad-3: #3f444d; --actividad-4: #0b0c0f;
   --cristal: rgba(255, 255, 255, 0.82);
   --sombra-flotante: 0 18px 48px rgba(20, 22, 28, 0.14), 0 2px 8px rgba(20, 22, 28, 0.08);
@@ -145,3 +149,10 @@
   transition: opacity 0.4s var(--ease-salida);
 }
 .halo:hover::after { opacity: 1 }
+
+/* Taller: la planta isométrica. Las caras de las máquinas van con la luz desde arriba a la izquierda. */
+@keyframes baliza { 0%, 100% { opacity: 1 } 50% { opacity: 0.25 } }
+@keyframes respirar { 0%, 100% { opacity: 0.55 } 50% { opacity: 1 } }
+@keyframes girar { to { transform: rotate(360deg) } }
+.planta-maquina { transition: transform 0.35s var(--ease-salida) }
+.planta-maquina:hover, .planta-maquina[data-resaltada="true"] { transform: translateY(-5px) }
