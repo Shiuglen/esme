@@ -25,7 +25,12 @@
 
 ## Logo (abierto) y compañeros
 - **Logo: pendiente.** Requisitos del usuario: monocromo (el color es una capa intercambiable; nada de atarlo a la esmeralda), único, «bestial» (impresionante), de otro mundo, sofisticado, limpio, que se ame, animable con funciones, mejor que Deska/Claude/OpenAI.
-- Descartado (no repetir): gema 3D realista; gema plana; «e» tallada; anillos; jardín; eclipse/anillo de diamante («triste»); medusa pixel y vectorial; centinela de placas con ojo («geométrico y raro»); dragona pixel; formas orgánicas (mercurio, ferrofluido, flor, rayo, murmuración, S viva: «muertas»); kitsune emblema («bien malo»).
+- Descartado (no repetir): gema 3D realista; gema plana; «e» tallada; anillos; jardín; eclipse/anillo de diamante («triste»); medusa pixel y vectorial; centinela de placas con ojo («geométrico y raro»); dragona pixel; formas orgánicas (mercurio, ferrofluido, flor, rayo, murmuración, S viva: «muertas»); kitsune emblema («bien malo»); ajolote mascota en todas sus versiones (plano, línea, gelatina 3D: «no es sofisticado»); mariposa «Psique» de dos «e» en espejo («Esme no puede ser una mariposa»).
 - Lección: los logos dibujados con código tienen techo de oficio. Camino propuesto: explorar con un generador de imágenes de logos (Recraft/Firefly/FLUX) + referentes del usuario, y después vectorizar y animar.
 - **Compañeros («bichitos») personalizables**: criaturas que viven en los chats y los agentes, al estilo de los mods/buddy de Claude Code (especie, color, accesorios, estados). Especies iniciales posibles: dragona, medusa, centinela, kitsune (prototipos en el scratchpad de la sesión del 11-oct).
 - Identidad provisional: la palabra «esme» (Funnel Display, minúsculas) sin símbolo.
+
+## Referencias elegidas por el usuario (12-oct)
+- **Obsidian** (cristal facetado), **Supabase** (rayo de dos mitades desplazadas) y **Claude** (chispa orgánica).
+- Lo que tienen en común: un elemento natural convertido en símbolo; profundidad con 2–4 tonos planos (facetas, sin realismo); asimetría artesanal que da vida; un solo color dominante; energía animable. No son letras ni criaturas.
+- Dirección de trabajo: **chispa esmeralda**, esquirlas de cristal facetado alrededor de un núcleo de luz. Animación: las facetas giran al pensar y se encienden al recordar.
