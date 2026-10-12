@@ -1,0 +1,70 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Esme · Señal v2</title>
+<style>
+  body { margin: 0; background: #06070a; color: #e9e8e4; font: 13px/1.4 system-ui; }
+  .rejilla { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .celda { aspect-ratio: 1.25; display: grid; place-items: center; position: relative; border-right: 1px solid #14151a; border-bottom: 1px solid #14151a; }
+  .celda span { position: absolute; left: 14px; top: 10px; color: #6d6e78; font-size: 12px; }
+  .celda svg { width: 70%; overflow: visible; }
+</style>
+<div class="rejilla" id="r"></div>
+<script>
+// Señal v2: cada línea es una neurona; el pulso tiene forma de potencial de acción (subida brusca, pico,
+// caída bajo la base, recuperación) y se propaga en diagonal: cada línea dispara un poco después.
+const N = 6
+const pulso = (u, c) => {
+  const w = u < c ? 0.045 : 0.085                          // sube rápido, baja más lento
+  const pico = Math.exp(-(((u - c) / w) ** 2))
+  const pre = 0.32 * Math.exp(-(((u - (c - 0.16)) / 0.05) ** 2))   // un pre-pico suave: la mente "duda" antes de disparar
+  const bajo = -0.2 * Math.exp(-(((u - (c + 0.15)) / 0.055) ** 2)) // la caída bajo la base que delata a una neurona
+  return pico + pre + bajo
+}
+function senal(o) {
+  const { lineas = 5, ancho = [1.0, 2.8], tintas, fondo, punto, t = 0, alto = 26, id = 'a' } = o
+  let s = '', grads = ''
+  const crestas = []
+  for (let k = 0; k < lineas; k++) {
+    const f = k / (lineas - 1)                                   // 0 = fondo (lejos), 1 = frente (cerca)
+    const persp = 0.8 + 0.2 * f                                  // lo lejano, un poco más bajo
+    const x0 = 8 + 18 * (1 - f), x1 = x0 + 66                     // plano isométrico: el fondo se desplaza a la derecha y arriba
+    const y = 34 + 44 * f
+    const c = 0.42 + 0.14 * f + 0.025 * Math.sin(t + k * 0.6)
+    const amp = alto * persp
+    const pts = []
+    for (let i = 0; i <= 120; i++) { const u = i / 120; pts.push([x0 + (x1 - x0) * u, y - amp * pulso(u, c)]) }
+    const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(' ')
+    const g = ancho[0] + (ancho[1] - ancho[0]) * f
+    const tinta = typeof tintas === 'function' ? tintas(f, k) : tintas
+    const gid = `${id}-l${k}`
+    grads += `<linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="${x0}" y1="0" x2="${x1}" y2="0">
+      <stop offset="0" stop-color="${tinta}" stop-opacity="0"/><stop offset=".18" stop-color="${tinta}"/><stop offset=".82" stop-color="${tinta}"/><stop offset="1" stop-color="${tinta}" stop-opacity="0"/></linearGradient>`
+    s += `<path d="${d} L${x1} ${y + 8} L${x0} ${y + 8} Z" fill="${fondo}"/>`
+    s += `<path d="${d}" fill="none" stroke="url(#${gid})" stroke-width="${g.toFixed(2)}" stroke-linecap="round" stroke-linejoin="round"/>`
+    crestas.push(pts.reduce((a, b) => (b[1] < a[1] ? b : a)))
+  }
+  if (punto) {   // el pensamiento sale por delante de la cresta de la línea más cercana, hacia donde viaja el disparo
+    const alta = crestas.reduce((a, b) => (b[1] < a[1] ? b : a))
+    const px = alta[0] + 9, py = alta[1] - 5
+    s += `<circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="3" fill="${punto}" filter="url(#brillo)" opacity=".9"/>`
+    s += `<circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="1.6" fill="#fff"/>`
+  }
+  return `<defs>${grads}</defs>${s}`
+}
+const defs = `<defs><filter id="brillo" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="2.2"/></filter></defs>`
+const mezcla = (a, b, f) => { const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)); const A = h(a), B = h(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * f)).join(',')})` }
+const variantes = [
+  ['1 · blanco cálido, punto blanco', { tintas: (f) => mezcla('#3a3a44', '#f2efe8', f), fondo: '#06070a', punto: '#ffffff' }],
+  ['2 · índigo → aurora violeta', { tintas: (f) => mezcla('#2a2470', '#c4b5ff', f), fondo: '#06070a', punto: '#b9a6ff' }],
+  ['3 · azul profundo → azul eléctrico', { tintas: (f) => mezcla('#132a66', '#7cc4ff', f), fondo: '#06070a', punto: '#7cc4ff' }],
+  ['4 · brasa → ámbar solar', { tintas: (f) => mezcla('#4a1608', '#ffc069', f), fondo: '#06070a', punto: '#ffb347' }],
+  ['5 · plata, punto de color vivo', { tintas: (f) => mezcla('#30323a', '#dfe3ea', f), fondo: '#06070a', punto: '#ff5f8a' }],
+  ['6 · sobre claro, tinta negra', { tintas: (f) => mezcla('#c9c6bd', '#0b0b0d', f), fondo: '#efede7', punto: '#0b0b0d' }],
+]
+const r = document.getElementById('r')
+for (const [nombre, o] of variantes) {
+  const el = document.createElement('div'); el.className = 'celda'; if (o.fondo !== '#06070a') el.style.background = o.fondo
+  el.innerHTML = `<span>${nombre}</span><svg viewBox="0 0 100 100">${defs}${senal({ ...o, id: 'v' + r.children.length })}</svg>`
+  r.appendChild(el)
+}
+</script>

@@ -1,0 +1,77 @@
+<!doctype html><meta charset="utf-8"><title>Esme · Señal — finalistas</title>
+<style>
+body{margin:0;background:#06070a;color:#e9e8e4;font:13px/1.4 system-ui}
+.fila{display:grid;grid-template-columns:1.25fr 1fr 1fr;border-bottom:1px solid #15161b;min-height:300px}
+.fila>div{display:grid;place-items:center;border-right:1px solid #15161b;position:relative;padding:18px}
+.fila span.n{position:absolute;left:14px;top:10px;color:#6d6e78;font-size:12px}
+.icono{width:150px;height:150px;border-radius:36px;display:grid;place-items:center;box-shadow:0 24px 60px #000a,inset 0 1px 0 #ffffff14}
+.peq{display:flex;gap:18px;align-items:center;margin-top:18px}
+.firma{display:flex;align-items:center;gap:10px;font:650 40px/1 "Funnel Display",system-ui;letter-spacing:-.045em}
+</style><div id="r"></div><script>
+const pulso = (u, c) => {
+  const w = u < c ? 0.045 : 0.085                          // sube rápido, baja más lento
+  const pico = Math.exp(-(((u - c) / w) ** 2))
+  const pre = 0.32 * Math.exp(-(((u - (c - 0.16)) / 0.05) ** 2))   // un pre-pico suave: la mente "duda" antes de disparar
+  const bajo = -0.2 * Math.exp(-(((u - (c + 0.15)) / 0.055) ** 2)) // la caída bajo la base que delata a una neurona
+  return pico + pre + bajo
+}
+function senal(o) {
+  const { lineas = 5, ancho = [1.0, 2.8], tintas, fondo, punto, t = 0, alto = 30, id = 'a', difuminar = true, chispa = null } = o
+  let s = '', grads = ''
+  const crestas = []
+  for (let k = 0; k < lineas; k++) {
+    const f = k / (lineas - 1)                                   // 0 = fondo (lejos), 1 = frente (cerca)
+    const persp = 0.42 + 0.58 * f                                // la cresta crece hacia ti: la ola rompe en primer plano
+    const x0 = 8 + 18 * (1 - f), x1 = x0 + 66                     // plano isométrico: el fondo se desplaza a la derecha y arriba
+    const y = 30 + 50 * f
+    const c = 0.42 + 0.14 * f + 0.025 * Math.sin(t + k * 0.6)
+    const amp = alto * persp
+    const pts = []
+    for (let i = 0; i <= 120; i++) { const u = i / 120; pts.push([x0 + (x1 - x0) * u, y - amp * pulso(u, c)]) }
+    const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(' ')
+    const g = ancho[0] + (ancho[1] - ancho[0]) * f
+    const tinta = typeof tintas === 'function' ? tintas(f, k) : tintas
+    const gid = `${id}-l${k}`
+    grads += `<linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="${x0}" y1="0" x2="${x1}" y2="0">
+      <stop offset="0" stop-color="${tinta}" stop-opacity="${difuminar ? 0 : 1}"/><stop offset=".18" stop-color="${tinta}"/><stop offset=".82" stop-color="${tinta}"/><stop offset="1" stop-color="${tinta}" stop-opacity="${difuminar ? 0 : 1}"/></linearGradient>`
+    s += `<path d="${d} L${x1} ${y + 8} L${x0} ${y + 8} Z" fill="${fondo}"/>`
+    s += `<path d="${d}" fill="none" stroke="url(#${gid})" stroke-width="${g.toFixed(2)}" stroke-linecap="round" stroke-linejoin="round"/>`
+    crestas.push(pts.reduce((a, b) => (b[1] < a[1] ? b : a)))
+  }
+  if (punto && chispa !== null) {   // el impulso: recorre la línea más cercana hasta la cresta, como un nervio que dispara
+    const ult = lineas - 1, f = 1, persp = 0.42 + 0.58 * f, x0 = 8, x1 = x0 + 66, y = 30 + 50 * f
+    const c = 0.42 + 0.14 * f + 0.025 * Math.sin(t + ult * 0.6), u = Math.min(chispa, 0.995)
+    const px = x0 + (x1 - x0) * u, py = y - alto * persp * pulso(u, c), luz = Math.sin(Math.PI * Math.min(1, chispa / 0.9))
+    s += `<circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="3.4" fill="${punto}" filter="url(#brillo)" opacity="${(0.95 * luz).toFixed(2)}"/>`
+    s += `<circle cx="${px.toFixed(2)}" cy="${py.toFixed(2)}" r="1.5" fill="#fff" opacity="${luz.toFixed(2)}"/>`
+  }
+  return `<defs>${grads}</defs>${s}`
+}
+const defs = `<defs><filter id="brillo" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="2.2"/></filter></defs>`
+const mezcla = (a, b, f) => { const h = (x) => [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)); const A = h(a), B = h(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * f)).join(',')})` }
+
+const fin = [
+  ['A · aurora violeta', '#2a2470', '#c9bbff', '#b9a6ff', 'radial-gradient(120% 100% at 50% 0%, #1b1640, #07060f)', '#d8ceff'],
+  ['B · ámbar solar', '#4a1608', '#ffc26e', '#ffb347', 'radial-gradient(120% 100% at 50% 0%, #2a1408, #0b0604)', '#ffd9a3'],
+  ['C · blanco cálido', '#34343c', '#f4f1ea', '#ffffff', 'radial-gradient(120% 100% at 50% 0%, #1b1b21, #070709)', '#f4f1ea'],
+]
+const r = document.getElementById('r'); let n = 0
+const svg = (o, w, extra = '') => `<svg width="${w}" height="${w}" viewBox="6 8 88 86" ${extra}>${defs}${senal({ ...o, id: 'i' + (n++) })}</svg>`
+for (const [nombre, a, b, p, bg, txt] of fin) {
+  const o = { tintas: (f) => mezcla(a, b, f), fondo: '#06070a', punto: p }
+  const oi = { ...o, fondo: 'transparent' }
+  const fila = document.createElement('div'); fila.className = 'fila'
+  fila.innerHTML = `<div><span class="n">${nombre} · vivo</span><div class="vivo" data-a="${a}" data-b="${b}" data-p="${p}">${svg(o, 300)}</div></div>
+    <div style="background:${bg}"><span class="n">icono</span><div><div class="icono" style="background:${bg}">${svg({ ...o, fondo: '#0d0c14' }, 128)}</div>
+      <div class="peq">${svg({ ...o, lineas: 3, ancho: [4, 6], punto: null, difuminar: false }, 32)}${svg({ ...o, lineas: 3, ancho: [6, 8], punto: null, difuminar: false }, 16)}</div></div></div>
+    <div><span class="n">firma</span><div class="firma" style="color:${txt}">${svg({ ...o, ancho: [1.8, 4] }, 72)}esme</div></div>`
+  r.appendChild(fila)
+}
+const vivos = [...document.querySelectorAll('.vivo')]
+const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches
+function frame(ms) {
+  for (const v of vivos) { const { a, b, p } = v.dataset; v.innerHTML = `<svg width="300" height="300" viewBox="6 8 88 86">${defs}${senal({ tintas: (f) => mezcla(a, b, f), fondo: '#06070a', punto: p, t: ms / 900, chispa: ((ms / 2600) % 1.4) / 1.4 * 1.15 - 0.05, id: 'viv' + a.slice(1) })}</svg>` }
+  if (!quieto) requestAnimationFrame(frame)
+}
+requestAnimationFrame(frame)
+</script>
