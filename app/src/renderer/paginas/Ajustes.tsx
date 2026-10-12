@@ -13,7 +13,7 @@ type Vista = 'conectados' | 'suscripcion' | 'catalogo' | 'local'
 
 function Segmentos<T extends string>({ valor, opciones, onCambio, id }: { valor: T; opciones: { id: T; texto: string }[]; onCambio(v: T): void; id: string }) {
   return (
-    <div role="tablist" className="inline-flex gap-0.5 justify-self-start rounded-3 border border-linea bg-s1 p-1">
+    <div role="tablist" className="inline-flex gap-0.5 justify-self-start vidrio rounded-3 border p-1">
       {opciones.map((o) => (
         <button key={o.id} type="button" role="tab" aria-selected={valor === o.id} onClick={() => onCambio(o.id)}
           className={cn('relative h-8 rounded-2 px-3.5 text-[13px] font-medium transition-colors', valor === o.id ? 'text-texto' : 'text-texto-2 hover:text-texto')}>
@@ -44,7 +44,7 @@ function Fila({ icono, titulo, sub, derecha, children }: { icono: React.ReactNod
   )
 }
 
-const Caja = ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={cn('overflow-hidden rounded-3 border border-linea bg-s1', className)}>{children}</div>
+const Caja = ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={cn('overflow-hidden rounded-3 vidrio halo border', className)}>{children}</div>
 const Pastilla = ({ children, className }: { children: React.ReactNode; className?: string }) => <span className={cn('inline-flex h-6 items-center gap-1 rounded-full border border-linea px-2.5 text-xs font-medium text-texto-2', className)}>{children}</span>
 
 function Clave({ p, onCambio }: { p: ProviderView; onCambio(): void }) {
@@ -120,7 +120,7 @@ function Motores() {
       {vista === 'catalogo' && (
         <div className="grid gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <label className="flex h-9 min-w-[260px] flex-1 items-center gap-2 rounded-2 border border-linea bg-s1 px-3 focus-within:border-linea-fuerte">
+            <label className="flex h-9 min-w-[260px] flex-1 items-center gap-2 rounded-2 vidrio halo border px-3 focus-within:border-linea-fuerte">
               <Search className="size-4 text-texto-3" strokeWidth={1.5} aria-hidden />
               <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Busca un proveedor: openrouter, groq, mistral…" aria-label="Buscar proveedor" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-texto-3" />
             </label>

@@ -56,7 +56,7 @@ export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: st
     const temas = red.nodes.filter((n) => n.tipo === 'tema').length
 
     return (
-      <div ref={caja} role="img" aria-label={`Red neuronal de tu memoria: ${red.nodes.length - temas} recuerdos en ${temas} temas con ${red.links.length} conexiones.${recordados[0] ? ` Último recuerdo usado: «${recordados[0].consulta}», ${recordados[0].cuantos} recuerdos.` : ''}`} className="relative h-full w-full overflow-hidden bg-fondo" style={{ backgroundImage: `radial-gradient(${colores.linea} 1px, transparent 1px)`, backgroundSize: '22px 22px' }}>
+      <div ref={caja} role="img" aria-label={`Red neuronal de tu memoria: ${red.nodes.length - temas} recuerdos en ${temas} temas con ${red.links.length} conexiones.${recordados[0] ? ` Último recuerdo usado: «${recordados[0].consulta}», ${recordados[0].cuantos} recuerdos.` : ''}`} className="relative h-full w-full overflow-hidden" style={{ backgroundImage: `radial-gradient(${colores.linea} 1px, transparent 1px)`, backgroundSize: '22px 22px' }}>
         {red.nodes.length > 0 && (
           <ForceGraph2D<NodoRed, EnlaceRed>
             ref={fg} width={tam.w} height={tam.h} graphData={red} backgroundColor="rgba(0,0,0,0)"

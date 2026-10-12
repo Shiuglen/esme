@@ -18,7 +18,7 @@ export function Riel({ actual, onIr, cuentas }: { actual: SeccionId; onIr(id: Se
     )
   }
   return (
-    <nav aria-label="Secciones" className="flex w-[216px] shrink-0 flex-col gap-0.5 border-r border-linea bg-s1 px-2 py-2.5">
+    <nav aria-label="Secciones" className="flex w-[216px] shrink-0 flex-col gap-0.5 vidrio-fino border-r border-linea px-2 py-2.5">
       {SECCIONES.map(item)}
       <div className="mx-1.5 my-2 h-px bg-linea" />
       {item(AJUSTES)}

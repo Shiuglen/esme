@@ -15,6 +15,7 @@ import { MemoryPanel } from './panels/MemoryPanel'
 import { WorkshopPanel } from './panels/WorkshopPanel'
 import { BarraSuperior } from './shell/BarraSuperior'
 import { Paleta } from './shell/Paleta'
+import { FondoVivo, useHalos } from './shell/FondoVivo'
 import { Riel } from './shell/Riel'
 import { AJUSTES, SECCIONES, nombreDe, type SeccionId } from './shell/secciones'
 
@@ -94,9 +95,12 @@ export function App() {
   const preguntar = (q: string) => { setSemilla((s) => ({ q, n: s.n + 1 })); setPreguntas((n) => n + 1); ir('conversacion') }
   const enfocarRecuerdo = (id: string) => { setEnfocado(id); ir('memoria'); setTimeout(() => redRef.current?.enfocar(id), 60) }
 
+  useHalos()
+  const estadoEsme = pensando ? 'pensando' : recordando ? 'recordando' : 'reposo'
+
   const pagina = (id: SeccionId) => {
     switch (id) {
-      case 'inicio': return <Inicio conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} eventos={eventos} estadoEsme={pensando ? 'pensando' : recordando ? 'recordando' : 'reposo'} memoriaUsada={memoriaUsada} preguntas={preguntas}
+      case 'inicio': return <Inicio conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} eventos={eventos} estadoEsme={estadoEsme} memoriaUsada={memoriaUsada} preguntas={preguntas}
         memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar} onIr={ir} />
       case 'conversacion': return (
         <div className="mx-auto flex h-full max-w-[880px] flex-col px-6 pt-4 pb-5">
@@ -105,7 +109,7 @@ export function App() {
       case 'taller': return <div className="flex h-full flex-col p-5"><WorkshopPanel day={tema === 'dia'} /></div>
       case 'memoria': return (
         <div className="grid h-full grid-cols-[400px_minmax(0,1fr)]">
-          <div className="flex min-h-0 flex-col border-r border-linea bg-s1"><MemoryPanel brain={brain} focusId={enfocado} onFocus={(i) => redRef.current?.enfocar(i)} onChanged={refrescar} /></div>
+          <div className="vidrio-fino flex min-h-0 flex-col border-r border-linea"><MemoryPanel brain={brain} focusId={enfocado} onFocus={(i) => redRef.current?.enfocar(i)} onChanged={refrescar} /></div>
           <div className="relative min-h-0 overflow-hidden"><RedNeuronal ref={redRef} atlas={atlas} tema={tema} recordados={recordados} onPick={setEnfocado} /></div>
         </div>)
       case 'ajustes': return <Ajustes tema={tema} onTema={setTema} />
@@ -115,7 +119,9 @@ export function App() {
   }
 
   return (
-    <div className="grid h-full grid-rows-[48px_minmax(0,1fr)]">
+    <>
+    <FondoVivo tema={tema} estado={estadoEsme} />
+    <div className="relative z-10 grid h-full grid-rows-[48px_minmax(0,1fr)]">
       <BarraSuperior seccion={nombreDe(seccion)} estado={{ conectado: !!brain && recuerdos !== null, recuerdos, pensando }} tema={tema}
         onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} onBuscar={() => setPaleta(true)} />
       <div className="flex min-h-0">
@@ -132,5 +138,6 @@ export function App() {
         onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} />
       <Toaster theme={tema === 'noche' ? 'dark' : 'light'} position="bottom-right" toastOptions={{ style: { background: 'var(--superficie-2)', border: '1px solid var(--linea)', color: 'var(--texto)', fontFamily: 'inherit' } }} />
     </div>
+    </>
   )
 }

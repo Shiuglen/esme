@@ -7,8 +7,8 @@ export type EstadoSenal = 'reposo' | 'pensando' | 'recordando'
 
 const reducido = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
-export function Senal({ tam = 24, estado = 'reposo', tapa = 'var(--fondo)', titulo = 'Esme', className }: {
-  tam?: number; estado?: EstadoSenal; /** color del fondo donde vive: tapa las líneas de detrás */ tapa?: string; titulo?: string; className?: string
+export function Senal({ tam = 24, estado = 'reposo', titulo = 'Esme', className }: {
+  tam?: number; estado?: EstadoSenal; /** @deprecated ya no hace falta: la oclusión es por máscara */ tapa?: string; titulo?: string; className?: string
 }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, '')
   const [t, setT] = useState(0)
@@ -38,12 +38,16 @@ export function Senal({ tam = 24, estado = 'reposo', tapa = 'var(--fondo)', titu
           </linearGradient>
         ))}
         <filter id={`${id}b`} x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="2.2" /></filter>
+        {/* oclusión sin pintar: cada línea queda tapada por la zona bajo las líneas de delante (fondo transparente, vale sobre cristal o shader) */}
+        {ls.map((_, k) => (
+          <mask key={k} id={`${id}m${k}`} maskUnits="userSpaceOnUse" x={-20} y={-20} width={140} height={140}>
+            <rect x={-20} y={-20} width={140} height={140} fill="#fff" />
+            {ls.slice(k + 1).map((d, j) => <path key={j} d={`${d.d} L${d.x1} ${d.base + 8} L${d.x0} ${d.base + 8} Z`} fill="#000" stroke="#000" strokeWidth={d.grosor * 0.6} strokeLinejoin="round" />)}
+          </mask>
+        ))}
       </defs>
       {ls.map((l, k) => (
-        <g key={k}>
-          <path d={`${l.d} L${l.x1} ${l.base + 8} L${l.x0} ${l.base + 8} Z`} style={{ fill: tapa }} />
-          <path d={l.d} fill="none" stroke={`url(#${id}l${k})`} strokeWidth={l.grosor} strokeLinecap="round" strokeLinejoin="round" />
-        </g>
+        <path key={k} d={l.d} fill="none" stroke={`url(#${id}l${k})`} strokeWidth={l.grosor} strokeLinecap="round" strokeLinejoin="round" mask={k < ls.length - 1 ? `url(#${id}m${k})` : undefined} />
       ))}
       {imp && imp.luz > 0 && (
         <>

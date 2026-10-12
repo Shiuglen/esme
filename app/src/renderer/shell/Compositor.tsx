@@ -12,7 +12,7 @@ export function Compositor({ onEnviar, memoria, onMemoria, contexto, autoFocus }
   const enviar = () => { const q = texto.trim(); if (!q) return; onEnviar(q); setTexto('') }
   return (
     <form onSubmit={(e) => { e.preventDefault(); enviar() }}
-      className="aurora-foco flex items-end gap-2.5 rounded-4 border border-linea bg-s1 py-2.5 pr-2.5 pl-4 transition-colors focus-within:border-transparent">
+      className="aurora-foco flex items-end gap-2.5 vidrio rounded-4 border py-2.5 pr-2.5 pl-4 transition-colors focus-within:border-transparent">
       <div className="grid min-w-0 flex-1 gap-2">
         <textarea ref={area} rows={1} value={texto} autoFocus={autoFocus} onChange={(e) => setTexto(e.target.value)} aria-label="Mensaje para Esme"
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar() } }}

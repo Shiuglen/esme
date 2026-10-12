@@ -16,7 +16,7 @@ const NOMBRE_DIA = ['L', '', 'X', '', 'V', '', 'D']
 
 function Cifra({ etiqueta, children, pie }: { etiqueta: string; children: React.ReactNode; pie?: React.ReactNode }) {
   return (
-    <div className="grid min-w-0 content-start gap-1.5 rounded-3 border border-linea bg-s1 px-4 py-3.5">
+    <div className="grid min-w-0 content-start gap-1.5 rounded-3 vidrio halo border px-4 py-3.5">
       <span className="text-xs text-texto-3">{etiqueta}</span>
       <div className="font-sans text-[28px] leading-8 font-semibold tracking-[-0.02em] tabular-nums">{children}</div>
       {pie && <div className="text-xs text-texto-3">{pie}</div>}
@@ -67,7 +67,7 @@ export function Uso({ onIr }: { onIr(id: 'ajustes'): void }) {
             <h1 className="m-0 font-display text-[32px] leading-[1.1] font-semibold tracking-[-0.03em]">Uso</h1>
             <p className="m-0 text-[15px] text-texto-2">Cuánto gastas en IA, en qué y a qué ritmo. Todo se calcula en tu equipo.</p>
           </div>
-          <div role="tablist" className="inline-flex gap-0.5 rounded-3 border border-linea bg-s1 p-1">
+          <div role="tablist" className="inline-flex gap-0.5 vidrio rounded-3 border p-1">
             {([['hoy', 'Hoy'], ['7', '7 días'], ['30', '30 días']] as const).map(([id, t]) => (
               <button key={id} type="button" role="tab" aria-selected={rango === id} onClick={() => setRango(id)}
                 className={cn('relative h-8 rounded-2 px-3.5 text-[13px] font-medium transition-colors', rango === id ? 'text-texto' : 'text-texto-2 hover:text-texto')}>
@@ -89,7 +89,7 @@ export function Uso({ onIr }: { onIr(id: 'ajustes'): void }) {
           </Cifra>
         </motion.div>
 
-        <motion.section {...entrada(2)} className="grid gap-3 rounded-3 border border-linea bg-s1 p-4">
+        <motion.section {...entrada(2)} className="grid gap-3 rounded-3 vidrio halo border p-4">
           <div className="flex items-center justify-between gap-3"><h2 className="m-0 text-[15px] font-semibold">{activos.length ? `${activos.length} ${activos.length === 1 ? 'día' : 'días'} con actividad este año` : 'Aún sin actividad'}</h2><span className="text-xs text-texto-3">{pico ? `pico: ${fmtTokens(pico.tokens)} tokens el ${pico.dia}` : 'tokens por día'}{externo?.disponible.claudeCode ? ' · incluye Claude Code' : ''}</span></div>
           <div className="flex gap-2 overflow-x-auto pb-1" role="img" aria-label={`Actividad del último año: ${activos.length} días con uso${pico ? `; el día de más uso fue el ${pico.dia}, con ${fmtTokens(pico.tokens)} tokens` : ''}.`}>
             <div className="grid grid-rows-7 gap-[3px] pt-[1px] text-[10px] leading-[13px] text-texto-3">{NOMBRE_DIA.map((n, i) => <span key={i} className="h-[13px]">{n}</span>)}</div>
@@ -107,7 +107,7 @@ export function Uso({ onIr }: { onIr(id: 'ajustes'): void }) {
         </motion.section>
 
         <motion.div {...entrada(3)} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4 max-[1000px]:grid-cols-1">
-          <section className="grid content-start gap-3 rounded-3 border border-linea bg-s1 p-4">
+          <section className="grid content-start gap-3 rounded-3 vidrio halo border p-4">
             <div className="flex items-center justify-between gap-3"><h2 className="m-0 text-[15px] font-semibold">{diaCaro.costeUSD > 0 ? `Tu día más caro: ${diaCaro.dia.slice(5)}, ${fmtUSD(diaCaro.costeUSD)}` : 'Sin gasto en 30 días'}</h2><span className="text-xs text-texto-3">USD por día · 30 días</span></div>
             <div className="flex h-[140px] items-end gap-[3px]" role="img" aria-label={`Gasto de los últimos 30 días; máximo ${fmtUSD(maxBarra)} en un día`}>
               {barras.map((b) => (
@@ -116,7 +116,7 @@ export function Uso({ onIr }: { onIr(id: 'ajustes'): void }) {
             </div>
             <div className="flex justify-between text-[11px] text-texto-3"><span>{barras[0]?.dia.slice(5)}</span><span>hoy</span></div>
           </section>
-          <section className="grid content-start gap-3 rounded-3 border border-linea bg-s1 p-4">
+          <section className="grid content-start gap-3 rounded-3 vidrio halo border p-4">
             <div className="flex items-center justify-between"><h2 className="m-0 text-[15px] font-semibold">Por modelo</h2><span className="text-xs text-texto-3">{rango === 'hoy' ? 'hoy' : `${rango} días`}</span></div>
             {!resumen?.porModelo.length ? <p className="m-0 text-sm text-texto-3">Sin consumo en este rango. Cada respuesta del chat queda anotada aquí con su coste real.</p> : (
               <div className="grid gap-2.5">
@@ -140,7 +140,7 @@ export function Uso({ onIr }: { onIr(id: 'ajustes'): void }) {
               {([['claude-code', 'Claude Code', externo.disponible.claudeCode], ['codex', 'Codex', externo.disponible.codex]] as const).filter(([, , ok]) => ok).map(([id, nombre]) => {
                 const v = externo.ventanas[id], max = Math.max(...v.porDia.map((d) => d.tokens), 1)
                 return (
-                  <div key={id} className="grid gap-3 rounded-3 border border-linea bg-s1 p-4">
+                  <div key={id} className="grid gap-3 rounded-3 vidrio halo border p-4">
                     <div className="flex items-center justify-between gap-3"><span className="text-sm font-semibold">{nombre}</span>
                       <span className="text-xs text-texto-3 tabular-nums">ritmo: {fmtTokens(v.ritmoPorHora)} tokens/h</span></div>
                     <div className="grid grid-cols-2 gap-3">

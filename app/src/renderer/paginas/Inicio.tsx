@@ -23,7 +23,7 @@ const entrada = (i: number) => ({ initial: { opacity: 0, y: 10 }, animate: { opa
 
 function Tarjeta({ titulo, accion, children, className }: { titulo: string; accion?: { texto: string; onClick(): void }; children: React.ReactNode; className?: string }) {
   return (
-    <section className={cn('flex min-w-0 flex-col gap-3 rounded-3 border border-linea bg-s1 p-4', className)}>
+    <section className={cn('flex min-w-0 flex-col gap-3 rounded-3 vidrio halo border p-4', className)}>
       <div className="flex items-center justify-between gap-3">
         <h2 className="m-0 text-[15px] leading-[22px] font-semibold">{titulo}</h2>
         {accion && <button type="button" onClick={accion.onClick} className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-2 px-2.5 text-xs font-medium text-texto-2 transition-colors hover:bg-s2 hover:text-texto">{accion.texto}<ArrowRight className="size-3.5" strokeWidth={1.5} /></button>}
@@ -35,7 +35,7 @@ function Tarjeta({ titulo, accion, children, className }: { titulo: string; acci
 
 function Cifra({ etiqueta, children, pie }: { etiqueta: string; children: React.ReactNode; pie?: React.ReactNode }) {
   return (
-    <div className="grid min-w-0 content-start gap-1.5 rounded-3 border border-linea bg-s1 px-4 py-3.5">
+    <div className="grid min-w-0 content-start gap-1.5 rounded-3 vidrio halo border px-4 py-3.5">
       <span className="text-xs text-texto-3">{etiqueta}</span>
       <div className="font-sans text-[28px] leading-8 font-semibold tracking-[-0.02em] tabular-nums">{children}</div>
       {pie && <div className="text-xs text-texto-3">{pie}</div>}
@@ -58,7 +58,7 @@ export function Inicio({ conectado, recuerdos, eventos, estadoEsme, memoriaUsada
 
   const linea = !conectado ? 'No encuentro tu cerebro. Arráncalo y vuelvo a conectar sola.'
     : recuerdos ? `Tu memoria tiene ${recuerdos.toLocaleString('es-ES')} recuerdos. ¿Qué hacemos hoy?` : 'Tu memoria está vacía. Empieza absorbiendo tus notas desde Memoria.'
-  const conClave = proveedores.filter((p) => p.hasKey)
+  const conClave = proveedores.filter((p) => p.hasKey && !p.local), locales = proveedores.filter((p) => p.local)
   const instalados = motores.filter((m) => m.instalado)
   const tope = uso?.presupuesto.diarioUSD, pct = tope ? Math.min(100, (uso!.hoyUSD / tope) * 100) : null
 
@@ -85,7 +85,7 @@ export function Inicio({ conectado, recuerdos, eventos, estadoEsme, memoriaUsada
           <Cifra etiqueta="Gasto de hoy" pie={uso ? (tope ? <span className="flex items-center gap-2"><span className="h-1 flex-1 overflow-hidden rounded-full bg-s3"><span className={cn('block h-full rounded-full', uso.evaluacion.estado === 'limite' ? 'bg-peligro' : uso.evaluacion.estado === 'aviso' ? 'bg-atencion' : 'bg-acento')} style={{ width: `${pct}%` }} /></span>de {fmtUSD(tope)}</span> : 'sin tope diario') : 'solo en la app de escritorio'}>
             {fmtUSD(uso?.hoyUSD ?? 0)}
           </Cifra>
-          <Cifra etiqueta="Motores listos" pie={`${conClave.length} por API · ${instalados.length} por suscripción`}><NumberFlow value={conClave.length + instalados.length} /></Cifra>
+          <Cifra etiqueta="Motores listos" pie={`${locales.length} en tu ordenador · ${conClave.length} por API · ${instalados.length} por suscripción`}><NumberFlow value={locales.length + conClave.length + instalados.length} /></Cifra>
           <Cifra etiqueta="Memoria usada hoy" pie={`${preguntas} ${preguntas === 1 ? 'pregunta' : 'preguntas'} en esta sesión`}>{fmtTokens(memoriaUsada)}<span className="ml-1 text-sm font-medium text-texto-3">tokens</span></Cifra>
         </motion.div>
 
@@ -111,23 +111,26 @@ export function Inicio({ conectado, recuerdos, eventos, estadoEsme, memoriaUsada
             )}
           </Tarjeta>
           <Tarjeta titulo="Tus motores" accion={{ texto: 'Gestionar', onClick: () => onIr('ajustes') }}>
-            {conClave.length + motores.length === 0 ? (
+            {locales.length + conClave.length + instalados.length === 0 ? (
               <p className="m-0 text-sm text-texto-3">{bridge.mode() === 'web' ? 'En el navegador solo veo los motores locales. Abre la app de escritorio para ver todos.' : 'Conecta tu primer motor: hay opciones gratis.'}</p>
             ) : (
               <ul className="m-0 grid list-none gap-1 p-0">
-                {conClave.map((p) => (
+                {[...locales, ...conClave].map((p) => (
                   <li key={p.id} className="flex items-center gap-2.5 py-1">
                     <KeyRound className="size-4 shrink-0 text-texto-3" strokeWidth={1.5} />
                     <span className="truncate text-sm">{p.label}</span>
                     <span className="ml-auto inline-flex h-6 items-center rounded-full bg-acento-velo px-2.5 text-xs font-medium text-acento">{p.local ? 'local' : 'API'}</span>
                   </li>))}
-                {motores.map((m) => (
+                {instalados.map((m) => (
                   <li key={m.id} className="flex items-center gap-2.5 py-1">
                     <Plug className="size-4 shrink-0 text-texto-3" strokeWidth={1.5} />
                     <span className="truncate text-sm">{m.nombre}</span>
                     <span className={cn('ml-auto inline-flex h-6 items-center rounded-full px-2.5 text-xs font-medium', m.instalado ? 'bg-acento-velo text-acento' : 'border border-linea text-texto-3')}>
                       {m.instalado ? 'tu suscripción' : 'sin instalar'}</span>
                   </li>))}
+                {motores.length > instalados.length && (
+                  <li><button type="button" onClick={() => onIr('ajustes')} className="mt-1 inline-flex items-center gap-1.5 text-xs text-texto-3 transition-colors hover:text-texto">
+                    {motores.length - instalados.length} motores más disponibles con tu suscripción<ArrowRight className="size-3" strokeWidth={1.5} /></button></li>)}
               </ul>
             )}
           </Tarjeta>
