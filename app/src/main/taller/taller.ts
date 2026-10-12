@@ -1,6 +1,6 @@
 // Runtime del Taller: tareas con motores ACP, cada una en su copia aislada, con permisos, uso, cambios y persistencia.
 import { randomBytes } from 'node:crypto'
-import { appendFileSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
+import { appendFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { abrirSesionACP, type EventoMotor } from '../motores/sesion-acp'
@@ -33,6 +33,7 @@ const ACTIVAS: EstadoTarea[] = ['preparando', 'trabajando', 'esperando']
 // Estado interno de una tarea; solo `tarea` sale hacia fuera.
 type Registro = {
   tarea: Tarea; motor?: MotorElegido; sesion?: SesionMotor; resolverPermiso?: (r: string | 'cancelar') => void
+  total?: number   // eventos ya guardados en el historial; se cuenta del disco la primera vez tras recargar
   eventos: EventoMotor[]; parcial: boolean   // parcial: la memoria no tiene todos los eventos, hay que leer el disco
   ids: Set<string>; cubo: number; inicioTurno: number; cancelado: boolean; descartada: boolean
   ultimoEmitido: number; temporizador?: NodeJS.Timeout
@@ -240,8 +241,9 @@ export class Taller {
     if (r.descartada || this.cerrado) return
     r.eventos.push(e)
     if (r.eventos.length > MAX_EVENTOS) { r.eventos.shift(); r.parcial = true }
+    r.total ??= this.contarEventos(r.tarea.id)
     this.anotarEvento(r.tarea.id, e)
-    this.emitir('evento', { id: r.tarea.id, evento: e })
+    this.emitir('evento', { id: r.tarea.id, n: r.total++, evento: e })
   }
 
   // Reparte los eventos por cubos de reloj de 1,5 s: el último es el actual.
@@ -252,6 +254,10 @@ export class Taller {
     for (let i = 0; i < saltos; i++) { a.shift(); a.push(0) }
     r.cubo = Math.max(actual, r.cubo)
     a[CUBOS - 1]++
+  }
+
+  private contarEventos(id: string): number {
+    try { return readFileSync(this.archivoEventos(id), 'utf8').split('\n').filter(Boolean).length } catch { return 0 }
   }
 
   private anotarEvento(id: string, e: EventoMotor): void {

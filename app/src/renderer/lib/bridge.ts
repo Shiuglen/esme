@@ -47,7 +47,7 @@ type ElectronApi = {
     seguir(id: string, texto: string): Promise<ResultadoTaller>; responder(id: string, opcion: string): Promise<ResultadoTaller>
     parar(id: string): Promise<ResultadoTaller>; descartar(id: string): Promise<ResultadoTaller>
     diff(id: string): Promise<{ texto: string; truncado: boolean }>; carpeta(): Promise<string | null>; abrir(id: string): Promise<ResultadoTaller>
-    onCambio(fn: (t: TareaTaller) => void): () => void; onEvento(fn: (e: { id: string; evento: EventoTaller }) => void): () => void; onQuitada(fn: (id: string) => void): () => void
+    onCambio(fn: (t: TareaTaller) => void): () => void; onEvento(fn: (e: { id: string; n: number; evento: EventoTaller }) => void): () => void; onQuitada(fn: (id: string) => void): () => void
   }
   agents: { list(): Promise<AgentView[]> }
   pty: {
@@ -164,7 +164,7 @@ export const bridge = {
     carpeta: async (): Promise<string | null> => (isElectron() ? window.daimon!.taller.carpeta() : null),
     abrir: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.abrir(id) : SOLO_ESCRITORIO),
     onCambio: (fn: (t: TareaTaller) => void): (() => void) => (isElectron() ? window.daimon!.taller.onCambio(fn) : () => {}),
-    onEvento: (fn: (e: { id: string; evento: EventoTaller }) => void): (() => void) => (isElectron() ? window.daimon!.taller.onEvento(fn) : () => {}),
+    onEvento: (fn: (e: { id: string; n: number; evento: EventoTaller }) => void): (() => void) => (isElectron() ? window.daimon!.taller.onEvento(fn) : () => {}),
     onQuitada: (fn: (id: string) => void): (() => void) => (isElectron() ? window.daimon!.taller.onQuitada(fn) : () => {}),
   },
 

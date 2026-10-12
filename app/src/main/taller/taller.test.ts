@@ -65,6 +65,8 @@ describe('Taller', () => {
     expect(ev[1]).toEqual({ tipo: 'texto', texto: 'hola' })
     expect(ev.at(-1)).toMatchObject({ tipo: 'fin', motivo: 'end_turn' })
     expect(emisiones.filter((e) => e.canal === 'evento').map((e) => e.dato.evento.tipo)).toEqual(['usuario', 'texto', 'fin'])
+    expect(emisiones.filter((e) => e.canal === 'evento').map((e) => e.dato.n)).toEqual([0, 1, 2])
+    expect(emisiones.filter((e) => e.canal === 'evento').every((e) => e.dato.id === tarea.id)).toBe(true)
   })
 
   it('cuenta herramientas distintas, primera respuesta y uso acumulado', async () => {
@@ -134,10 +136,12 @@ describe('Taller', () => {
     await esperar(tarea.id, 'lista')
     await t!.seguir(tarea.id, 'dos')
     await esperar(tarea.id, 'trabajando')
+    expect(t!.lista()[0].fin).toBeUndefined()
     await expect(t!.seguir(tarea.id, 'tres')).rejects.toThrow('La tarea sigue trabajando.')
     soltar()
     await esperar(tarea.id, 'lista')
     expect(t!.lista()[0].turnos).toBe(2)
+    expect(t!.lista()[0].fin).toBeDefined()
     expect(s.abrir).toHaveBeenCalledTimes(1)
     const usuarios = (await t!.eventos(tarea.id)).filter((e) => e.tipo === 'usuario')
     expect(usuarios).toEqual([{ tipo: 'usuario', texto: 'uno' }, { tipo: 'usuario', texto: 'dos' }])
