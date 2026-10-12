@@ -379,3 +379,30 @@ veredictos(): Promise<{ ts: number; motor: string; modelo: string | null; exito:
 - [ ] `taller`: `guardarEnRama y exportar marcan la tarea`.
 
 **Commit:** `feat(taller): aplicar los cambios a tu carpeta (con deshacer), guardarlos en su rama o exportarlos, y veredictos para el router`.
+
+---
+
+## Estado y lo aprendido con motores reales (12-oct)
+
+**Hecho, en este orden:**
+- **B1–B6:** runtime, copias, opciones del motor, aplicar y veredictos.
+- **F1–F5:** la interfaz.
+- **Ampliaciones del orquestador:**
+  - revisión con Shiki;
+  - modo foco;
+  - el Taller presente en toda la app (pastilla, avisos y feed);
+  - router automático;
+  - arena;
+  - reintentos ante límites del proveedor.
+
+**Lo aprendido con motores reales:**
+- **OpenCode pisa el modelo elegido:** aplica su configuración (en este equipo, un modelo local lento) ~100 ms después de abrir la sesión, ya con el prompt en marcha. Por eso Esme espera a que las opciones se asienten y defiende la elección.
+- **El sondeo lee el modelo antes de tiempo:** ve el valor previo a esa configuración. Por eso la interfaz envía siempre el modelo que muestra.
+- **Modelos de OpenCode Zen:** casi todos los gratis piden iniciar sesión (`opencode auth login`); `exo-free` está retirado.
+- **Límite de peticiones:** con varias a la vez llega «Rate limit exceeded». Hay reintentos con espera y la arena arranca escalonada.
+- **git en español:** los mensajes del sistema salen traducidos y no encajan con los patrones. `aplicarParche` lanza git con `LC_ALL=C`.
+
+**Pruebas de punta a punta**, hechas en un repo temporal (nunca en carpetas del usuario):
+- **Tarea con OpenCode y LongCat:** 3 ficheros en 40 s.
+- **Aplicar y deshacer:** al aplicar, el árbol de trabajo cambia y el índice queda intacto; al deshacer, la carpeta queda limpia.
+- **Arena de tres modelos** con reintentos.

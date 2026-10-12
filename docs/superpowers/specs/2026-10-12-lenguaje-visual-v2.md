@@ -34,8 +34,22 @@ Sale del análisis de las 55 publicaciones del FYP (con fotogramas) y de la inve
 
 ## Orden de los pasos
 1. Fondo vivo y cristal con halo. **Hecho.**
-2. Paleta Ctrl+K que se transforma desde la barra, con chips y vista previa.
+2. Paleta Ctrl+K que se transforma desde la barra, con chips y vista previa. **Hecho** (sin vista previa).
 3. Taller como agent runtime: escena isométrica, filas HUD de motores, worktrees, revisión guiada, vista previa y arena.
+   - **Hecho (12-oct):**
+     - planta isométrica con conductos que disparan como neuronas;
+     - filas HUD;
+     - runtime ACP con worktrees, permisos, reintentos y persistencia;
+     - revisión guiada con código coloreado;
+     - aplicar a tu carpeta (con deshacer), guardar en rama o exportar;
+     - router automático que aprende;
+     - arena lado a lado;
+     - avisos en toda la app.
+   - **Pendiente:**
+     - vista previa con clic para editar;
+     - agente propio de Esme para modelos por API;
+     - comandos en contenedor (falta podman o docker en el equipo);
+     - «Guía» de la revisión (explicación paso a paso y diagrama antes/después).
 4. Memoria: panel izquierdo rediseñado, trazas aurora por tipo y vista esfera.
 5. Bienvenida «la mente despierta»: malla a pantalla completa, esfera de partículas, fuentes a absorber y autonomía.
 6. Microinteracciones con historia, iconos vivos y la tarjeta de tu mente.
