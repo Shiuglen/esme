@@ -1,6 +1,7 @@
 // Catálogo de proveedores y modelos desde models.dev (precios en USD por 1M de tokens), con caché y semilla.
 import { readFileSync, writeFileSync, statSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
+import semillaEmpaquetada from './fixtures/modelsdev-muestra.json'
 
 export type ModeloCatalogo = { id: string; nombre: string; proveedor: string; contexto: number; salida: number
   coste: { entrada: number; salida: number; cacheLectura?: number; cacheEscritura?: number }
@@ -42,9 +43,8 @@ export function parseModelsDev(json: unknown): ProveedorCatalogo[] {
 }
 
 const URL_API = 'https://models.dev/api.json'
-const SEMILLA = join(__dirname, 'fixtures', 'modelsdev-muestra.json')
 
-export async function cargarCatalogo(o: { dirCache: string; f?: typeof fetch; ahora?: () => number; maxEdadMs?: number }):
+export async function cargarCatalogo(o: { dirCache: string; f?: typeof fetch; ahora?: () => number; maxEdadMs?: number; semilla?: unknown }):
   Promise<{ proveedores: ProveedorCatalogo[]; origen: 'red' | 'cache' | 'semilla'; fecha: number }> {
   const ahora = o.ahora ?? Date.now, f = o.f ?? fetch, max = o.maxEdadMs ?? 24 * 3600e3
   const archivo = join(o.dirCache, 'catalogo-modelsdev.json')
@@ -60,7 +60,7 @@ export async function cargarCatalogo(o: { dirCache: string; f?: typeof fetch; ah
     return { proveedores: ps, origen: 'red', fecha: ahora() }
   } catch {
     if (cache) return { proveedores: cache.ps, origen: 'cache', fecha: cache.fecha }
-    const semilla = parseModelsDev(JSON.parse(readFileSync(SEMILLA, 'utf8')))
+    const semilla = parseModelsDev(o.semilla ?? semillaEmpaquetada)
     return { proveedores: semilla, origen: 'semilla', fecha: ahora() }
   }
 }
