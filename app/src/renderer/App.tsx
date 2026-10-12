@@ -6,11 +6,11 @@ import { BrainClient, type Atlas as AtlasData, type MindEvent } from './lib/brai
 import { bridge } from './lib/bridge'
 import { cn } from './lib/cn'
 import { RedNeuronal, type Recordado, type RedHandle } from './memoria/RedNeuronal'
+import { Ajustes } from './paginas/Ajustes'
 import { Inicio, type EventoMente } from './paginas/Inicio'
 import { Proximamente } from './paginas/Proximamente'
 import { ChatPanel } from './panels/ChatPanel'
 import { MemoryPanel } from './panels/MemoryPanel'
-import { SettingsPanel } from './panels/SettingsPanel'
 import { WorkshopPanel } from './panels/WorkshopPanel'
 import { BarraSuperior } from './shell/BarraSuperior'
 import { Paleta } from './shell/Paleta'
@@ -107,7 +107,7 @@ export function App() {
           <div className="flex min-h-0 flex-col border-r border-linea bg-s1"><MemoryPanel brain={brain} focusId={enfocado} onFocus={(i) => redRef.current?.enfocar(i)} onChanged={refrescar} /></div>
           <div className="relative min-h-0 overflow-hidden"><RedNeuronal ref={redRef} atlas={atlas} tema={tema} recordados={recordados} onPick={setEnfocado} /></div>
         </div>)
-      case 'ajustes': return <div className="mx-auto h-full max-w-[760px] overflow-y-auto px-6 py-6"><SettingsPanel /></div>
+      case 'ajustes': return <Ajustes tema={tema} onTema={setTema} />
       case 'uso': return <Proximamente titulo="Uso" texto="Aquí verás lo que gastas por modelo, tu actividad día a día como en GitHub, tus creaciones y cómo crece tu mente." />
       case 'tienda': return <Proximamente titulo="Tienda" texto="Aquí instalarás IAs, modelos locales, MCPs, plugins y compañeros para Esme, con un clic y con permiso." />
     }
