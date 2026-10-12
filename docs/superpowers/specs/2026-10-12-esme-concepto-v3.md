@@ -91,3 +91,35 @@ Se recorrieron unos 200 posts. Se marcaron 12 como «No me interesa» (anuncios 
 4. **Mente:** perfil, conflictos y hechos con fecha. Absorber marcadores de X. Sistema 1 visible en la red.
 5. **Presencia de Esme** (orbe/personaje), feed de «hecho» y bichitos que reaccionan.
 6. Marca con los conectores de Adobe, Canva y Figma, cuando estén autorizados.
+
+## Segunda pasada por el FYP (12-oct, tarde)
+Se vieron unos 150 posts más y se marcaron otros 47 como «No me interesa». Todos eran anuncios, cripto, trading, coches o juegos, salvo una posible duda: @ReflctWillie, «agente de pantalla completa».
+
+- **Claude Design por dentro** (@dotey, ingeniería inversa):
+  - App de escritorio con sesiones a la izquierda, chat en el centro y un lienzo editable a la derecha.
+  - Sistema de diseño propio por proyecto: página con portada, colores y tipografía.
+  - Menú **«+ Use a skill»** en el compositor: design, design-system, motion-graphics, narration y cover-and-title.
+  - Línea de tiempo de vídeo con subtítulos.
+
+  → **Esme:** el compositor gana «+ habilidad». El Taller produce lienzos editables, sistemas de diseño y vídeo, no solo código. Es el formato de superapp creativa al que hay que superar.
+- **Coinbase:** un Qwen3.5-9B postentrenado con datos propios supera a un agente con Opus 4.5 en su tarea (de +7,5 a +35,4 puntos según la métrica) y tiene un 55 % menos de latencia P50.
+
+  → **Esme:** valida la «red propia». Fase futura: destilar la mente del usuario en un **modelo personal** pequeño y local, que actúe como Sistema 1 y para tareas repetidas.
+- **RSI-Anything** (arXiv 2610.x): bucle de automejora Propose → Predict → Select → Observe → Update → Retain, con «policy» y «world model».
+
+  → **Esme:** es el modelo del router y la arena que aprenden. Sus mascotas son blobs de color con ojos grandes que **asoman por el borde** de la pantalla, la mejor idea vista para que los bichitos «vivan» en la app.
+- **Foreman** (panel de agentes):
+  - Saludo y resumen arriba.
+  - Agentes activos, tareas de hoy, conectores y gasto del mes.
+  - Actividad reciente en tarjetas.
+  - Rendimiento por agente (tareas, % de éxito, duración).
+  - Próximos disparadores y salud de conectores.
+
+  → Referencia para Inicio y Uso.
+- **Strata/DSH** (@seanhighness): inferencia local MoE con «expert skipping» (escena vóxel de una pagoda de una sola vez). Es para la Tienda de modelos locales, más adelante.
+- Más señales:
+  - Google lanza un asistente de notas con IA gratis para Mac.
+  - Claude Kit (YesWeHack) evita que la IA invente cosas en los informes. → Esme verifica antes de afirmar.
+  - Repo de 475 demos de vídeo hechas con Opus 5.5.
+  - Linus usa Claude Code en el kernel.
+  - GPT-6.1 Sol con 500k de contexto en Codex.
