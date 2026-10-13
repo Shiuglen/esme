@@ -1,5 +1,6 @@
-// esme — la carcasa: barra superior, riel y secciones. Las secciones se montan una vez y se ocultan al salir,
-// para que la conversación y las terminales del Taller sigan vivas mientras navegas.
+// esme — La Ventana (docs/superpowers/specs/2026-10-12-la-ventana.md): la ventana entera es tu mente, una sola red viva de
+// fondo. Encima, la portada (el cartucho y la pregunta) y la leyenda, que es la navegación. Cada lugar es una hoja que nace
+// desde su sitio en la leyenda y se pliega al cerrarla; se monta una vez y queda viva (conversación y terminales siguen).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Toaster, toast } from 'sonner'
 import { BrainClient, type Atlas as AtlasData, type MindEvent } from './lib/brain'
@@ -7,9 +8,10 @@ import { bridge } from './lib/bridge'
 import { cn } from './lib/cn'
 import { FirmaMente } from './marca/Sello'
 import { firmaDe } from './marca/sello'
-import { RedNeuronal, type Recordado, type RedHandle } from './memoria/RedNeuronal'
+import { RedNeuronal, type Hueco, type Recordado, type RedHandle } from './memoria/RedNeuronal'
 import { Ajustes } from './paginas/Ajustes'
-import { Inicio, type EventoMente } from './paginas/Inicio'
+import { Portada, type EventoMente } from './paginas/Portada'
+import { notaTaller } from './paginas/portada'
 import { Proximamente } from './paginas/Proximamente'
 import { Taller } from './paginas/Taller'
 import { avisosDe } from './taller/avisos'
@@ -21,7 +23,8 @@ import { MemoryPanel } from './panels/MemoryPanel'
 import { BarraSuperior } from './shell/BarraSuperior'
 import { Paleta } from './shell/Paleta'
 import { FondoVivo, useHalos } from './shell/FondoVivo'
-import { Riel } from './shell/Riel'
+import { Hoja, type Origen } from './shell/Hoja'
+import { Leyenda, type NotaLugar } from './shell/Leyenda'
 import { AJUSTES, SECCIONES, nombreDe, type SeccionId } from './shell/secciones'
 
 const cargar = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(`esme:${k}`); return v === null ? d : (JSON.parse(v) as T) } catch { return d } }
@@ -53,7 +56,21 @@ export function App() {
   const seqEvento = useRef(0)
   const recordandoT = useRef<ReturnType<typeof setTimeout>>(undefined)
 
-  const ir = useCallback((id: SeccionId) => { setSeccion(id); setVisitadas((v) => (v.has(id) ? v : new Set(v).add(id))) }, [])
+  // Ir a un lugar: su hoja nace desde donde se pidió (o desde su sitio en la leyenda)
+  const [origenes, setOrigenes] = useState<Partial<Record<SeccionId, Origen>>>({})
+  const ir = useCallback((id: SeccionId, origen?: Origen) => {
+    const el = origen ? null : document.querySelector(`[data-lugar="${id}"]`)?.getBoundingClientRect()
+    const o = origen ?? (el ? { x: el.left + el.width / 2, y: el.top + el.height / 2 } : { x: 40, y: innerHeight - 40 })
+    setOrigenes((v) => ({ ...v, [id]: o }))
+    setSeccion(id); setVisitadas((v) => (v.has(id) ? v : new Set(v).add(id)))
+  }, [])
+  const [ancho, setAncho] = useState(() => innerWidth)
+  useEffect(() => { const r = () => setAncho(innerWidth); addEventListener('resize', r); return () => removeEventListener('resize', r) }, [])
+  // Motores locales que no responden (como Ollama): se dicen en la leyenda, no se presentan como listos
+  const [callados, setCallados] = useState<string[]>([])
+  useEffect(() => {
+    void bridge.providers().then((ps) => { for (const p of ps.filter((x) => x.local)) void bridge.models(p.id).then((m) => { if (!m.length) setCallados((v) => [...v, p.label]) }).catch(() => setCallados((v) => [...v, p.label])) }).catch(() => {})
+  }, [])
   useEffect(() => { guardar('seccion', seccion) }, [seccion])
 
   // Avisos del Taller: al Inicio siempre; fuera del Taller, también un aviso con «Ver»; sin foco en la ventana, notificación del sistema.
@@ -87,7 +104,15 @@ export function App() {
       else if (t === ',') { e.preventDefault(); ir('ajustes') }
       else if (/^[1-6]$/.test(t)) { e.preventDefault(); ir(SECCIONES[Number(t) - 1].id) }
     }
-    addEventListener('keydown', k); return () => removeEventListener('keydown', k)
+    // Esc pliega la hoja abierta y vuelve a tu mente (salvo si escribes, o en una terminal o un diálogo)
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented || seccionRef.current === 'inicio' || document.querySelector('[role=dialog]')) return
+      const el = e.target as HTMLElement | null
+      if (el?.closest('input, textarea, select, [contenteditable=true], .xterm')) return
+      ir('inicio')
+    }
+    addEventListener('keydown', esc)
+    addEventListener('keydown', k); return () => { removeEventListener('keydown', k); removeEventListener('keydown', esc) }
   }, [ir])
 
   // el cerebro: conexión, reconexión y lo que hace en vivo
@@ -117,7 +142,8 @@ export function App() {
   }, [brain, refrescar])
 
   const preguntar = (q: string) => { setSemilla((s) => ({ q, n: s.n + 1 })); setPreguntas((n) => n + 1); ir('conversacion') }
-  const enfocarRecuerdo = (id: string) => { setEnfocado(id); ir('memoria'); setTimeout(() => redRef.current?.enfocar(id), 60) }
+  // una cita enfoca su recuerdo en tu mente sin salir de donde estás (la mente está siempre de fondo)
+  const enfocarRecuerdo = (id: string) => { setEnfocado(id); redRef.current?.enfocar(id) }
 
   useHalos()
   const tallerOcupado = tl.tareas.some((t) => t.estado === 'trabajando' || t.estado === 'preparando')
@@ -133,22 +159,32 @@ export function App() {
 
   const pagina = (id: SeccionId) => {
     switch (id) {
-      case 'inicio': return <Inicio conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} tema={tema} taller={resumenTaller} eventos={eventos} estadoEsme={estadoEsme} memoriaUsada={memoriaUsada} preguntas={preguntas}
-        memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar} onIr={ir} />
+      case 'inicio': return null
       case 'conversacion': return (
-        <div className="mx-auto flex h-full max-w-[880px] flex-col px-6 pt-4 pb-5">
+        <div className="flex h-full flex-col px-5 pt-4 pb-4">
           <ChatPanel brain={memoria ? brain : null} onCite={enfocarRecuerdo} onRecalled={(t) => setMemoriaUsada((s) => s + t)} seed={semilla} onBusy={setPensando} />
         </div>)
       case 'taller': return <Taller tema={tema} tl={tl} foco={focoTaller} onIr={ir} />
       case 'memoria': return (
-        <div className="grid h-full grid-cols-[400px_minmax(0,1fr)]">
-          <div className="vidrio-fino flex min-h-0 flex-col border-r border-linea"><MemoryPanel brain={brain} focusId={enfocado} onFocus={(i) => redRef.current?.enfocar(i)} onChanged={refrescar} /></div>
-          <div className="relative min-h-0 overflow-hidden"><RedNeuronal ref={redRef} atlas={atlas} tema={tema} recordados={recordados} onPick={setEnfocado} /></div>
-        </div>)
+        <div className="flex h-full min-h-0 flex-col"><MemoryPanel brain={brain} focusId={enfocado} onFocus={(i) => redRef.current?.enfocar(i)} onChanged={refrescar} /></div>)
       case 'ajustes': return <Ajustes tema={tema} onTema={setTema} />
       case 'uso': return <Uso onIr={ir} />
       case 'tienda': return <Proximamente titulo="Tienda" texto="Aquí instalarás IAs, modelos locales, MCPs, plugins y compañeros para Esme, con un clic y con permiso." />
     }
+  }
+
+  // Dónde va cada hoja, qué tapa de tu mente (para que la cámara la encuadre en el resto) y cuánto se atenúa la mente
+  const HOJA: Partial<Record<SeccionId, string>> = { conversacion: 'top-3 right-3 bottom-3 w-[min(680px,50%)]', memoria: 'top-3 bottom-3 left-[76px] w-[400px]' }
+  const grande = 'top-3 right-3 bottom-3 left-[76px]'
+  const hueco: Hueco = seccion === 'conversacion' ? { izquierda: 76, derecha: Math.min(680, ancho * 0.5) + 12 }
+    : seccion === 'memoria' ? { izquierda: 76 + 400 + 12, derecha: 0 } : seccion === 'inicio' ? { izquierda: 300, derecha: 0 } : { izquierda: 0, derecha: 0 }
+  const tapada = seccion === 'taller' || seccion === 'uso' || seccion === 'tienda' || seccion === 'ajustes'
+  const notas: Partial<Record<SeccionId, NotaLugar>> = {
+    conversacion: preguntas ? { texto: `${preguntas} ${preguntas === 1 ? 'pregunta' : 'preguntas'} en esta sesión` } : undefined,
+    taller: notaTaller(resumenTaller),
+    memoria: recuerdos !== null ? { texto: `${recuerdos.toLocaleString('es-ES')} recuerdos` } : { texto: 'sin cerebro', tono: 'peligro' },
+    tienda: { texto: 'Pronto' },
+    ajustes: callados.length ? { texto: `${callados.join(', ')} no ${callados.length === 1 ? 'responde' : 'responden'}` } : undefined,
   }
 
   return (
@@ -159,16 +195,20 @@ export function App() {
         onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} onBuscar={() => setPaleta(true)} paletaAbierta={paleta}
         taller={{ trabajando: tl.tareas.filter((t) => t.estado === 'trabajando' || t.estado === 'preparando').length, esperando: tl.tareas.filter((t) => t.estado === 'esperando').length }}
         onTaller={() => ir('taller')} />
-      <div className="flex min-h-0">
-        <Riel actual={seccion} onIr={ir} cuentas={{ memoria: recuerdos !== null ? { texto: recuerdos.toLocaleString('es-ES') } : undefined }} />
-        <main className="relative min-w-0 flex-1">
-          {[...SECCIONES, AJUSTES].map(({ id }) => visitadas.has(id) && (
-            <section key={id} hidden={seccion !== id} aria-label={nombreDe(id)} className={cn('absolute inset-0', seccion === id && 'animate-[aparecer_.22s_cubic-bezier(.16,1,.3,1)]')}>
-              {pagina(id)}
-            </section>
-          ))}
-        </main>
-      </div>
+      <main className="relative min-h-0 overflow-hidden">
+        <div className={cn('absolute inset-0 transition-opacity duration-500', tapada && 'opacity-40')}>
+          <RedNeuronal ref={redRef} atlas={atlas} tema={tema} recordados={recordados} onPick={(id) => { setEnfocado(id); if (seccion !== 'memoria') ir('memoria') }}
+            adornos={seccion === 'memoria'} hueco={hueco} />
+        </div>
+        <Portada visible={seccion === 'inicio'} conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} eventos={eventos}
+          memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar} />
+        {[...SECCIONES, AJUSTES].filter(({ id }) => id !== 'inicio' && visitadas.has(id)).map(({ id }) => (
+          <Hoja key={id} abierta={seccion === id} origen={origenes[id] ?? { x: 40, y: innerHeight - 40 }} etiqueta={nombreDe(id)} className={HOJA[id] ?? grande}>
+            {pagina(id)}
+          </Hoja>
+        ))}
+        <Leyenda actual={seccion} recogida={seccion !== 'inicio'} estado={estadoEsme} notas={notas} onIr={ir} />
+      </main>
       <Paleta abierta={paleta} onCerrar={() => setPaleta(false)} onIr={ir} onPreguntar={preguntar}
         onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} />
       <Toaster theme={tema === 'noche' ? 'dark' : 'light'} position="bottom-right" toastOptions={{ style: { background: 'var(--superficie-2)', border: '1px solid var(--linea)', color: 'var(--texto)', fontFamily: 'inherit' } }} />

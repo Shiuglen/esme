@@ -17,6 +17,8 @@ import { etiquetaFecha, histograma, rangoDe, visiblesEn } from './tiempo'
 
 export type RedHandle = { encender(ids: string[]): void; enfocar(id: string): void }
 export type Recordado = { id: number; consulta: string; cuantos: number }
+/** Lo que tapan las hojas de la Ventana a cada lado (px): la mente se encuadra en el resto. */
+export type Hueco = { izquierda: number; derecha: number }
 type N = NodeObject<NodoRed>
 type L = LinkObject<NodoRed, EnlaceRed>
 
@@ -34,8 +36,8 @@ const idDe = (e: L['source']) => (typeof e === 'object' ? String((e as N).id) : 
 const escapar = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
 const deCuando = (ms: number) => { const e = etiquetaFecha(ms); return e === 'Hoy' || e === 'Ayer' ? `de ${e.toLowerCase()}` : `del ${e}` }
 
-export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: string; recordados: Recordado[]; onPick(id: string): void }>(
-  function RedNeuronal({ atlas, tema, recordados, onPick }, ref) {
+export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: string; recordados: Recordado[]; onPick(id: string): void; adornos?: boolean; hueco?: Hueco }>(
+  function RedNeuronal({ atlas, tema, recordados, onPick, adornos = true, hueco = { izquierda: 0, derecha: 0 } }, ref) {
     const caja = useRef<HTMLDivElement>(null)
     const fg = useRef<ForceGraphMethods<N, L> | undefined>(undefined)
     const [tam, setTam] = useState({ w: 800, h: 600 })
@@ -112,11 +114,23 @@ export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: st
       const g = fg.current; if (!g || !red.nodes.length) return
       g.d3Force('charge')?.strength(-7)
       g.d3Force('link')?.distance((l: L) => (l.tipo === 'puente' ? 70 : l.tipo === 'tema' ? 22 : 9)).strength((l: L) => (l.tipo === 'vecino' ? 0.5 : 0.08))
-      const t = setTimeout(() => { if (!tocado.current) g.zoomToFit(0, 56) }, 40)
+      const t = setTimeout(() => { if (!tocado.current) encuadrar(0) }, 40)
       if (!introVista && rango && !quieto()) { introVista = true; crecer(rango.desde, INTRO_MS) }
       return () => clearTimeout(t)
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [red])
+
+    // La cámara: encuadra la mente en lo que dejan libre las hojas (con margen). Al abrir o cerrar una hoja se mueve con ella.
+    const medidas = useRef({ tam, hueco }); medidas.current = { tam, hueco }
+    function encuadrar(ms: number) {
+      const g = fg.current, { tam: t, hueco: h } = medidas.current
+      if (!g || !red.nodes.length || t.w < 10) return
+      const b = g.getGraphBbox(); if (!b) return
+      const pad = 56, ancho = Math.max(160, t.w - h.izquierda - h.derecha - 2 * pad), alto = Math.max(160, t.h - 2 * pad)
+      const k = Math.min(ancho / Math.max(1, b.x[1] - b.x[0]), alto / Math.max(1, b.y[1] - b.y[0]))
+      g.zoom(k, ms); g.centerAt((b.x[0] + b.x[1]) / 2 - (h.izquierda - h.derecha) / 2 / k, (b.y[0] + b.y[1]) / 2, ms)
+    }
+    useEffect(() => { if (fg.current) { tocado.current = false; encuadrar(700) } }, [hueco.izquierda, hueco.derecha]) // eslint-disable-line react-hooks/exhaustive-deps
 
     useImperativeHandle(ref, () => ({
       encender(ids) {
@@ -129,7 +143,7 @@ export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: st
       },
       enfocar(id) {
         const n = porId.get(id); enfocado.current = id; despertar(700)
-        if (n && n.x !== undefined) { tocado.current = true; fg.current?.centerAt(n.x, n.y, 600); fg.current?.zoom(4, 600) }
+        if (n && n.x !== undefined) { tocado.current = true; const h = medidas.current.hueco; fg.current?.centerAt(n.x - (h.izquierda - h.derecha) / 8, n.y, 600); fg.current?.zoom(4, 600) }   // /8 = /2 /zoom 4: en el centro de lo visible
       },
     }), [red, porId])
 
@@ -208,7 +222,7 @@ export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: st
           <ForceGraph2D<NodoRed, EnlaceRed>
             ref={fg} width={tam.w} height={tam.h} graphData={red} backgroundColor="rgba(0,0,0,0)"
             warmupTicks={60} cooldownTicks={160} d3VelocityDecay={0.35} autoPauseRedraw={!(despierta || creciendo)} enableNodeDrag={false}
-            onEngineStop={() => { if (!tocado.current) fg.current?.zoomToFit(600, 56) }}
+            onEngineStop={() => { if (!tocado.current) encuadrar(600) }}
             nodeVisibility={(n) => visible(n.id)}
             linkVisibility={(l) => l.tipo !== 'tema' && visible(idDe(l.source)) && visible(idDe(l.target))}
             linkColor={(l) => {
@@ -234,7 +248,8 @@ export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: st
             nodeCanvasObject={() => {}}
           />
         )}
-        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between px-5 pt-4 text-xs">
+        {adornos && <>
+        <div className="pointer-events-none absolute top-0 flex items-center justify-between px-5 pt-4 text-xs" style={{ left: hueco.izquierda, right: hueco.derecha }}>
           <span className="text-texto-3">{corte === null ? 'Red neuronal de tu memoria' : `Tu memoria ${deCuando(corte)}`}</span>
           <span className="flex gap-3 text-texto-2 tabular-nums">
             <span><b className="font-semibold text-texto">{cuenta.recuerdos}</b> recuerdos</span>
@@ -242,7 +257,7 @@ export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: st
             <span><b className="font-semibold text-texto">{cuenta.conexiones}</b> conexiones</span>
           </span>
         </div>
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 grid gap-3 px-5 pb-4">
+        <div className="pointer-events-none absolute bottom-0 grid gap-3 px-5 pb-4" style={{ left: hueco.izquierda, right: hueco.derecha }}>
           <div className="grid max-w-[60%] gap-1 font-mono text-[12px] leading-[18px]">
             {recordados.slice(0, 4).map((r) => (
               <span key={r.id} className="truncate text-texto-2"><span className="text-memoria">[recuerdo]</span> «{r.consulta}» → <span className="aurora-texto">{r.cuantos}</span></span>
@@ -262,7 +277,8 @@ export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: st
             </div>
           )}
         </div>
-        {!red.nodes.length && <div className="absolute inset-0 grid place-items-center text-texto-3">Tu memoria está vacía. Absorbe tus notas desde el panel de la izquierda.</div>}
+        </>}
+        {!red.nodes.length && <div className="absolute inset-0 grid place-items-center text-texto-3">Tu memoria está vacía. Absórbela desde Memoria, en la leyenda.</div>}
       </div>
     )
   },

@@ -37,3 +37,11 @@ export function frasesTaller({ trabajando, esperando, listas, errores }: { traba
   if (errores) f.push({ texto: `${errores} con error`, tono: 'peligro' })
   return f.length ? f : [{ texto: 'En calma. Pídele algo a Esme y montará una copia aislada para trabajar.', tono: 'calma' }]
 }
+
+/** La línea del Taller en la leyenda: todas sus frases juntas y el tono de lo más urgente (te necesita > error > trabajando). */
+export function notaTaller(r: { trabajando: number; esperando: number; listas: number; errores: number }): { texto: string; tono?: 'atencion' | 'peligro' | 'vida' } | undefined {
+  const f = frasesTaller(r).filter((x) => x.tono !== 'calma')
+  if (!f.length) return undefined
+  const tono = r.esperando ? 'atencion' : r.errores ? 'peligro' : r.trabajando ? 'vida' : undefined
+  return { texto: f.map((x) => x.texto).join(', '), ...(tono ? { tono } : {}) }
+}

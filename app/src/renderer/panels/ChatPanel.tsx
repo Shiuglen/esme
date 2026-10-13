@@ -7,12 +7,14 @@ import { TiraUso, type UsoSesion } from '../chat/TiraUso'
 import { cn } from '../lib/cn'
 import { Compositor } from '../shell/Compositor'
 import { bridge, type ChatMsg, type ProviderView } from '../lib/bridge'
+import { explicarFallo, ordenMotores } from './motor'
 
 type Turn = { role: 'user' | 'assistant'; content: string; query?: string; ids?: string[]; abstained?: boolean; tokens?: number; error?: boolean; judged?: boolean; who?: string }
 
 export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string): void; onRecalled(tokens: number): void; seed?: { q: string; n: number }; onBusy?(b: boolean): void }) {
   const [providers, setProviders] = useState<ProviderView[]>([])
-  const [provider, setProvider] = useState('ollama')
+  const [provider, setProvider] = useState('')   // se elige el primero que responde (panels/motor.ts)
+  const [aviso, setAviso] = useState<string | null>(null)
   const [models, setModels] = useState<string[]>([])
   const [model, setModel] = useState('')
   const [memoryOn, setMemoryOn] = useState(true)
@@ -21,15 +23,30 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
   const [sesion, setSesion] = useState<UsoSesion>({ costeUSD: 0, ultimaEntrada: 0, memoria: 0 })
   const log = useRef<HTMLDivElement>(null)
 
-  useEffect(() => { void bridge.providers().then(setProviders) }, [])
+  // El motor: el último que usaste si responde; si no, el primero que responda (locales antes que API). Nunca uno caído.
   useEffect(() => {
-    setModels([]); setModel('')
+    void bridge.providers().then(async (ps) => {
+      setProviders(ps)
+      let ultimo: string | null = null
+      try { ultimo = localStorage.getItem('esme:proveedor') } catch { /* sin almacenamiento */ }
+      for (const p of ordenMotores(ps, ultimo)) {
+        try { if ((await bridge.models(p.id)).length) { setProvider(p.id); return } } catch { /* no responde: el siguiente */ }
+      }
+      setProvider(ps[0]?.id ?? ''); setAviso('Ningún motor responde ahora. Conecta uno en Ajustes.')
+    })
+  }, [])
+  useEffect(() => {
+    if (!provider) return
+    setModels([]); setModel(''); setAviso(null)
+    const nombre = providers.find((p) => p.id === provider)?.label ?? provider
     bridge.models(provider).then((m) => {
       setModels(m)
+      if (!m.length) { setAviso(`${nombre} no tiene modelos disponibles. Elige otro motor arriba.`); return }
       const def = providers.find((p) => p.id === provider)?.defaultModel
       setModel(m.includes(def ?? '') ? def! : m.find((x) => !/embed/i.test(x)) ?? m[0] ?? '')
-    }).catch((e) => setTurns((t) => [...t, { role: 'assistant', content: String(e.message ?? e), error: true }]))
+    }).catch((e) => setAviso(explicarFallo(String(e?.message ?? e), nombre)))
   }, [provider, providers])
+  const elegirMotor = (id: string) => { setProvider(id); try { localStorage.setItem('esme:proveedor', id) } catch { /* sin almacenamiento */ } }
   useEffect(() => { props.onBusy?.(busy) }, [busy])
   useEffect(() => { log.current?.scrollTo({ top: log.current.scrollHeight, behavior: 'smooth' }) }, [turns])
   const handledSeed = useRef(0)
@@ -65,7 +82,7 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
     s.onUsage((u) => setSesion((v) => ({ costeUSD: v.costeUSD + u.costeUSD, ultimaEntrada: u.entrada, memoria: memTokens })))
     s.onChunk((d) => setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + d }; return c }))
     s.onDone(() => setBusy(false))
-    s.onError((m) => { setBusy(false); setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: m, error: true }; return c }) })
+    s.onError((m) => { setBusy(false); setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: explicarFallo(m, current?.label ?? provider), error: true }; return c }) })
   }
 
   async function judge(i: number, useful: boolean) {
@@ -81,7 +98,7 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
       <div className="flex items-center gap-2 pb-3">
         <label className="relative">
           <span className="sr-only">IA</span>
-          <select className={cn(selector, 'max-w-[220px]')} value={provider} onChange={(e) => setProvider(e.target.value)}>
+          <select className={cn(selector, 'max-w-[220px]')} value={provider} onChange={(e) => elegirMotor(e.target.value)}>
             {providers.map((p) => <option key={p.id} value={p.id} disabled={!p.hasKey}>{p.label}{p.hasKey ? '' : ' (sin clave)'}</option>)}
           </select>
           <ChevronDown className="pointer-events-none absolute top-2 right-2 size-4 text-texto-3" strokeWidth={1.5} aria-hidden />
@@ -94,6 +111,7 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
           <ChevronDown className="pointer-events-none absolute top-2 right-2 size-4 text-texto-3" strokeWidth={1.5} aria-hidden />
         </label>
       </div>
+      {aviso && <p role="status" className="m-0 pb-1 text-[13px] text-atencion">{aviso}</p>}
       <div ref={log} className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto py-4" aria-live="polite">
         {!turns.length && (
           <div className="m-auto grid max-w-[380px] gap-2 text-center">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fechaLarga, frasesTaller, historiaMente } from './portada'
+import { fechaLarga, frasesTaller, historiaMente, notaTaller } from './portada'
 
 const HORA = 36e5
 describe('la portada cuenta, no enumera', () => {
@@ -21,5 +21,10 @@ describe('la portada cuenta, no enumera', () => {
     expect(f.map((x) => x.texto)).toEqual(['2 tareas te necesitan', '1 trabajando ahora', '6 listas para revisar', '1 con error'])
     expect(f[0].tono).toBe('atencion')
     expect(frasesTaller({ trabajando: 0, esperando: 0, listas: 0, errores: 0 })).toEqual([{ texto: 'En calma. Pídele algo a Esme y montará una copia aislada para trabajar.', tono: 'calma' }])
+  })
+  it('la leyenda resume el Taller en una línea, con el tono de lo más urgente', () => {
+    expect(notaTaller({ trabajando: 0, esperando: 0, listas: 6, errores: 2 })).toEqual({ texto: '6 listas para revisar, 2 con error', tono: 'peligro' })
+    expect(notaTaller({ trabajando: 1, esperando: 1, listas: 0, errores: 0 })).toEqual({ texto: '1 tarea te necesita, 1 trabajando ahora', tono: 'atencion' })
+    expect(notaTaller({ trabajando: 0, esperando: 0, listas: 0, errores: 0 })).toBeUndefined()
   })
 })
