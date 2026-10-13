@@ -138,3 +138,20 @@ def test_ruta_de_modelos_por_entorno(monkeypatch, tmp_path):
     from daimon.lens import ruta_modelo
     monkeypatch.setenv("ESME_MODELOS", str(tmp_path))
     assert ruta_modelo("x") == tmp_path / "x-onnx"
+
+
+@_hay_modelo
+def test_la_lente_suelta_el_modelo_si_nadie_la_usa_y_lo_recupera_al_volver():
+    # Con el modelo cargado el cerebro ocupa ~360 MB (y hasta ~1,5 GB tras absorber); cargarlo cuesta ~0,1 s.
+    # Así que en reposo se suelta y se recupera al volver a usarlo, con los mismos vectores.
+    import time
+    from daimon.lens import onnx_encoder
+    enc, dim = onnx_encoder("embeddinggemma-300m", inactividad=0.3, cache=0)
+    assert dim == 768
+    a = enc(["la tinta envejece con los días"])
+    assert enc.cargada()
+    time.sleep(1.0)
+    assert not enc.cargada()
+    b = enc(["la tinta envejece con los días"])
+    assert enc.cargada()
+    assert np.allclose(a, b, atol=1e-5)

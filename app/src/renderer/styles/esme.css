@@ -86,14 +86,13 @@
   --cristal: rgba(255, 255, 255, 0.82);
   --sombra-flotante: 0 18px 48px rgba(20, 22, 28, 0.14), 0 2px 8px rgba(20, 22, 28, 0.08);
 }
-/* La aurora: el único color de la app, y está vivo. Gira sola (14 s por vuelta) y se queda quieta si pides menos movimiento. */
-@property --giro { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
+/* La luz en degradado (los tres tonos de --luz), quieta. Antes giraba animando una variable en <html>: como las variables se
+   heredan, cada fotograma recalculaba el estilo de todo el documento (≈25 % de CPU en reposo y la memoria del motor creciendo
+   26 MB/s con la ventana tapada). La vida se anima con opacidad o transform, que van en el compositor y no tocan el estilo. */
 :root {
-  --aurora: conic-gradient(from var(--giro), var(--luz), var(--luz-2), var(--luz-3), var(--luz-2), var(--luz));
+  --aurora: conic-gradient(from 210deg, var(--luz), var(--luz-2), var(--luz-3), var(--luz-2), var(--luz));
   --aurora-lineal: linear-gradient(100deg, var(--luz), var(--luz-2) 55%, var(--luz-3));
-  animation: aurora-giro 14s linear infinite;
 }
-@keyframes aurora-giro { to { --giro: 360deg } }
 
 /* Puente: los paneles antiguos adoptan los roles nuevos sin reescribirse todavía */
 :root, [data-theme] {

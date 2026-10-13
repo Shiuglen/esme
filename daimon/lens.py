@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import time
 from collections import OrderedDict
 from pathlib import Path
 from typing import Callable
@@ -104,11 +105,28 @@ def ruta_modelo(nombre: str) -> Path:
     return base / f"{nombre}-onnx"
 
 
+def _devolver_memoria() -> None:
+    """Devuelve al sistema la memoria libre del proceso (glibc la guarda para reusarla si no se le pide)."""
+    try:
+        import ctypes
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except (OSError, AttributeError):   # otra libc u otro sistema: no pasa nada, solo se devuelve más tarde
+        pass
+
+
 def onnx_encoder(nombre: str = "embeddinggemma-300m", variante: str = "model_quantized", hilos: int | None = None,
-                 tokens_por_lote: int = 8192, max_tokens: int = 2048, cache: int = 4096) -> tuple[Encoder, int]:
+                 tokens_por_lote: int = 2048, max_tokens: int = 2048, cache: int = 4096,
+                 inactividad: float | None = 60) -> tuple[Encoder, int]:
     """La Lente propia: el modelo corre dentro del cerebro con ONNX Runtime (CPU), sin Ollama ni servidores aparte.
     Agrupa por longitud y llena cada lote hasta un presupuesto de tokens (no rellena en balde), usa la mitad de
-    los núcleos para no acaparar el equipo y recuerda lo ya codificado (los textos repetidos no se recalculan)."""
+    los núcleos para no acaparar el equipo y recuerda lo ya codificado (los textos repetidos no se recalculan).
+    Consumo: con el modelo cargado el cerebro ocupa ~360 MB (y ~1,5 GB tras absorber, por la reserva de ONNX Runtime),
+    y cargarlo cuesta ~0,1 s. Así que tras `inactividad` segundos sin usarse lo suelta y devuelve la memoria al sistema;
+    al volver a usarse lo recupera. None lo deja siempre cargado.
+    Lotes de 2048 tokens: al absorber, el pico baja de ~2,7 GB a ~1,6 GB perdiendo un 9 % de velocidad (medido el 12-oct;
+    con 1024 apenas baja más y se pierde un 32 %)."""
+    import threading
+
     import onnxruntime as ort
     from tokenizers import Tokenizer
 
@@ -116,11 +134,39 @@ def onnx_encoder(nombre: str = "embeddinggemma-300m", variante: str = "model_qua
     so = ort.SessionOptions()
     so.intra_op_num_threads = hilos or max(1, (os.cpu_count() or 2) // 2)
     so.inter_op_num_threads = 1
-    sesion = ort.InferenceSession(str(d / "onnx" / f"{variante}.onnx"), so, providers=["CPUExecutionProvider"])
+    estado: dict = {"sesion": None, "reloj": None, "ultimo": time.monotonic()}
+    cerrojo = threading.RLock()
+
+    def abrir():
+        if estado["sesion"] is None:
+            estado["sesion"] = ort.InferenceSession(str(d / "onnx" / f"{variante}.onnx"), so, providers=["CPUExecutionProvider"])
+        return estado["sesion"]
+
+    def soltar() -> None:
+        with cerrojo:
+            # un reloj viejo puede dispararse mientras un lote largo tiene el cerrojo: solo suelta si de verdad nadie lo usó
+            if estado["sesion"] is None or time.monotonic() - estado["ultimo"] < inactividad:
+                return
+            estado["sesion"] = None
+        import gc
+        gc.collect()
+        _devolver_memoria()
+
+    def rearmar() -> None:
+        if inactividad is None:
+            return
+        if estado["reloj"] is not None:
+            estado["reloj"].cancel()
+        estado["reloj"] = threading.Timer(inactividad, soltar)
+        estado["reloj"].daemon = True
+        estado["reloj"].start()
+
     tok = Tokenizer.from_file(str(d / "tokenizer.json"))
     tok.enable_truncation(max_tokens)
     tok.no_padding()
-    dim = int(sesion.get_outputs()[-1].shape[-1])
+    with cerrojo:
+        dim = int(abrir().get_outputs()[-1].shape[-1])
+    rearmar()
     recuerdo: OrderedDict[str, np.ndarray] = OrderedDict()
 
     def correr(cod: list) -> np.ndarray:
@@ -130,7 +176,7 @@ def onnx_encoder(nombre: str = "embeddinggemma-300m", variante: str = "model_qua
         for j, e in enumerate(cod):
             ids[j, :len(e.ids)] = e.ids
             mascara[j, :len(e.ids)] = 1
-        return sesion.run(["sentence_embedding"], {"input_ids": ids, "attention_mask": mascara})[0]
+        return abrir().run(["sentence_embedding"], {"input_ids": ids, "attention_mask": mascara})[0]
 
     def enc(texts: list[str]) -> np.ndarray:
         out = np.zeros((len(texts), dim), np.float32)
@@ -139,24 +185,28 @@ def onnx_encoder(nombre: str = "embeddinggemma-300m", variante: str = "model_qua
             if t in recuerdo:
                 out[i] = recuerdo[t]; recuerdo.move_to_end(t)
         if faltan:
-            cod = tok.encode_batch([texts[i] for i in faltan])
-            orden = sorted(range(len(faltan)), key=lambda k: len(cod[k].ids))
-            lote: list[int] = []
-            for k in orden + [None]:
-                if k is not None and (not lote or (len(lote) + 1) * len(cod[k].ids) <= tokens_por_lote):
-                    lote.append(k); continue
-                if lote:
-                    vecs = correr([cod[q] for q in lote])
-                    for q, v in zip(lote, vecs):
-                        out[faltan[q]] = v
-                if k is not None:
-                    lote = [k]
+            with cerrojo:   # el servidor usa hilos: nadie suelta el modelo a mitad de un lote
+                cod = tok.encode_batch([texts[i] for i in faltan])
+                orden = sorted(range(len(faltan)), key=lambda k: len(cod[k].ids))
+                lote: list[int] = []
+                for k in orden + [None]:
+                    if k is not None and (not lote or (len(lote) + 1) * len(cod[k].ids) <= tokens_por_lote):
+                        lote.append(k); continue
+                    if lote:
+                        vecs = correr([cod[q] for q in lote])
+                        for q, v in zip(lote, vecs):
+                            out[faltan[q]] = v
+                    if k is not None:
+                        lote = [k]
+                estado["ultimo"] = time.monotonic()
+            rearmar()
             for i in faltan:
                 recuerdo[texts[i]] = out[i]
                 if len(recuerdo) > cache:
                     recuerdo.popitem(last=False)
         return _normalize(out) if len(texts) else out
 
+    enc.cargada = lambda: estado["sesion"] is not None   # type: ignore[attr-defined]
     return enc, dim
 
 
