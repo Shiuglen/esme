@@ -5,6 +5,8 @@ import type { TareaTaller } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { fmtTokens, fmtUSD } from '../chat/formatos'
 import { Micrografica } from './Micrografica'
+import { Sello } from '../marca/Sello'
+import { giroSello } from '../marca/sello'
 import { ESTADOS, actividadAhora, activa, duracion, explicarError, silencioMs } from './vista'
 
 const SILENCIO_AVISO = 25_000
@@ -54,6 +56,7 @@ export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida
         <span className="text-[13px] font-medium text-texto">{t.motorNombre}</span>
         {t.modelo && <span className="min-w-0 truncate font-mono text-[11px] text-texto-3">{modeloCorto(t.modelo)}</span>}
         <PastillaEstado estado={t.estado} />
+        {t.aplicada && <Sello lado={16} giro={giroSello(t.id)} titulo="Aprobada por ti" />}
         {t.arena && <span className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full border border-linea px-1.5 text-[11px] text-texto-3" title="Compite en una arena"><Swords className="size-3" strokeWidth={1.75} />arena</span>}
         <span className={cn('ml-auto font-display text-[26px] leading-none font-light tabular-nums', enMarcha ? 'text-texto' : 'text-texto-2')}>{grande}</span>
       </div>

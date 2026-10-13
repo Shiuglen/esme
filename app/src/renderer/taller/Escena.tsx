@@ -2,12 +2,18 @@
 // alrededor, una máquina por tarea unida al núcleo por un conducto. Cuando un motor trabaja, un potencial de acción recorre
 // su conducto —la línea del suelo se levanta como una neurona que dispara— y su luz aurora se derrama en el suelo.
 // Si te necesita, se enciende una baliza. El suelo se pierde en los bordes: solo importa lo que pasa cerca de la mente.
+// Es un grabado: las caras no se pintan, se rayan según la luz de tu sol (taller/grabado.ts); de noche, esgrafiado.
+// Lo que aprobaste lleva tu sello en la tapa.
 import { luzViva } from '../tinta/luz'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { TareaTaller } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { Senal } from '../marca/Senal'
+import { SelloTrazo } from '../marca/Sello'
+import { giroSello } from '../marca/sello'
+import { anguloSol } from '../tinta/sol'
+import { CRUCES, RAYAS, SEPARACION, sombras, type Sombras } from './grabado'
 import { asignarLugares, caja, conducto, iso, lugares, ruta, type Punto } from './iso'
 import { duracion, ordenPlanta, textoCambios } from './vista'
 
@@ -28,8 +34,10 @@ const SUELO = Array.from({ length: 22 }, (_, i) => i - 6)
 type Maquina = { t: TareaTaller; lugar: Punto; ruta: Punto[]; fase: number }
 type Vivos = { linea: SVGPathElement | null; cresta: SVGPathElement | null; brillo: SVGPathElement | null; ranura: SVGPathElement | null; luz: SVGRadialGradientElement | null }
 
-export function Escena({ tareas, seleccion, resaltada, ahora, compacta = false, onElegir, onResaltar, onNueva }: {
-  tareas: TareaTaller[]; seleccion: string | null; resaltada: string | null; ahora: number; compacta?: boolean
+const CARAS = ['izquierda', 'derecha', 'arriba'] as const
+
+export function Escena({ tema = 'noche', tareas, seleccion, resaltada, ahora, compacta = false, onElegir, onResaltar, onNueva }: {
+  tema?: string; tareas: TareaTaller[]; seleccion: string | null; resaltada: string | null; ahora: number; compacta?: boolean
   onElegir(id: string): void; onResaltar(id: string | null): void; onNueva(): void
 }) {
   const marco = useRef<HTMLDivElement>(null)
@@ -84,6 +92,7 @@ export function Escena({ tareas, seleccion, resaltada, ahora, compacta = false, 
   const vivo = (id: string) => { if (!vivos.current.has(id)) vivos.current.set(id, { linea: null, cresta: null, brillo: null, ranura: null, luz: null }); return vivos.current.get(id)! }
 
   const ocupada = maquinas.some((m) => m.t.estado === 'trabajando' || m.t.estado === 'preparando')
+  const luz = sombras(anguloSol(new Date(ahora)), tema === 'noche')
   const peana = caja(4.12, 4.12, 0.76, 0.76, 0.2)
   const [nx, ny] = iso(4.5, 4.5, 0.2)
   const objetos = [...maquinas.map((m) => ({ tipo: 'maquina' as const, m, fondo: m.lugar.x + m.lugar.y })), { tipo: 'nucleo' as const, fondo: 8 }]
@@ -99,6 +108,8 @@ export function Escena({ tareas, seleccion, resaltada, ahora, compacta = false, 
           <mask id="planta-mascara" maskUnits="userSpaceOnUse" x="-1400" y="-500" width="2800" height="1500">
             <rect x="-1400" y="-500" width="2800" height="1500" fill="url(#planta-fundido)" />
           </mask>
+          {CARAS.flatMap((cara) => ([1, 2, 3] as const).map((n) => <Rayado key={`${cara}${n}`} id={`rayado-${cara}-${n}`} angulo={RAYAS[cara]} sep={SEPARACION[n]} />))}
+          {CARAS.map((cara) => <Rayado key={`x${cara}`} id={`cruce-${cara}`} angulo={CRUCES[cara]} sep={SEPARACION[3]} />)}
           <filter id="planta-brillo" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3.4" /></filter>
           {maquinas.map((m) => m.t.estado === 'trabajando' ? (
             <radialGradient key={`v${m.t.id}`} id={`planta-luz-viva-${m.t.id}`} ref={(el) => { vivo(m.t.id).luz = el }}>
@@ -156,11 +167,11 @@ export function Escena({ tareas, seleccion, resaltada, ahora, compacta = false, 
         <AnimatePresence>
           {objetos.map((o) => o.tipo === 'nucleo' ? (
             <g key="nucleo">
-              <Caras c={peana} />
+              <Caras c={peana} luz={luz} />
               <g transform={`translate(${nx - 46} ${ny - 78})`}><Senal tam={92} estado={ocupada ? 'pensando' : 'reposo'} titulo="Esme" /></g>
             </g>
           ) : (
-            <Pieza key={o.m.t.id} m={o.m} elegida={o.m.t.id === seleccion} resaltada={o.m.t.id === resaltada} ahora={ahora}
+            <Pieza key={o.m.t.id} m={o.m} luz={luz} elegida={o.m.t.id === seleccion} resaltada={o.m.t.id === resaltada} ahora={ahora}
               vivo={vivo(o.m.t.id)} onElegir={onElegir} onResaltar={onResaltar} etiqueta={!compacta} />
           ))}
         </AnimatePresence>
@@ -169,20 +180,38 @@ export function Escena({ tareas, seleccion, resaltada, ahora, compacta = false, 
   )
 }
 
-function Caras({ c, punteada }: { c: ReturnType<typeof caja>; punteada?: boolean }) {
-  const borde = { strokeOpacity: 0.55, strokeWidth: 1, strokeLinejoin: 'round' as const, vectorEffect: 'non-scaling-stroke' as const, strokeDasharray: punteada ? '3 3' : undefined }
-  const cara = (relleno: string) => ({ fill: relleno, stroke: 'var(--linea-fuerte)' })
+/** Una familia de rayas paralelas: el buril del grabado. Va en el espacio de la planta, así que las rayas siguen de cara en cara. */
+function Rayado({ id, angulo, sep }: { id: string; angulo: number; sep: number }) {
+  return (
+    <pattern id={id} patternUnits="userSpaceOnUse" width={sep} height={sep} patternTransform={`rotate(${angulo - 90})`}>
+      <path d={`M${sep / 2} 0V${sep}`} style={{ stroke: 'var(--tinta)' }} strokeOpacity={0.55} strokeWidth={0.6} />
+    </pattern>
+  )
+}
+
+/** Las tres caras de una caja, grabadas: papel, rayas según la luz de cada cara (cruzadas en la sombra honda) y contorno a tinta.
+ *  Lo que aún se está montando no lleva rayas: es un boceto a grafito, con el contorno discontinuo. */
+function Caras({ c, luz, punteada }: { c: ReturnType<typeof caja>; luz: Sombras; punteada?: boolean }) {
   return (
     <>
-      <path d={c.izquierda} style={cara('var(--cara-izquierda)')} {...borde} />
-      <path d={c.derecha} style={cara('var(--cara-derecha)')} {...borde} />
-      <path d={c.arriba} style={cara('var(--cara-arriba)')} {...borde} />
+      {CARAS.map((cara) => {
+        const n = punteada ? 0 : luz[cara]
+        return (
+          <g key={cara}>
+            <path d={c[cara]} style={{ fill: 'var(--hoja)' }} />
+            {n > 0 && <path d={c[cara]} fill={`url(#rayado-${cara}-${n})`} />}
+            {n === 3 && <path d={c[cara]} fill={`url(#cruce-${cara})`} />}
+            <path d={c[cara]} fill="none" style={{ stroke: punteada ? 'var(--grafito)' : 'var(--tinta)' }} strokeOpacity={punteada ? 0.9 : 0.72}
+              strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" strokeDasharray={punteada ? '3 3' : undefined} />
+          </g>
+        )
+      })}
     </>
   )
 }
 
-function Pieza({ m, elegida, resaltada, ahora, vivo, etiqueta, onElegir, onResaltar }: {
-  m: Maquina; elegida: boolean; resaltada: boolean; ahora: number; vivo: Vivos; etiqueta: boolean; onElegir(id: string): void; onResaltar(id: string | null): void
+function Pieza({ m, luz, elegida, resaltada, ahora, vivo, etiqueta, onElegir, onResaltar }: {
+  m: Maquina; luz: Sombras; elegida: boolean; resaltada: boolean; ahora: number; vivo: Vivos; etiqueta: boolean; onElegir(id: string): void; onResaltar(id: string | null): void
 }) {
   const t = m.t, h = ALTURA[t.estado]
   const x0 = m.lugar.x + 0.16, y0 = m.lugar.y + 0.16, w = 0.68
@@ -201,9 +230,10 @@ function Pieza({ m, elegida, resaltada, ahora, vivo, etiqueta, onElegir, onResal
           <path d={caja(m.lugar.x + 0.04, m.lugar.y + 0.04, 0.92, 0.92, 0).arriba} fill="none" style={{ stroke: elegida ? 'var(--texto)' : 'var(--texto-3)' }}
             strokeOpacity={elegida ? 0.9 : 0.6} strokeWidth={1.25} vectorEffect="non-scaling-stroke" />
         )}
-        <Caras c={c} punteada={t.estado === 'preparando'} />
+        <Caras c={c} luz={luz} punteada={t.estado === 'preparando'} />
         <path d={filo} fill="none" style={{ stroke: 'var(--texto)' }} strokeOpacity={0.22} strokeWidth={1} vectorEffect="non-scaling-stroke" />
-        {t.estado !== 'preparando' && t.estado !== 'trabajando' && (
+        {t.aplicada ? <SelloEnTapa x={x0 + w / 2} y={y0 + w / 2} h={h} giro={giroSello(t.id)} recien={ahora - t.aplicada.cuando < 5000} />
+          : t.estado !== 'preparando' && t.estado !== 'trabajando' && (
           <path d={ranura} style={{ fill: COLOR[t.estado] ?? 'var(--texto-3)' }} opacity={t.estado === 'lista' ? 0.55 : 0.95} />
         )}
         {t.estado === 'trabajando' && (
@@ -226,5 +256,19 @@ function Pieza({ m, elegida, resaltada, ahora, vivo, etiqueta, onElegir, onResal
         </g>
       </g>
     </motion.g>
+  )
+}
+
+/** Tu sello tumbado en la tapa de la máquina: el dibujo 0–100 del sello proyectado al plano isométrico (lado 0,34 celdas). */
+function SelloEnTapa({ x, y, h, giro, recien }: { x: number; y: number; h: number; giro: number; recien: boolean }) {
+  const s = 0.34, [X, Y] = iso(x - s / 2, y - s / 2, h)
+  return (
+    <g transform={`matrix(${0.5 * s} ${0.25 * s} ${-0.5 * s} ${0.25 * s} ${X} ${Y})`} className="pointer-events-none">
+      <g transform={`rotate(${giro} 50 50)`}>
+        <g className={recien ? 'animate-[estampar_.55s_cubic-bezier(.34,1.56,.64,1)_both] [transform-box:fill-box] [transform-origin:center]' : undefined}>
+          <SelloTrazo />
+        </g>
+      </g>
+    </g>
   )
 }

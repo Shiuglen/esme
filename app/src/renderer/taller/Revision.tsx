@@ -11,6 +11,8 @@ import { lados, leerDiff, type FicheroDiff } from './diff'
 import { describirHerramienta, type ItemLinea } from './linea'
 import { lenguajeDe, resaltar, type Pieza } from './resaltado'
 import { activa } from './vista'
+import { Sello } from '../marca/Sello'
+import { giroSello } from '../marca/sello'
 
 const MAX_LINEAS = 400
 const ancla = (ruta: string) => `fichero-${ruta.replace(/[^a-zA-Z0-9]/g, '-')}`
@@ -176,7 +178,7 @@ function Decision({ t, ficheros, acciones }: { t: TareaTaller; ficheros: number;
       {a ? (
         <>
           <span className="inline-flex items-center gap-2 text-[13px] text-texto-2">
-            <Check className="size-4 text-exito" strokeWidth={2} />
+            <Sello lado={26} giro={giroSello(t.id)} estampar={Date.now() - a.cuando < 5000} titulo="Tu sello: lo aprobaste tú" />
             {a.modo === 'carpeta' ? <>Aplicada a <span className="text-texto">{carpeta}</span> como cambios sin commitear</>
               : a.modo === 'rama' ? <>Guardada en <span className="font-mono text-texto">{t.copia?.rama}</span>{a.commit && <span className="font-mono text-texto-3"> @{a.commit.slice(0, 7)}</span>}</>
               : <>Guardada en <span className="font-mono text-texto">{a.destino}</span></>}

@@ -68,7 +68,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
   return (
     <div className="relative flex h-full flex-col overflow-hidden">
       <div className={cn('relative shrink-0 transition-[height] duration-500 ease-salida', enfoque ? 'h-[150px]' : 'h-[clamp(240px,40vh,420px)]')}>
-        <Escena tareas={tl.tareas} seleccion={seleccion} resaltada={resaltada} ahora={ahora} compacta={enfoque}
+        <Escena tema={tema} tareas={tl.tareas} seleccion={seleccion} resaltada={resaltada} ahora={ahora} compacta={enfoque}
           onElegir={elegir} onResaltar={setResaltada} onNueva={() => setSeleccion(null)} />
         <div className="pointer-events-none absolute top-4 left-5 flex flex-wrap gap-2">
           {chips.map((c) => (

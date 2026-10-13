@@ -2,12 +2,16 @@
 // Pinta piezas de Esme sueltas en un navegador que sí recibe fotogramas: la ventana de Electron, si está tapada en el
 // escritorio, no los recibe (Wayland no manda frame callbacks a superficies ocultas) y el lienzo y las animaciones no avanzan.
 // Datos: si existe ./datos/atlas.json (copia de data/mente_v2/atlas.json, ignorada por git) usa tu mente real;
-// si no, una mente sintética. Uso: http://localhost:5173/laboratorio.html?tema=dia
+// si no, una mente sintética. Uso: http://localhost:5173/laboratorio.html?tema=dia  ·  ?pieza=taller (planta y sellos)
 import '@fontsource-variable/funnel-sans'
 import '@fontsource-variable/jetbrains-mono'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Atlas } from '../lib/brain'
+import type { TareaTaller } from '../lib/bridge'
+import { FirmaMente, Sello } from '../marca/Sello'
+import { firmaDe, giroSello } from '../marca/sello'
+import { Escena } from '../taller/Escena'
 import { RedNeuronal, type RedHandle } from '../memoria/RedNeuronal'
 import { FondoVivo } from '../shell/FondoVivo'
 import '../styles/esme.css'
@@ -28,11 +32,33 @@ function sintetica(): Atlas {
   return { points, clusters }
 }
 
+// Tareas de muestra para la planta: una de cada estado y dos aprobadas (una recién, para ver el sello estamparse).
+function tareasDeMuestra(): TareaTaller[] {
+  const ahora = Date.now(), base = { motor: 'opencode', motorNombre: 'OpenCode', titulo: 'muestra', turnos: 2, herramientas: 3, cambios: { ficheros: 2, mas: 8, menos: 1 },
+    uso: { entrada: 0, salida: 0 }, copia: { repo: '/tmp/demo', rama: 'esme/x' } }
+  const t = (id: string, estado: string, extra: object = {}) => ({ ...base, id, estado, inicio: ahora - 600_000 + id.length * 1000, ...extra }) as unknown as TareaTaller
+  return [t('a1', 'trabajando'), t('b22', 'esperando', { permiso: { titulo: 'editar' } }), t('c333', 'lista', { aplicada: { cuando: ahora - 60_000, modo: 'carpeta', ficheros: 2 } }),
+    t('d4444', 'lista', { aplicada: { cuando: ahora, modo: 'rama', ficheros: 2 } }), t('e55555', 'error'), t('f666666', 'preparando'), t('g7777777', 'parada')]
+}
+
+function Taller({ atlas, tema }: { atlas: Atlas; tema: string }) {
+  const [tareas] = useState(tareasDeMuestra)
+  return (
+    <FirmaMente.Provider value={firmaDe(atlas)}>
+      <div className="grid h-full grid-rows-[1fr_auto] gap-4 p-6">
+        <Escena tema={tema} tareas={tareas} seleccion={null} resaltada={null} ahora={Date.now()} onElegir={() => {}} onResaltar={() => {}} onNueva={() => {}} />
+        <div className="flex items-end gap-6">{[16, 26, 64, 140].map((l) => <Sello key={l} lado={l} giro={giroSello(`m${l}`)} estampar />)}</div>
+      </div>
+    </FirmaMente.Provider>
+  )
+}
+
 function Lab() {
   const tema = new URLSearchParams(location.search).get('tema') === 'dia' ? 'dia' : 'noche'
   document.documentElement.dataset.theme = tema
   const atlas = Object.values(reales)[0]?.atlas ?? sintetica()
   const red = useRef<RedHandle>(null)
+  const pieza = new URLSearchParams(location.search).get('pieza')
   useEffect(() => {
     // para probar desde fuera: __lab.encender() enciende 25 recuerdos como si Esme los recordara
     Object.assign(window, { __lab: { encender: () => red.current?.encender(atlas.points.slice(0, 25).map((p) => p.id)), puntos: atlas.points.length } })
@@ -40,7 +66,7 @@ function Lab() {
   return (
     <div className="h-screen w-screen overflow-hidden bg-papel text-texto">
       <FondoVivo tema={tema} estado="reposo" />
-      <div className="relative z-10 h-full"><RedNeuronal ref={red} atlas={atlas} tema={tema} recordados={[]} onPick={() => {}} /></div>
+      <div className="relative z-10 h-full">{pieza === 'taller' ? <Taller atlas={atlas} tema={tema} /> : <RedNeuronal ref={red} atlas={atlas} tema={tema} recordados={[]} onPick={() => {}} />}</div>
     </div>
   )
 }

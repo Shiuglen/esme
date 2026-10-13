@@ -1,10 +1,12 @@
 // esme — la carcasa: barra superior, riel y secciones. Las secciones se montan una vez y se ocultan al salir,
 // para que la conversación y las terminales del Taller sigan vivas mientras navegas.
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Toaster, toast } from 'sonner'
 import { BrainClient, type Atlas as AtlasData, type MindEvent } from './lib/brain'
 import { bridge } from './lib/bridge'
 import { cn } from './lib/cn'
+import { FirmaMente } from './marca/Sello'
+import { firmaDe } from './marca/sello'
 import { RedNeuronal, type Recordado, type RedHandle } from './memoria/RedNeuronal'
 import { Ajustes } from './paginas/Ajustes'
 import { Inicio, type EventoMente } from './paginas/Inicio'
@@ -33,6 +35,7 @@ export function App() {
   const [brain, setBrain] = useState<BrainClient | null>(null)
   const [recuerdos, setRecuerdos] = useState<number | null>(null)
   const [atlas, setAtlas] = useState<AtlasData | null>(null)
+  const firma = useMemo(() => firmaDe(atlas), [atlas])   // tu sello nace de tu mente
   const [eventos, setEventos] = useState<EventoMente[]>([])
   const [memoriaUsada, setMemoriaUsada] = useState(0)
   const [recordando, setRecordando] = useState(false)
@@ -144,7 +147,7 @@ export function App() {
   }
 
   return (
-    <>
+    <FirmaMente.Provider value={firma}>
     <FondoVivo tema={tema} estado={estadoEsme} />
     <div className="relative z-10 grid h-full grid-rows-[48px_minmax(0,1fr)]">
       <BarraSuperior seccion={nombreDe(seccion)} estado={{ conectado: !!brain && recuerdos !== null, recuerdos, pensando }} tema={tema}
@@ -165,6 +168,6 @@ export function App() {
         onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} />
       <Toaster theme={tema === 'noche' ? 'dark' : 'light'} position="bottom-right" toastOptions={{ style: { background: 'var(--superficie-2)', border: '1px solid var(--linea)', color: 'var(--texto)', fontFamily: 'inherit' } }} />
     </div>
-    </>
+    </FirmaMente.Provider>
   )
 }
