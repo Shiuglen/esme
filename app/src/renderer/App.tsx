@@ -121,6 +121,11 @@ export function App() {
 
   useHalos()
   const tallerOcupado = tl.tareas.some((t) => t.estado === 'trabajando' || t.estado === 'preparando')
+  const resumenTaller = useMemo(() => {
+    const k = (f: (t: (typeof tl.tareas)[number]) => boolean) => tl.tareas.filter(f).length
+    return { trabajando: k((t) => t.estado === 'trabajando' || t.estado === 'preparando'), esperando: k((t) => t.estado === 'esperando'),
+      listas: k((t) => t.estado === 'lista' && !t.aplicada), errores: k((t) => t.estado === 'error') }
+  }, [tl.tareas])
   // Solo en desarrollo: forzar el estado de la mente para revisar el diseño (window.__estadoEsme('pensando'))
   const [forzado, setForzado] = useState<'reposo' | 'pensando' | 'recordando' | null>(null)
   useEffect(() => { if (import.meta.env.DEV) (window as unknown as { __estadoEsme?: typeof setForzado }).__estadoEsme = setForzado }, [])
@@ -128,7 +133,7 @@ export function App() {
 
   const pagina = (id: SeccionId) => {
     switch (id) {
-      case 'inicio': return <Inicio conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} eventos={eventos} estadoEsme={estadoEsme} memoriaUsada={memoriaUsada} preguntas={preguntas}
+      case 'inicio': return <Inicio conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} tema={tema} taller={resumenTaller} eventos={eventos} estadoEsme={estadoEsme} memoriaUsada={memoriaUsada} preguntas={preguntas}
         memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar} onIr={ir} />
       case 'conversacion': return (
         <div className="mx-auto flex h-full max-w-[880px] flex-col px-6 pt-4 pb-5">

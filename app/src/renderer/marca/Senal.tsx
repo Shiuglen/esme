@@ -1,5 +1,6 @@
 // Esme viva: el símbolo «Señal». En reposo está quieto; al pensar, un impulso de luz recorre la línea más cercana;
-// al recordar, la cresta se eleva. Las líneas son blanco y negro (--senal-fondo, --senal-frente); el impulso es aurora.
+// al recordar, la cresta se eleva. Tinta y Luz: las líneas son tinta que envejece hacia atrás (la de atrás es el pasado, en
+// tinta vieja; la del frente, el presente, en tinta fresca) y el impulso es luz. Con `despertar`, se dibuja sola al aparecer.
 import { luzViva } from '../tinta/luz'
 import { useEffect, useId, useState } from 'react'
 import { impulso, lineasSenal } from './senal'
@@ -8,8 +9,8 @@ export type EstadoSenal = 'reposo' | 'pensando' | 'recordando'
 
 const reducido = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
-export function Senal({ tam = 24, estado = 'reposo', titulo = 'Esme', className }: {
-  tam?: number; estado?: EstadoSenal; /** @deprecated ya no hace falta: la oclusión es por máscara */ tapa?: string; titulo?: string; className?: string
+export function Senal({ tam = 24, estado = 'reposo', titulo = 'Esme', className, despertar = false }: {
+  tam?: number; estado?: EstadoSenal; despertar?: boolean; /** @deprecated ya no hace falta: la oclusión es por máscara */ tapa?: string; titulo?: string; className?: string
 }) {
   const id = useId().replace(/[^a-zA-Z0-9]/g, '')
   const [t, setT] = useState(0)
@@ -34,7 +35,7 @@ export function Senal({ tam = 24, estado = 'reposo', titulo = 'Esme', className 
         {ls.map((l, k) => (
           <linearGradient key={k} id={`${id}l${k}`} gradientUnits="userSpaceOnUse" x1={l.x0} x2={l.x1} y1={0} y2={0}>
             {[0, 0.18, 0.82, 1].map((o) => (
-              <stop key={o} offset={o} style={{ stopColor: `color-mix(in oklab, var(--senal-frente) ${Math.round(l.f * 100)}%, var(--senal-fondo))`, stopOpacity: !mini && (o === 0 || o === 1) ? 0 : 1 }} />
+              <stop key={o} offset={o} style={{ stopColor: `color-mix(in oklab, var(--tinta-fresca) ${Math.round(l.f * 100)}%, var(--tinta-vieja))`, stopOpacity: !mini && (o === 0 || o === 1) ? 0 : 1 }} />
             ))}
           </linearGradient>
         ))}
@@ -48,7 +49,8 @@ export function Senal({ tam = 24, estado = 'reposo', titulo = 'Esme', className 
         ))}
       </defs>
       {ls.map((l, k) => (
-        <path key={k} d={l.d} fill="none" stroke={`url(#${id}l${k})`} strokeWidth={l.grosor} strokeLinecap="round" strokeLinejoin="round" mask={k < ls.length - 1 ? `url(#${id}m${k})` : undefined} />
+        <path key={k} d={l.d} fill="none" stroke={`url(#${id}l${k})`} strokeWidth={l.grosor} strokeLinecap="round" strokeLinejoin="round" mask={k < ls.length - 1 ? `url(#${id}m${k})` : undefined}
+          {...(despertar && !reducido() ? { pathLength: 1, style: { strokeDasharray: 1, animation: `trazar 0.9s cubic-bezier(.6,0,.2,1) ${(0.14 * k).toFixed(2)}s both` } } : {})} />
       ))}
       {imp && imp.luz > 0 && (
         <>

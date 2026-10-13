@@ -3,13 +3,14 @@
 // Lo que nadie ha verificado sigue en grafito, un anillo de lápiz. Cada tema es una aguada con su nombre rotulado
 // como en un atlas grabado. Al recordar, la luz recorre los trazos. Y el tiempo se puede deslizar: la mente tal
 // como era cualquier día, con la tinta fresca de entonces. La primera vez en cada sesión, la mente se dibuja sola.
-import '@fontsource-variable/bodoni-moda/wght-italic.css'
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d'
 import type { Atlas } from '../lib/brain'
-import { luzViva, mezclar } from '../tinta/luz'
+import { luzViva } from '../tinta/luz'
 import { forma, trazarMancha } from '../tinta/mancha'
-import { esGrafito, nivelTinta, paletaTinta, radioTrazo } from '../tinta/trazo'
+import { esGrafito, nivelTinta, radioTrazo } from '../tinta/trazo'
+import { aguadasDe } from './aguadas'
+import { leerTinta, pintarAguadas as pintarAguadasEn, pintarPuntos, radioEn, rotular as rotularTemas, ROTULO, tintaDe } from './pintar'
 import { construirRed, type EnlaceRed, type NodoRed } from './red'
 import { Tiempo } from './Tiempo'
 import { etiquetaFecha, histograma, rangoDe, visiblesEn } from './tiempo'
@@ -22,7 +23,6 @@ type L = LinkObject<NodoRed, EnlaceRed>
 const DIA = 864e5, TAU = Math.PI * 2
 const largo = (l: L) => { const a = l.source as N, b = l.target as N, d = Math.hypot((a.x ?? 0) - (b.x ?? 0), (a.y ?? 0) - (b.y ?? 0)); return d < 14 ? 0 : d < 40 ? 1 : 2 }
 const ENCENDIDO_MS = 3500, SECADO_MS = 600, CRECER_MS = 9000, INTRO_MS = 4500
-const ROTULO = '"Bodoni Moda Variable", Georgia, serif'
 const CLASES: Record<string, string> = { user_msg: 'Mensaje tuyo', ai_msg: 'Respuesta de una IA', doc: 'Documento', note: 'Nota' }
 const quieto = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
 let introVista = false // la mente se dibuja sola solo la primera vez que se abre en cada sesión
@@ -33,19 +33,6 @@ const aurora = (id = '') => luzViva(performance.now() / 1000, matiz(id) / 360)
 const idDe = (e: L['source']) => (typeof e === 'object' ? String((e as N).id) : String(e))
 const escapar = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
 const deCuando = (ms: number) => { const e = etiquetaFecha(ms); return e === 'Hoy' || e === 'Ayer' ? `de ${e.toLowerCase()}` : `del ${e}` }
-
-// enlaces[k][nivel]: k es lo largo del trazo (0 corto, 1 medio, 2 largo): lo lejano se dibuja a lápiz suave, lo cercano con firmeza
-type Tinta = { papel: string; tinta: string; grafito: string; trazos: string[]; enlaces: string[][]; grafitos: string[]; aguadas: string[]; noche: boolean }
-function leerTinta(): Tinta {
-  const css = getComputedStyle(document.documentElement), v = (k: string) => css.getPropertyValue(k).trim()
-  const trazos = paletaTinta({ fresca: v('--tinta-fresca') || '#15233d', vieja: v('--tinta-vieja') || '#6e5235' })
-  const alfa = (a: number) => trazos.map((c) => c.replace(')', ` / ${a})`))
-  const noche = document.documentElement.dataset.theme !== 'dia'
-  const grafito = v('--grafito')
-  return { papel: v('--papel'), tinta: v('--tinta'), grafito, trazos, noche,
-    enlaces: (noche ? [0.42, 0.2, 0.07] : [0.5, 0.24, 0.08]).map(alfa), grafitos: ['80', '48', '1c'].map((a) => grafito + a),
-    aguadas: trazos.map((c) => mezclar(c, v('--papel') || '#08090d', 0.55)) }
-}
 
 export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: string; recordados: Recordado[]; onPick(id: string): void }>(
   function RedNeuronal({ atlas, tema, recordados, onPick }, ref) {
@@ -85,7 +72,7 @@ export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: st
     const vis = useMemo(() => (corte === null ? null : visiblesEn(red.nodes, corte)), [red, corte])
     const hist = useMemo(() => (rango ? histograma(red.nodes, rango.desde, rango.hasta, Math.min(90, Math.max(12, Math.ceil((rango.hasta - rango.desde) / DIA)))) : []), [red, rango])
     const refT = corte ?? ahora
-    const tintaEn = (fecha: number | undefined) => (fecha === undefined ? tinta.tinta : tinta.trazos[nivelTinta((refT - fecha) / DIA)])
+    const tintaEn = (fecha: number | undefined) => tintaDe(tinta, refT, fecha)
 
     const parar = () => setCrecimiento(null)
     const crecer = (desde: number, ms: number) => { setCorte(desde); setCrecimiento({ desde, ms }) }
@@ -161,86 +148,32 @@ export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: st
     const visible = (id: string) => !vis || vis.ids.has(id)
     const grafitoEnlace = (l: L) => esGrafito(porId.get(idDe(l.source))?.confianza) || esGrafito(porId.get(idDe(l.target))?.confianza)
 
-    // Las aguadas de los temas van bajo todo. Cubren el 80 % de sus recuerdos (los sueltos quedan como islas) y se pintan
-    // opacas, con su línea de marea (el pigmento se acumula en el borde al secarse), en una capa aparte que se posa sobre
-    // el papel con una sola transparencia. Las grandes primero: cada aguada tapa los bordes de las de debajo, como recortes
-    // de papel, y el centro denso no se convierte en un diagrama de Venn.
+    // Las aguadas van bajo todo (memoria/pintar.ts); su centro y su extensión salen de dónde están sus recuerdos ahora mismo.
     const pintarAguadas = (ctx: CanvasRenderingContext2D, escala: number) => {
-      const lienzo = ctx.canvas, c = (capa.current ??= document.createElement('canvas'))
-      if (c.width !== lienzo.width || c.height !== lienzo.height) { c.width = lienzo.width; c.height = lienzo.height }
-      const g = c.getContext('2d')!
-      g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, c.width, c.height); g.setTransform(ctx.getTransform())
-      const lista: (typeof centros.current[number] & { r: number; nivel: number })[] = []
-      for (const [t, ms] of miembros) {
-        let sx = 0, sy = 0, k = 0, edad = 0, fechados = 0
-        for (const m of ms) { if (!visible(m.id)) continue; sx += m.x ?? 0; sy += m.y ?? 0; k++; if (m.fecha !== undefined) { edad += refT - m.fecha; fechados++ } }
-        if (!k) continue
-        const cx = sx / k, cy = sy / k, d: number[] = []
-        for (const m of ms) if (visible(m.id)) d.push(Math.hypot((m.x ?? 0) - cx, (m.y ?? 0) - cy))
-        d.sort((p, q) => p - q)
-        lista.push({ tema: t, x: cx, y: cy, n: k, r: d[Math.min(d.length - 1, Math.floor(d.length * 0.8))] * 1.08 + 4, nivel: fechados ? nivelTinta(edad / fechados / DIA) : 0 })
-      }
-      g.lineWidth = 1.6 / escala
-      for (const a of [...lista].sort((p, q) => q.r - p.r)) {
-        g.beginPath(); trazarMancha(g, a.x, a.y, a.r, forma(`tema:${a.tema}`, 14, 0.82, 1.1))
-        g.fillStyle = tinta.aguadas[a.nivel]; g.fill(); g.strokeStyle = tinta.trazos[a.nivel]; g.stroke()
-      }
-      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = tinta.noche ? 0.1 : 0.13; ctx.drawImage(c, 0, 0); ctx.restore()
-      centros.current = lista
+      const pts: { tema: number; x: number; y: number; fecha?: number }[] = []
+      for (const [t, ms] of miembros) for (const m of ms) if (visible(m.id)) pts.push({ tema: t, x: m.x ?? 0, y: m.y ?? 0, fecha: m.fecha })
+      const aguadas = aguadasDe(pts, refT)
+      pintarAguadasEn(ctx, (capa.current ??= document.createElement('canvas')), aguadas, tinta, escala)
+      centros.current = aguadas
     }
+    const rotular = (ctx: CanvasRenderingContext2D, escala: number) => rotularTemas(ctx, centros.current, rotulos, tinta, escala)
 
-    // Los nombres de los temas, rotulados encima de todo como las regiones de un atlas grabado: el término principal en
-    // cursiva grande y el segundo, más pequeño y tenue, debajo. Los temas grandes primero, y ningún nombre pisa a otro.
-    const rotular = (ctx: CanvasRenderingContext2D, escala: number) => {
-      const puestos: number[][] = []
-      ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'
-      for (const c of [...centros.current].sort((a, b) => b.n - a.n)) {
-        const [uno, dos] = rotulos.get(c.tema) ?? []; if (!uno) continue
-        const px = (11.5 + Math.min(6.5, Math.sqrt(c.n) / 2.6)) / escala, px2 = px * 0.74
-        ctx.font = `italic 500 ${px}px ${ROTULO}`; const w1 = ctx.measureText(uno).width
-        ctx.font = `italic 400 ${px2}px ${ROTULO}`; const w2 = dos ? ctx.measureText(dos).width : 0
-        const w = Math.max(w1, w2) / 2, y1 = dos ? c.y - px2 * 0.55 : c.y, y2 = c.y + px * 0.55
-        const r = [c.x - w, y1 - px * 0.6, c.x + w, dos ? y2 + px2 * 0.6 : y1 + px * 0.6]
-        if (puestos.some((p) => p[0] < r[2] && r[0] < p[2] && p[1] < r[3] && r[1] < p[3])) continue
-        puestos.push(r)
-        ctx.strokeStyle = tinta.papel; ctx.lineWidth = 3.5 / escala; ctx.fillStyle = tinta.tinta
-        ctx.font = `italic 500 ${px}px ${ROTULO}`
-        ctx.globalAlpha = 0.88; ctx.strokeText(uno, c.x, y1); ctx.globalAlpha = 1; ctx.fillText(uno, c.x, y1)
-        if (dos) {
-          ctx.font = `italic 400 ${px2}px ${ROTULO}`
-          ctx.globalAlpha = 0.8; ctx.strokeText(dos, c.x, y2); ctx.globalAlpha = 0.72; ctx.fillText(dos, c.x, y2)
-        }
-      }
-      ctx.restore()
-    }
-
-    // Un punto nunca baja de ~1,5 px en pantalla: la trama de puntos se lee aunque la vista esté lejos
-    const radioEn = (n: N, escala: number) => Math.max(radioTrazo(n.confianza), (0.75 + 0.55 * (n.confianza ?? 0.8)) / escala)
-
-    // Todos los recuerdos de una vez, agrupados por tono de tinta: 24 rellenos en vez de uno por punto (el lienzo cobra
-    // por llamada, no por píxel). Solo van uno a uno los que están vivos: encendidos, aún húmedos o enfocados.
+    // Todos los recuerdos por lotes de tono (memoria/pintar.ts); solo van uno a uno los vivos: encendidos, húmedos o enfocados.
     const pintarRecuerdos = (ctx: CanvasRenderingContext2D, escala: number) => {
-      const lotes = new Map<string, Path2D>(), anillos = new Path2D(), sueltos: N[] = []
-      let hayAnillos = false
+      const normales: N[] = [], sueltos: N[] = []
       for (const n of red.nodes as N[]) {
         if (n.tipo === 'tema' || !visible(n.id)) continue
-        if ((encendidos.current.has(n.id) && vivo(n.id) > 0) || gotas.current.has(n.id) || enfocado.current === n.id) { sueltos.push(n); continue }
-        const x = n.x ?? 0, y = n.y ?? 0, r = radioEn(n, escala)
-        if (esGrafito(n.confianza)) { anillos.moveTo(x + r * 0.9, y); anillos.arc(x, y, r * 0.9, 0, TAU); hayAnillos = true; continue }
-        const color = tintaEn(n.fecha)
-        let p = lotes.get(color); if (!p) { p = new Path2D(); lotes.set(color, p) }
-        if (r * escala >= 3.5) trazarMancha(p, x, y, r, forma(n.id, 9, 0.84, 1.1))
-        else { p.moveTo(x + r, y); p.arc(x, y, r, 0, TAU) }
+        if ((encendidos.current.has(n.id) && vivo(n.id) > 0) || gotas.current.has(n.id) || enfocado.current === n.id) sueltos.push(n)
+        else normales.push(n)
       }
-      for (const [color, p] of lotes) { ctx.fillStyle = color; ctx.fill(p) }
-      if (hayAnillos) { ctx.strokeStyle = tinta.grafito; ctx.lineWidth = Math.max(0.5, 0.8 / escala); ctx.stroke(anillos) }
+      pintarPuntos(ctx, normales, refT, tinta, escala)
       for (const n of sueltos) pintarRecuerdo(n, ctx, escala)
     }
 
     const pintarRecuerdo = (n: N, ctx: CanvasRenderingContext2D, escala: number) => {
       const x = n.x ?? 0, y = n.y ?? 0, v = vivo(n.id), g = secado(n.id), grafito = esGrafito(n.confianza), color = tintaEn(n.fecha)
       // al caer, la gota se abre un poco más de la cuenta y se recoge; la tinta húmeda se corre por las fibras
-      const r = radioEn(n, escala) * (g < 1 ? 0.35 + 0.65 * (1 - (1 - g) ** 3) + 0.3 * Math.sin(Math.PI * g) : 1)
+      const r = radioEn(n.confianza, escala) * (g < 1 ? 0.35 + 0.65 * (1 - (1 - g) ** 3) + 0.3 * Math.sin(Math.PI * g) : 1)
       if (g < 1 && !grafito) { ctx.globalAlpha = 0.26 * (1 - g); ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r * (1.6 + g), 0, TAU); ctx.fill(); ctx.globalAlpha = 1 }
       if (v > 0) {
         const luz = aurora(n.id)

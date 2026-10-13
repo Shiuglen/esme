@@ -130,8 +130,6 @@
 [data-plataforma="darwin"] .barra-ventana { padding-left: 86px }
 
 /* «Señal», el símbolo de Esme: líneas en blanco y negro; su impulso es aurora (lo pinta el componente). */
-:root { --senal-fondo: #2e3038; --senal-frente: #f4f1ea; }
-:root[data-theme="dia"] { --senal-fondo: #c9c6bd; --senal-frente: #0b0b0d; }
 
 /* Detalles de aurora */
 .aurora-texto { background: var(--aurora-lineal); -webkit-background-clip: text; background-clip: text; color: transparent }
@@ -168,6 +166,7 @@
 /* Taller: la planta isométrica. Las caras de las máquinas van con la luz desde arriba a la izquierda. */
 @keyframes baliza { 0%, 100% { opacity: 1 } 50% { opacity: 0.25 } }
 @keyframes respirar { 0%, 100% { opacity: 0.55 } 50% { opacity: 1 } }
+@keyframes trazar { from { stroke-dashoffset: 1 } to { stroke-dashoffset: 0 } }
 @keyframes estampar { from { opacity: 0; transform: scale(1.15) } to { opacity: 1; transform: scale(1) } }
 @keyframes girar { to { transform: rotate(360deg) } }
 .planta-maquina { transition: transform 0.35s var(--ease-salida) }
