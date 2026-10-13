@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Pone Esme en el menú de aplicaciones y en el escritorio (Linux, freedesktop). Se puede repetir sin miedo.
+# El icono se regenera desde la Señal con: (cd app && npx vite-node scripts/icono.ts)
+set -eu
+RAIZ="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+DATOS="${XDG_DATA_HOME:-$HOME/.local/share}"
+install -Dm644 "$RAIZ/app/resources/esme.svg" "$DATOS/icons/hicolor/scalable/apps/esme.svg"
+install -Dm644 "$RAIZ/app/resources/esme.png" "$DATOS/icons/hicolor/512x512/apps/esme.png"
+mkdir -p "$DATOS/applications"
+sed "s|@RAIZ@|$RAIZ|g" "$RAIZ/app/resources/esme.desktop" > "$DATOS/applications/esme.desktop"
+chmod 755 "$DATOS/applications/esme.desktop" "$RAIZ/scripts/esme"
+update-desktop-database "$DATOS/applications" 2>/dev/null || true
+gtk-update-icon-cache -f -t "$DATOS/icons/hicolor" 2>/dev/null || true
+ESCRITORIO="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")"
+if [ -d "$ESCRITORIO" ]; then
+  install -m755 "$DATOS/applications/esme.desktop" "$ESCRITORIO/esme.desktop"
+  gio set "$ESCRITORIO/esme.desktop" metadata::trusted true 2>/dev/null || true   # para que el escritorio deje abrirlo
+fi
+echo "Esme está en el menú de aplicaciones${ESCRITORIO:+ y en $ESCRITORIO}."

@@ -18,6 +18,11 @@ let ptyHost: UtilityProcess | null = null
 const brain = new BrainProcess(join(ROOT, '.venv', 'bin', 'daimon'), HOME, (info: BrainInfo | null) => win?.webContents.send('brain:changed', info))
 
 const MAC = process.platform === 'darwin'
+// Una sola Esme: si ya está abierta (por ejemplo, al pulsar otra vez el icono del escritorio), la abierta se trae al frente
+// y la nueva se va. Dos Esmes pelearían por la misma mente (el cerebro rechaza a la segunda).
+const UNICA = app.requestSingleInstanceLock()
+if (!UNICA) app.quit()
+app.on('second-instance', () => { if (!win) return; if (win.isMinimized()) win.restore(); win.show(); win.focus() })
 const ALTO_BARRA = 48
 
 // Sin barra del sistema: la barra superior de esme hace de barra de la ventana. En macOS quedan los semáforos;
@@ -25,7 +30,7 @@ const ALTO_BARRA = 48
 function createWindow() {
   win = new BrowserWindow({
     width: 1480, height: 940, minWidth: 980, minHeight: 640, backgroundColor: '#07080b', title: 'esme', show: false,
-    autoHideMenuBar: true, titleBarStyle: 'hidden',
+    autoHideMenuBar: true, titleBarStyle: 'hidden', icon: join(__dirname, '../../resources/esme.png'),
     ...(MAC ? { trafficLightPosition: { x: 18, y: 16 } } : { titleBarOverlay: { color: '#0e1015', symbolColor: '#a3a9b4', height: ALTO_BARRA } }),
     webPreferences: { preload: join(__dirname, '../preload/index.mjs'), contextIsolation: true, sandbox: false, nodeIntegration: false },
   })
@@ -81,6 +86,7 @@ function registerIpc() {
 }
 
 app.whenReady().then(async () => {
+  if (!UNICA) return
   registerIpc()
   startPtyHost()
   createWindow()

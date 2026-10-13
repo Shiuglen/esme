@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Esme
+GenericName=Tu mente y tus IAs
+Comment=Tu memoria propia y todas tus IAs trabajando en un solo sitio
+Exec=@RAIZ@/scripts/esme
+Icon=esme
+Terminal=false
+StartupNotify=true
+StartupWMClass=esme
+Categories=Utility;
+Keywords=IA;memoria;agentes;taller;mente;

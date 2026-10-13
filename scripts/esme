@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Abre Esme (desde el escritorio, el menú de aplicaciones o una terminal).
+# Arranca la app de desarrollo: siempre el código más nuevo. Si Esme ya está abierta, la propia app se trae al frente
+# (instancia única), así que pulsar el icono dos veces no abre dos Esmes peleando por la misma mente.
+set -u
+RAIZ="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+export PATH="$HOME/.local/share/mise/shims:$HOME/.local/share/mise/installs/node/lts/bin:$PATH"
+REGISTRO="${XDG_STATE_HOME:-$HOME/.local/state}/esme"; mkdir -p "$REGISTRO"
+cd "$RAIZ/app" || exit 1
+# Ya abierta: la build pide el bloqueo, avisa a la abierta para que se muestre y se cierra al momento (sin montar nada).
+if pgrep -f "$RAIZ/app/node_modules/electron/dist/electron" >/dev/null && grep -q requestSingleInstanceLock out/main/index.js 2>/dev/null; then
+  exec ./node_modules/.bin/electron . >>"$REGISTRO/app.log" 2>&1
+fi
+echo "--- $(date '+%F %T') abriendo Esme" >>"$REGISTRO/app.log"
+exec ./node_modules/.bin/electron-vite dev --remoteDebuggingPort 9333 >>"$REGISTRO/app.log" 2>&1

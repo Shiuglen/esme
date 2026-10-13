@@ -4,6 +4,7 @@
   "private": true,
   "description": "Daimon — trabajas dentro de tu mente",
   "main": "out/main/index.js",
+  "desktopName": "esme.desktop",
   "type": "module",
   "scripts": {
     "dev": "electron-vite dev",
