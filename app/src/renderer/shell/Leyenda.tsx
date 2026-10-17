@@ -4,6 +4,7 @@
 import { cn } from '../lib/cn'
 import { Senal, type EstadoSenal } from '../marca/Senal'
 import { ROTULO } from '../memoria/pintar'
+import type { Navegacion } from '../tinta/piel'
 import type { Origen } from './Hoja'
 import { AJUSTES, SECCIONES, type SeccionId } from './secciones'
 
@@ -11,19 +12,25 @@ export type NotaLugar = { texto: string; tono?: 'atencion' | 'peligro' | 'vida' 
 const LUGARES = [...SECCIONES.filter((s) => s.id !== 'inicio'), AJUSTES]
 const TONO = { atencion: 'text-atencion', peligro: 'text-peligro', vida: 'text-texto' }
 
-export function Leyenda({ actual, recogida, estado, notas, onIr }: {
-  actual: SeccionId; recogida: boolean; estado: EstadoSenal; notas: Partial<Record<SeccionId, NotaLugar>>; onIr(id: SeccionId, origen: Origen): void
+// Tres formas de la misma navegación (la elige la piel): «leyenda» (la caja de la esquina, que se recoge con una hoja abierta),
+// «riel» (una columna fina a la izquierda, siempre recogida) y «muelle» (una barra flotante abajo en el centro).
+export function Leyenda({ actual, recogida: recogidaPedida, estado, notas, onIr, modo = 'leyenda' }: {
+  modo?: Navegacion; actual: SeccionId; recogida: boolean; estado: EstadoSenal; notas: Partial<Record<SeccionId, NotaLugar>>; onIr(id: SeccionId, origen: Origen): void
 }) {
+  const recogida = modo !== 'leyenda' || recogidaPedida, muelle = modo === 'muelle'
   const ir = (id: SeccionId, e: React.MouseEvent<HTMLElement>) => { const r = e.currentTarget.getBoundingClientRect(); onIr(id, { x: r.left + r.width / 2, y: r.top + r.height / 2 }) }
   return (
     <nav aria-label="Lugares de Esme"
-      className={cn('hoja absolute bottom-4 left-4 z-30 flex flex-col overflow-hidden transition-[width] duration-500 ease-[cubic-bezier(.16,1,.3,1)]', recogida ? 'w-[52px]' : 'w-[232px]')}>
+      className={cn('hoja absolute z-30 flex overflow-hidden transition-[width] duration-500 ease-[cubic-bezier(.16,1,.3,1)]',
+        modo === 'leyenda' && cn('bottom-4 left-4 flex-col', recogida ? 'w-[52px]' : 'w-[232px]'),
+        modo === 'riel' && 'top-3 bottom-3 left-3 w-[52px] flex-col',
+        muelle && 'bottom-3 left-1/2 -translate-x-1/2 flex-row items-center')}>
       <button type="button" data-lugar="inicio" onClick={(e) => ir('inicio', e)} title="Tu mente (Esc)"
-        className={cn('flex items-center gap-2.5 border-b border-linea px-3 py-2.5 text-left transition-colors hover:bg-s2/60', actual === 'inicio' && 'bg-s2/40')}>
+        className={cn('flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-s2/60', muelle ? 'border-r border-linea' : 'border-b border-linea', actual === 'inicio' && 'bg-s2/40')}>
         <Senal tam={26} estado={estado} titulo="Esme" />
         {!recogida && <span className="truncate text-[15px] italic" style={{ fontFamily: ROTULO }}>Tu mente</span>}
       </button>
-      <ul className="m-0 grid list-none gap-0.5 p-1.5">
+      <ul className={cn('m-0 list-none gap-0.5 p-1.5', muelle ? 'flex' : 'grid')}>
         {LUGARES.map(({ id, nombre, Icono, atajo }) => {
           const nota = notas[id], activo = actual === id
           return (

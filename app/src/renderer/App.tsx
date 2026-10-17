@@ -247,7 +247,7 @@ export function App() {
             {pagina(id)}
           </Hoja>
         ))}
-        <Leyenda actual={seccion} recogida={seccion !== 'inicio'} estado={estadoEsme} notas={notas} onIr={ir} />
+        <Leyenda modo={piel.navegacion} actual={seccion} recogida={seccion !== 'inicio'} estado={estadoEsme} notas={notas} onIr={ir} />
       </main>
       <Paleta abierta={paleta} onCerrar={() => setPaleta(false)} onIr={ir} onPreguntar={preguntar}
         onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} />

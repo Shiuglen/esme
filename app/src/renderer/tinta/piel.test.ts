@@ -76,3 +76,13 @@ describe('nada se queda sin color', () => {
     expect(revisarContraste({ '--texto': '#ffffff' }).length).toBeGreaterThan(0)
   })
 })
+
+describe('la navegación también es de la piel', () => {
+  it('leyenda por defecto; riel y muelle son válidos; lo desconocido se rechaza', () => {
+    expect(PIEL_BASE.navegacion).toBe('leyenda')
+    const r = validarPiel({ navegacion: 'muelle' })
+    expect(r.ok && r.piel.navegacion).toBe('muelle')
+    expect(validarPiel({ navegacion: 'riel' }).ok).toBe(true)
+    expect(validarPiel({ navegacion: 'menu-hamburguesa' }).ok).toBe(false)
+  })
+})
