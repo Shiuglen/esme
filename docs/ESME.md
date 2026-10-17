@@ -8,6 +8,9 @@
 > **Última revisión:** 2026-10-12, tras releer las 58 rondas de preguntas y todos los mensajes del creador.
 
 ## 0. La regla madre (palabras del creador)
+- **Esme es maleable (17-oct):** «no quiero limitarlo… que sea totalmente cambiante… que la persona pueda modificar cualquier cosa, incluso cambiar lo visual por librerías que vio». No hay un diseño fijo: hay **pieles**. Todo lo visual (color, tipografía, densidad, formas, movimiento, fondo, componentes) vive en una piel que se cambia en vivo con deshacer e historial; Esme genera pieles a petición («hazla como Linear», «como esta web»), las comprueba (contraste, legibilidad) y enseña antes y después; las pieles se comparten y venden en la Tienda. Esmeralda, Tinta y Luz y el violeta son las primeras pieles, no «el diseño».
+- **Una sola sesión a la vez (17-oct):** solo una sesión de Claude trabaja en Esme; las demás leen este fichero y no tocan código sin que el creador lo pida. Así la dirección no se bifurca.
+- **Primero lo esencial impecable (17-oct):** conversar, recordar y el Taller funcionando perfectos (el 17-oct fallaban 14 de 41 tareas). Luego, las pieles; luego, negocio (planes, invitaciones gratis para el equipo, licencias) y funciones grandes.
 - **El nivel:** «De otro mundo», «la maravilla» en cada detalle, lo mejor de la era de la IA. Esme debe ser propia e incomparable: nunca una copia.
 - **Ninguna orden limita:** «Cualquier orden mía mal dicha puede limitar el proyecto». Si una decisión achica Esme, se cambia por algo mejor y se explica.
 - **El ritmo:** paso a paso, perfeccionando y en orden, pero sin quedarse nunca satisfecho. Cada paso termina preguntándose «¿qué falta para que sea lo mejor que existe?».
