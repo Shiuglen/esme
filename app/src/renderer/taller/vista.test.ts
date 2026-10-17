@@ -120,3 +120,9 @@ describe('archivar lo viejo', () => {
     expect(archivable(t('lista', ahora - 5 * DIA), ahora)).toBe(false)
   })
 })
+
+describe('la sesión pedida con otras palabras', () => {
+  it('«authMethods» (el motor ofrece formas de entrar) también es pedir que inicies sesión', () => {
+    expect(explicarError('La sesión del motor está cerrada. Su última palabra: «data: { authMethods: [ [Object] ] }»', 'Qwen Code', '')?.tipo).toBe('sesion')
+  })
+})
