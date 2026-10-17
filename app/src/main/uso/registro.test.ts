@@ -20,6 +20,11 @@ describe('costeDe', () => {
     expect(costeDe(base)).toBe(0)
     expect(costeDe({ ...base, entrada: NaN, salida: undefined as never }, precio)).toBe(0)
   })
+  it('el coste directo del motor manda sobre el catálogo, y sin USD honesto es 0', () => {
+    expect(costeDe({ ...base, costeDirecto: { cantidad: 0.02, moneda: 'USD' } }, precio)).toBeCloseTo(0.02)
+    expect(costeDe({ ...base, costeDirecto: { cantidad: 5, moneda: 'EUR' } }, precio)).toBe(0)
+    expect(costeDe({ ...base, costeDirecto: { cantidad: NaN, moneda: 'USD' } }, precio)).toBe(0)
+  })
 })
 
 describe('RegistroUso', () => {
@@ -50,6 +55,20 @@ describe('RegistroUso', () => {
     expect(res.porDia.map(d => d.dia)).toEqual(['2026-10-01', '2026-10-02'])
     expect(res.porDia[0].costeUSD).toBeCloseTo(4.5)
     expect(Number.isNaN(res.costeUSD)).toBe(false)
+  })
+  it('las historias del Taller: cada tarea una fila con titulo, motor, turnos y orden del último turno', () => {
+    const r = new RegistroUso(arch())
+    const temprano = new Date(2026, 9, 1, 10).getTime(), tarde = new Date(2026, 9, 1, 12).getTime()
+    r.anotar({ ts: temprano, proveedor: 'qwen-code', modelo: 'poolside/laguna-s-2.1:free', entrada: 1000, salida: 100, origen: 'taller', tarea: 'aaa11111', titulo: 'primer cuento' })
+    r.anotar({ ts: tarde, proveedor: 'qwen-code', modelo: 'poolside/laguna-s-2.1:free', entrada: 2000, salida: 50, origen: 'arena', tarea: 'bbb22222', titulo: 'duelo' })
+    r.anotar({ ts: tarde, proveedor: 'qwen-code', modelo: 'poolside/laguna-s-2.1:free', entrada: 500, salida: 25, origen: 'arena', tarea: 'bbb22222', titulo: 'duelo' })
+    r.anotar({ ts: tarde, proveedor: 'anthropic', modelo: 'sonnet', entrada: 10, salida: 5, origen: 'chat' })   // el chat no entra a historias
+    const res = r.resumen({ desde: 0, hasta: Date.now(), precio: () => undefined })
+    expect(res.costeUSD).toBe(0)
+    expect(res.tokens).toBe(1000 + 100 + 2000 + 50 + 500 + 25 + 15)
+    expect(res.porTarea.map(h => h.tarea)).toEqual(['bbb22222', 'aaa11111'])   // el último turno manda
+    expect(res.porTarea[0]).toMatchObject({ titulo: 'duelo', motor: 'qwen-code', turnos: 2, tokens: 2575, modelo: 'poolside/laguna-s-2.1:free' })
+    expect(res.porTarea[1]).toMatchObject({ titulo: 'primer cuento', motor: 'qwen-code', turnos: 1, tokens: 1100 })
   })
 })
 

@@ -13,7 +13,7 @@ export type ProviderView = { id: string; label: string; local: boolean; needsKey
 export type AgentView = { id: string; label: string; installed: boolean; memory: boolean; note?: string }
 export type ChatMsg = { role: 'user' | 'assistant'; content: string }
 export type ChatUso = { entrada: number; salida: number; costeUSD: number }
-export type ChatStream = { onChunk(fn: (d: string) => void): void; onDone(fn: () => void): void; onError(fn: (m: string) => void): void; onUsage(fn: (u: ChatUso) => void): void; stop(): void }
+export type ChatStream = { onChunk(fn: (d: string) => void): void; onPensamiento(fn: (d: string) => void): void; onDone(fn: () => void): void; onError(fn: (m: string) => void): void; onUsage(fn: (u: ChatUso) => void): void; stop(): void }
 export type { ModeloCatalogo, Presupuesto }
 export type ProveedorResumen = ProveedorResumenMain
 export type EstadoUso = EstadoUsoMain
@@ -23,6 +23,7 @@ export type MotorDetectado = MotorACP & { instalado: boolean; ruta?: string }
 export type ResumenUso = ReturnType<RegistroUso['resumen']>
 export type { VeredictoTaller, EventoTaller, OpcionMotor, MotorTaller, TareaTaller }
 export type ResultadoTaller = { ok: true } | { ok: false; error: string; ficheros?: string[] }
+export type InstalarMotor = { ok: true; nombre: string } | { ok: false; error: string }
 export type OrigenCatalogo = { origen: 'red' | 'cache' | 'semilla'; fecha: number }
 
 type ElectronApi = {
@@ -32,7 +33,7 @@ type ElectronApi = {
   keys: { status(): Promise<{ secure: boolean; backend: string }>; set(id: string, v: string): Promise<unknown>; remove(id: string): Promise<unknown> }
   chat: {
     start(req: unknown): Promise<unknown>; stop(id: string): Promise<unknown>
-    onChunk(id: string, fn: (d: string) => void): () => void; onDone(id: string, fn: () => void): () => void; onError(id: string, fn: (m: string) => void): () => void
+    onChunk(id: string, fn: (d: string) => void): () => void; onPensamiento(id: string, fn: (d: string) => void): () => void; onDone(id: string, fn: () => void): () => void; onError(id: string, fn: (m: string) => void): () => void
     onUsage(id: string, fn: (u: ChatUso) => void): () => void
   }
   catalogo: { proveedores(): Promise<ProveedorResumen[]>; modelos(id: string): Promise<ModeloCatalogo[]>; origen(): Promise<OrigenCatalogo> }
@@ -43,6 +44,7 @@ type ElectronApi = {
   motores: { detectar(): Promise<MotorDetectado[]> }
   taller: {
     motores(): Promise<MotorTaller[]>; lista(): Promise<TareaTaller[]>; eventos(id: string): Promise<EventoTaller[]>
+    instalarMotor(id: string): Promise<InstalarMotor>; onInstalacion(fn: (p: { id: string; trozo?: string; listo?: boolean }) => void): () => void
     crear(p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }>
     seguir(id: string, texto: string): Promise<ResultadoTaller>; responder(id: string, opcion: string): Promise<ResultadoTaller>
     vistaPrevia(id: string): Promise<{ ok: true; url: string } | { ok: false; error: string }>; cerrarVista(id: string): Promise<ResultadoTaller>
@@ -103,16 +105,17 @@ export const bridge = {
   chat(provider: string, model: string, messages: ChatMsg[], memory: { context: string; ids: string[] } | null, ahorrados?: number): ChatStream {
     const id = newId()
     const usageFns: ((u: ChatUso) => void)[] = []
-    const chunkFns: ((d: string) => void)[] = [], doneFns: (() => void)[] = [], errFns: ((m: string) => void)[] = []
+    const chunkFns: ((d: string) => void)[] = [], pensadoFns: ((d: string) => void)[] = [], doneFns: (() => void)[] = [], errFns: ((m: string) => void)[] = []
     if (isElectron()) {
       const offs = [
         window.daimon!.chat.onChunk(id, (d) => chunkFns.forEach((f) => f(d))),
+        window.daimon!.chat.onPensamiento!(id, (d) => pensadoFns.forEach((f) => f(d))),
         window.daimon!.chat.onUsage(id, (u) => usageFns.forEach((f) => f(u))),
         window.daimon!.chat.onDone(id, () => { doneFns.forEach((f) => f()); offs.forEach((o) => o()) }),
         window.daimon!.chat.onError(id, (m) => { errFns.forEach((f) => f(m)); offs.forEach((o) => o()) }),
       ]
       void window.daimon!.chat.start({ id, provider, model, messages, memory, ahorrados })
-      return { onChunk: (f) => chunkFns.push(f), onDone: (f) => doneFns.push(f), onError: (f) => errFns.push(f), onUsage: (f) => usageFns.push(f), stop: () => void window.daimon!.chat.stop(id) }
+      return { onChunk: (f) => chunkFns.push(f), onPensamiento: (f) => pensadoFns.push(f), onDone: (f) => doneFns.push(f), onError: (f) => errFns.push(f), onUsage: (f) => usageFns.push(f), stop: () => void window.daimon!.chat.stop(id) }
     }
     // Modo web: Ollama directo (solo para ver y probar la interfaz)
     const ac = new AbortController()
@@ -137,7 +140,7 @@ export const bridge = {
         doneFns.forEach((f) => f())
       } catch (e) { if (!ac.signal.aborted) errFns.forEach((f) => f(String(e))) }
     })
-    return { onChunk: (f) => chunkFns.push(f), onDone: (f) => doneFns.push(f), onError: (f) => errFns.push(f), onUsage: () => {}, stop: () => ac.abort() }
+    return { onChunk: (f) => chunkFns.push(f), onPensamiento: (f) => pensadoFns.push(f), onDone: (f) => doneFns.push(f), onError: (f) => errFns.push(f), onUsage: () => {}, stop: () => ac.abort() }
   },
 
   catalogo: {
@@ -157,6 +160,8 @@ export const bridge = {
 
   taller: {
     motores: async (): Promise<MotorTaller[]> => (isElectron() ? window.daimon!.taller.motores() : []),
+    instalarMotor: async (id: string): Promise<InstalarMotor> => (isElectron() ? window.daimon!.taller.instalarMotor(id) : SOLO_ESCRITORIO),
+    onInstalacion: (fn: (p: { id: string; trozo?: string; listo?: boolean }) => void): (() => void) => (isElectron() ? window.daimon!.taller.onInstalacion(fn) : () => {}),
     lista: async (): Promise<TareaTaller[]> => (isElectron() ? window.daimon!.taller.lista() : []),
     eventos: async (id: string): Promise<EventoTaller[]> => (isElectron() ? window.daimon!.taller.eventos(id) : []),
     crear: async (p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }> =>

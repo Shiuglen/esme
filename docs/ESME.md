@@ -147,6 +147,15 @@
    - cifras de la Prueba 0 a la vista.
 10. **Taller pro:** cascada de trazas, bandeja de borradores para aprobar, y negativas con los modelos que sí pueden (elige el usuario).
 
+## 4b. Venas ya vivas (2026-10-17)
+- **La familia viva**: `marca/ser.ts` nace bichitos deterministas de la constelación del atlas (silueta Catmull-Rom, párpados, ring de luz); están en el selector de tareas, filas de motor, historial y bienvenida.
+- **Hoja de servicio**: en cada tarea del Taller, la fachada del Taller nace desde su `Tarea` real (estados: nace → páginas → toca ficheros → terminó → error), con la frase de servicio en prosa.
+- **Prisma del motor ✅ PROBADO CON MOTOR REAL (chat Y taller)**: convención ` ```prisma ` aceptada en TODO el Markdown de la casa. El motor trae un JSON (línea/barras/fichas) y la casa lo dibuja con tinta y luz (`leerPrisma` estricto + `caminoLinea` + `chat/Prisma.tsx`).
+  - Probado por el puente con cohere/north-mini-code:free (chat) — emitió el bloque exacto.
+  - Probado en el Taller con qwen-code: el En vivo nace con barras agrupadas pintadas (alturas fieles, etiquetas, fichas Σ por serie) y sello «PRISMA».
+  - **El spec manda, no la etiqueta**: los motores cercan el json con ```json``` — la puerta acepta prisma por forma, no por language. Fence prisma podrido → código crudo. 337 tests verdes.
+  - Lección de puente: modelos *thinking* (deepseek-v4-flash, nemotron) dejan el textStream vacío — el chat puede necesitar indicador de pensado.
+
 ## 5. Documentos de detalle
 - Arquitectura y red: `docs/superpowers/specs/2026-10-11-daimon-design.md`
 - Concepto v3 y análisis del FYP: `docs/superpowers/specs/2026-10-12-esme-concepto-v3.md`
@@ -155,3 +164,49 @@
 - Identidad «Tinta y Luz»: `docs/superpowers/specs/2026-10-12-tinta-y-luz.md`
 - Laboratorio (ver lienzos y animaciones de verdad): `app/src/renderer/laboratorio.html`
 - Decisiones de la app v2 (nombre y logo): `docs/superpowers/specs/2026-10-11-app-v2-decisiones.md`
+  - **Reencarna ✅ visible en el Taller**: tarea con error → ⟳ en su detalle → hermana nueva con el siguiente motor instalado (misma petición, prefijo «Reencarnación de una tarea que falló con X»).
+  - **Los muertos hablan humano ✅**: «Internal error» → «El motor se cayó sin decidir» (familia motor: red rota, tiempos) con consejo de reencarnación; banner completo en el detalle. 339 tests verdes.
+- **El pensado viaja ✅ probado por el puente**: `chat.ts` manda los deltas de razonamiento por `chat:pensamiento` (AI SDK 7 `fullStream`, `reasoning-delta`); cohere/north-mini-code traía 366 caracteres de pensado + texto por separado. En el chat, una burbuja esperando muestra el velo «pensando» con el hilo del razonamiento en itálica y desvanecido.
+  - **Honestidad ante modelos vacíos**: si done sin texto ni pensado, la burbuja ya no queda en blanco: «El modelo respondió vacío…» o «El modelo pensó (n caracteres) pero no trajo texto». Los modelos gratis que callan (elorian/glimpse, deepseek-v4-flash-free en su vía, kimi-k3-free) ya no engañan.
+  - Estado: el circuito está probado a nivel de eventos; el velo en la burbuja es la vista de esos mismos eventos.
+
+## Oleada visual: la fila de producción con peso (17 oct 2026)
+
+- **Bandas con sello ✅**: cabecera de banda en versalitas con tracking, raya de puntos hasta la cuenta y la cifra en píldora; el punto de «Trabajando» respira (`animate-pulse`). Se ve estampado, no gris.
+- **Acciones rápidas en la fila ✅**: la tarjeta pasa de `<button>` a `div role=button` (HTML válido con botones anidados) y al pasar el foco flotan en la esquina — sin reservar sitio ni empujar el título: «Aplica» (lista), «Reencarna» (error), «Parar» (en marcha). Cableadas a `tl.aplicar/reencarnar/parar` reales.
+- **Métricas que solo hablan ✅**: se acabó la fila de ceros. Una tarjeta sin huellas dice «Sin huellas todavía.»; con vida muestra solo lo que tiene (1.ª respuesta, +/− cambios, tokens, coste).
+- **Medallón de quién trabaja ✅**: el detalle encabeza con el bichito del motor en anillo tintado por su estado (aurora viva / velo peligro / línea apagada).
+- **Pestañas con marca de luz ✅**: el subrayado deja de ser fondo gris y es una línea de aurora que viaja con `layoutId` entre pestañas.
+- **Fin de turno como rúbrica ✅**: «Terminó en 0:27» lleva su línea a los lados y un check sellado en luz.
+- **Hilo del que responde ✅**: cada respuesta del chat nace de una línea de aurora a la izquierda (peligro si trajo error) — verificado con conversación real en la piel.
+- **El nombre del motor no se parte ✅**: «Qwen Code» en una línea; el modelo es lo que trunca.
+- Verificado en caliente: 339 tests verdes, typecheck limpio, build 3.0 s, capturas de Taller y conversación.
+
+## La vena prisma, confirmada por el puente (16 oct 2026)
+
+- **Conversación real por el puente ✅**: chat de verdad (no mock) → el motor emite exactamente el bloque:
+
+  ````
+  ```prisma
+  {"tipo":"linea","titulo":"Tokens por turno","unidades":"tokens","valores":[50,80,90,70,95],"etiquetas":["t1","t2","t3","t4","t5"]}
+  ```
+  ````
+
+  144 caracteres, uso 130 entrada / 299 salida. La tubería entera respiró: motor → Markdown → `leerPrisma` → panel pintado. La convención ` ```prisma ` ya es la vía de los lienzos.
+- Aviso de vena: los modelos «que piensan» (deepseek, nemotron) mandan todo al canal de razonamiento y el `textStream` llega vacío — para pruebas de emisión, modelos que no piensan (north-mini-code) obedecen el formato a la primera.
+
+## La noche larga: la nebulosa del pensamiento (17 oct 2026)
+
+- **Los bookmarks da la llave ✅**: pasadas las 13 hojas del FYP. La señal para la mente vive en #158 TencentDB **Agent Memory** («simbólica → Mermaid; de largo plazo → píxeles planos»; el logo: grafo sináptico con núcleo encendido) y #37 Nizam (números en matriz de puntos) — y la doctrina vieja «la mente se dibuja sola» (fyp-biblioteca).
+- **LA RAÍZ DEL MAL (bug real de meses) ✅**: el tema noche define su tinta en `hsl(...)` y `mezclar()` no la leía → la convertía en `rgb(0 0 0)`. Los recuerdos se pintaban NEGRO SOBRE NEGRO desde el principio. Ahora `tinta/luz.ts` parsea hex/rgb/hsl a mano (el lienzo de últimos) y la mente sale de la penumbra: 2346 recuerdos visibles en vez de polvo.
+- **Nebulosas vivas ✅**: cada aguada es ya un cuerpo con centro denso y orilla en vuelo (gradiente radial dentro de la mancha), tinte por edad y la marea grabada al borde.
+- **El fresco arde ✅**: la tinta de los últimos días lleva halo (sprite por tono, preparado una vez, estampado con `drawImage` bajo la trama) — lo nuevo brilla, lo viejo asienta en brasa.
+- **Sinapsis que trasmite ✅**: al recordar, los ENLACES del vecindario se encienden con la tinta más fresca y la impulso VIAJA por ellos (partículas dirigidas); pasada la palpitación, el cable vuelve a su calma.
+- **La trama de Nizam ✅**: bajo cada rótulo de tema, sus recuerdos tejidos en nudos de puntos (3 por fila, máx. 12) — la cantidad es textura, no número.
+- **Enlaces con voz nocturna ✅**: las alfas de noche suben (0,5/0,26/0,11) y las aguadas se diluyen menos sobre papel de tinta.
+- **El cajón de terminales ✅**: sello de taller por agente (monograma; no instalado, a lápiz), estado de memoria con luz, rótulo TERMINALES y hebra de aurora en la cresta del cajón.
+- **La escena enfoca ✅**: la pieza elegida SE LEVANTA del suelo (muelle y amortiguada) y su conducto se ilumina en luz del tema: la conexión con la mente se ve.
+- **Identidad de motores en Ajustes ✅**: cada motor de la casa lleva SU bichito (la colmena determinista por id) — en Conectados, Tu suscripción y Catálogo. Los enchufes genéricos se han ido excepto en privacidad.
+- **Las cifras de Uso en cursiva de casa ✅**: los KPI con la tipografía display de los números grandes del Taller.
+- Puertas: 339 tests verdes · typecheck limpio · build 4 s. Capturas: mente-viva, taller-enfocada, cajon-nuevo, ajustes-bichos.
+- **Cola abierta (para no dormirse nunca)**: Nueva tarea con vida al teclear (gemelos) · prismas mayores (área/línea + mermaid propio) · muelle de subagentes (Synara #198) · trazas en cascada (Charm #33) · paleta con estados de la casa · minar más del FYP y del GitHub del creador.

@@ -61,7 +61,12 @@ function startPtyHost() {
 function registerIpc() {
   ipcMain.handle('brain:info', () => brain.info)
   ipcMain.on('ventana:colores', (_e, c: { fondo: string; simbolos: string }) => {
-    if (!MAC && win && !win.isDestroyed()) win.setTitleBarOverlay({ color: c.fondo, symbolColor: c.simbolos, height: ALTO_BARRA })
+    // un color impuro (mezcla cruda, variable, vacío) no puede tumbar el proceso: se suelta y se cuenta
+    try {
+      if (!MAC && win && !win.isDestroyed()) win.setTitleBarOverlay({ color: c.fondo, symbolColor: c.simbolos, height: ALTO_BARRA })
+    } catch (e) {
+      console.error('[ventana] la barra no aceptó colores:', JSON.stringify(c))
+    }
   })
   ipcMain.handle('providers:list', () => PROVIDERS.map((p) => ({ ...p, hasKey: !p.needsKey || keys.has(p.id) })))
   ipcMain.handle('models:list', async (_e, id: ProviderId) => {

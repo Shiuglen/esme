@@ -117,8 +117,8 @@ export function Escena({ tema = 'noche', tareas, seleccion, resaltada, ahora, co
             </radialGradient>
           ) : (
             <radialGradient key={m.t.id} id={`planta-luz-${m.t.id}`}>
-              <stop offset="0" style={{ stopColor: COLOR[m.t.estado] ?? 'var(--texto-3)', stopOpacity: 0.55 }} />
-              <stop offset="1" style={{ stopColor: COLOR[m.t.estado] ?? 'var(--texto-3)', stopOpacity: 0 }} />
+              <stop offset="0" style={{ stopColor: m.t.estado === 'lista' ? 'var(--luz)' : COLOR[m.t.estado] ?? 'var(--texto-3)', stopOpacity: 0.55 }} />
+              <stop offset="1" style={{ stopColor: m.t.estado === 'lista' ? 'var(--luz)' : COLOR[m.t.estado] ?? 'var(--texto-3)', stopOpacity: 0 }} />
             </radialGradient>
           ))}
         </defs>
@@ -137,19 +137,20 @@ export function Escena({ tema = 'noche', tareas, seleccion, resaltada, ahora, co
         })}
 
         {/* la luz de cada motor derramada en el suelo */}
-        {maquinas.filter((m) => m.t.estado === 'trabajando' || m.t.estado === 'esperando' || m.t.estado === 'error').map((m) => {
+        {maquinas.filter((m) => m.t.estado !== 'parada' && m.t.estado !== 'preparando').map((m) => {
           const [cx, cy] = iso(m.lugar.x + 0.5, m.lugar.y + 0.5)
-          return <ellipse key={m.t.id} cx={cx} cy={cy} rx={84} ry={42} fill={`url(#planta-luz-${m.t.estado === 'trabajando' ? 'viva-' : ''}${m.t.id})`} className="planta-luz" opacity={m.t.estado === 'error' ? 0.45 : 0.85} />
+          return <ellipse key={m.t.id} cx={cx} cy={cy} rx={84} ry={42} fill={`url(#planta-luz-${m.t.estado === 'trabajando' ? 'viva-' : ''}${m.t.id})`} className="planta-luz" opacity={m.t.estado === 'error' ? 0.45 : m.t.estado === 'lista' ? 0.4 : 0.85} />
         })}
 
         {/* conductos: del núcleo a cada máquina, como pistas de un circuito */}
         {maquinas.map((m) => {
           const plano = conducto(m.ruta, { c: -1, alto: 0 }).d
           const t = m.t.estado
-          const tono = t === 'esperando' ? 'var(--atencion)' : t === 'error' ? 'var(--peligro)' : m.t.id === seleccion ? 'var(--texto-2)' : 'var(--linea-fuerte)'
+          const tono = t === 'esperando' ? 'var(--atencion)' : t === 'error' ? 'var(--peligro)' : m.t.id === seleccion ? 'var(--luz)' : 'var(--linea-fuerte)'
           return (
             <g key={m.t.id}>
-              <motion.path d={plano} fill="none" style={{ stroke: tono }} strokeWidth={1.25} strokeOpacity={t === 'trabajando' ? 0.25 : 0.6}
+              <motion.path d={plano} fill="none" style={{ stroke: tono }} strokeWidth={1.25}
+                strokeOpacity={m.t.id === seleccion ? 0.95 : t === 'trabajando' ? 0.25 : 0.6}
                 strokeDasharray={t === 'esperando' ? '2 4' : undefined} vectorEffect="non-scaling-stroke"
                 initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }} />
               {t === 'trabajando' && (
@@ -220,12 +221,16 @@ function Pieza({ m, luz, elegida, resaltada, ahora, vivo, etiqueta, onElegir, on
   const filo = `M${xy(iso(x0, y0 + w, h))}L${xy(iso(x0 + w, y0 + w, h))}L${xy(iso(x0 + w, y0, h))}`
   const [tx, ty] = iso(m.lugar.x + 0.5, m.lugar.y + 0.5, h)
   const metrica = t.estado === 'trabajando' ? duracion(ahora - t.inicio) : t.estado === 'esperando' ? 'te necesita'
-    : t.estado === 'lista' ? textoCambios(t.cambios) ?? 'lista' : t.estado === 'error' ? 'error' : t.estado === 'parada' ? 'parada' : 'montando…'
+    : t.estado === 'lista' ? textoCambios(t.cambios) ?? '' : t.estado === 'error' ? 'error' : t.estado === 'parada' ? '' : 'montando…'
   const baliza = t.estado === 'esperando'
+  // Solo hablan las máquinas con algo que decir, o cuando te fijas en ellas; el reposo calla.
+  const habla = elegida || resaltada || t.estado !== 'parada'
   return (
     <motion.g initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 14 }} transition={{ type: 'spring', stiffness: 260, damping: 24 }}>
       <g className="planta-maquina cursor-pointer" data-resaltada={resaltada || elegida} style={{ pointerEvents: 'all' }}
         onClick={() => onElegir(t.id)} onPointerEnter={() => onResaltar(t.id)} onPointerLeave={() => onResaltar(null)}>
+        {/* la pieza elegida se levanta del suelo: el foco la front stepping hacia ti (muelle, amortiguado) */}
+        <motion.g animate={{ y: elegida || resaltada ? -5 : 0 }} transition={{ type: 'spring', stiffness: 320, damping: 26 }}>
         {(elegida || resaltada) && (
           <path d={caja(m.lugar.x + 0.04, m.lugar.y + 0.04, 0.92, 0.92, 0).arriba} fill="none" style={{ stroke: elegida ? 'var(--texto)' : 'var(--texto-3)' }}
             strokeOpacity={elegida ? 0.9 : 0.6} strokeWidth={1.25} vectorEffect="non-scaling-stroke" />
@@ -234,7 +239,7 @@ function Pieza({ m, luz, elegida, resaltada, ahora, vivo, etiqueta, onElegir, on
         <path d={filo} fill="none" style={{ stroke: 'var(--texto)' }} strokeOpacity={0.22} strokeWidth={1} vectorEffect="non-scaling-stroke" />
         {t.aplicada ? <SelloEnTapa x={x0 + w / 2} y={y0 + w / 2} h={h} giro={giroSello(t.id)} recien={ahora - t.aplicada.cuando < 5000} />
           : t.estado !== 'preparando' && t.estado !== 'trabajando' && (
-          <path d={ranura} style={{ fill: COLOR[t.estado] ?? 'var(--texto-3)' }} opacity={t.estado === 'lista' ? 0.55 : 0.95} />
+          <path d={ranura} style={{ fill: t.estado === 'lista' ? 'var(--luz)' : COLOR[t.estado] ?? 'var(--texto-3)' }} opacity={t.estado === 'lista' ? 0.55 : 0.95} />
         )}
         {t.estado === 'trabajando' && (
           <path key="viva" ref={(el) => { vivo.ranura = el }} d={ranura} style={{ fill: 'var(--luz)' }} className="animate-[respirar_2.4s_ease-in-out_infinite]" />
@@ -245,7 +250,7 @@ function Pieza({ m, luz, elegida, resaltada, ahora, vivo, etiqueta, onElegir, on
             <path d={`M${tx} ${ty - 40}L${tx + 5} ${ty - 34}L${tx} ${ty - 28}L${tx - 5} ${ty - 34}Z`} style={{ fill: 'var(--atencion)' }} />
           </g>
         )}
-        <g transform={`translate(${tx} ${ty - (baliza ? 50 : 14)})`} className={cn('pointer-events-none transition-opacity duration-300', !etiqueta && 'opacity-0')}>
+        <g transform={`translate(${tx} ${ty - (baliza ? 50 : 14)})`} className={cn('pointer-events-none transition-opacity duration-300', (!etiqueta || !habla) && 'opacity-0')}>
           <text textAnchor="middle" y={-13} className="fill-texto-3 font-mono" fontSize={9.5} style={{ paintOrder: 'stroke', stroke: 'var(--fondo)', strokeWidth: 3, strokeLinejoin: 'round' }}>
             {t.motorNombre.toLowerCase()}
           </text>
@@ -254,6 +259,7 @@ function Pieza({ m, luz, elegida, resaltada, ahora, vivo, etiqueta, onElegir, on
             {metrica}
           </text>
         </g>
+        </motion.g>
       </g>
     </motion.g>
   )

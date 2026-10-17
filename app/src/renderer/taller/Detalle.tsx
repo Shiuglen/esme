@@ -1,7 +1,7 @@
 // El detalle de una tarea: qué se pidió, qué hace el motor en vivo (plan, herramientas, texto), los permisos que pide,
 // los cambios en su copia y cómo seguir. Descartar es en dos pasos: borra la copia y su rama, y eso no se deshace.
 import {
-  ArrowUp, Brain, Hourglass, Check, ChevronRight, Circle, CircleCheck, Eye, FolderOpen, GitBranch, Globe, LoaderCircle, MoveRight, PencilLine,
+  ArrowUp, Brain, Hourglass, Check, ChevronRight, Circle, CircleCheck, Eye, FolderOpen, GitBranch, Globe, LoaderCircle, MoveRight, PencilLine, RefreshCcw,
   Search, ShieldCheck, Square, SquareTerminal, Trash2, Wrench, X, type LucideIcon,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -15,8 +15,10 @@ import { VistaPrevia } from './VistaPrevia'
 import { contarLineas } from './diff'
 import { PastillaEstado } from './FilaMotor'
 import { describirHerramienta, type ItemLinea } from './linea'
+import { Bicho } from '../marca/Ser'
 import { SelectorOpcion } from './Opciones'
-import { activa, duracion, explicarError, motivoFin } from './vista'
+import { activa, barrasDe, duracion, explicarError, motivoFin } from './vista'
+import { BarrasActividad } from './Micrografica'
 
 const ICONO_CLASE: Record<string, LucideIcon> = {
   read: Eye, edit: PencilLine, delete: Trash2, move: MoveRight, search: Search, execute: SquareTerminal, think: Brain, fetch: Globe,
@@ -24,10 +26,11 @@ const ICONO_CLASE: Record<string, LucideIcon> = {
 const PERMISO: Record<string, string> = { allow_once: 'Permitir', allow_always: 'Permitir siempre', reject_once: 'Rechazar', reject_always: 'Rechazar siempre' }
 
 export type Pestana = 'vivo' | 'revision' | 'previa' | 'arena'
-export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, onDescartar, onAbrir, onConfigurar, onTerminal, revision, onPestana, arena, pedida }: {
+export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, onDescartar, onAbrir, onConfigurar, onTerminal, revision, onPestana, arena, pedida, onReencarnar, ahora = Date.now() }: {
+  ahora?: number
   t: TareaTaller; linea: ItemLinea[] | undefined; login?: string; onTerminal(): void; revision: AccionesRevision; onPestana?(p: Pestana): void
   arena?: Omit<React.ComponentProps<typeof Arena>, 'actual'>; pedida?: { p: Pestana; n: number } | null
-  onSeguir(texto: string): Promise<boolean>; onResponder(opcion: string): void; onParar(): void; onDescartar(): void; onAbrir(): void
+  onSeguir(texto: string): Promise<boolean>; onResponder(opcion: string): void; onParar(): void; onDescartar(): void; onAbrir(): void; onReencarnar(): void
   onConfigurar(opcion: string, valor: string): void
 }) {
   const [pestana, setPestana] = useState<Pestana>(t.arena ? 'arena' : 'vivo')
@@ -43,10 +46,18 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
     <div className="flex h-full min-h-0 flex-col">
       <header className="border-b border-linea px-5 pt-4 pb-3">
         <div className="flex items-start gap-3">
+          {/* El medallón de quién trabaja: el bichito del motor, anillado por el estado de la tarea */}
+          <span aria-hidden className={cn(
+            'grid size-10 shrink-0 place-items-center rounded-full border',
+            enMarcha ? 'border-transparent' : t.estado === 'error' ? 'border-peligro/40 text-peligro' : 'border-linea-fuerte/80 text-texto-2')}
+            style={enMarcha ? { background: 'color-mix(in oklab, var(--luz) 14%, transparent)' } : t.estado === 'error' ? { background: 'var(--peligro-velo)' } : { background: 'var(--s1)' }}>
+            <Bicho de={t.motor} tamaño={19} vivo={enMarcha} className="" />
+          </span>
           <h2 className="line-clamp-2 min-w-0 flex-1 font-display text-[19px] leading-[25px] tracking-[-0.01em] text-texto">{t.titulo}</h2>
           <div className="flex shrink-0 items-center gap-1">
             {enMarcha && <Accion icono={Square} texto="Parar" onClick={onParar} />}
             {t.copia && <Accion icono={FolderOpen} texto="Abrir la copia" onClick={onAbrir} />}
+            {t.estado === 'error' && <Accion icono={RefreshCcw} texto="Reencarna con otro motor" onClick={onReencarnar} />}
             <AnimatePresence mode="popLayout" initial={false}>
               {confirmar ? (
                 <motion.button key="si" type="button" onClick={onDescartar} initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }}
@@ -77,13 +88,24 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
             <ShieldCheck className="size-3.5" strokeWidth={1.5} />copia aislada
           </span>
         </div>
-        <nav className="mt-3 flex gap-1" aria-label="Vista de la tarea">
+        {/* La línea de vida: los cubos de actividad como píldoras de código de barras, con sus dos orillas de tiempo */}
+        <div className="mt-3 flex items-center gap-2.5" aria-label="La línea de vida del turno">
+          <span className="shrink-0 font-mono text-[10.5px] text-texto-3">0:00</span>
+          <BarrasActividad valores={barrasDe(t.actividad, 30)} viva={t.estado === 'trabajando'} ancho={440} alto={18} completo className="min-w-0 flex-1" />
+          <span className="shrink-0 font-mono text-[10.5px] text-texto" title="Cuánto lleva (o llevó) el turno">{t.primeraRespuestaMs ? `1.ª res. ${duracion(t.primeraRespuestaMs)} · ` : ''}{duracion((t.fin ?? ahora) - t.inicio)}</span>
+        </div>
+        <nav className="mt-3 flex items-center gap-1 border-b border-linea/70 pb-1" aria-label="Vista de la tarea">
           {(['vivo', 'revision', 'previa', ...(arena && arena.tareas.length > 1 ? ['arena' as const] : [])] as Pestana[]).map((p) => (
             <button key={p} type="button" onClick={() => setPestana(p)} aria-current={pestana === p}
-              className={cn('relative h-8 rounded-2 px-3 text-[13px] transition-colors', pestana === p ? 'bg-s2 text-texto' : 'text-texto-3 hover:text-texto-2')}>
+              className={cn('relative h-8 rounded-2 px-3 text-[13px] transition-colors', pestana === p ? 'text-texto' : 'text-texto-3 hover:text-texto-2')}>
               {p === 'vivo' ? 'En vivo' : p === 'revision' ? 'Revisión' : p === 'previa' ? 'Vista previa' : 'Arena'}
               {p === 'arena' && arena && <span className="ml-1.5 rounded-full bg-s3 px-1.5 text-[11px] tabular-nums text-texto-2">{arena.tareas.length}</span>}
               {p === 'revision' && !!t.cambios?.ficheros && <span className="ml-1.5 rounded-full bg-s3 px-1.5 text-[11px] tabular-nums text-texto-2">{t.cambios.ficheros}</span>}
+              {pestana === p && (
+                <motion.span layoutId="pestaña-taller" aria-hidden
+                  className="absolute inset-x-2.5 -bottom-1 h-[2px] rounded-full [background:var(--aurora-lineal)]"
+                  transition={{ type: 'spring', stiffness: 500, damping: 40 }} />
+              )}
             </button>
           ))}
         </nav>
@@ -176,8 +198,13 @@ function Item({ i }: { i: ItemLinea }) {
         </ol>
       </div>)
     case 'fin': return (
-      <div className="flex items-center gap-3 py-1 text-xs text-texto-3">
-        <span className="h-px flex-1 bg-linea" />{motivoFin(i.motivo)} en {duracion(i.ms)}<span className="h-px flex-1 bg-linea" />
+      <div className="flex items-center gap-3 py-1.5 text-xs text-texto-3">
+        <span className="h-px flex-1 bg-linea" />
+        <span className="font-[450] text-texto-2">{motivoFin(i.motivo)} en {duracion(i.ms)}</span>
+        <span className="grid size-4 place-items-center rounded-full" style={{ background: 'color-mix(in oklab, var(--luz) 16%, transparent)' }} aria-hidden>
+          <CircleCheck className="size-3" strokeWidth={1.75} style={{ color: 'var(--luz)' }} />
+        </span>
+        <span className="h-px flex-1 bg-linea" />
       </div>)
     case 'fallo': return <div className="rounded-3 border border-peligro/40 bg-peligro-velo px-3.5 py-2.5 text-[13px] text-peligro">{i.mensaje}</div>
     case 'reintento': return (

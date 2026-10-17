@@ -1,7 +1,7 @@
 // Chat con cualquier IA y con tu memoria. Ves qué recuerdos usó y le enseñas si sirvieron.
 import { useEffect, useRef, useState } from 'react'
 import type { BrainClient } from '../lib/brain'
-import { ChevronDown } from 'lucide-react'
+import { Brain, ChevronDown } from 'lucide-react'
 import { Markdown } from '../chat/Markdown'
 import { TiraUso, type UsoSesion } from '../chat/TiraUso'
 import { cn } from '../lib/cn'
@@ -9,7 +9,7 @@ import { Compositor } from '../shell/Compositor'
 import { bridge, type ChatMsg, type ProviderView } from '../lib/bridge'
 import { explicarFallo, ordenMotores } from './motor'
 
-type Turn = { role: 'user' | 'assistant'; content: string; query?: string; ids?: string[]; abstained?: boolean; tokens?: number; error?: boolean; judged?: boolean; who?: string }
+type Turn = { role: 'user' | 'assistant'; content: string; query?: string; ids?: string[]; abstained?: boolean; tokens?: number; error?: boolean; judged?: boolean; who?: string; pensamiento?: string }
 
 export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string): void; onRecalled(tokens: number): void; seed?: { q: string; n: number }; onBusy?(b: boolean): void }) {
   const [providers, setProviders] = useState<ProviderView[]>([])
@@ -81,7 +81,19 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
     const s = bridge.chat(provider, model, history, memory)
     s.onUsage((u) => setSesion((v) => ({ costeUSD: v.costeUSD + u.costeUSD, ultimaEntrada: u.entrada, memoria: memTokens })))
     s.onChunk((d) => setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + d }; return c }))
-    s.onDone(() => setBusy(false))
+    // El pensado viaja en su hilo: los que piensan antes de hablar no dejan el chat mudo.
+    s.onPensamiento((d) => setTurns((t) => { const c = [...t]; const u = c[c.length - 1]; c[c.length - 1] = { ...u, pensamiento: (u.pensamiento ?? '') + d }; return c }))
+    s.onDone(() => {
+      setBusy(false)
+      // Honestidad ante modelos que responden vacío:sin texto ni pensado, la burbuja no es una pregunta es un agujero.
+      setTurns((t) => {
+        const c = [...t]; const la = c[c.length - 1]
+        if (!la || la.content !== '' || la.error) return t
+        const nota = la.pensamiento ? `El modelo pensó (${la.pensamiento.length} caracteres) pero no trajo texto. Prueba con otro modelo.` : 'El modelo respondió vacío: no trajo texto. Prueba con otro modelo.'
+        c[c.length - 1] = { ...la, content: nota, error: true }
+        return c
+      })
+    })
     s.onError((m) => { setBusy(false); setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: explicarFallo(m, current?.label ?? provider), error: true }; return c }) })
   }
 
@@ -122,10 +134,22 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
         {turns.map((t, i) => t.role === 'user' ? (
           <div key={i} className="max-w-[78%] self-end rounded-3 rounded-br-1 bg-s2 px-4 py-2.5 text-[15px] leading-6 whitespace-pre-wrap text-texto">{t.content}</div>
         ) : (
-          <div key={i} className="grid max-w-[92%] gap-2 self-start">
+          <div key={i} className="grid max-w-[92%] gap-2 self-start pl-3 relative">
+            <span aria-hidden className={cn('absolute inset-y-1 left-0 w-[2px] rounded-full', t.error ? 'bg-peligro/50' : '[background:var(--aurora-lineal)] opacity-60')} />
             <span className="text-xs text-texto-3">{t.who}</span>
             <div className={cn('text-[15px] leading-7', t.error ? 'text-peligro whitespace-pre-wrap' : 'text-texto')}>
-              {t.content ? (t.error ? t.content : <Markdown texto={t.content} />) : (busy && i === turns.length - 1 ? <span className="inline-flex gap-1 py-2" aria-label="Pensando">{[0, 1, 2].map((d) => <span key={d} className="size-1.5 animate-pulse rounded-full bg-texto-3" style={{ animationDelay: `${d * 160}ms` }} />)}</span> : '')}
+              {t.content 
+                ? (t.error ? t.content : <Markdown texto={t.content} />)
+                : t.pensamiento
+                  ? (
+                    <div className="grid gap-1.5" aria-live="polite">
+                      <span className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-texto-3">
+                        <Brain className="size-3" strokeWidth={1.5} />pensando
+                      </span>
+                      {busy || !t.content ? <p className="m-0 max-h-28 overflow-hidden text-[13px] leading-5 italic text-texto-2/80 [mask-image:linear-gradient(180deg,black_55%,transparent)]">{t.pensamiento}</p> : null}
+                    </div>
+                  )
+                  : (busy && i === turns.length - 1 ? <span className="inline-flex gap-1 py-2" aria-label="Pensando">{[0, 1, 2].map((d) => <span key={d} className="size-1.5 animate-pulse rounded-full bg-texto-3" style={{ animationDelay: `${d * 160}ms` }} />)}</span> : '')}
             </div>
             {t.abstained && <span className="text-xs text-texto-3">Sin memoria relevante: respondió solo con lo que sabe.</span>}
             {!!t.ids?.length && (

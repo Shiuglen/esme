@@ -10,12 +10,14 @@ import { FirmaMente } from './marca/Sello'
 import { firmaDe } from './marca/sello'
 import { RedNeuronal, type Hueco, type Recordado, type RedHandle } from './memoria/RedNeuronal'
 import { Ajustes } from './paginas/Ajustes'
+import { aplicarPropio, quitarPropio, type EstiloId, type Gustos } from './tinta/estilo-propio'
 import { Portada, type EventoMente } from './paginas/Portada'
 import { notaTaller } from './paginas/portada'
 import { Proximamente } from './paginas/Proximamente'
 import { Taller } from './paginas/Taller'
 import { avisosDe } from './taller/avisos'
 import { useTaller } from './taller/useTaller'
+import { HojasVivas } from './shell/HojasVivas'
 import type { TareaTaller } from './lib/bridge'
 import { Uso } from './paginas/Uso'
 import { ChatPanel } from './panels/ChatPanel'
@@ -34,6 +36,8 @@ export function App() {
   const [seccion, setSeccion] = useState<SeccionId>(() => cargar('seccion', 'inicio'))
   const [visitadas, setVisitadas] = useState<Set<SeccionId>>(() => new Set([cargar<SeccionId>('seccion', 'inicio')]))
   const [tema, setTema] = useState<'noche' | 'dia'>(() => cargar('tema', 'noche'))
+  const [estilo, setEstilo] = useState<EstiloId>(() => cargar('estilo', 'esmeralda'))
+  const [gustos, setGustos] = useState<Gustos>(() => cargar('gustos', { tono: 165, papel: 30, fuerza: 70 }))
   const [paleta, setPaleta] = useState(false)
   const [brain, setBrain] = useState<BrainClient | null>(null)
   const [recuerdos, setRecuerdos] = useState<number | null>(null)
@@ -81,18 +85,36 @@ export function App() {
       vistas.current.set(t.id, t)
       for (const a of avisos) {
         setEventos((v) => [{ id: ++seqEvento.current, ts: Date.now(), tipo: `taller-${a.tipo}` as const, texto: a.texto, detalle: a.detalle, onVer: () => verTarea(a.id) }, ...v].slice(0, 40))
-        if (seccionRef.current !== 'taller') (a.tipo === 'error' ? toast.error : toast)(a.texto, { description: a.detalle, action: { label: 'Ver', onClick: () => verTarea(a.id) } })
+        if (seccionRef.current !== 'taller' && a.tipo === 'permiso') toast(a.texto, { description: a.detalle, action: { label: 'Ver', onClick: () => verTarea(a.id) } })
         if (!document.hasFocus() && typeof Notification !== 'undefined') { try { new Notification('esme', { body: a.detalle ? `${a.texto}\n${a.detalle}` : a.texto, silent: a.tipo === 'lista' }) } catch { /* sin notificaciones */ } }
       }
     }
   }, [tl.tareas, verTarea])
   useEffect(() => { document.documentElement.dataset.theme = tema; guardar('tema', tema) }, [tema])
+  // El estilo viste y el propio pinta en vivo: sin data-estilo, la raíz dice esmeralda.
+  useEffect(() => {
+    guardar('estilo', estilo)
+    if (estilo === 'propio') { guardar('gustos', gustos); aplicarPropio(gustos, tema); delete document.documentElement.dataset.estilo }
+    else { quitarPropio(); estilo === 'esmeralda' ? delete document.documentElement.dataset.estilo : (document.documentElement.dataset.estilo = estilo) }
+  }, [estilo, gustos, tema])
   // en escritorio, los botones de la ventana toman el color de la barra del tema activo
   useEffect(() => {
     const v = bridge.ventana(); if (!v) return
     document.documentElement.dataset.plataforma = v.plataforma
-    const css = getComputedStyle(document.documentElement)
-    v.colores({ fondo: css.getPropertyValue('--superficie-1').trim(), simbolos: css.getPropertyValue('--texto-2').trim() })
+    // la barra del sistema exige un color real: la variable se resuelve en un sondeo y, si llega vacía
+    // (los estilos aún no aterrizaron), se suelta el valor de reposo antes de que el main pise una mezcla cruda
+    const resuelto = (variable: string, flotado: string) => {
+      const sonda = document.documentElement.appendChild(document.createElement('div'))
+      sonda.style.display = 'none'; sonda.style.background = variable
+      const valor = getComputedStyle(sonda).backgroundColor
+      sonda.remove()
+      const manchas = valor && valor !== 'transparent' && !/^rgba\(0, 0, 0, 0\)/.test(valor)
+      return manchas ? valor : flotado
+    }
+    v.colores({
+      fondo: resuelto('var(--superficie-1)', '#0e1015'),
+      simbolos: resuelto('var(--texto-2)', '#a3a9b4'),
+    })
   }, [tema])
 
   // atajos: Ctrl K paleta, Ctrl 1…6 secciones, Ctrl , ajustes
@@ -167,7 +189,7 @@ export function App() {
       case 'taller': return <Taller tema={tema} tl={tl} foco={focoTaller} onIr={ir} />
       case 'memoria': return (
         <div className="flex h-full min-h-0 flex-col"><MemoryPanel brain={brain} focusId={enfocado} onFocus={(i) => redRef.current?.enfocar(i)} onChanged={refrescar} /></div>)
-      case 'ajustes': return <Ajustes tema={tema} onTema={setTema} />
+      case 'ajustes': return <Ajustes tema={tema} onTema={setTema} estilo={estilo} onEstilo={setEstilo} gustos={gustos} onGustos={setGustos} />
       case 'uso': return <Uso onIr={ir} />
       case 'tienda': return <Proximamente titulo="Tienda" texto="Aquí instalarás IAs, modelos locales, MCPs, plugins y compañeros para Esme, con un clic y con permiso." />
     }
@@ -212,6 +234,7 @@ export function App() {
       <Paleta abierta={paleta} onCerrar={() => setPaleta(false)} onIr={ir} onPreguntar={preguntar}
         onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} />
       <Toaster theme={tema === 'noche' ? 'dark' : 'light'} position="bottom-right" toastOptions={{ style: { background: 'var(--superficie-2)', border: '1px solid var(--linea)', color: 'var(--texto)', fontFamily: 'inherit' } }} />
+      <HojasVivas tareas={tl.tareas} onVer={verTarea} />
     </div>
     </FirmaMente.Provider>
   )

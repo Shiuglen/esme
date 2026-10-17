@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('daimon', {
     start: (req: unknown) => ipcRenderer.invoke('chat:start', req),
     stop: (id: string) => ipcRenderer.invoke('chat:stop', id),
     onChunk: (id: string, fn: (d: string) => void) => on(`chat:chunk:${id}`, (d) => fn(d as string)),
+    onPensamiento: (id: string, fn: (d: string) => void) => on(`chat:pensamiento:${id}`, (d) => fn(d as string)),
     onDone: (id: string, fn: () => void) => on(`chat:done:${id}`, () => fn()),
     onError: (id: string, fn: (m: string) => void) => on(`chat:error:${id}`, (m) => fn(m as string)),
     onUsage: (id: string, fn: (u: unknown) => void) => on(`chat:usage:${id}`, (u) => fn(u)),
@@ -36,6 +37,8 @@ contextBridge.exposeInMainWorld('daimon', {
   motores: { detectar: () => ipcRenderer.invoke('motores:detectar') },
   taller: {
     motores: () => ipcRenderer.invoke('taller:motores'), lista: () => ipcRenderer.invoke('taller:lista'),
+    instalarMotor: (id: string) => ipcRenderer.invoke('taller:instalarMotor', id),
+    onInstalacion: (fn: (p: unknown) => void) => on('taller:instalar-progreso', (p) => fn(p)),
     eventos: (id: string) => ipcRenderer.invoke('taller:eventos', id), crear: (p: unknown) => ipcRenderer.invoke('taller:crear', p),
     seguir: (id: string, texto: string) => ipcRenderer.invoke('taller:seguir', id, texto), responder: (id: string, opcion: string) => ipcRenderer.invoke('taller:responder', id, opcion),
     configurar: (id: string, opcion: string, valor: string) => ipcRenderer.invoke('taller:configurar', id, opcion, valor),

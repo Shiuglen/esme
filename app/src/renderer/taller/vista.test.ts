@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TareaTaller } from '../lib/bridge'
-import { actividadAhora, duracion, explicarError, motivoFin, ordenPlanta, silencioMs, textoCambios } from './vista'
+import { actividadAhora, barrasDe, duracion, explicarError, motivoFin, ordenPlanta, silencioMs, textoCambios } from './vista'
 
 const tarea = (p: Partial<TareaTaller>): TareaTaller => ({
   id: 'aaaaaaaa', titulo: 't', texto: 't', motor: 'opencode', motorNombre: 'OpenCode', carpeta: null, estado: 'lista', copia: null,
@@ -80,5 +80,31 @@ describe('explicarError', () => {
 describe('explicarError: límites', () => {
   it('el límite de peticiones se explica aparte (no es culpa del modelo)', () => {
     expect(explicarError('Internal error: Rate limit exceeded. Please try again later.', 'OpenCode', '')).toMatchObject({ tipo: 'limite', titulo: 'El proveedor ha limitado las peticiones' })
+  })
+})
+
+describe('barrasDe — el código de barras del turno', () => {
+  it('conserva los picos al muestrear: sigue habiendo una píldora alta donde la ráfaga vivió', () => {
+    const cubos = new Array(40).fill(0)
+    cubos[12] = 9; cubos[13] = 3; cubos[30] = 5
+    const barras = barrasDe(cubos, 14)
+    expect(barras).toHaveLength(14)
+    expect(Math.max(...barras)).toBe(9)   // el pico no se difumina
+    expect(barras.some((v) => v === 5)).toBe(true)
+    expect(barras.filter((v) => v === 0).length).toBeGreaterThan(6)
+  })
+})
+
+describe('explicarError — los muertos hablan humano', () => {
+  it('el Internal error del ACP se traduce y enseña el camino de la reencarnación', () => {
+    const x = explicarError('Internal error', 'Qwen Code', '')
+    expect(x?.tipo).toBe('motor')
+    expect(x?.titulo).toContain('se cayó')
+    expect(x?.consejo).toContain('reencarna')
+  })
+  it('red rota y tiempos muertos: familia motor con consejo propio', () => {
+    expect(explicarError('connect ECONNREFUSED 127.0.0.1:8019', '', '')?.tipo).toBe('motor')
+    expect(explicarError('Operation timed out after 30000 ms', '', '')?.titulo).toContain('sin tiempo')
+    expect(explicarError('TypeError: undefined is not a function', '', 'x')).toBe(null)
   })
 })

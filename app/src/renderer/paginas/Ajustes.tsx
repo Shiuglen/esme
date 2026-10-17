@@ -1,12 +1,14 @@
 // Ajustes: los motores de Esme (por API, por tu suscripción, en tu ordenador y el catálogo entero), tu presupuesto y la apariencia.
 // Las claves van al llavero del sistema y nunca vuelven a la interfaz; las suscripciones las abres tú en su CLI oficial.
-import { Check, ChevronRight, Cpu, KeyRound, Laptop, Moon, Plug, Search, ShieldAlert, ShieldCheck, ShieldQuestion, Sun, Wallet } from 'lucide-react'
+import { Check, ChevronRight, Cpu, KeyRound, Laptop, Moon, Package, Search, ShieldAlert, ShieldCheck, ShieldQuestion, Sun, Wallet } from 'lucide-react'
+import { Bicho } from '../marca/Ser'
 import { motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { fmtTokens, fmtUSD } from '../chat/formatos'
-import { bridge, type EstadoUso, type ModeloCatalogo, type MotorDetectado, type OrigenCatalogo, type ProveedorResumen, type ProviderView } from '../lib/bridge'
+import { bridge, type EstadoUso, type ModeloCatalogo, type MotorDetectado, type MotorTaller, type OrigenCatalogo, type ProveedorResumen, type ProviderView } from '../lib/bridge'
 import { cn } from '../lib/cn'
+import { type EstiloId, type Gustos } from '../tinta/estilo-propio'
 
 type Pestana = 'motores' | 'presupuesto' | 'apariencia'
 type Vista = 'conectados' | 'suscripcion' | 'catalogo' | 'local'
@@ -59,6 +61,63 @@ function Clave({ p, onCambio }: { p: ProviderView; onCambio(): void }) {
   )
 }
 
+function CatalogoRegistro() {
+  // El registro ACP en la mano: buscar, instalar de verdad, ver el detalle correr y qué quedó en el equipo.
+  const [motores, setMotores] = useState<MotorTaller[]>([])
+  const [busca, setBusca] = useState('')
+  const [instalando, setInstalando] = useState<string | null>(null)
+  const [hilo, setHilo] = useState<{ id: string; texto: string } | null>(null)
+  const refrescar = () => void bridge.taller.motores().then(setMotores)
+  useEffect(() => {
+    refrescar()
+    return bridge.taller.onInstalacion((p) => setHilo((a) => (a && a.id === p.id ? { id: p.id, texto: (a.texto + (p.trozo ?? '')).slice(-400) } : { id: p.id, texto: p.trozo ?? '' })))
+  }, [])
+  const registro = useMemo(() => {
+    const del = motores.filter((m) => m.via === 'registro')
+    const q = busca.trim().toLowerCase()
+    return q ? del.filter((m) => `${m.nombre} ${m.id}`.toLowerCase().includes(q)) : del
+  }, [motores, busca])
+  const instalar = (id: string) => {
+    setInstalando(id); setHilo(null)
+    void bridge.taller.instalarMotor(id).then((r) => {
+      setInstalando((v) => (v === id ? null : v)); refrescar()
+      if (r.ok) toast(`${r.nombre} instalado de verdad`)
+      else toast.error(r.error)
+    })
+  }
+  return (
+    <div className="grid gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="m-0 flex items-center gap-2 text-sm font-semibold"><Package className="size-4" strokeWidth={1.5} />Catálogo vivo del registro ACP</h3>
+        <label className="relative grid">
+          <Search className="pointer-events-none absolute top-2.5 left-2.5 size-3.5 text-texto-3" />
+          <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar en el registro…" aria-label="Buscar motor del registro"
+            className="h-9 w-[240px] rounded-2 border bg-s2 pr-3 pl-8 text-[13px] text-texto outline-none placeholder:text-texto-3 focus:border-texto-3" />
+        </label>
+      </div>
+      <p className="m-0 text-xs text-texto-3">Los motores que el mundo ya escribió para ACP. «Instalar» corre su propio <code className="text-texto-2">npm install -g</code> aquí mismo, con el detalle en vivo; su arranque se cablea en el paso siguiente del taller.</p>
+      <div className="max-h-[440px] overflow-y-auto rounded-3 border">
+        {registro.slice(0, 60).map((m) => (
+          <Fila key={m.id} icono={<Bicho de={m.id} tamaño={17} />} titulo={m.nombre} sub={m.login}
+            derecha={instalando === m.id ? <Pastilla className="animate-pulse text-texto-2">instalando…</Pastilla>
+              : m.instalado ? (m.credencia
+                ? <Pastilla className="text-luz"><KeyRound className="size-3.5" />con tu llave</Pastilla>
+                : <Pastilla className="text-texto"><Check className="size-3.5" />instalado</Pastilla>)
+              : m.instalacion ? <button type="button" onClick={() => instalar(m.id)} className="h-8 shrink-0 rounded-2 border px-3 text-[12.5px] text-texto transition-colors hover:bg-s2">Instalar</button>
+              : <Pastilla className="text-texto-3">manual</Pastilla>}>
+            {instalando === m.id && hilo?.id === m.id && hilo.texto && (
+              <pre className="m-0 mb-1 max-h-20 overflow-y-auto rounded-2 bg-s2 px-3 py-1.5 text-[11px] leading-4 break-all whitespace-pre-wrap text-texto-3">
+                {hilo.texto.split('\n').filter(Boolean).slice(-6).join('\n')}
+              </pre>
+            )}
+          </Fila>
+        ))}
+        {registro.length === 0 && <p className="m-0 p-5 text-sm text-texto-3">El registro no llegó aún, o tu búsqueda no trajo nada.</p>}
+      </div>
+    </div>
+  )
+}
+
 function Motores() {
   const [vista, setVista] = useState<Vista>('conectados')
   const [proveedores, setProveedores] = useState<ProviderView[]>([])
@@ -94,8 +153,8 @@ function Motores() {
             <div className="grid gap-2 p-6"><p className="m-0 font-medium">Aún no has conectado ningún motor.</p>
               <p className="m-0 text-sm text-texto-3">Empieza gratis con un modelo local o con OpenCode Zen, o usa tu suscripción de Copilot, Cursor u OpenCode desde «Tu suscripción».</p></div>
           ) : conectados.map((c) => 'label' in c
-            ? <Fila key={c.id} icono={<KeyRound className="size-4" strokeWidth={1.5} />} titulo={c.label} sub="por API · clave en tu llavero" derecha={<Pastilla><Check className="size-3.5" />listo</Pastilla>} />
-            : <Fila key={c.id} icono={<Plug className="size-4" strokeWidth={1.5} />} titulo={c.nombre} sub={`tu suscripción · ${c.ruta ?? ''}`} derecha={<Pastilla><Check className="size-3.5" />listo</Pastilla>} />)}
+            ? <Fila key={c.id} icono={<Bicho de={c.id} tamaño={17} />} titulo={c.label} sub="por API · clave en tu llavero" derecha={<Pastilla><Check className="size-3.5" />listo</Pastilla>} />
+            : <Fila key={c.id} icono={<Bicho de={c.id} tamaño={17} />} titulo={c.nombre} sub={`tu suscripción · ${c.ruta ?? ''}`} derecha={<Pastilla><Check className="size-3.5" />listo</Pastilla>} />)}
         </Caja>
       )}
 
@@ -105,7 +164,7 @@ function Motores() {
           <Caja>
             {motores.length === 0 && <p className="m-0 p-6 text-sm text-texto-3">{bridge.mode() === 'web' ? 'Los motores por suscripción se detectan en la app de escritorio.' : 'Buscando motores…'}</p>}
             {motores.map((m) => { const s = SELLO[m.cumplimiento]; return (
-              <Fila key={m.id} icono={<Plug className="size-4" strokeWidth={1.5} />} titulo={m.nombre}
+              <Fila key={m.id} icono={<Bicho de={m.id} tamaño={17} />} titulo={m.nombre}
                 sub={m.instalado ? `instalado · ${m.ruta}` : `sin instalar · ${m.login}`}
                 derecha={<>
                   <Pastilla className={s.cls}><s.Icono className="size-3.5" strokeWidth={1.5} />{s.texto}</Pastilla>
@@ -165,10 +224,13 @@ function Motores() {
       )}
 
       {vista === 'local' && (
-        <Caja>
-          {locales.map((p) => <Fila key={p.id} icono={<Laptop className="size-4" strokeWidth={1.5} />} titulo={p.label} sub="nada sale de tu ordenador" derecha={<Pastilla>{p.defaultModel ?? 'modelo a elegir'}</Pastilla>} />)}
-          <Fila icono={<Cpu className="size-4" strokeWidth={1.5} />} titulo="Más modelos locales" sub="la Tienda los detectará y te dejará instalarlos con un clic" />
-        </Caja>
+        <div className="grid gap-4">
+          <Caja>
+            {locales.map((p) => <Fila key={p.id} icono={<Laptop className="size-4" strokeWidth={1.5} />} titulo={p.label} sub="nada sale de tu ordenador" derecha={<Pastilla>{p.defaultModel ?? 'modelo a elegir'}</Pastilla>} />)}
+            <Fila icono={<Cpu className="size-4" strokeWidth={1.5} />} titulo="Más modelos locales" sub="la Tienda los detectará y te dejará instalarlos con un clic" />
+          </Caja>
+          <CatalogoRegistro />
+        </div>
       )}
     </div>
   )
@@ -200,21 +262,66 @@ function Presupuesto() {
   )
 }
 
-function Apariencia({ tema, onTema }: { tema: 'noche' | 'dia'; onTema(t: 'noche' | 'dia'): void }) {
+function Apariencia({ tema, onTema, estilo, onEstilo, gustos, onGustos }: {
+  tema: 'noche' | 'dia'; onTema(t: 'noche' | 'dia'): void; estilo: EstiloId; onEstilo(e: EstiloId): void; gustos: Gustos; onGustos(g: Gustos): void
+}) {
   const op = (id: 'noche' | 'dia', Icono: typeof Moon, titulo: string, sub: string) => (
     <button type="button" onClick={() => onTema(id)} aria-pressed={tema === id}
       className={cn('grid gap-3 rounded-3 border p-4 text-left transition-colors', tema === id ? 'aurora-borde border-transparent bg-s2' : 'border-linea bg-s1 hover:bg-s2')}>
       <Icono className="size-5 text-texto-2" strokeWidth={1.5} /><span className="grid gap-0.5"><span className="text-sm font-medium">{titulo}</span><span className="text-xs text-texto-3">{sub}</span></span>
     </button>)
+  const MUESTRAS: Record<EstiloId, [string, string]> = {
+    esmeralda: ['#8af7e1', '#05080f'], quartz: ['#6ef0d2', '#232630'], lime: ['#cad649', '#1a1a17'],
+    grabado: ['#5ef0d4', '#0f1117'], propio: [`hsl(${gustos.tono} 82% 66%)`, `hsl(${250 - gustos.papel * 2.1} 18% 8%)`],
+  }
+  const vestido = (id: EstiloId, nombre: string, sub: string) => {
+    const [a, b] = MUESTRAS[id]
+    return (
+      <button type="button" onClick={() => onEstilo(id)} aria-pressed={estilo === id}
+        className={cn('flex items-center gap-3 rounded-3 border p-3 text-left transition-colors', estilo === id ? 'aurora-borde border-transparent bg-s2' : 'border-linea bg-s1 hover:bg-s2')}>
+        <span className="grid size-9 shrink-0 place-content-center overflow-hidden rounded-full border border-linea" style={{ background: b }}>
+          <span className="size-5 rounded-full" style={{ background: a }} />
+        </span>
+        <span className="grid gap-0.5"><span className="text-sm font-medium">{nombre}</span><span className="text-xs text-texto-3">{sub}</span></span>
+      </button>)
+  }
+  const marco = (nombre: string, min: number, max: number, v: number, alCambiar: (n: number) => void, izquierda: string, derecha: string) => (
+    <label className="grid gap-1.5">
+      <span className="flex justify-between text-xs text-texto-2"><span>{nombre}</span><span className="text-texto-3 tabular-nums">{v}</span></span>
+      <input type="range" min={min} max={max} value={v} onChange={(e) => alCambiar(Number(e.target.value))} className="accent-acento" />
+      <span className="flex justify-between text-[10.5px] text-texto-3"><span>{izquierda}</span><span>{derecha}</span></span>
+    </label>)
   return (
     <div className="grid max-w-[560px] gap-3">
-      <p className="m-0 text-sm text-texto-2">Esme no tiene un color: es neutra en claro y oscuro, y el color solo aparece vivo —la aurora— donde algo está pasando.</p>
+      <p className="m-0 text-sm text-texto-2">Esme no tiene un color: es neutra en claro y oscuro, y el color solo aparece vivo —la aurora— donde algo está pasando. Vístela como quieras, o mueve la ecuación y que todo derive.</p>
       <div className="grid grid-cols-2 gap-3">{op('noche', Moon, 'Noche', 'Para trabajar horas sin cansarte')}{op('dia', Sun, 'Día', 'Con mucha luz o para presentar')}</div>
+      <div className="grid grid-cols-2 gap-3">
+        {vestido('esmeralda', 'Esmeralda', 'marino y luz esmeralda (el original)')}
+        {vestido('quartz', 'Quartz', 'acero frío para agentes')}
+        {vestido('lime', 'Lime', 'crema cálida para consumir')}
+        {vestido('grabado', 'Grabado', 'tinta y luz de la primera esme')}
+      </div>
+      <button type="button" onClick={() => onEstilo('propio')} aria-pressed={estilo === 'propio'}
+        className={cn('flex items-center justify-between rounded-3 border p-3 text-left transition-colors', estilo === 'propio' ? 'aurora-borde border-transparent bg-s2' : 'border-linea bg-s1 hover:bg-s2')}>
+        <span className="grid gap-0.5"><span className="text-sm font-medium">Propio — la ecuación</span><span className="text-xs text-texto-3">nadie elige por ti: mueve el tono y todo el sistema deriva</span></span>
+        <span className="grid size-9 shrink-0 place-content-center overflow-hidden rounded-full border border-linea" style={{ background: `hsl(${250 - gustos.papel * 2.1} 18% ${tema === 'noche' ? '7%' : '96%'})` }}>
+          <span className="size-5 rounded-full" style={{ background: `hsl(${gustos.tono} 82% ${tema === 'noche' ? '66%' : '34%'})` }} />
+        </span>
+      </button>
+      {estilo === 'propio' && (
+        <div className="grid gap-4 rounded-3 border border-linea bg-s1 p-4">
+          {marco('Tono de la luz', 0, 360, gustos.tono, (tono) => onGustos({ ...gustos, tono }), 'frío', 'cálido')}
+          {marco('Temperatura del papel', 0, 100, gustos.papel, (papel) => onGustos({ ...gustos, papel }), 'azul de observatorio', 'ámbar de lámpara')}
+          {marco('Fuerza', 0, 100, gustos.fuerza, (fuerza) => onGustos({ ...gustos, fuerza }), 'casi gris', 'vividísimo')}
+        </div>
+      )}
     </div>
   )
 }
 
-export function Ajustes({ tema, onTema }: { tema: 'noche' | 'dia'; onTema(t: 'noche' | 'dia'): void }) {
+export function Ajustes({ tema, onTema, estilo, onEstilo, gustos, onGustos }: {
+  tema: 'noche' | 'dia'; onTema(t: 'noche' | 'dia'): void; estilo: EstiloId; onEstilo(e: EstiloId): void; gustos: Gustos; onGustos(g: Gustos): void
+}) {
   const [pestana, setPestana] = useState<Pestana>('motores')
   return (
     <div className="h-full overflow-y-auto">
@@ -226,7 +333,7 @@ export function Ajustes({ tema, onTema }: { tema: 'noche' | 'dia'; onTema(t: 'no
         <Segmentos<Pestana> id="pestana" valor={pestana} onCambio={setPestana} opciones={[{ id: 'motores', texto: 'Motores' }, { id: 'presupuesto', texto: 'Presupuesto' }, { id: 'apariencia', texto: 'Apariencia' }]} />
         {pestana === 'motores' && <Motores />}
         {pestana === 'presupuesto' && <Presupuesto />}
-        {pestana === 'apariencia' && <Apariencia tema={tema} onTema={onTema} />}
+        {pestana === 'apariencia' && <Apariencia tema={tema} onTema={onTema} estilo={estilo} onEstilo={onEstilo} gustos={gustos} onGustos={onGustos} />}
         <p className="m-0 flex items-center gap-2 text-xs text-texto-3"><Wallet className="size-3.5" strokeWidth={1.5} />Los precios vienen de models.dev y se actualizan solos cada día.</p>
       </div>
     </div>

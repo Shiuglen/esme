@@ -8,6 +8,7 @@ import { bridge, type MotorTaller, type OpcionMotor } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { candidatosDe, elegibles, elegir, elegirVarios, type Eleccion, type Veredicto } from './eleccion'
 import { configInicial, nombreValor, SelectorOpcion } from './Opciones'
+import { Bicho } from '../marca/Ser'
 
 const leer = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(`esme:taller:${k}`); return v === null ? d : (JSON.parse(v) as T) } catch { return d } }
 const guardar = (k: string, v: unknown) => { try { localStorage.setItem(`esme:taller:${k}`, JSON.stringify(v)) } catch { /* sin almacenamiento */ } }
@@ -113,7 +114,7 @@ export function NuevaTarea({ motores, onCrear, onIrMotores }: {
                   <button key={m.id} type="button" role="radio" aria-checked={on} onClick={() => elegirMotor(m.id)}
                     className={cn('relative h-7 rounded-full px-3 text-[12.5px] transition-colors', on ? 'text-sobre-acento' : 'text-texto-2 hover:text-texto')}>
                     {on && <motion.span layoutId="motor-elegido" className="absolute inset-0 rounded-full bg-acento" transition={{ type: 'spring', stiffness: 480, damping: 36 }} />}
-                    <span className="relative inline-flex items-center gap-1">{m.id === AUTO && <Sparkles className="size-3" strokeWidth={2} />}{m.nombre}</span>
+                    <span className="relative inline-flex items-center gap-1.5">{m.id === AUTO ? <Sparkles className="size-3" strokeWidth={2} /> : <Bicho de={m.id} tamaño={13} vivo={on} />}{m.nombre}</span>
                   </button>
                 )
               })}
@@ -140,7 +141,7 @@ export function NuevaTarea({ motores, onCrear, onIrMotores }: {
               )}
             </span>
             <button type="button" onClick={() => void empezar()} disabled={!texto.trim() || enviando || !listo || (arena && rivales.length < 2)}
-              className="ml-auto inline-flex h-8 items-center gap-2 rounded-full bg-acento px-4 text-[13px] font-medium text-sobre-acento transition-opacity disabled:opacity-35">
+              className="cta-viva ml-auto inline-flex h-8 items-center gap-2 rounded-full bg-acento px-4 text-[13px] font-medium text-sobre-acento transition-opacity disabled:opacity-35">
               {enviando ? 'Montando…' : !listo ? 'Leyendo los motores…' : arena ? `Empezar arena de ${rivales.length}` : 'Empezar'}
               <kbd className="inline-flex items-center gap-0.5 font-sans text-[11px] opacity-70">Ctrl<CornerDownLeft className="size-3" /></kbd>
             </button>

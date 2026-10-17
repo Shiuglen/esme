@@ -64,16 +64,38 @@ function traducir(n: SessionNotification, cwd = ''): EventoMotor | null {
   }
 }
 
+// La última palabra del motor (stderr) merece llegar al Taller: diagnósticos honestos, no muertes mudas.
+const CLAVE_ULTIMA = /required|api key|enoent|no such file|access denied|permission denied|not found|fatal|missing|invalid|eacces|cannot/i
+const CLAVE_TIMIDA = /auth|token|error|denied|eacces|fallo|failed/i
+
+/** De la queja cruda del motor en stderr, la línea que de verdad explica la muerte. */
+export function ultimaPalabraDe(colchon: string): string {
+  const lineas = colchon.trim().split('\n').map((l) => l.trim()).filter(Boolean)
+  if (!lineas.length) return ''
+  let elegida = lineas[lineas.length - 1] as string
+  let puntaje = 9
+  for (const l of lineas) {
+    // las mías del SDK en Electron llevan su ruido primero; la sustancia llega con «Authentication required…»
+    const n = CLAVE_ULTIMA.test(l) && l.length > 14 ? (l.startsWith('data:') ? 3 : 0) : CLAVE_TIMIDA.test(l) && l.length > 14 ? 2 : 9
+    if (n < puntaje) { puntaje = n; elegida = l }
+  }
+  return elegida
+}
+
 export async function abrirSesionACP(o: Opciones): Promise<{ preguntar(texto: string): Promise<string>; cancelar(): Promise<void>; cerrar(): void; configurar(id: string, valor: string): Promise<void> }> {
-  const hijo = (o.lanzar ?? spawnReal)(o.comando, o.args, { cwd: o.cwd, env: { ...process.env, ...o.env }, stdio: ['pipe', 'pipe', 'ignore'] })
+  console.error(`[asesor] spawn ${o.comando.slice(-52)} · args ${o.args.length} · env extra: ${Object.keys(o.env ?? {}).join(',') || 'nada'}`)
+  const hijo = (o.lanzar ?? spawnReal)(o.comando, o.args, { cwd: o.cwd, env: { ...process.env, ...o.env }, stdio: ['pipe', 'pipe', 'pipe'] })
   let causa: Error | null = null
   let avisar!: (e: Error) => void
   const muerte = new Promise<never>((_, rej) => { avisar = rej }); muerte.catch(() => {})
   const caer = (e: Error) => { if (!causa) { causa = e; avisar(e) } }
+  let colchon = ''
+  hijo.stderr?.on('data', (d: unknown) => { colchon = `${colchon}${String(d)}`.slice(-1800) })
+  const ultima = () => { const l = ultimaPalabraDe(colchon); return l ? ` Su última palabra: «${l.slice(0, 240)}».` : '' }
   hijo.on('error', (e) => caer(new Error(`No se pudo lanzar el motor «${o.comando}»: ${e.message}`)))
-  hijo.on('close', (code, sig) => caer(new Error(`El motor terminó inesperadamente (${sig ?? `código ${code}`}).`)))
+  hijo.on('close', (code, sig) => caer(new Error(`El motor terminó inesperadamente (${sig ?? `código ${code}`}).${ultima()}`)))
   hijo.stdin?.on('error', () => {})
-  const cerrar = () => { if (hijo.exitCode === null && !hijo.killed) hijo.kill('SIGTERM'); caer(new Error('La sesión del motor está cerrada.')) }
+  const cerrar = () => { if (hijo.exitCode === null && !hijo.killed) hijo.kill('SIGTERM'); caer(new Error(`La sesión del motor está cerrada.${ultima()}`)) }
 
   let opciones: OpcionConfig[] = []
   const deseada: Record<string, string> = { ...o.config }

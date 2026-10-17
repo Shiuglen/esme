@@ -1,6 +1,5 @@
-/* esme — sistema de diseño en la app. La interfaz es neutra (claro y oscuro): no tiene un color de marca.
-   El color solo aparece donde hay vida —Esme pensando, la memoria encendiéndose, el foco— y nunca es fijo:
-   es la aurora (--aurora), que gira sola. Los componentes solo usan roles. */
+/* esme — sistema de diseño. Estilo por defecto «Esmeralda» (marino y luz esmeralda); «Grabado» (Tinta y Luz) queda como tema.
+   Los componentes solo usan roles (--fondo, --texto, --acento…): cambiar de estilo o de tema cambia toda la app a la vez. */
 @layer legado;
 @import "./app.css" layer(legado);
 @import "tailwindcss";
@@ -38,6 +37,9 @@
   --color-sello: var(--sello);
   --color-exito-velo: var(--exito-velo);
   --color-cristal: var(--cristal);
+  --color-esmeralda: var(--esmeralda);
+  --color-esmeralda-1: var(--esmeralda-1);
+  --color-esmeralda-3: var(--esmeralda-3);
   --font-display: "Funnel Display Variable", "Helvetica Neue", Arial, sans-serif;
   --font-sans: "Funnel Sans Variable", "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono Variable", "SF Mono", Menlo, Consolas, monospace;
@@ -52,38 +54,137 @@
   @keyframes late { 0%, 100% { opacity: 1; transform: scale(1) } 50% { opacity: 0.35; transform: scale(0.7) } }
 }
 
-/* Noche (por defecto) */
+/* «Esmeralda» (Esme v3, 12-oct): el estilo por defecto. Azul marino profundo (nunca negro puro) y la luz esmeralda de Esme
+   (Esmeralda → «la querida»). Superficies precisas con líneas de 1 px; el color aparece donde hay vida. Contraste AA comprobado
+   en todos los pares con check_contrast.py. Las fichas de tinta (--papel, --tinta-*, --grafito, --luz*) las usa el dibujo de la
+   mente: aquí la tinta fresca es luz esmeralda y la vieja se apaga hacia un verde azulado. */
 :root, [data-theme="noche"] {
   color-scheme: dark;
-  /* Tinta y Luz, noche: papel de tinta; el texto es tinta de luz; la vida es bioluminiscente (ver specs/2026-10-12-tinta-y-luz.md) */
+  --esmeralda: #23d9b0; --esmeralda-1: #8af7e1; --esmeralda-3: #0fa587; --esmeralda-4: #075f52; --hielo: #9cc2ff;
+  --brillo: rgba(35, 217, 176, 0.35);
+  --papel: #05080f; --hoja: #0a0f1a; --tinta: #e9eef7; --tinta-fresca: #8af7e1; --tinta-vieja: #3f6f78; --grafito: #56627c;
+  --luz: #8af7e1; --luz-2: #7db4ff; --luz-3: #b39dff; --sello: #ff6b57;
+  --fondo: #05080f; --superficie-1: #0a0f1a; --superficie-2: #101726; --superficie-3: #172033;
+  --linea: #161e2e; --linea-fuerte: #2a3650;
+  --texto: #e9eef7; --texto-2: #a2aec6; --texto-3: #76839c;
+  --acento: #23d9b0; --sobre-acento: #04110d; --acento-velo: #0c2a26; --foco: #5eead0;
+  --memoria: #8af7e1; --memoria-velo: #0b2420; --atencion: #f5b556; --atencion-velo: #2a1f0e;
+  --peligro: #f2687e; --peligro-velo: #2b1119; --info: #7db4ff; --exito: #2fd39a; --exito-velo: #0c251c;
+  --actividad-0: #0e1626; --actividad-1: #0e3b35; --actividad-2: #12695b; --actividad-3: #1fa585; --actividad-4: #5eead0;
+  --cristal: rgba(10, 15, 26, 0.72);
+  --sombra-flotante: 0 24px 60px rgba(0, 0, 0, 0.55), 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+[data-theme="dia"] {
+  color-scheme: light;
+  --esmeralda: #0b9e82; --esmeralda-1: #34d9b5; --esmeralda-3: #087f69; --esmeralda-4: #05594a; --hielo: #2f6fd6;
+  --brillo: rgba(11, 158, 130, 0.22);
+  --papel: #f4f6fa; --hoja: #ffffff; --tinta: #0a1222; --tinta-fresca: #0b8f76; --tinta-vieja: #8a97ab; --grafito: #7a879d;
+  --luz: #0b9e82; --luz-2: #2f6fd6; --luz-3: #6c4fd6; --sello: #d9452f;
+  --fondo: #f4f6fa; --superficie-1: #ffffff; --superficie-2: #f1f4f9; --superficie-3: #e6ebf3;
+  --linea: #e3e8f0; --linea-fuerte: #c3ccda;
+  --texto: #0a1222; --texto-2: #46536b; --texto-3: #5f6b82;
+  --acento: #087f69; --sobre-acento: #ffffff; --acento-velo: #e3f6f1; --foco: #0b9e82;
+  --memoria: #087f69; --memoria-velo: #e6f6f2; --atencion: #9a5b00; --atencion-velo: #fbf1dd;
+  --peligro: #c02648; --peligro-velo: #fce8ec; --info: #2f5fb3; --exito: #0b8a5c; --exito-velo: #e2f5ec;
+  --actividad-0: #eef1f6; --actividad-1: #bfe9df; --actividad-2: #6fcfb8; --actividad-3: #1fa585; --actividad-4: #0b6f5d;
+  --cristal: rgba(255, 255, 255, 0.8);
+  --sombra-flotante: 0 24px 60px rgba(15, 25, 45, 0.12), 0 2px 8px rgba(15, 25, 45, 0.06);
+}
+
+/* «Grabado» (Tinta y Luz, 11-oct): el estilo anterior, que queda como tema que el usuario puede elegir. */
+[data-estilo="grabado"], [data-estilo="grabado"][data-theme="noche"] {
   --papel: #08090d; --hoja: #0f1117; --tinta: #e8ebf0; --tinta-fresca: #dfe7f5; --tinta-vieja: #b89a74; --grafito: #6b717c;
   --luz: #5ef0d4; --luz-2: #6cc6ff; --luz-3: #a68cff; --sello: #e85a43;
   --fondo: var(--papel); --superficie-1: var(--hoja); --superficie-2: #161921; --superficie-3: #1d2029;
   --linea: #1f222b; --linea-fuerte: #5d6370;
   --texto: var(--tinta); --texto-2: #a4aab4; --texto-3: #7d838e;
   --acento: #e8ebf0; --sobre-acento: #0b0c0f; --acento-velo: #191c24; --foco: #e8ebf0;
-  --memoria: #d6dce8; --memoria-velo: #161a22; --atencion: #f2b661; --atencion-velo: #2a2113;
-  --peligro: #f27a8c; --peligro-velo: #2c1520; --info: #9ab0d6; --exito: #7fd6a4; --exito-velo: #13261c;
-  --actividad-0: #1a1d24; --actividad-1: #5a6170; --actividad-2: #858d9c; --actividad-3: #b6bdca; --actividad-4: #f2f3f5;
-  --cristal: rgba(14, 16, 21, 0.78);
-  --sombra-flotante: 0 18px 48px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.45);
+  --memoria: #d6dce8; --memoria-velo: #161a22;
 }
-/* Día */
-[data-theme="dia"] {
-  color-scheme: light;
-  /* Tinta y Luz, día: papel de algodón frío (nunca crema) y tinta ferrogálica: azul-negro reciente, pardo con la edad */
+[data-estilo="grabado"][data-theme="dia"] {
   --papel: #f3f3ef; --hoja: #fbfbf9; --tinta: #141a26; --tinta-fresca: #15233d; --tinta-vieja: #6e5235; --grafito: #7a7f89;
   --luz: #077567; --luz-2: #1d6aa3; --luz-3: #5a48c2; --sello: #c2361e;
   --fondo: var(--papel); --superficie-1: var(--hoja); --superficie-2: #eeeee9; --superficie-3: #e4e4de;
   --linea: #e0e0d9; --linea-fuerte: #7f848f;
   --texto: var(--tinta); --texto-2: #3f4653; --texto-3: #636974;
   --acento: #141a26; --sobre-acento: #ffffff; --acento-velo: #e9e9e3; --foco: #141a26;
-  --memoria: #3f4654; --memoria-velo: #eceef2; --atencion: #8a5300; --atencion-velo: #fbf0dc;
-  --peligro: #a4213a; --peligro-velo: #fbe6ea; --info: #3a5487; --exito: #1f6b3e; --exito-velo: #e3f4ea;
-  --actividad-0: #ececea; --actividad-1: #8f959f; --actividad-2: #666c77; --actividad-3: #3f444d; --actividad-4: #0b0c0f;
-  --cristal: rgba(255, 255, 255, 0.82);
-  --sombra-flotante: 0 18px 48px rgba(20, 22, 28, 0.14), 0 2px 8px rgba(20, 22, 28, 0.08);
+  --memoria: #3f4654; --memoria-velo: #eceef2;
 }
+
+/* «Quartz» (Arlan Marat, escobado del FYP → arla6ka/skills): acero frío y producción, para agentes y herramientas.
+   Tinta azulado-gris profunda y la luz teal de laboratorio; los manes 250/290 abren la aurora. OKLCH libre (Chromium 111+). */
+[data-estilo="quartz"][data-theme="noche"] {
+  color-scheme: dark;
+  --esmeralda: oklch(84% 0.11 195); --esmeralda-1: oklch(90% 0.09 195); --esmeralda-3: oklch(70% 0.10 195); --esmeralda-4: oklch(50% 0.09 195); --hielo: oklch(72% 0.100 250);
+  --brillo: oklch(86% 0.120 195 / 0.35);
+  --papel: oklch(15% 0.014 262); --hoja: oklch(18.5% 0.016 262); --tinta: oklch(96.5% 0.006 250); --tinta-fresca: oklch(86% 0.120 195); --tinta-vieja: oklch(70% 0.040 215); --grafito: oklch(60% 0.015 262);
+  --luz: oklch(86% 0.120 195); --luz-2: oklch(72% 0.100 250); --luz-3: oklch(72% 0.110 290); --sello: oklch(65.2% 0.219 26);
+  --fondo: var(--papel); --superficie-1: var(--hoja); --superficie-2: oklch(23.5% 0.018 262); --superficie-3: oklch(27.5% 0.020 262);
+  --linea: oklch(25% 0.012 262); --linea-fuerte: oklch(38% 0.020 262);
+  --texto: var(--tinta); --texto-2: oklch(80% 0.012 250); --texto-3: oklch(66% 0.014 250);
+  --acento: oklch(80% 0.110 195); --sobre-acento: oklch(16% 0.012 262); --acento-velo: oklch(31% 0.060 195); --foco: oklch(84% 0.115 195);
+  --memoria: oklch(88% 0.055 195); --memoria-velo: oklch(30% 0.045 195);
+  --atencion: oklch(80% 0.130 68); --atencion-velo: oklch(31% 0.055 68);
+  --peligro: oklch(76% 0.140 26); --peligro-velo: oklch(29% 0.060 26);
+  --info: oklch(72% 0.100 250); --exito: oklch(78% 0.100 160); --exito-velo: oklch(31% 0.055 160);
+  --actividad-0: oklch(20% 0.012 262); --actividad-1: oklch(31% 0.060 195); --actividad-2: oklch(44% 0.095 195); --actividad-3: oklch(62% 0.110 195); --actividad-4: oklch(86% 0.120 195);
+  --cristal: oklch(16% 0.012 262 / 0.75);
+}
+[data-estilo="quartz"][data-theme="dia"] {
+  color-scheme: light;
+  --esmeralda: oklch(55% 0.095 195); --esmeralda-1: oklch(86% 0.120 195); --esmeralda-3: oklch(45% 0.085 195); --esmeralda-4: oklch(38% 0.075 195); --hielo: oklch(52% 0.150 250);
+  --brillo: oklch(60% 0.100 195 / 0.22);
+  --papel: oklch(99.1% 0.002 250); --hoja: oklch(99.7% 0.001 250); --tinta: oklch(20% 0.024 262); --tinta-fresca: oklch(48% 0.085 195); --tinta-vieja: oklch(58% 0.02 245); --grafito: oklch(52% 0.012 262);
+  --luz: oklch(60% 0.100 195); --luz-2: oklch(52% 0.150 250); --luz-3: oklch(54% 0.150 290); --sello: oklch(60% 0.210 27);
+  --fondo: var(--papel); --superficie-1: var(--hoja); --superficie-2: oklch(95.6% 0.004 255); --superficie-3: oklch(92.5% 0.005 258);
+  --linea: oklch(91% 0.004 258); --linea-fuerte: oklch(80% 0.012 260);
+  --texto: var(--tinta); --texto-2: oklch(38% 0.018 262); --texto-3: oklch(50% 0.012 262);
+  --acento: oklch(52% 0.090 195); --sobre-acento: oklch(99.5% 0.001 250); --acento-velo: oklch(96.5% 0.040 195); --foco: oklch(58% 0.095 195);
+  --memoria: oklch(50% 0.090 195); --memoria-velo: oklch(94.5% 0.035 195);
+  --atencion: oklch(49% 0.100 68); --atencion-velo: oklch(96% 0.028 68);
+  --peligro: oklch(51% 0.180 26); --peligro-velo: oklch(94.5% 0.027 26);
+  --info: oklch(52% 0.150 250); --exito: oklch(52% 0.090 160); --exito-velo: oklch(96% 0.035 160);
+  --actividad-0: oklch(93% 0.003 252); --actividad-1: oklch(89% 0.050 195); --actividad-2: oklch(72% 0.095 195); --actividad-3: oklch(60% 0.105 195); --actividad-4: oklch(45% 0.085 195);
+  --cristal: oklch(99.5% 0.001 250 / 0.82);
+}
+
+/* «Lime» (Arlan Marat, escobado del FYP → arla6ka/skills): cálido y luminoso, para consumir.
+   Papel crema y el acento lima fluorescente —solo donde hay vida; la aurora va azúcar: lima, mandarina, menta. */
+[data-estilo="lime"][data-theme="noche"] {
+  color-scheme: dark;
+  --esmeralda: #cad649; --esmeralda-1: #e4f222; --esmeralda-3: #a8b632; --esmeralda-4: #6a7400; --hielo: #6f9cc4;
+  --brillo: rgba(202, 214, 73, 0.30);
+  --papel: #0e0e0c; --hoja: #1a1a17; --tinta: #f4f3ee; --tinta-fresca: #cad649; --tinta-vieja: #9a9890; --grafito: #6b6a63;
+  --luz: #cad649; --luz-2: #ffb224; --luz-3: #6ee79b; --sello: #e5484d;
+  --fondo: var(--papel); --superficie-1: var(--hoja); --superficie-2: #262622; --superficie-3: #32322d;
+  --linea: #2e2e29; --linea-fuerte: #3f3f39;
+  --texto: #f4f3ee; --texto-2: #c9c7be; --texto-3: #9a9890;
+  --acento: #cad649; --sobre-acento: #0f0f0d; --acento-velo: #2b2e0c; --foco: #d6e262;
+  --memoria: #6ee79b; --memoria-velo: #12281a;
+  --atencion: #ffc85c; --atencion-velo: #2e2209;
+  --peligro: #e5484d; --peligro-velo: #2d1415;
+  --info: #7db4ff; --exito: #6ee79b; --exito-velo: #12281a;
+  --actividad-0: #1a1a17; --actividad-1: #2b2e0c; --actividad-2: #556300; --actividad-3: #a8b632; --actividad-4: #e4f222;
+  --cristal: rgba(20, 20, 18, 0.78);
+}
+[data-estilo="lime"][data-theme="dia"] {
+  color-scheme: light;
+  --esmeralda: #7c8700; --esmeralda-1: #e4f222; --esmeralda-3: #5e6a00; --esmeralda-4: #3f4700; --hielo: #3f7fb5;
+  --brillo: rgba(124, 135, 0, 0.22);
+  --papel: #f6f5f2; --hoja: #ffffff; --tinta: #0f0f0d; --tinta-fresca: #5e6a00; --tinta-vieja: #8a887f; --grafito: #7d7b73;
+  --luz: #7c8700; --luz-2: #c27a00; --luz-3: #1e8e4a; --sello: #b42323;
+  --fondo: var(--papel); --superficie-1: var(--hoja); --superficie-2: #efeeea; --superficie-3: #e6e4df;
+  --linea: #e6e4df; --linea-fuerte: #cfcdc6;
+  --texto: #0f0f0d; --texto-2: #4a4943; --texto-3: #6b6a63;
+  --acento: #7c8700; --sobre-acento: #ffffff; --acento-velo: #f5f9c4; --foco: #7c8700;
+  --memoria: #17703a; --memoria-velo: #e5f5ea;
+  --atencion: #8a5200; --atencion-velo: #fff3d6;
+  --peligro: #b42323; --peligro-velo: #fdebeb;
+  --info: #2f5fb3; --exito: #17703a; --exito-velo: #e5f5ea;
+  --actividad-0: #efeeea; --actividad-1: #ecf2c9; --actividad-2: #c3d211; --actividad-3: #7c8700; --actividad-4: #3f4700;
+  --cristal: rgba(255, 255, 255, 0.82);
+}
+
 /* La luz en degradado (los tres tonos de --luz), quieta. Antes giraba animando una variable en <html>: como las variables se
    heredan, cada fotograma recalculaba el estilo de todo el documento (≈25 % de CPU en reposo y la memoria del motor creciendo
    26 MB/s con la ventana tapada). La vida se anima con opacidad o transform, que van en el compositor y no tocan el estilo. */
@@ -140,6 +241,17 @@
 }
 .aurora-foco::before { opacity: 0; transition: opacity 0.35s var(--ease-salida) }
 .aurora-foco:focus-within::before { opacity: 0.9 }
+
+/* El botón que arranca la obra (Empezar): un filo de luz cuando puede disparar,
+   se inflama al posar y cede un punto al apretar. Reposo y furia con la misma luz. */
+.cta-viva:not(:disabled) {
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--luz) 24%, transparent), 0 1px 0 rgb(0 0 0 / 0.28);
+  transition: box-shadow 0.3s var(--ease-salida), transform 0.3s var(--ease-salida);
+}
+.cta-viva:not(:disabled):hover:not(:active) {
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--luz) 48%, transparent), 0 10px 30px -12px color-mix(in oklab, var(--luz) 55%, transparent);
+}
+.cta-viva:not(:disabled):active { transform: scale(0.985) }
 
 /* Cristal: superficies translúcidas sobre el fondo vivo, con un brillo interior de 1 px. */
 /* Hoja: papel apoyado sobre papel (de noche, hoja de tinta con un filo de luz casi invisible). Sin desenfoques. */
@@ -199,3 +311,23 @@
 /* Una hoja de la Ventana: papel apoyado sobre el papel de tu mente (borde de 1 px y sombra de papel, sin desenfoques). */
 .hoja { background: var(--hoja); border: 1px solid var(--linea); border-radius: 10px;
   box-shadow: 0 1px 0 rgb(0 0 0 / 0.04), 0 22px 60px -28px rgb(0 0 0 / 0.5) }
+
+/* La chispa esmeralda (marca/Chispa.tsx): dos facetas planas por esquirla, un filo de luz y el núcleo. Quieta en reposo; al
+   pensar gira despacio y el núcleo late; al recordar se encienden las esquirlas de los temas que usa. Todo es transform u
+   opacidad: nada recalcula el estilo de la página. */
+.chispa-clara { fill: var(--esmeralda-1); transition: fill 0.45s var(--ease-salida) }
+.chispa-oscura { fill: var(--esmeralda-3); transition: fill 0.45s var(--ease-salida) }
+.chispa-filo { fill: none; stroke: rgb(255 255 255 / 0.3); stroke-width: 0.006; stroke-linejoin: round }
+.chispa-astilla { fill: var(--esmeralda); opacity: 0.7 }
+.chispa-esquirla { transition: opacity 0.3s var(--ease-salida) }
+.chispa-esquirla[role=button] { cursor: pointer; outline: none }
+.chispa-esquirla[role=button]:hover .chispa-clara, .chispa-esquirla[role=button]:focus-visible .chispa-clara { fill: #fff }
+.chispa-esquirla[role=button]:focus-visible .chispa-oscura { fill: var(--esmeralda-1) }
+.chispa-esquirla[data-encendida=true] .chispa-clara { fill: #fff }
+.chispa-esquirla[data-encendida=true] .chispa-oscura { fill: var(--esmeralda-1) }
+.chispa[data-estado=pensando] .chispa-esquirlas { animation: chispa-giro 28s linear infinite; transform-box: view-box; transform-origin: 50% 50% }
+.chispa[data-estado=pensando] .chispa-halo, .chispa[data-estado=recordando] .chispa-halo { animation: respirar 2.4s ease-in-out infinite }
+.chispa-late { animation: chispa-latido 1.9s ease-in-out infinite; transform-box: fill-box; transform-origin: center }
+@keyframes chispa-giro { to { transform: rotate(360deg) } }
+@keyframes chispa-latido { 50% { transform: scale(1.16); opacity: 0.85 } }
+

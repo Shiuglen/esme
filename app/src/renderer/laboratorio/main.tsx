@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Atlas } from '../lib/brain'
 import type { TareaTaller } from '../lib/bridge'
+import { Chispa } from '../marca/Chispa'
 import { FirmaMente, Sello } from '../marca/Sello'
 import { firmaDe, giroSello } from '../marca/sello'
 import { Escena } from '../taller/Escena'
@@ -53,6 +54,22 @@ function Taller({ atlas, tema }: { atlas: Atlas; tema: string }) {
   )
 }
 
+// La chispa esmeralda nacida del atlas real: tamaños y estados (con dos temas encendidos al recordar).
+function PiezaChispa({ atlas }: { atlas: Atlas }) {
+  const firma = firmaDe(atlas), dos = new Set(firma.slice(0, 2).map((t) => t.id!))
+  return (
+    <FirmaMente.Provider value={firma}>
+      <div className="grid h-full place-items-center">
+        <div className="flex items-end gap-14">
+          <Chispa tam={360} estado="reposo" onTema={() => {}} />
+          <Chispa tam={200} estado="recordando" encendidas={dos} />
+          <div className="grid gap-6"><Chispa tam={64} /><Chispa tam={28} /><Chispa tam={18} /></div>
+        </div>
+      </div>
+    </FirmaMente.Provider>
+  )
+}
+
 function Lab() {
   const tema = new URLSearchParams(location.search).get('tema') === 'dia' ? 'dia' : 'noche'
   document.documentElement.dataset.theme = tema
@@ -66,7 +83,7 @@ function Lab() {
   return (
     <div className="h-screen w-screen overflow-hidden bg-papel text-texto">
       <FondoVivo tema={tema} estado="reposo" />
-      <div className="relative z-10 h-full">{pieza === 'taller' ? <Taller atlas={atlas} tema={tema} /> : <RedNeuronal ref={red} atlas={atlas} tema={tema} recordados={[]} onPick={() => {}} />}</div>
+      <div className="relative z-10 h-full">{pieza === 'chispa' ? <PiezaChispa atlas={atlas} /> : pieza === 'taller' ? <Taller atlas={atlas} tema={tema} /> : <RedNeuronal ref={red} atlas={atlas} tema={tema} recordados={[]} onPick={() => {}} />}</div>
     </div>
   )
 }

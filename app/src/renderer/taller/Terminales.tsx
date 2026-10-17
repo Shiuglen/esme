@@ -3,7 +3,7 @@
 import { FitAddon } from '@xterm/addon-fit'
 import { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
-import { Plus, SquareTerminal, X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { bridge, type AgentView } from '../lib/bridge'
@@ -49,7 +49,10 @@ export function Terminales({ abierto, onCerrar, tema }: { abierto: boolean; onCe
       {(abierto || pestanas.length > 0) && (
         <motion.div initial={{ y: '100%' }} animate={{ y: abierto ? 0 : '100%' }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 380, damping: 40 }}
           className="vidrio absolute inset-x-5 bottom-0 z-30 flex h-[46%] min-h-[260px] flex-col overflow-hidden rounded-t-4 border border-b-0 shadow-flotante" aria-hidden={!abierto}>
+          <div aria-hidden className="h-px shrink-0 bg-gradient-to-r from-transparent via-[color-mix(in_srgb,var(--luz)_45%,transparent)] to-transparent" />
           <div className="flex h-11 shrink-0 items-center gap-1 border-b border-linea px-2">
+            <span className="pl-1.5 pr-2 font-mono text-[10.5px] uppercase tracking-[0.12em] text-texto-3">Terminales</span>
+            <span aria-hidden className="h-4 w-px shrink-0 bg-linea" />
             {pestanas.map((p) => (
               <span key={p.id} className={cn('inline-flex h-8 items-center gap-1 rounded-2 pr-1 pl-3 text-[12.5px]', activa === p.id ? 'bg-s2 text-texto' : 'text-texto-3 hover:text-texto-2')}>
                 <button type="button" onClick={() => setActiva(p.id)}>{p.agente.label}</button>
@@ -63,17 +66,24 @@ export function Terminales({ abierto, onCerrar, tema }: { abierto: boolean; onCe
           </div>
           <div className="relative min-h-0 flex-1">
             {activa === null && (
-              <div className="grid h-full content-start gap-2 overflow-y-auto p-4 sm:grid-cols-2 lg:grid-cols-3">
-                {agentes.map((a) => (
-                  <button key={a.id} type="button" disabled={!a.installed} onClick={() => abrir(a)}
-                    className="flex items-start gap-3 rounded-3 border border-linea bg-s1/60 p-3 text-left transition-colors hover:border-linea-fuerte disabled:opacity-45">
-                    <SquareTerminal className="mt-0.5 size-4 shrink-0 text-texto-3" strokeWidth={1.5} />
-                    <span className="min-w-0">
-                      <span className="block text-[13px] text-texto">{a.label}</span>
-                      <span className="block truncate text-xs text-texto-3">{!a.installed ? 'No instalado' : a.memory ? 'Con tu memoria' : a.note ?? 'Sin memoria por ahora'}</span>
-                    </span>
-                  </button>
-                ))}
+              <div className="grid h-full content-start gap-2.5 overflow-y-auto p-4 sm:grid-cols-2 lg:grid-cols-3">
+                {agentes.map((a) => {
+                  // la marca del agente: su inicial como un sello de taller; lo no instalado queda a lápiz (trazo discontinuo)
+                  const glifo = a.id === 'terminal' ? '>_' : (a.label.split(/[\s(]+/).filter(Boolean)[0] ?? '?')[0]?.toUpperCase()
+                  return (
+                    <button key={a.id} type="button" disabled={!a.installed} onClick={() => abrir(a)}
+                      className="group/card flex items-start gap-3 rounded-3 border border-linea bg-s1/60 p-3 text-left transition-all duration-300 ease-salida disabled:opacity-40 enabled:hover:-translate-y-px enabled:hover:border-linea-fuerte enabled:hover:bg-s2/50">
+                      <span className={cn('mt-0.5 grid size-8 shrink-0 place-items-center rounded-2 border font-display text-[13.5px] transition-colors',
+                        a.installed ? 'border-linea-fuerte/70 text-texto group-hover/card:border-linea-fuerte' : 'border-dashed border-grafito/60 text-grafito')}>{glifo}</span>
+                      <span className="min-w-0">
+                        <span className="block text-[13px] text-texto">{a.label}</span>
+                        <span className="flex items-center gap-1.5 text-xs text-texto-3">
+                          {!a.installed ? 'No instalado' : a.memory ? <><span className="size-1.5 shrink-0 rounded-full bg-memoria" />Con tu memoria</> : a.note ?? 'Sin memoria por ahora'}
+                        </span>
+                      </span>
+                    </button>
+                  )
+                })}
                 {!instalados.length && <p className="text-sm text-texto-3">No encuentro terminales ni agentes instalados.</p>}
               </div>
             )}

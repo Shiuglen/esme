@@ -20,14 +20,17 @@ export type Tarea = {
   actividadMs: number   // dónde acaba el último cubo: sin eventos nuevos, la interfaz desplaza la micrográfica sola
   arena?: string   // las tareas que compiten con el mismo encargo comparten este id
 }
-export type MotorElegido = { id: string; nombre: string; comando: string; args: string[] }
+export type MotorElegido = { id: string; nombre: string; comando: string; args: string[]; env?: Record<string, string> }
 export type SesionMotor = { preguntar(texto: string): Promise<string>; cancelar(): Promise<void>; cerrar(): void; configurar(id: string, valor: string): Promise<void> }
-export type AbrirSesion = (o: { comando: string; args: string[]; cwd: string; mcp?: { nombre: string; url: string; token: string }; config?: Record<string, string>
+export type AbrirSesion = (o: { comando: string; args: string[]; cwd: string; env?: Record<string, string>; mcp?: { nombre: string; url: string; token: string }; config?: Record<string, string>
   alEvento(e: EventoMotor): void; alPedirPermiso(p: Permiso): Promise<string | 'cancelar'> }) => Promise<SesionMotor>
 export type OperacionesCopia = { crear: typeof crearCopia; cambios: typeof cambiosCopia; diff: typeof diffCopia; quitar: typeof quitarCopia
   parche: typeof parcheCopia; aplicar: typeof aplicarParche; commit: typeof commitCopia; exportar: typeof exportarCopia }
 export type Aplicada = { cuando: number; modo: 'carpeta' | 'rama' | 'exportada'; ficheros: number; destino?: string; commit?: string }
 export type Veredicto = { ts: number; motor: string; modelo: string | null; exito: boolean }
+// El delta de uso real de un turno, para el Uso de la app: cada tarea levanta su historia.
+export type Anoto = { motorId: string; motorNombre: string; modelo: string | null; origen: 'taller' | 'arena'; tareaId: string; titulo: string
+  delta: { entrada: number; salida: number; pensamiento: number }; coste?: { cantidad: number; moneda: string } }
 type Fallo = { ok: false; error: string; ficheros?: string[] }
 type Mcp = { nombre: string; url: string; token: string }
 
@@ -45,6 +48,7 @@ type Registro = {
   eventos: EventoMotor[]; parcial: boolean   // parcial: la memoria no tiene todos los eventos, hay que leer el disco
   ids: Set<string>; cubo: number; inicioTurno: number; cancelado: boolean; descartada: boolean
   ultimoEmitido: number; temporizador?: NodeJS.Timeout
+  usoEscrito?: { entrada: number; salida: number; pensamiento: number; contexto: number; coste?: number }   // lo que ya llegó al Uso: los turnos anotan su delta
 }
 
 const finCubo = (ms: number) => (Math.floor(ms / MS_CUBO) + 1) * MS_CUBO
@@ -61,6 +65,7 @@ export class Taller {
   private readonly copias: OperacionesCopia
   private readonly mcp: () => Mcp | null
   private readonly resolverMotor?: (id: string) => Promise<MotorElegido | null>
+  private readonly alAnotar?: (a: Anoto) => void
   private readonly ahora: () => number
   private readonly esperas: number[]
   private guardado?: NodeJS.Timeout
@@ -68,7 +73,7 @@ export class Taller {
 
   constructor(o: { dir: string; emitir(canal: 'cambio' | 'evento' | 'quitada', dato: unknown): void
     abrirSesion?: AbrirSesion; copias?: OperacionesCopia; mcp?: () => Mcp | null
-    resolverMotor?: (id: string) => Promise<MotorElegido | null>; ahora?: () => number; esperasReintento?: number[] }) {
+    resolverMotor?: (id: string) => Promise<MotorElegido | null>; alAnotar?: (a: Anoto) => void; ahora?: () => number; esperasReintento?: number[] }) {
     this.dir = o.dir
     this.dirCopias = join(o.dir, 'copias')
     this.emitir = o.emitir
@@ -76,6 +81,7 @@ export class Taller {
     this.copias = o.copias ?? { crear: crearCopia, cambios: cambiosCopia, diff: diffCopia, quitar: quitarCopia, parche: parcheCopia, aplicar: aplicarParche, commit: commitCopia, exportar: exportarCopia }
     this.mcp = o.mcp ?? (() => null)
     this.resolverMotor = o.resolverMotor
+    this.alAnotar = o.alAnotar
     this.ahora = o.ahora ?? Date.now
     this.esperas = o.esperasReintento ?? [8000, 20_000, 45_000]
   }
@@ -303,6 +309,22 @@ export class Taller {
 
   private archivoEventos = (id: string) => join(this.dir, `${id}.jsonl`)
 
+  // El grifo del Uso: al cerrar cada turno anota el delta de trabajo real del motor (lista, parada o fallo).
+  private anotarTurno(r: Registro): void {
+    if (!this.alAnotar || !r.motor) return
+    const t = r.tarea, e = r.usoEscrito ?? { entrada: 0, salida: 0, pensamiento: 0, contexto: 0 }
+    const delta = { entrada: t.uso.entrada - e.entrada, salida: t.uso.salida - e.salida, pensamiento: (t.uso.pensamiento ?? 0) - e.pensamiento }
+    const contexto = Math.max(0, (t.uso.contextoUsado ?? 0) - e.contexto)
+    r.usoEscrito = { entrada: t.uso.entrada, salida: t.uso.salida, pensamiento: t.uso.pensamiento ?? 0, contexto: t.uso.contextoUsado ?? 0, coste: t.uso.coste?.cantidad }
+    // Motores que solo cuentan el contexto (el usage del ACP): los tokens leídos son el uso honesto que puede verse.
+    const entrada = delta.entrada > 0 ? delta.entrada : contexto
+    if (entrada + delta.salida + delta.pensamiento <= 0) return
+    // El coste en cambio: los motores lo mandan acumulado; solo se anota cuando difiere del ya escrito.
+    const coste = t.uso.coste && t.uso.coste.cantidad > 0 && t.uso.coste.cantidad !== e.coste ? t.uso.coste : undefined
+    this.alAnotar({ motorId: r.motor.id, motorNombre: r.motor.nombre, modelo: t.modelo, origen: t.arena ? 'arena' : 'taller',
+      tareaId: t.id, titulo: t.titulo, delta: { entrada, salida: delta.salida, pensamiento: delta.pensamiento }, ...(coste ? { coste } : {}) })
+  }
+
   private async ejecutar(r: Registro, texto: string): Promise<void> {
     const t = r.tarea
     const parada = () => {
@@ -315,7 +337,7 @@ export class Taller {
       if (parada()) return
       if (!r.sesion) {
         const motor = r.motor!
-        r.sesion = await this.abrirSesion({ comando: motor.comando, args: motor.args, cwd: t.copia.ruta, mcp: this.mcp() ?? undefined, config: { ...r.config },
+        r.sesion = await this.abrirSesion({ comando: motor.comando, args: motor.args, cwd: t.copia.ruta, env: motor.env, mcp: this.mcp() ?? undefined, config: { ...r.config },
           alEvento: (e) => this.alEvento(r, e), alPedirPermiso: (p) => this.alPedirPermiso(r, p) })
       }
       if (r.descartada || this.cerrado || parada()) return
@@ -329,10 +351,12 @@ export class Taller {
       t.cambios = cambios
       t.turnos++; t.fin = this.ahora()
       t.estado = motivo === 'cancelled' ? 'parada' : 'lista'
+      this.anotarTurno(r)
     } catch (e) {
       if (r.descartada || this.cerrado) return
       t.estado = 'error'; t.error = e instanceof Error ? e.message : String(e); t.fin = this.ahora()
       this.registrar(r, { tipo: 'fallo', mensaje: t.error })
+      this.anotarTurno(r)
       r.sesion?.cerrar(); r.sesion = undefined
     }
     r.resolverPermiso = undefined; t.permiso = null

@@ -3,6 +3,7 @@ import { Moon, Search, Sun } from 'lucide-react'
 import { motion } from 'motion/react'
 import { cn } from '../lib/cn'
 import { Senal } from '../marca/Senal'
+import { Bicho, SerCasa } from '../marca/Ser'
 import { MUELLE } from './Paleta'
 
 export type Estado = { conectado: boolean; recuerdos: number | null; pensando: boolean }
@@ -27,13 +28,14 @@ export function BarraSuperior({ seccion, estado, tema, onTema, onBuscar, paletaA
           className={cn('inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors',
             taller.esperando ? 'bg-atencion-velo text-atencion hover:brightness-110' : 'border border-linea bg-s2 text-texto-2 hover:text-texto')}>
           <span className={cn('size-1.5 rounded-full', taller.esperando ? 'animate-[baliza_1.3s_ease-in-out_infinite] bg-atencion' : 'animate-[respirar_1.4s_ease-in-out_infinite] [background:var(--aurora)]')} />
+          <SerCasa tamaño={13} vivo className="shrink-0" />
           {taller.esperando ? `${taller.esperando} te ${taller.esperando === 1 ? 'necesita' : 'necesitan'}` : `${taller.trabajando} trabajando`}
         </button>
       )}
       <span className={cn('inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium',
         estado.conectado ? 'bg-acento-velo text-acento' : 'border border-linea bg-s2 text-texto-3')}
         title={estado.conectado ? 'El cerebro está en marcha' : 'No encuentro el cerebro'}>
-        <span className={cn('size-1.5 rounded-full bg-current', estado.pensando && 'animate-late')} />
+        {estado.conectado && <SerCasa tamaño={13} vivo={estado.pensando} className="shrink-0 -ml-0.5" />}
         {estado.conectado ? (estado.pensando ? 'pensando' : `${(estado.recuerdos ?? 0).toLocaleString('es-ES')} recuerdos`) : 'sin cerebro'}
       </span>
       <button type="button" onClick={onTema} aria-label={tema === 'noche' ? 'Pasar al tema de día' : 'Pasar al tema de noche'}

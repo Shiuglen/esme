@@ -1,13 +1,14 @@
 // Una fila del Taller por tarea, con densidad de HUD: motor y modelo, estado, la cifra grande (el tiempo), la micrográfica,
-// qué hace ahora mismo y cuatro métricas. Si un motor lleva rato sin dar señales, lo dice y propone qué mirar.
-import { Swords } from 'lucide-react'
+// qué hace ahora mismo, sus métricas si hablan y las acciones rápidas de su estado (aplica, reencarna o para) al pasar el foco.
+import { Check, RefreshCcw, Square, Swords, type LucideIcon } from 'lucide-react'
 import type { TareaTaller } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { fmtTokens, fmtUSD } from '../chat/formatos'
-import { Micrografica } from './Micrografica'
+import { BarrasActividad } from './Micrografica'
+import { Bicho } from '../marca/Ser'
 import { Sello } from '../marca/Sello'
 import { giroSello } from '../marca/sello'
-import { ESTADOS, actividadAhora, activa, duracion, explicarError, silencioMs } from './vista'
+import { barrasDe, ESTADOS, actividadAhora, activa, duracion, explicarError, silencioMs } from './vista'
 
 const SILENCIO_AVISO = 25_000
 
@@ -29,9 +30,9 @@ const modeloCorto = (m: string | null) => m?.replace(/^[^/]+\//, '').replace(/\s
 const coste = (c: TareaTaller['uso']['coste']) => (!c ? null : c.moneda === 'USD' ? fmtUSD(c.cantidad) : `${c.cantidad.toFixed(2)} ${c.moneda}`)
 const segundos = (ms?: number) => (ms === undefined ? '—' : ms < 10_000 ? `${(ms / 1000).toFixed(1).replace('.', ',')} s` : `${Math.round(ms / 1000)} s`)
 
-export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida, resaltada, onElegir, onResaltar }: {
+export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida, resaltada, onElegir, onResaltar, onReencarnar, onAplicar, onParar }: {
   t: TareaTaller; login?: string; ahora: number; inicioTurno?: number; haciendo: string | null; elegida: boolean; resaltada: boolean
-  onElegir(id: string): void; onResaltar(id: string | null): void
+  onElegir(id: string): void; onResaltar(id: string | null): void; onReencarnar(): void; onAplicar(): void; onParar(): void
 }) {
   const enMarcha = activa(t)
   const grande = t.estado === 'preparando' ? '—' : duracion((t.fin ?? ahora) - t.inicio)
@@ -43,17 +44,41 @@ export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida
     : t.estado === 'esperando' ? `Pide permiso: ${t.permiso?.titulo || 'una acción'}`
     : t.estado === 'error' ? (t.error && explicarError(t.error, t.motorNombre, login)?.titulo) || t.error || 'Algo falló.'
     : haciendo ?? (t.estado === 'preparando' ? 'Montando la copia aislada…' : t.estado === 'lista' ? `${t.turnos} ${t.turnos === 1 ? 'turno' : 'turnos'} en ${t.copia?.rama ?? 'una carpeta nueva'}` : '')
+  // Métricas que hablan: las que no dicen nada salen de la fila; si nada habla, una sola línea de espera.
+  const metricas = [
+    { nombre: 'Herramientas', valor: t.herramientas > 0 ? String(t.herramientas) : null },
+    { nombre: tokens ? 'Tokens' : '', valor: tokens ? fmtTokens(tokens) : null },
+    { nombre: t.uso.coste ? 'Coste' : '', valor: t.uso.coste ? coste(t.uso.coste)! : null },
+    { nombre: 'Cambios', valor: t.cambios?.ficheros ? <><span className="text-exito">+{t.cambios.mas}</span> <span className="text-peligro">−{t.cambios.menos}</span></> : null },
+    { nombre: t.primeraRespuestaMs ? '1.ª respuesta' : '', valor: t.primeraRespuestaMs ? segundos(t.primeraRespuestaMs) : null },
+  ].filter((m) => m.valor !== null)
+  const AccionRapida = ({ icono: Icono, texto, onClick, tono = 'normal' }: { icono: LucideIcon; texto: string; onClick(): void; tono?: 'normal' | 'vx' }) => (
+    <button type="button" onClick={(e) => { e.stopPropagation(); onClick() }}
+      className={cn('inline-flex h-6.5 items-center gap-1 rounded-full border px-2 text-[11.5px] font-medium opacity-0 transition-all duration-200 group-hover/card:opacity-100 group-focus-within/card:opacity-100',
+        tono === 'vx' ? 'border-exito/40 bg-exito-velo/60 text-exito hover:bg-exito-velo' : 'border-linea-fuerte/70 bg-s2/90 text-texto hover:bg-s3')}
+      aria-label={texto}>
+      <Icono className="size-3" strokeWidth={1.75} />{texto}
+    </button>
+  )
 
   return (
-    <button type="button" onClick={() => onElegir(t.id)} onPointerEnter={() => onResaltar(t.id)} onPointerLeave={() => onResaltar(null)}
+    <div role="button" tabIndex={0} onClick={() => onElegir(t.id)} onPointerEnter={() => onResaltar(t.id)} onPointerLeave={() => onResaltar(null)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onElegir(t.id) } }}
       aria-pressed={elegida} aria-label={`${t.motorNombre}: ${t.titulo}. ${ESTADOS[t.estado].texto}.`}
-      className={cn('vidrio halo group relative w-full overflow-hidden rounded-3 border px-4 pt-3 pb-2.5 text-left transition-[transform,background-color] duration-300 ease-salida',
+      className={cn('halo group/card relative w-full overflow-hidden rounded-3 border px-4 pt-3 pb-2.5 text-left outline-none transition-[transform,background-color] duration-300 ease-salida',
         elegida ? 'aurora-borde bg-s2/40' : resaltada && '-translate-y-px')}>
       <span aria-hidden className={cn('absolute inset-y-3 left-0 w-[2px] rounded-full',
         t.estado === 'trabajando' && '[background:var(--aurora)]', t.estado === 'esperando' && 'bg-atencion', t.estado === 'error' && 'bg-peligro',
         (t.estado === 'lista' || t.estado === 'parada' || t.estado === 'preparando') && 'bg-linea-fuerte/60')} />
+      {/* Las acciones rápidas flotan sobre la esquina superior derecha al pasar el foco: no reservan sitio, no empujan la fila */}
+      <div className="pointer-events-none absolute right-2.5 top-2 flex items-center gap-1.5 opacity-0 transition-opacity duration-200 group-hover/card:pointer-events-auto group-hover/card:opacity-100 group-focus-within/card:pointer-events-auto group-focus-within/card:opacity-100">
+        {t.estado === 'error' && <AccionRapida icono={RefreshCcw} texto="Reencarna" onClick={onReencarnar} />}
+        {t.estado === 'lista' && <AccionRapida icono={Check} texto="Aplica" onClick={onAplicar} tono="vx" />}
+        {enMarcha && <AccionRapida icono={Square} texto="Parar" onClick={onParar} />}
+      </div>
       <div className="flex items-center gap-2">
-        <span className="text-[13px] font-medium text-texto">{t.motorNombre}</span>
+        <Bicho de={t.motor} tamaño={14} vivo={enMarcha} className="shrink-0 text-texto-2" />
+        <span className="shrink-0 whitespace-nowrap text-[13px] font-medium text-texto">{t.motorNombre}</span>
         {t.modelo && <span className="min-w-0 truncate font-mono text-[11px] text-texto-3">{modeloCorto(t.modelo)}</span>}
         <PastillaEstado estado={t.estado} />
         {t.aplicada && <Sello lado={16} giro={giroSello(t.id)} titulo="Aprobada por ti" />}
@@ -62,27 +87,24 @@ export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida
       </div>
       <div className="mt-1.5 flex items-center gap-3">
         <p className="min-w-0 flex-1 truncate text-[13.5px] text-texto-2">{t.titulo}</p>
-        <Micrografica valores={actividadAhora(t, ahora)} viva={t.estado === 'trabajando'} />
+        <BarrasActividad valores={barrasDe(t.actividad)} viva={t.estado === 'trabajando'} />
       </div>
       <p className={cn('mt-0.5 min-h-[18px] truncate text-xs', callado || t.estado === 'esperando' ? 'text-atencion' : t.estado === 'error' ? 'text-peligro' : 'text-texto-3')}>{linea}</p>
-      <dl className="mt-2 grid grid-cols-4 gap-2 border-t border-linea/80 pt-2">
-        <Metrica nombre="Herramientas" valor={String(t.herramientas)} />
-        <Metrica nombre="Cambios" valor={t.cambios ? (t.cambios.ficheros ? <><span className="text-exito">+{t.cambios.mas}</span> <span className="text-peligro">−{t.cambios.menos}</span></> : '0') : '—'} />
-        <Metrica nombre="Tokens" valor={tokens ? fmtTokens(tokens) : '—'} />
-        {coste(t.uso.coste) ? <Metrica nombre="Coste" valor={coste(t.uso.coste)!} /> : <Metrica nombre="1.ª respuesta" valor={segundos(t.primeraRespuestaMs)} />}
+      <dl className="mt-2 grid grid-cols-[repeat(auto-fit,minmax(64px,1fr))] gap-2 border-t border-linea/80 pt-2">
+        {metricas.length === 0 ? (
+          <dd className="col-span-full text-[11px] text-texto-3">Sin huellas todavía.</dd>
+        ) : metricas.map((m) => (
+          <div key={m.nombre} className="min-w-0">
+            <dt className="truncate text-[10.5px] text-texto-3">{m.nombre}</dt>
+            <dd className="truncate text-[12.5px] text-texto tabular-nums">{m.valor}</dd>
+          </div>
+        ))}
       </dl>
       {pct !== null && (
         <span aria-hidden className="absolute bottom-0 left-0 h-[2px] [background:var(--aurora-lineal)] opacity-80" style={{ width: `${pct}%` }} title={`Contexto: ${Math.round(pct)} %`} />
       )}
-    </button>
-  )
-}
-
-function Metrica({ nombre, valor }: { nombre: string; valor: React.ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <dt className="truncate text-[10.5px] text-texto-3">{nombre}</dt>
-      <dd className="truncate text-[12.5px] text-texto tabular-nums">{valor}</dd>
     </div>
   )
 }
+
+

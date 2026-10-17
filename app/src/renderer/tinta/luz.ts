@@ -1,9 +1,29 @@
 // La luz de Esme: la vida no es un arcoíris, es bioluminiscencia. Tres tonos por tema (--luz, --luz-2, --luz-3):
 // profundos sobre el papel de día, brillantes sobre el papel de tinta de noche. Sirve para SVG y para canvas.
+let li: CanvasRenderingContext2D | null = null
+const lienzoDe = () => (li ??= document.createElement('canvas').getContext('2d'))!
 const rgb = (c: string) => {
-  const m = c.match(/^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/)
-  if (m) return [Number(m[1]), Number(m[2]), Number(m[3])]
-  const n = parseInt(c.replace('#', '').slice(0, 6), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+  const t = c.trim()
+  const mh = /^#([0-9a-f]{6})$/i.exec(t)
+  if (mh) return [parseInt(mh[1].slice(0, 2), 16), parseInt(mh[1].slice(2, 4), 16), parseInt(mh[1].slice(4, 6), 16)]
+  const m3 = /^(?:rgba?|hsla?)\(([^)]+)\)$/.exec(t)
+  if (m3) {
+    const p = m3[1].replace(/,/g, ' /').replace(/\//g, ' /').trim().split(/\s+/).filter(Boolean)
+    const num = (s: string) => parseFloat(s)
+    if (/^rgb/i.test(t)) {
+      const v = [...p].map((s) => num(s) * (s.endsWith('%') ? 2.55 : 1))
+      return [Math.round(v[0] ?? 0), Math.round(v[1] ?? 0), Math.round(v[2] ?? 0)]
+    }
+    // hsl → rgb a mano: los porcentajes son su escala, el tono en grados (31.6 formula clásica)
+    const h = ((num(p[0] ?? 0) % 360) + 360) % 360 / 360, s = Math.min(1, Math.max(0, (num(p[1] ?? 0)) / 100)), l = Math.min(1, Math.max(0, (num(p[2] ?? 0)) / 100))
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s, m = 2 * l - q
+    const canal = (n: number) => { const x = (n % 1 + 1) % 1; return x < 1 / 6 ? m + (q - m) * 6 * x : x < 1 / 2 ? q : x < 2 / 3 ? m + (q - m) * (2 / 3 - x) * 6 : m }
+    return [Math.round(canal(h + 1 / 3) * 255), Math.round(canal(h) * 255), Math.round(canal(h - 1 / 3) * 255)]
+  }
+  // último recurso: el lienzo normaliza cualquier color válido; si ni eso, gris — nunca NaN
+  const l = lienzoDe(); l.fillStyle = t; const s = String(l.fillStyle).match(/\d+\s*,\s*\d+\s*,\s*\d+/)?.[0]?.split(',').map((x) => +x.trim())
+  if (s && s.length >= 3 && s.every((n) => !Number.isNaN(n))) return [s[0], s[1], s[2]]
+  return [128, 128, 128]
 }
 
 export function mezclar(a: string, b: string, t: number): string {

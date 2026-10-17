@@ -2,12 +2,12 @@
 // puntos, cada uno unido a su vecino más cercano), estampada en bermellón. Crece y cambia cuando tu mente crece.
 import type { Atlas } from '../lib/brain'
 
-export type Firma = { x: number; y: number; size: number }[]
+export type Firma = { id?: number; label?: string; x: number; y: number; size: number }[]
 export type Trazos = { puntos: { x: number; y: number; r: number }[]; lineas: [number, number, number, number][] }
 
 /** Los temas más grandes de tu mente, doce como mucho: más ya no se leen en un sello. */
 export const firmaDe = (atlas: Pick<Atlas, 'points' | 'clusters'> | null): Firma =>
-  (atlas?.clusters ?? []).slice().sort((a, b) => b.size - a.size).slice(0, 12).map(({ x, y, size }) => ({ x, y, size }))
+  (atlas?.clusters ?? []).slice().sort((a, b) => b.size - a.size).slice(0, 12).map(({ id, label, x, y, size }) => ({ id, label, x, y, size }))
 
 /** La constelación dentro de una caja de 100 × 100, con 20 de margen y sin deformar las distancias. */
 export function trazosSello(firma: Firma): Trazos {

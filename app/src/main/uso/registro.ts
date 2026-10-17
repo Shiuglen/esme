@@ -4,12 +4,18 @@ import { dirname } from 'node:path'
 import type { ModeloCatalogo } from '../catalogo/modelsdev'
 
 export type Consumo = { ts: number; proveedor: string; modelo: string; entrada: number; salida: number; cacheLectura?: number; cacheEscritura?: number
-  ahorradosMemoria?: number; nivel?: 'alto' | 'medio' | 'bajo'; origen: 'chat' | 'taller' | 'router' | 'arena'; tarea?: string }
+  ahorradosMemoria?: number; nivel?: 'alto' | 'medio' | 'bajo'; origen: 'chat' | 'taller' | 'router' | 'arena'; tarea?: string; titulo?: string
+  costeDirecto?: { cantidad: number; moneda: string } }   // el motor reportó su propio coste (usage del ACP): se respeta tal cual, no se recalcula
 type Precio = Pick<ModeloCatalogo, 'coste'>
 
 const n = (x: unknown): number => (typeof x === 'number' && Number.isFinite(x) ? x : 0)
 
 export function costeDe(c: Consumo, m?: Precio): number {
+  // Lo que el motor mismo dijo haber costado manda sobre el catálogo.
+  if (c.costeDirecto) {
+    if (c.costeDirecto.moneda === 'USD' && Number.isFinite(n(c.costeDirecto.cantidad))) return n(c.costeDirecto.cantidad)
+    return 0
+  }
   if (!m) return 0
   const k = m.coste
   const usd = (n(c.entrada) * n(k.entrada) + n(c.salida) * n(k.salida)
@@ -43,6 +49,7 @@ export class RegistroUso {
     let costeUSD = 0, tokens = 0, ahorradosMemoria = 0
     const pm = new Map<string, { proveedor: string; modelo: string; costeUSD: number; tokens: number; llamadas: number }>()
     const pd = new Map<string, { dia: string; costeUSD: number; tokens: number }>()
+    const pt = new Map<string, { tarea: string; titulo: string; motor: string; modelo: string; costeUSD: number; tokens: number; turnos: number; ultimo: number }>()
     for (const c of this.leer(o.desde, o.hasta)) {
       const u = costeDe(c, o.precio(c.proveedor, c.modelo)), t = tokensDe(c)
       costeUSD += u; tokens += t; ahorradosMemoria += n(c.ahorradosMemoria)
@@ -51,10 +58,18 @@ export class RegistroUso {
       m.costeUSD += u; m.tokens += t; m.llamadas++; pm.set(km, m)
       const kd = dia(c.ts), d = pd.get(kd) ?? { dia: kd, costeUSD: 0, tokens: 0 }
       d.costeUSD += u; d.tokens += t; pd.set(kd, d)
+      // Las historias del Taller: cada tarea es una fila; el chat no lleva tarea y no entra aquí.
+      if (c.tarea) {
+        const kt = `${c.origen}\u0000${c.tarea}`
+        const h = pt.get(kt) ?? { tarea: c.tarea, titulo: c.titulo ?? '', motor: c.proveedor, modelo: c.modelo, costeUSD: 0, tokens: 0, turnos: 0, ultimo: c.ts }
+        h.costeUSD += u; h.tokens += t; h.turnos++; h.ultimo = Math.max(h.ultimo, c.ts); h.titulo = c.titulo || h.titulo
+        pt.set(kt, h)
+      }
     }
     return { costeUSD, tokens, ahorradosMemoria,
       porModelo: [...pm.values()].sort((a, b) => b.costeUSD - a.costeUSD),
-      porDia: [...pd.values()].sort((a, b) => a.dia.localeCompare(b.dia)) }
+      porDia: [...pd.values()].sort((a, b) => a.dia.localeCompare(b.dia)),
+      porTarea: [...pt.values()].sort((a, b) => b.ultimo - a.ultimo) }
   }
 }
 

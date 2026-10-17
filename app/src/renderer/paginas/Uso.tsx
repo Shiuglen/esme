@@ -7,6 +7,7 @@ import { fmtTokens, fmtUSD } from '../chat/formatos'
 import { bridge, type EstadoUso, type ResumenUso, type UsoExterno } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { diasSeguidos, rejillaActividad } from '../uso/vista'
+import { Bicho } from '../marca/Ser'
 
 type Rango = 'hoy' | '7' | '30'
 const DIA = 86_400_000
@@ -18,7 +19,7 @@ function Cifra({ etiqueta, children, pie }: { etiqueta: string; children: React.
   return (
     <div className="grid min-w-0 content-start gap-1.5 rounded-3 vidrio halo border px-4 py-3.5">
       <span className="text-xs text-texto-3">{etiqueta}</span>
-      <div className="font-sans text-[28px] leading-8 font-semibold tracking-[-0.02em] tabular-nums">{children}</div>
+      <div className="font-display text-[30px] leading-9 font-light tracking-[-0.01em] tabular-nums">{children}</div>
       {pie && <div className="text-xs text-texto-3">{pie}</div>}
     </div>
   )
@@ -129,6 +130,25 @@ export function Uso({ onIr }: { onIr(id: 'ajustes'): void }) {
               </div>)}
           </section>
         </motion.div>
+
+        {!!resumen?.porTarea.length && (
+          <motion.section {...entrada(4)} className="grid gap-3 rounded-3 vidrio halo border p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="m-0 text-[15px] font-semibold">El Taller</h2>
+              <span className="text-xs text-texto-3">cada tarea, su historia</span>
+            </div>
+            <div className="grid gap-2.5">
+              {resumen.porTarea.slice(0, 6).map((a) => (
+                <div key={a.tarea} className="flex items-center gap-2 text-[13px]">
+                  <Bicho de={a.motor} tamaño={13} className="shrink-0 text-texto-3" />
+                  <span className="truncate">{a.titulo || 'Tarea'}</span>
+                  <span className="shrink-0 rounded-full border px-1.5 text-[11px] text-texto-3">{a.motor}</span>
+                  <span className="ml-auto shrink-0 text-xs text-texto-2 tabular-nums">{a.turnos} {a.turnos === 1 ? 'turno' : 'turnos'} · {fmtTokens(a.tokens)} · {fmtUSD(a.costeUSD)}</span>
+                </div>
+              ))}
+            </div>
+          </motion.section>
+        )}
 
         {externo && (externo.disponible.claudeCode || externo.disponible.codex) && (
           <motion.section {...entrada(4)} className="grid gap-3">

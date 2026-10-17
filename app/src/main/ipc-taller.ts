@@ -1,15 +1,21 @@
 // Canales IPC del Taller: motores detectados, tareas, permisos, diff y eventos en vivo hacia las ventanas.
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { spawn } from 'node:child_process'
 import { access, constants, mkdtemp, rm } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { detectarMotores, type Cumplimiento } from './motores/acp-motores'
+import { cargarRegistro } from './motores/catalogo-registry'
+import { credencialesDe } from './motores/credenciales'
+import { instaladosNpm, lanzarRegistro, paqueteDe, type GlobalesNpm } from './motores/registro-lanzar'
 import { crearWhich, extsPlataforma } from './motores/which'
 import { abrirSesionACP, type OpcionConfig } from './motores/sesion-acp'
+import { anotarConsumo } from './ipc-proveedores'
+import { keys } from './keys'
 import { Taller, type MotorElegido } from './taller/taller'
 import { servirCopia, type Servidor } from './taller/vista-previa'
 
-export type MotorTaller = { id: string; nombre: string; instalado: boolean; cumplimiento: Cumplimiento; login: string; nota: string }
+export type MotorTaller = { id: string; nombre: string; instalado: boolean; cumplimiento: Cumplimiento; login: string; nota: string; via?: 'local' | 'registro'; instalacion?: string | null; credencia?: string | null }
 
 const ID = /^[a-z0-9]{6,16}$/
 const MAX_TEXTO = 20_000
@@ -46,7 +52,7 @@ async function sondear(motor: MotorElegido): Promise<OpcionConfig[]> {
       let calma: NodeJS.Timeout | undefined
       const tope = setTimeout(fin, 3000)
       const listo = () => { clearTimeout(tope); if (calma) clearTimeout(calma); fin() }
-      abrirSesionACP({ comando: motor.comando, args: motor.args, cwd, alPedirPermiso: async () => 'cancelar',
+      abrirSesionACP({ comando: motor.comando, args: motor.args, cwd, env: motor.env, alPedirPermiso: async () => 'cancelar',
         alEvento: (e) => { if (e.tipo === 'opciones') { opciones = e.opciones; if (calma) clearTimeout(calma); calma = setTimeout(listo, 600) } } })
         .then((x) => { sesion = x }, listo)
     })
@@ -68,17 +74,94 @@ function detectar() {
 }
 
 async function motoresTaller(): Promise<MotorTaller[]> {
-  const todos = await detectar()
-  return todos.map((m) => ({ id: m.id, nombre: m.nombre, instalado: m.instalado, cumplimiento: m.cumplimiento, login: m.login, nota: m.nota }))
+  // Locales: los 12 verificados con `which`. Registro: el catálogo vivo de ACP (42+); si su paquete npm ya
+  // vive globalmente en el equipo, se marca instalado de verdad aun cuando su arranque aún no esté cableado.
+  const locales = (await detectar())
+    .map((m) => ({ id: m.id, nombre: m.nombre, instalado: m.instalado, cumplimiento: m.cumplimiento, login: m.login, nota: m.nota, via: 'local' as const }))
     .sort((a, b) => Number(b.instalado) - Number(a.instalado))
+  const idsLocales = new Set(locales.map((m) => m.id))
+  const registro = await cargarRegistro(app.getPath('userData')).catch(() => [])
+  const globales = await globalesConMemo().catch(() => new Map())
+  const delRegistro = registro
+    .filter((m) => !idsLocales.has(m.id))
+    .map((m) => {
+      const paquete = m.instalacion ? paqueteDe(m.instalacion) : null
+      const colocado = !!paquete && globales.has(paquete)
+      const credencial = credencialesDe(m.id, (i) => keys.get(i), join(app.getPath('userData'), 'motores'))?.nota
+      return {
+        id: m.id, nombre: m.nombre, instalado: colocado, cumplimiento: 'permitido' as Cumplimiento, via: 'registro' as const, instalacion: m.instalacion,
+        credencia: credencial ?? null,
+        login: colocado
+          ? 'Instalado de verdad (npm global) y listo para arrancar desde el Taller.'
+          : m.repo ? `Código y sesión: ${m.repo}${m.instalacion ? ` · instalar así: \`${m.instalacion}\`` : ''}` : 'Revisa su repositorio para instalarlo.',
+        nota: colocado
+          ? credencial ? `Instalado y ${credencial}; pídele tareas en el Taller.` : 'Instalado de verdad; arranca desde el Taller.'
+          : m.descripcion ? `${m.descripcion} (del registro ACP; no puede arrancar hasta que esté instalado).` : 'Motor del registro ACP; no puede arrancar hasta que esté instalado.',
+      }
+    })
+  return [...locales, ...delRegistro]
+}
+
+// Los paquetes globales npm, con memoria breve: 45 consultas serían un gasto, una cada minuto es un suspiro.
+let globalesMemo: { cuando: number; nombres: GlobalesNpm } | null = null
+function globalesConMemo(): Promise<GlobalesNpm> {
+  if (globalesMemo && Date.now() - globalesMemo.cuando < 60_000) return Promise.resolve(globalesMemo.nombres)
+  return instaladosNpm().then((nombres) => { globalesMemo = { cuando: Date.now(), nombres }; return nombres })
 }
 
 async function elegirMotor(id: unknown): Promise<MotorElegido | { error: string }> {
   if (typeof id !== 'string') return { error: 'Motor no válido.' }
   const m = (await detectar()).find((x) => x.id === id)
-  if (!m) return { error: 'Motor no válido.' }
-  if (!m.instalado || !m.ruta) return { error: `«${m.nombre}» no está instalado en este equipo.` }
-  return { id: m.id, nombre: m.nombre, comando: m.ruta, args: m.args }
+  if (m) {
+    if (!m.instalado || !m.ruta) return { error: `«${m.nombre}» no está instalado en este equipo.` }
+    return { id: m.id, nombre: m.nombre, comando: m.ruta, args: m.args }
+  }
+  // Escalón del registro: motor instalado por el propio Taller (`npm install -g`) y lanzado por el puente,
+  // con las credenciales del llavero si el motor las pide y el llavero las tiene.
+  const registro = await cargarRegistro(app.getPath('userData')).catch(() => [])
+  const r = registro.find((x) => x.id === id)
+  if (!r) return { error: 'Motor no válido.' }
+  const globales = await globalesConMemo().catch(() => new Map())
+  const lanzable = await lanzarRegistro(r, globales)
+  if ('error' in lanzable) return { error: `«${r.nombre}»: ${lanzable.error}` }
+  const carpetaMotores = join(app.getPath('userData'), 'motores')
+  const credencial = credencialesDe(r.id, (i) => keys.get(i), carpetaMotores)
+  return {
+    id: r.id, nombre: r.nombre, comando: lanzable.comando,
+    args: [...lanzable.args, ...(credencial?.argsExtra ?? [])],
+    env: credencial ? { ...lanzable.env, ...credencial.env } : lanzable.env,
+  }
+}
+
+// ---------- El instalador y el puente del registro: el catálogo deja de mirar y empieza a hacer ----------
+const instancias = new Set<string>()
+
+/** Instala de verdad un motor del registro: `npm install -g <paquete>`, con el detalle corriendo en vivo. */
+export async function instalarMotor(id: unknown, lanzar: typeof spawn = spawn): Promise<{ ok: true; nombre: string } | { ok: false; error: string }> {
+  if (typeof id !== 'string' || !id || id.length > 80) return { ok: false, error: 'Datos no válidos.' }
+  if (instancias.has(id)) return { ok: false, error: 'Su instalación ya está corriendo.' }
+  const registro = await cargarRegistro(app.getPath('userData')).catch(() => [])
+  const m = registro.find((x) => x.id === id)
+  if (!m) return { ok: false, error: 'Motor desconocido del registro.' }
+  const paquete = m.instalacion ? paqueteDe(m.instalacion) : null
+  if (!paquete) return { ok: false, error: 'Este motor no declara instalación automática: revisa su repositorio.' }
+  instancias.add(id)
+  try {
+    return await new Promise((res) => {
+      const p = lanzar(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['install', '-g', '--no-audit', '--no-fund', paquete], { env: process.env })
+      let viviendo = true
+      const reloj = setTimeout(() => { viviendo = false; p.kill('SIGKILL') }, 10 * 60_000)
+      p.stdout?.on('data', (d: unknown) => emitir('taller:instalar-progreso', { id, trozo: String(d) }))
+      p.stderr?.on('data', (d: unknown) => emitir('taller:instalar-progreso', { id, trozo: String(d) }))
+      p.on('error', (e) => { clearTimeout(reloj); res({ ok: false, error: mensaje(e) }) })
+      p.on('close', (code) => {
+        clearTimeout(reloj)
+        if (!viviendo) return res({ ok: false, error: 'La instalación agotó sus diez minutos.' })
+        if (code === 0) { globalesMemo = null; emitir('taller:instalar-progreso', { id, listo: true }); return res({ ok: true, nombre: m.nombre }) }
+        res({ ok: false, error: `npm terminó con código ${code}; mira su propio detalle en la terminal.` })
+      })
+    })
+  } finally { instancias.delete(id) }
 }
 
 export function registerTaller(o: { brainInfo: () => { url: string; token: string } | null }) {
@@ -87,6 +170,10 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
     emitir: (canal, dato) => emitir(`taller:${canal}`, dato),
     mcp: () => { const i = o.brainInfo(); return i ? { nombre: 'esme', url: `${i.url}/mcp`, token: i.token } : null },
     resolverMotor: async (id) => { const m = await elegirMotor(id); return 'error' in m ? null : m },
+    // Cada turno que termina alimenta el Uso de la app: la historia del gasto real por tarea.
+    alAnotar: (a) => anotarConsumo({ ts: Date.now(), proveedor: a.motorId, modelo: a.modelo ?? a.motorNombre, entrada: a.delta.entrada,
+      salida: a.delta.salida + a.delta.pensamiento, origen: a.origen, tarea: a.tareaId, titulo: a.titulo,
+      ...(a.coste ? { costeDirecto: { cantidad: a.coste.cantidad, moneda: a.coste.moneda } } : {}) }),
   })
   taller = t
   void t.cargar().catch((e) => console.error('[taller] no cargó:', mensaje(e)))
@@ -97,6 +184,7 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
   const entrada = { ok: false, error: 'Datos no válidos.' }
 
   ipcMain.handle('taller:motores', () => motoresTaller())
+  ipcMain.handle('taller:instalarMotor', (_e, id: unknown) => instalarMotor(id))
   ipcMain.handle('taller:lista', () => t.lista())
   ipcMain.handle('taller:eventos', async (_e, id: unknown) => (idValido(id) ? t.eventos(id).catch(() => []) : []))
   ipcMain.handle('taller:crear', async (_e, p: { motor?: unknown; carpeta?: unknown; texto?: unknown; config?: unknown; arena?: unknown } | null) => {

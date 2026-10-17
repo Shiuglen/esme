@@ -1,5 +1,6 @@
 // Micrográfica: la actividad de un motor en los últimos 60 s, suavizada. En marcha se pinta en aurora; parada, en gris.
 import { useId } from 'react'
+import { cn } from '../lib/cn'
 
 /** Catmull-Rom a Bézier: una curva que pasa por todos los puntos sin picos falsos. */
 function curva(p: [number, number][]): string {
@@ -37,6 +38,32 @@ export function Micrografica({ valores, viva, ancho = 132, alto = 30 }: { valore
         <path d={linea} fill="none" stroke={`url(#${id}t)`} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
       </g>
       {viva && <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r={2.2} style={{ fill: 'var(--luz)' }} className="animate-[respirar_1.6s_ease-in-out_infinite]" />}
+    </svg>
+  )
+}
+
+/** El código de barras del turno: la actividad como píldoras verticales de altura real — viva respira, la actual brilla. */
+export function BarrasActividad({ valores, viva, ancho = 132, alto = 30, completo, className }: { valores: number[]; viva: boolean; ancho?: number; alto?: number; completo?: boolean; className?: string }) {
+  const barras = valores
+  const tope = Math.max(4, ...barras)
+  const n = barras.length
+  const paso = ancho / n, w = Math.min(6, paso * 0.62)
+  const vivaIdx = barras.findLastIndex((v) => v > 0)
+  return (
+    <svg width={completo ? undefined : ancho} height={alto} viewBox={`0 0 ${ancho} ${alto}`} aria-hidden
+      className={cn('shrink-0 overflow-visible', className)} style={completo ? ({ width: '100%', height: alto }) : undefined}
+      preserveAspectRatio={completo ? 'none' : undefined}>
+      {barras.map((v, i) => {
+        const h = v > 0 ? 5 + (v / tope) * (alto - 9) : 4
+        const x = i * paso + (paso - w) / 2
+        const y = alto - h
+        const esViva = viva && i === vivaIdx
+        return (
+          <rect key={i} x={x} y={y} width={w} height={h} rx={2.4}
+            style={{ fill: esViva ? 'var(--luz)' : v > 0 ? 'var(--texto-2)' : 'var(--texto-3)', opacity: v > 0 ? (esViva ? 1 : 0.82) : 0.35 }}
+            className={esViva ? 'animate-[respirar_1.6s_ease-in-out_infinite]' : undefined} />
+        )
+      })}
     </svg>
   )
 }

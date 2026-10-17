@@ -6,7 +6,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import ForceGraph2D, { type ForceGraphMethods, type LinkObject, type NodeObject } from 'react-force-graph-2d'
 import type { Atlas } from '../lib/brain'
-import { luzViva } from '../tinta/luz'
+import { luzViva, mezclar } from '../tinta/luz'
 import { forma, trazarMancha } from '../tinta/mancha'
 import { esGrafito, nivelTinta, radioTrazo } from '../tinta/trazo'
 import { aguadasDe } from './aguadas'
@@ -225,7 +225,10 @@ export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: st
             onEngineStop={() => { if (!tocado.current) encuadrar(600) }}
             nodeVisibility={(n) => visible(n.id)}
             linkVisibility={(l) => l.tipo !== 'tema' && visible(idDe(l.source)) && visible(idDe(l.target))}
+            // la sinapsis trasmite: si la luz de un recuerdo corre por aquí, el enlace se enciende con la tinta más fresca
             linkColor={(l) => {
+              const viva = Math.max(vivo(idDe(l.source)), vivo(idDe(l.target)))
+              if (viva > 0) return mezclar(tinta.trazos[0], '#ffffff', 0.35 * viva)
               if (l.tipo === 'puente') return tinta.grafitos[1]
               if (grafitoEnlace(l)) return tinta.grafitos[largo(l)]
               const a = porId.get(idDe(l.source))?.fecha, b = porId.get(idDe(l.target))?.fecha
@@ -234,7 +237,8 @@ export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: st
             }}
             linkWidth={(l) => (l.tipo === 'puente' ? 0.7 : 0.35 + 0.6 * Math.min(porId.get(idDe(l.source))?.confianza ?? 0.8, porId.get(idDe(l.target))?.confianza ?? 0.8))}
             linkLineDash={(l) => (l.tipo === 'puente' ? [3, 2.5] : grafitoEnlace(l) ? [1.2, 1.4] : null)}
-            linkDirectionalParticles={0} linkDirectionalParticleWidth={2.4} linkDirectionalParticleSpeed={0.018} linkDirectionalParticleColor={(l) => aurora(idDe(l.source))}
+            // los impulsos viajan SOLO por las sinapsis encendidas: el recuerdo activo es un latido, no una fuente constante
+            linkDirectionalParticles={(l) => (Math.max(vivo(idDe(l.source)), vivo(idDe(l.target))) > 0 ? 2 : 0)} linkDirectionalParticleWidth={2.4} linkDirectionalParticleSpeed={0.018} linkDirectionalParticleColor={(l) => aurora(idDe(l.source))}
             nodeRelSize={1} nodeVal={(n) => (n.tipo === 'tema' ? 36 : radioTrazo(n.confianza) ** 2)}
             onNodeClick={(n) => { if (n.tipo === 'recuerdo') { enfocado.current = n.id; onPick(n.id) } }}
             onBackgroundClick={() => { enfocado.current = null }}

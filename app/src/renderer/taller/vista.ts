@@ -11,6 +11,17 @@ export function duracion(ms: number): string {
   return h ? `${h}:${dos(m)}:${dos(s % 60)}` : `${m}:${dos(s % 60)}`
 }
 
+/** El código de barras del turno: los 40 cubos de actividad muestreados a píldoras que conservan sus picos (máximo por ventana). */
+export function barrasDe(actividad: number[], cuantas = 14): number[] {
+  const out: number[] = []
+  const por = actividad.length / cuantas
+  for (let i = 0; i < cuantas; i++) {
+    const desde = Math.floor(i * por), hasta = Math.max(desde + 1, Math.floor((i + 1) * por))
+    out.push(Math.max(...actividad.slice(desde, hasta), 0))
+  }
+  return out
+}
+
 /** Qué tareas tienen máquina en la planta: lo que está en marcha primero, luego lo más reciente. Ocho como mucho. */
 export function ordenPlanta(ts: TareaTaller[]): string[] {
   const recientes = (a: TareaTaller, b: TareaTaller) => b.inicio - a.inicio
@@ -47,7 +58,7 @@ export const ESTADOS: Record<TareaTaller['estado'], { texto: string; tono: 'vida
   error: { texto: 'Error', tono: 'peligro' },
 }
 
-export type Explicacion = { tipo: 'sesion' | 'modelo' | 'limite'; titulo: string; consejo: string }
+export type Explicacion = { tipo: 'sesion' | 'modelo' | 'limite' | 'motor'; titulo: string; consejo: string }
 /** Traduce los errores típicos de los motores a qué pasa y qué hacer. null si no es uno conocido. */
 export function explicarError(error: string, motor: string, login: string): Explicacion | null {
   if (/auth(entication|enticate)? required|not authenticated|unauthori[sz]ed|sign in|log ?in required/i.test(error))
@@ -56,5 +67,11 @@ export function explicarError(error: string, motor: string, login: string): Expl
     return { tipo: 'limite', titulo: 'El proveedor ha limitado las peticiones', consejo: 'Los modelos gratis aceptan pocas peticiones a la vez. Espera un poco y pídeselo de nuevo, o usa otro modelo.' }
   if (/deprecated|unavailable|not (found|supported)|no (such|longer) model|model .* (retired|disabled)/i.test(error))
     return { tipo: 'modelo', titulo: 'Ese modelo no está disponible', consejo: 'Elige otro modelo en el selector y pídeselo de nuevo.' }
+  if (/internal error|process exited|protocol error|unexpected/i.test(error))
+    return { tipo: 'motor', titulo: 'El motor se cayó sin decidir', consejo: 'Suele ser temporal: del proveedor o de la sesión. Vuelve a pedírselo, o reencarna la tarea con otro motor (⟳ arriba).' }
+  if (/econn(refused|reset)|epipe|socket hang ?up|x509|self.signed certificate/i.test(error))
+    return { tipo: 'motor', titulo: 'El motor no alcanzó su destino', consejo: 'Falla la red o el punto de llegada. Despiértalo más tarde o reencarna con otro motor (⟳).' }
+  if (/timeout|timed\s?\-?out|timed out/i.test(error))
+    return { tipo: 'motor', titulo: 'Se quedó sin tiempo', consejo: 'El motor tardó demasiado. Divide la petición, pídeselo de nuevo o reencarna (⟳) con otro motor.' }
   return null
 }

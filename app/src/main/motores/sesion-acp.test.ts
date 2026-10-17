@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { abrirSesionACP, type EventoMotor } from './sesion-acp'
+import { abrirSesionACP, ultimaPalabraDe, type EventoMotor } from './sesion-acp'
 
 const FALSO = fileURLToPath(new URL('./fixtures/agente-falso.mjs', import.meta.url))
 const base = (extra: Record<string, unknown> = {}) => {
@@ -136,5 +136,29 @@ describe('abrirSesionACP', () => {
     await s.preguntar('modelo')
     s.cerrar()
     expect(eventos.filter((e) => e.tipo === 'texto').map((e) => (e as { texto: string }).texto).join('')).toBe('rapido')
+  })
+})
+
+describe('ultimaPalabraDe', () => {
+  it('prefiere la queja con sustancia entre el ruido del WebDriver y del JSON bonito', () => {
+    const ruido = [
+      'Error handling request {',
+      '  jsonrpc: \'2.0\',',
+      '} {',
+      '  code: -32000,',
+      "  message: 'Authentication required: Use Qwen Code CLI to authenticate first.',",
+      '  data: { authMethods: [ [Object] ] }',
+      '}',
+    ].join('\n')
+    expect(ultimaPalabraDe(ruido)).toContain('Authentication required')
+  })
+
+  it('saca el ENOENT de spawn, no su línea decorativa', () => {
+    expect(ultimaPalabraDe('Failed to spawn pi: ENOENT\ndata: { code: \'ENOENT\' }')).toBe('Failed to spawn pi: ENOENT')
+  })
+
+  it('se conforma con lo último cuando nada explica', () => {
+    expect(ultimaPalabraDe('una cosa\notra cosa')).toBe('otra cosa')
+    expect(ultimaPalabraDe('   ')).toBe('')
   })
 })

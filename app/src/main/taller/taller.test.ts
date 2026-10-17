@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { Taller, type AbrirSesion, type MotorElegido, type OperacionesCopia, type SesionMotor, type Tarea } from './taller'
+import { Taller, type AbrirSesion, type Anoto, type MotorElegido, type OperacionesCopia, type SesionMotor, type Tarea } from './taller'
 import type { EventoMotor } from '../motores/sesion-acp'
 import type { Cambios } from './copias'
 
@@ -437,5 +437,45 @@ describe('Taller: seguir tras reiniciar', () => {
     await t.seguir(tarea.id, 'otra cosa')
     await esperar(tarea.id, 'lista')
     expect(s2.abrir.mock.calls[0][0].config).toEqual({ model: 'opencode/ling-3.1-flash-free', mode: 'build' })
+  })
+})
+
+describe('Taller: el grifo del Uso', () => {
+  it('cada turno anota su delta (motor, modelo, origen, titulo y coste directo que solo cambia cuando cambia)', async () => {
+    const anotaciones: Anoto[] = []
+    const s = sesiones(async (o, _texto, n) => {
+      if (n === 0) {
+        o.alEvento({ tipo: 'uso', entrada: 200, salida: 30, pensamiento: 1 })
+        o.alEvento({ tipo: 'contexto', usado: 16_000, total: 200_000, coste: { cantidad: 0.02, moneda: 'USD' } })
+      } else o.alEvento({ tipo: 'uso', entrada: 50, salida: 3, pensamiento: 0 })
+      return 'end_turn'
+    })
+    const tarea = crear(s.abrir, copiasFalsas().ops, { alAnotar: (a: Anoto) => anotaciones.push(a) }).crear({ motor, carpeta: null, texto: 'haces la historia' })
+    await esperar(tarea.id, 'lista')
+    expect(anotaciones).toHaveLength(1)
+    expect(anotaciones[0]).toMatchObject({ motorId: 'falso', motorNombre: 'Falso', origen: 'taller', tareaId: tarea.id, titulo: 'haces la historia',
+      delta: { entrada: 200, salida: 30, pensamiento: 1 }, coste: { cantidad: 0.02, moneda: 'USD' } })
+    // segunda vuelta: solo el delta nuevo; el coste acumulado no se repite
+    await t!.seguir(tarea.id, 'otra ronda')
+    await esperar(tarea.id, 'lista')
+    expect(anotaciones).toHaveLength(2)
+    expect(anotaciones[1].delta).toEqual({ entrada: 50, salida: 3, pensamiento: 0 })
+    expect(anotaciones[1].coste).toBeUndefined()
+  })
+
+  it('el motor que solo cuenta contexto anota los tokens leídos; la arena marca su origen; sin eventos no hay anotación', async () => {
+    const anotaciones: Anoto[] = []
+    const s = sesiones(async (o, _texto, n) => { if (n === 0) o.alEvento({ tipo: 'contexto', usado: 16_000, total: 200_000 }); return 'end_turn' })
+    const arena = crear(s.abrir, copiasFalsas().ops, { alAnotar: (a: Anoto) => anotaciones.push(a) })
+      .crear({ motor, carpeta: null, texto: 'duelo de motores', arena: 'duelo' })
+    await esperar(arena.id, 'lista')
+    expect(anotaciones).toHaveLength(1)
+    expect(anotaciones[0]).toMatchObject({ origen: 'arena', titulo: 'duelo de motores', delta: { entrada: 16_000, salida: 0 } })
+    // una tarea sin uso ni contexto no anota nada
+    const s2 = sesiones(async () => 'end_turn')
+    t = new Taller({ dir, emitir: () => {}, abrirSesion: s2.abrir, copias: copiasFalsas().ops, alAnotar: (a) => anotaciones.push(a) })
+    const callada = t.crear({ motor, carpeta: null, texto: 'sin cuento' })
+    await esperar(callada.id, 'lista')
+    expect(anotaciones).toHaveLength(1)
   })
 })

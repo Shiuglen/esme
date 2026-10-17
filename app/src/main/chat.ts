@@ -22,7 +22,12 @@ async function pump(to: WebContents, req: ChatRequest, ac: AbortController) {
   try {
     const result = streamText({ model: makeModel(req.provider, req.model, (id) => keys.get(id)), system: buildSystem(req.memory),
       messages: req.messages, abortSignal: ac.signal })
-    for await (const delta of result.textStream) to.send(`chat:chunk:${req.id}`, delta)
+    // El pensado también viaja: los modelos que piensan (deepseek, nemotron) no sueltan texto hasta el final y sin
+    // esto el chat se queda mudo. El texto va por chat:chunk como siempre; el razonamiento por chat:pensamiento.
+    for await (const part of result.fullStream) {
+      if (part.type === 'text-delta') to.send(`chat:chunk:${req.id}`, part.text)
+      else if (part.type === 'reasoning-delta') to.send(`chat:pensamiento:${req.id}`, part.text)
+    }
     await anotarUso(to, req, result)
     to.send(`chat:done:${req.id}`)
   } catch (err) {
