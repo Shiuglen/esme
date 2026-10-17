@@ -103,6 +103,12 @@
 - **Secretos:** nunca en el vault ni en logs. Se redactan.
 - **Ollama del creador:** está roto. No arrancarlo ni arreglarlo. La memoria no puede depender de él.
 
+## 3a. Pieles: Esme maleable (17-oct)
+- **P1 ✅** motor de pieles (`tinta/piel.ts`): una piel es solo datos (color, letra, forma, densidad, movimiento, fondo), validada y con contraste AA comprobado; historial con deshacer/rehacer y ensayo en vivo; `Ctrl+Mayús+0` vuelve a la de casa. 11 pieles de casa (Esmeralda, Tinta y Luz, Cuarzo, Lima, Medianoche, Monocromo, Editorial, Boreal, Terminal, Nube, Estudio) y 7 letras nuevas que se cargan al elegirlas. Ajustes › Apariencia es el vestidor.
+- **P2 ✅ (código)** «Pídesela a Esme»: la IA diseña la piel, Esme la valida y la ensaya en toda la app. Nunca un modelo de pago sin elegirlo. El 17-oct no se pudo ver una propuesta real: OpenRouter había gastado las peticiones gratis del día.
+- **Arreglos de paso:** la ecuación del estilo propio dejaba vacíos fondo, superficie y texto; el fondo ignoraba el estilo (papel negro fijo); y el chat se tragaba los errores del proveedor (acababa mudo). Los tres arreglados con test.
+- **Siguiente:** P3 (la mente, la portada y la navegación como piezas intercambiables) y P4 (Tienda de pieles). Pieles desde un enlace o una captura («como esta web»).
+
 ## 3. Estado real (12-oct)
 **Leyenda:** ✅ hecho y verificado · 🟡 a medias · ❌ pendiente · ⚠️ roto.
 
