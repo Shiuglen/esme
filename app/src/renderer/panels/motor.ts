@@ -11,6 +11,7 @@ export function ordenMotores(ps: ProviderView[], ultimo: string | null): Provide
 export function explicarFallo(mensaje: string, motor: string): string {
   if (/fetch failed|ECONNREFUSED|ENOTFOUND|network|Failed to fetch/i.test(mensaje)) return `${motor} no responde. Elige otro motor arriba o arráncalo.`
   if (/\b401\b|unauthori[sz]ed|invalid api key|incorrect api key/i.test(mensaje)) return `${motor} rechaza la clave. Revísala en Ajustes.`
+  if (/free-models-per-day/i.test(mensaje)) return `Se acabaron por hoy las peticiones gratis de ${motor}: vuelven mañana. Con 10 $ de saldo en OpenRouter pasan a ser 1000 al día, o elige otro motor arriba.`
   if (/\b429\b|rate limit/i.test(mensaje)) return `${motor} pide esperar un poco (límite de uso). Prueba en un momento o elige otro motor.`
   return mensaje
 }

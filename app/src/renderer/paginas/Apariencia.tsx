@@ -1,8 +1,9 @@
 // El vestidor (Ajustes › Apariencia): aquí la persona cambia Esme entera. Arriba, la piel que lleva con deshacer, rehacer y
 // restablecer; luego las pieles de casa, cada una pintada con sus propios colores y su letra; y abajo cada capa de la piel
 // para afinarla. Los deslizadores ensayan en vivo y solo se guarda en el historial lo que sueltas.
-import { Moon, Redo2, RotateCcw, Sun, Undo2 } from 'lucide-react'
-import { useEffect } from 'react'
+import { LoaderCircle, Moon, Redo2, RotateCcw, Sparkles, Sun, Undo2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { disenarPiel } from '../tinta/disenar'
 import { cn } from '../lib/cn'
 import { paletaPropia } from '../tinta/estilo-propio'
 import { LETRAS, PIEL_BASE, revisarContraste, variablesDePiel, type Base, type LetraId, type Piel } from '../tinta/piel'
@@ -72,6 +73,54 @@ function Capa({ titulo, children }: { titulo: string; children: React.ReactNode 
   )
 }
 
+const EJEMPLOS = ['Como Linear', 'Más cálida', 'Minimalista japonés', 'Terminal retro de los 80', 'Revista de moda', 'Seria y compacta para trabajar']
+
+/** Pídesela a Esme: la IA diseña la piel, Esme la comprueba y te la pone para que la veas; tú decides. */
+function Pidesela({ pieles }: { pieles: Pieles }) {
+  const [peticion, setPeticion] = useState('')
+  const [fase, setFase] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [propuesta, setPropuesta] = useState<{ piel: Piel; motor: string; antes: Piel } | null>(null)
+  const pedir = async (q: string) => {
+    const texto = q.trim(); if (!texto || fase) return
+    setPeticion(texto); setError(null); setFase('Pensando…')
+    const antes = propuesta?.antes ?? pieles.actual
+    const r = await disenarPiel(texto, antes, setFase)
+    setFase(null)
+    if (!r.ok) { setError(r.error); return }
+    setPropuesta({ piel: r.piel, motor: r.motor, antes }); pieles.ensayar(r.piel)
+  }
+  const cerrar = (quedarse: boolean) => { if (!propuesta) return; pieles.vestir(quedarse ? propuesta.piel : propuesta.antes); setPropuesta(null) }
+  return (
+    <section aria-label="Pídesela a Esme" className="grid gap-3 rounded-4 border border-linea bg-s1 p-4">
+      <form onSubmit={(e) => { e.preventDefault(); void pedir(peticion) }} className="flex items-center gap-2">
+        <Sparkles className="size-4 shrink-0 text-acento" strokeWidth={1.75} aria-hidden />
+        <input value={peticion} onChange={(e) => setPeticion(e.target.value)} disabled={!!fase} aria-label="Describe la piel que quieres"
+          placeholder="Pídesela a Esme: «como Linear», «más cálida», «terminal retro»…"
+          className="h-9 min-w-0 flex-1 bg-transparent text-[14.5px] text-texto outline-none placeholder:text-texto-3" />
+        <button type="submit" disabled={!peticion.trim() || !!fase} className="inline-flex h-8 items-center gap-1.5 rounded-full bg-acento px-3.5 text-[13px] font-medium text-sobre-acento disabled:opacity-40">
+          {fase ? <LoaderCircle className="size-3.5 animate-spin" aria-hidden /> : null}Diseñar
+        </button>
+      </form>
+      {!fase && !propuesta && (
+        <div className="flex flex-wrap gap-1.5">
+          {EJEMPLOS.map((x) => <button key={x} type="button" onClick={() => void pedir(x)} className="rounded-full border border-linea px-2.5 py-1 text-[12px] text-texto-2 hover:border-linea-fuerte hover:text-texto">{x}</button>)}
+        </div>
+      )}
+      {fase && <p aria-live="polite" className="m-0 text-[13px] text-texto-2">{fase}</p>}
+      {error && <p role="alert" className="m-0 text-[13px] text-atencion">{error}</p>}
+      {propuesta && (
+        <div className="flex flex-wrap items-center gap-2 rounded-3 border border-acento/50 bg-acento-velo px-3 py-2.5">
+          <span className="mr-auto text-[13.5px] text-texto">«{propuesta.piel.nombre}», diseñada con {propuesta.motor}. Ya la llevas puesta para que la veas en toda la app.</span>
+          <button type="button" onClick={() => cerrar(true)} className="h-8 rounded-full bg-acento px-3.5 text-[13px] font-medium text-sobre-acento">Quedármela</button>
+          <button type="button" onClick={() => void pedir(peticion)} className="h-8 rounded-full border border-linea px-3 text-[13px] text-texto-2 hover:text-texto">Otra</button>
+          <button type="button" onClick={() => cerrar(false)} className="h-8 rounded-full border border-linea px-3 text-[13px] text-texto-2 hover:text-texto">Volver a la mía</button>
+        </div>
+      )}
+    </section>
+  )
+}
+
 export function Apariencia({ tema, onTema, pieles }: { tema: Tema; onTema(t: Tema): void; pieles: Pieles }) {
   const p = pieles.actual
   useEffect(() => { for (const id of Object.keys(LETRAS) as LetraId[]) void cargarLetra(id) }, [])   // para ver cada letra en su muestra
@@ -113,6 +162,8 @@ export function Apariencia({ tema, onTema, pieles }: { tema: Tema; onTema(t: Tem
         </div>
       </div>
       <p className="m-0 max-w-[62ch] text-sm leading-6 text-texto-2">Esme no tiene un diseño: tiene pieles. Vístela con una de casa o cámbiale cada capa; todo se ve al momento y cualquier cambio se puede deshacer. Si algo deja de leerse bien, te lo digo antes de que te canse la vista.</p>
+
+      <Pidesela pieles={pieles} />
 
       <div role="list" aria-label="Pieles de casa" className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
         {PIELES_CASA.map((c) => <div role="listitem" key={c.nombre}><Tarjeta p={c} tema={tema} puesta={p.nombre === c.nombre && igual(p, c)} onVestir={() => pieles.vestir(c)} /></div>)}

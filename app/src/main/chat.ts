@@ -22,17 +22,30 @@ async function pump(to: WebContents, req: ChatRequest, ac: AbortController) {
   try {
     const result = streamText({ model: makeModel(req.provider, req.model, (id) => keys.get(id)), system: buildSystem(req.memory),
       messages: req.messages, abortSignal: ac.signal })
-    // El pensado también viaja: los modelos que piensan (deepseek, nemotron) no sueltan texto hasta el final y sin
-    // esto el chat se queda mudo. El texto va por chat:chunk como siempre; el razonamiento por chat:pensamiento.
-    for await (const part of result.fullStream) {
-      if (part.type === 'text-delta') to.send(`chat:chunk:${req.id}`, part.text)
-      else if (part.type === 'reasoning-delta') to.send(`chat:pensamiento:${req.id}`, part.text)
-    }
+    const { error } = await bombear(result.fullStream, (canal, x) => to.send(`chat:${canal}:${req.id}`, x))
+    if (error) { to.send(`chat:error:${req.id}`, error); return }
     await anotarUso(to, req, result)
     to.send(`chat:done:${req.id}`)
   } catch (err) {
     to.send(`chat:error:${req.id}`, err instanceof Error ? err.message : String(err))
   }
+}
+
+/** Recorre el flujo del AI SDK: el texto va por «chunk» y el pensado por «pensamiento» (los modelos que piensan no sueltan
+ *  texto hasta el final; sin esto el chat se queda mudo). Ojo: el SDK NO lanza los errores del proveedor (clave rechazada,
+ *  límite de los modelos gratis, modelo caído): los manda como una parte más del flujo. Antes se ignoraban y el chat acababa
+ *  «bien» y vacío; ahora se devuelven para decirlos. */
+export async function bombear(flujo: AsyncIterable<unknown>, enviar: (canal: 'chunk' | 'pensamiento', x: string) => void): Promise<{ error?: string }> {
+  for await (const parte of flujo) {
+    const p = parte as { type: string; text?: string; error?: unknown }
+    if (p.type === 'text-delta') enviar('chunk', p.text ?? '')
+    else if (p.type === 'reasoning-delta') enviar('pensamiento', p.text ?? '')
+    else if (p.type === 'error') {
+      const e = p.error as { message?: unknown } | string | undefined
+      return { error: typeof e === 'string' ? e : typeof e?.message === 'string' ? e.message : JSON.stringify(e) }
+    }
+  }
+  return {}
 }
 
 // Lee el uso del AI SDK, lo anota y avisa a la interfaz. Si falla, el chat no se rompe.

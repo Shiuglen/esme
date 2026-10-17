@@ -15,3 +15,10 @@ describe('qué motor usa la conversación', () => {
     expect(explicarFallo('algo raro', 'X')).toBe('algo raro')
   })
 })
+
+describe('el límite diario de los modelos gratis', () => {
+  it('se explica como lo que es: se acabaron las de hoy, vuelven mañana, y cómo ampliarlas', () => {
+    const m = explicarFallo('Failed after 3 attempts. Last error: AI_APICallError: Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day', 'OpenRouter')
+    expect(m).toBe('Se acabaron por hoy las peticiones gratis de OpenRouter: vuelven mañana. Con 10 $ de saldo en OpenRouter pasan a ser 1000 al día, o elige otro motor arriba.')
+  })
+})

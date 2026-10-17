@@ -43,7 +43,9 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
       setModels(m)
       if (!m.length) { setAviso(`${nombre} no tiene modelos disponibles. Elige otro motor arriba.`); return }
       const def = providers.find((p) => p.id === provider)?.defaultModel
-      setModel(m.includes(def ?? '') ? def! : m.find((x) => !/embed/i.test(x)) ?? m[0] ?? '')
+      let recordado: string | null = null
+      try { recordado = localStorage.getItem(`esme:modelo:${provider}`) } catch { /* sin almacenamiento */ }
+      setModel(m.includes(recordado ?? '') ? recordado! : m.includes(def ?? '') ? def! : m.find((x) => !/embed/i.test(x)) ?? m[0] ?? '')
     }).catch((e) => setAviso(explicarFallo(String(e?.message ?? e), nombre)))
   }, [provider, providers])
   const elegirMotor = (id: string) => { setProvider(id); try { localStorage.setItem('esme:proveedor', id) } catch { /* sin almacenamiento */ } }
@@ -117,7 +119,7 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
         </label>
         <label className="relative min-w-0 max-w-[360px] flex-1">
           <span className="sr-only">Modelo</span>
-          <select className={cn(selector, 'w-full')} value={model} onChange={(e) => setModel(e.target.value)}>
+          <select className={cn(selector, 'w-full')} value={model} onChange={(e) => { setModel(e.target.value); try { localStorage.setItem(`esme:modelo:${provider}`, e.target.value) } catch { /* sin almacenamiento */ } }}>
             {models.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
           <ChevronDown className="pointer-events-none absolute top-2 right-2 size-4 text-texto-3" strokeWidth={1.5} aria-hidden />
