@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TareaTaller } from '../lib/bridge'
-import { actividadAhora, barrasDe, duracion, explicarError, motivoFin, ordenPlanta, silencioMs, textoCambios } from './vista'
+import { actividadAhora, archivable, barrasDe, duracion, explicarError, motivoFin, ordenPlanta, silencioMs, textoCambios } from './vista'
 
 const tarea = (p: Partial<TareaTaller>): TareaTaller => ({
   id: 'aaaaaaaa', titulo: 't', texto: 't', motor: 'opencode', motorNombre: 'OpenCode', carpeta: null, estado: 'lista', copia: null,
@@ -106,5 +106,17 @@ describe('explicarError — los muertos hablan humano', () => {
     expect(explicarError('connect ECONNREFUSED 127.0.0.1:8019', '', '')?.tipo).toBe('motor')
     expect(explicarError('Operation timed out after 30000 ms', '', '')?.titulo).toContain('sin tiempo')
     expect(explicarError('TypeError: undefined is not a function', '', 'x')).toBe(null)
+  })
+})
+
+describe('archivar lo viejo', () => {
+  const DIA = 864e5, ahora = 10 * DIA
+  const t = (estado: string, fin: number, extra = {}) => ({ id: 'x', estado, inicio: fin - 1000, fin, ...extra }) as never
+  it('un error o una parada de hace más de un día se archiva; lo reciente y lo vivo no', () => {
+    expect(archivable(t('error', ahora - 2 * DIA), ahora)).toBe(true)
+    expect(archivable(t('parada', ahora - 2 * DIA), ahora)).toBe(true)
+    expect(archivable(t('error', ahora - 3600_000), ahora)).toBe(false)
+    expect(archivable(t('trabajando', ahora - 5 * DIA), ahora)).toBe(false)
+    expect(archivable(t('lista', ahora - 5 * DIA), ahora)).toBe(false)
   })
 })

@@ -13,7 +13,7 @@ import { actividadActual } from '../taller/linea'
 import { NuevaTarea } from '../taller/NuevaTarea'
 import { Terminales } from '../taller/Terminales'
 import type { useTaller } from '../taller/useTaller'
-import { activa, explicarError } from '../taller/vista'
+import { activa, archivable, explicarError } from '../taller/vista'
 import { cn } from '../lib/cn'
 import { SerCasa } from '../marca/Ser'
 
@@ -59,7 +59,11 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
     if (id) elegir(id)
   }
 
-  const ordenadas = useMemo(() => [...tl.tareas].sort((a, b) => Number(activa(b)) - Number(activa(a)) || b.inicio - a.inicio), [tl.tareas])
+  // Los errores y paradas de hace más de un día se archivan: no se borran, pero dejan de llenar la fila y las cuentas
+  const [verArchivadas, setVerArchivadas] = useState(false)
+  const todas = useMemo(() => [...tl.tareas].sort((a, b) => Number(activa(b)) - Number(activa(a)) || b.inicio - a.inicio), [tl.tareas])
+  const archivadas = todas.filter((x) => archivable(x, ahora))
+  const ordenadas = todas.filter((x) => !archivable(x, ahora))
   const elegir = (id: string) => { setSeleccion(id); void tl.cargar(id) }
   const t = tl.tareas.find((x) => x.id === seleccion)
   const enfoque = !!t && pestana !== 'vivo'   // al revisar o comparar, la planta se recoge y el detalle gana sitio
@@ -69,7 +73,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
     for (const x of rivales) if (x.id !== id) await tl.descartar(x.id)
     setSeleccion(id); setPedida((v) => ({ p: 'revision', n: (v?.n ?? 0) + 1 }))
   }
-  const cuenta = (e: string) => tl.tareas.filter((x) => x.estado === e).length
+  const cuenta = (e: string) => ordenadas.filter((x) => x.estado === e).length
   // el tablero de operaciones: cada banda es una etapa de la fila de producción; nada se esconde
   const bandas = [
     { id: 'te-necesita', titulo: 'Te necesita', punto: 'bg-atencion', items: ordenadas.filter((x) => x.estado === 'esperando') },
@@ -80,6 +84,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
   const estadoCerrado = (s: string) => !['esperando', 'preparando', 'trabajando', 'lista', 'error'].includes(s)
   const fuera = ordenadas.filter((x) => estadoCerrado(x.estado))
   if (fuera.length > 0) bandas.push({ id: 'cerradas', titulo: 'Cerradas', punto: 'bg-texto-3', items: fuera })
+  if (verArchivadas && archivadas.length > 0) bandas.push({ id: 'archivadas', titulo: 'Archivadas', punto: 'bg-texto-3', items: archivadas })
   const chips = [
     { n: cuenta('trabajando') + cuenta('preparando'), texto: 'trabajando', punto: '[background:var(--aurora)]' },
     { n: cuenta('esperando'), texto: 'te necesita', punto: 'bg-atencion' },
@@ -90,7 +95,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
   return (
     <div className="relative flex h-full flex-col overflow-hidden">
       <div className={cn('relative shrink-0 transition-[height] duration-500 ease-salida', enfoque ? 'h-[110px]' : 'h-[clamp(150px,24vh,220px)]')}>
-        <Escena tema={tema} tareas={tl.tareas} seleccion={seleccion} resaltada={resaltada} ahora={ahora} compacta={enfoque}
+        <Escena tema={tema} tareas={ordenadas} seleccion={seleccion} resaltada={resaltada} ahora={ahora} compacta={enfoque}
           onElegir={elegir} onResaltar={setResaltada} onNueva={() => setSeleccion(null)} />
         <div className="pointer-events-none absolute top-4 left-5 flex flex-wrap gap-2">
           <span className="vidrio-fino inline-flex h-7 items-center rounded-full px-2" aria-label="El ser de la casa">
@@ -111,7 +116,15 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
       <div className={cn('grid min-h-0 flex-1 gap-4 px-5 pb-5 transition-[grid-template-columns] duration-500 ease-salida', enfoque ? 'grid-cols-[minmax(320px,0.62fr)_minmax(0,1.38fr)]' : 'grid-cols-[minmax(360px,0.92fr)_minmax(0,1.08fr)]')}>
         <section aria-label="Tareas" className="flex min-h-0 flex-col">
           <div className="flex h-9 items-center justify-between">
-            <h2 className="text-[13px] font-medium text-texto-2">La fila de producción{tl.tareas.length > 0 && <span className="ml-1.5 tabular-nums text-texto-3">{tl.tareas.length}</span>}</h2>
+            <h2 className="flex items-center gap-3 text-[13px] font-medium text-texto-2">
+              <span>La fila de producción{ordenadas.length > 0 && <span className="ml-1.5 tabular-nums text-texto-3">{ordenadas.length}</span>}</span>
+              {archivadas.length > 0 && (
+                <button type="button" onClick={() => setVerArchivadas((v) => !v)} aria-pressed={verArchivadas}
+                  className="rounded-full px-2 py-0.5 text-[12px] font-normal text-texto-3 underline decoration-linea-fuerte underline-offset-2 hover:text-texto">
+                  {verArchivadas ? 'Ocultar archivadas' : `${archivadas.length} archivadas`}
+                </button>
+              )}
+            </h2>
             {seleccion && (
               <button type="button" onClick={() => setSeleccion(null)} className="inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] text-texto-2 hover:bg-s2 hover:text-texto">
                 <Plus className="size-3.5" />Nueva tarea

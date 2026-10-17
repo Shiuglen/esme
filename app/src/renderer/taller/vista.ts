@@ -75,3 +75,8 @@ export function explicarError(error: string, motor: string, login: string): Expl
     return { tipo: 'motor', titulo: 'Se quedó sin tiempo', consejo: 'El motor tardó demasiado. Divide la petición, pídeselo de nuevo o reencarna (⟳) con otro motor.' }
   return null
 }
+
+/** Un error o una parada de hace más de un día se archiva: deja de gritar en la fila y en las cuentas, pero no se borra. */
+export const ARCHIVAR_TRAS_MS = 864e5
+export const archivable = (t: TareaTaller, ahora: number) =>
+  (t.estado === 'error' || t.estado === 'parada') && ahora - (t.fin ?? t.inicio) > ARCHIVAR_TRAS_MS

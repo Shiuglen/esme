@@ -16,6 +16,7 @@ import { notaTaller } from './paginas/portada'
 import { Proximamente } from './paginas/Proximamente'
 import { Taller } from './paginas/Taller'
 import { avisosDe } from './taller/avisos'
+import { archivable } from './taller/vista'
 import { useTaller } from './taller/useTaller'
 import { HojasVivas } from './shell/HojasVivas'
 import type { TareaTaller } from './lib/bridge'
@@ -172,7 +173,7 @@ export function App() {
   const resumenTaller = useMemo(() => {
     const k = (f: (t: (typeof tl.tareas)[number]) => boolean) => tl.tareas.filter(f).length
     return { trabajando: k((t) => t.estado === 'trabajando' || t.estado === 'preparando'), esperando: k((t) => t.estado === 'esperando'),
-      listas: k((t) => t.estado === 'lista' && !t.aplicada), errores: k((t) => t.estado === 'error') }
+      listas: k((t) => t.estado === 'lista' && !t.aplicada), errores: k((t) => t.estado === 'error' && !archivable(t, Date.now())) }
   }, [tl.tareas])
   // Solo en desarrollo: forzar el estado de la mente para revisar el diseño (window.__estadoEsme('pensando'))
   const [forzado, setForzado] = useState<'reposo' | 'pensando' | 'recordando' | null>(null)
