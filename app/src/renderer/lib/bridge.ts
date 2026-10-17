@@ -28,7 +28,7 @@ export type OrigenCatalogo = { origen: 'red' | 'cache' | 'semilla'; fecha: numbe
 
 type ElectronApi = {
   brain: { info(): Promise<BrainInfo | null>; onChange(fn: (i: BrainInfo | null) => void): () => void }
-  ventana: { plataforma: string; colores(c: { fondo: string; simbolos: string }): void }
+  ventana: { plataforma: string; colores(c: { fondo: string; simbolos: string }): void; zoom?(f: number): void }
   providers: { list(): Promise<ProviderView[]>; models(id: string): Promise<{ ok: boolean; models?: string[]; error?: string }> }
   keys: { status(): Promise<{ secure: boolean; backend: string }>; set(id: string, v: string): Promise<unknown>; remove(id: string): Promise<unknown> }
   chat: {

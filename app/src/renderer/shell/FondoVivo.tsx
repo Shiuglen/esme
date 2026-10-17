@@ -13,10 +13,21 @@ const LUZ: Record<EstadoSenal, { brillo: number; velocidad: number; opacidad: nu
   recordando: { brillo: 0.07, velocidad: 0.45, opacidad: 1 },
 }
 
-export function FondoVivo({ tema, estado }: { tema: 'noche' | 'dia'; estado: EstadoSenal }) {
+/** El fondo obedece a la piel: «liso» no pinta nada (el color de fondo y cero GPU), «aurora» es un resplandor quieto de CSS
+ *  y «papel» es el papel con fibras y tu sol, ahora en los colores de la piel. De noche, al pensar, se enciende la luz. */
+export function FondoVivo({ tema, estado, fondo = 'aurora', clave = '' }: { tema: 'noche' | 'dia'; estado: EstadoSenal; fondo?: 'liso' | 'aurora' | 'papel'; clave?: string }) {
   const [activo, setActivo] = useState(() => (typeof document === 'undefined' ? true : document.hasFocus() && !document.hidden))
   const [quieto] = useState(() => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches)
   const [sol, setSol] = useState(() => anguloSol(new Date()))
+  // los colores reales de la piel (se leen un fotograma después de vestirla)
+  const [c, setC] = useState({ fondo: '#05080f', hoja: '#0a0f1a', sombra: '#020306', luz: '#5ef0d4' })
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      const css = getComputedStyle(document.documentElement), v = (k: string, d: string) => css.getPropertyValue(k).trim() || d
+      setC({ fondo: v('--fondo', '#05080f'), hoja: v('--superficie-1', '#0a0f1a'), sombra: v('--linea', '#020306'), luz: v('--luz', '#5ef0d4') })
+    })
+    return () => cancelAnimationFrame(id)
+  }, [tema, clave])
   useEffect(() => {
     const ver = () => setActivo(document.hasFocus() && !document.hidden)
     addEventListener('focus', ver); addEventListener('blur', ver); document.addEventListener('visibilitychange', ver)
@@ -27,25 +38,21 @@ export function FondoVivo({ tema, estado }: { tema: 'noche' | 'dia'; estado: Est
   const mueve = !quieto && activo
 
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-0">
-      {tema === 'dia' ? (
-        <PaperTexture className="size-full" fit="cover" scale={1} speed={0} angle={sol} seed={7}
-          colorBack="#f3f3ef" colorPaper="#f6f6f2" colorShadow="#d6d6cd" blending={1} distortion={0.15}
-          roughness={0.32} roughnessSize={0.45} fiber={0.55} fiberSize={0.45} folds={0.1} foldSizeX={1} foldSizeY={1}
-          wrinkles={0.18} wrinkleSize={0.7} crumples={0} crumpleCount={6} drops={0} />
-      ) : (
-        <>
-          <PaperTexture className="absolute inset-0 size-full" fit="cover" scale={1} speed={0} angle={sol} seed={7}
-            colorBack="#08090d" colorPaper="#0a0b10" colorShadow="#040508" blending={1} distortion={0.1}
-            roughness={0.28} roughnessSize={0.45} fiber={0.45} fiberSize={0.45} folds={0.06} foldSizeX={1} foldSizeY={1}
-            wrinkles={0.1} wrinkleSize={0.7} crumples={0} crumpleCount={6} drops={0} />
-          <div className="absolute inset-0 mix-blend-screen transition-opacity duration-[1600ms]" style={{ opacity: luz.opacidad }}>
-            {luz.opacidad > 0 && (
-              <NeuroNoise className="size-full" scale={0.75} speed={mueve ? luz.velocidad : 0}
-                colorBack="#000000" colorMid="#0b3a37" colorFront="#5ef0d4" brightness={luz.brillo} contrast={0.32} />
-            )}
-          </div>
-        </>
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-0" style={{ background: 'var(--fondo)' }}>
+      {fondo === 'aurora' && <div className="fondo-aurora absolute inset-0" />}
+      {fondo === 'papel' && (
+        <PaperTexture className="absolute inset-0 size-full" fit="cover" scale={1} speed={0} angle={sol} seed={7}
+          colorBack={c.fondo} colorPaper={c.hoja} colorShadow={c.sombra} blending={1} distortion={tema === 'dia' ? 0.15 : 0.1}
+          roughness={tema === 'dia' ? 0.32 : 0.28} roughnessSize={0.45} fiber={tema === 'dia' ? 0.55 : 0.45} fiberSize={0.45} folds={0.08} foldSizeX={1} foldSizeY={1}
+          wrinkles={0.14} wrinkleSize={0.7} crumples={0} crumpleCount={6} drops={0} />
+      )}
+      {tema === 'noche' && fondo !== 'liso' && (
+        <div className="absolute inset-0 mix-blend-screen transition-opacity duration-[1600ms]" style={{ opacity: luz.opacidad }}>
+          {luz.opacidad > 0 && (
+            <NeuroNoise className="size-full" scale={0.75} speed={mueve ? luz.velocidad : 0}
+              colorBack="#000000" colorMid={c.hoja} colorFront={c.luz} brightness={luz.brillo} contrast={0.32} />
+          )}
+        </div>
       )}
     </div>
   )

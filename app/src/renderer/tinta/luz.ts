@@ -49,3 +49,6 @@ export function tonosLuz(): [string, string, string] {
 
 /** La luz viva en el segundo `s`: recorre los tonos despacio (14 s por vuelta); `fase` desfasa cada elemento. */
 export const luzViva = (s: number, fase = 0) => cicloLuz(tonosLuz(), s / 14 + fase)
+
+/** El color como [r, g, b] (hex, rgb() o hsl()). */
+export const aRgb = (c: string): number[] => rgb(c)

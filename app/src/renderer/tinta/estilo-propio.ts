@@ -45,6 +45,8 @@ export function paletaPropia(g: Gustos, tema: 'noche' | 'dia'): Record<string, s
     v[`${k}b`] = hsl(gira(h, d), s(noche ? 55 : 88), noche ? 15 : 93)                          // velo de fondo
   }
   if (noche) {
+    // primero el papel, la hoja y la tinta: el resto de la paleta se apoya en ellos (antes se leían aún vacíos)
+    Object.assign(v, { '--papel': hsl(hp, s(20), 5), '--hoja': hsl(hp, s(18), 8), '--tinta': hsl(h, s(28), 93) })
     Object.assign(v, {
       '--esmeralda': v['--luza'], '--esmeralda-1': hsl(h, s(90), 78), '--esmeralda-3': hsl(h, s(70), 48), '--esmeralda-4': hsl(h, s(60), 30), '--hielo': hsl(canon(h, 250), s(70), 66),
       '--brillo': hsl(h, s(88), 68, 0.35),
@@ -63,6 +65,8 @@ export function paletaPropia(g: Gustos, tema: 'noche' | 'dia'): Record<string, s
       '--cristal': hsl(hp, s(18), 5, 0.75),
     })
   } else {
+    // primero el papel, la hoja y la tinta: el resto de la paleta se apoya en ellos (antes se leían aún vacíos)
+    Object.assign(v, { '--papel': hsl(hp, s(26), 97), '--hoja': hsl(hp, s(30), 100), '--tinta': hsl(h, s(35), 12) })
     Object.assign(v, {
       '--esmeralda': v['--luza'], '--esmeralda-1': hsl(h, s(80), 86), '--esmeralda-3': hsl(h, s(62), 26), '--esmeralda-4': hsl(h, s(60), 18), '--hielo': hsl(canon(h, 250), s(60), 38),
       '--brillo': hsl(h, s(62), 34, 0.22),

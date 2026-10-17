@@ -1,5 +1,5 @@
 // Puente seguro entre la interfaz y el proceso main: solo estas funciones, nada de Node en el renderer.
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webFrame } from 'electron'
 
 const on = (channel: string, fn: (...a: unknown[]) => void) => {
   const h = (_e: unknown, ...a: unknown[]) => fn(...a)
@@ -9,7 +9,9 @@ const on = (channel: string, fn: (...a: unknown[]) => void) => {
 
 contextBridge.exposeInMainWorld('daimon', {
   brain: { info: () => ipcRenderer.invoke('brain:info'), onChange: (fn: (i: unknown) => void) => on('brain:changed', fn) },
-  ventana: { plataforma: process.platform, colores: (c: { fondo: string; simbolos: string }) => ipcRenderer.send('ventana:colores', c) },
+  ventana: { plataforma: process.platform, colores: (c: { fondo: string; simbolos: string }) => ipcRenderer.send('ventana:colores', c),
+    // el tamaño de una piel: el zoom de verdad de la ventana (como Ctrl +), entre 85 % y 120 %
+    zoom: (f: number) => webFrame.setZoomFactor(Math.min(1.2, Math.max(0.85, f))) },
   providers: { list: () => ipcRenderer.invoke('providers:list'), models: (id: string) => ipcRenderer.invoke('models:list', id) },
   keys: {
     status: () => ipcRenderer.invoke('keys:status'),

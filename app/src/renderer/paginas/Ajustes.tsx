@@ -1,6 +1,6 @@
 // Ajustes: los motores de Esme (por API, por tu suscripción, en tu ordenador y el catálogo entero), tu presupuesto y la apariencia.
 // Las claves van al llavero del sistema y nunca vuelven a la interfaz; las suscripciones las abres tú en su CLI oficial.
-import { Check, ChevronRight, Cpu, KeyRound, Laptop, Moon, Package, Search, ShieldAlert, ShieldCheck, ShieldQuestion, Sun, Wallet } from 'lucide-react'
+import { Check, ChevronRight, Cpu, KeyRound, Laptop, Package, Search, ShieldAlert, ShieldCheck, ShieldQuestion, Wallet } from 'lucide-react'
 import { Bicho } from '../marca/Ser'
 import { motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import { fmtTokens, fmtUSD } from '../chat/formatos'
 import { bridge, type EstadoUso, type ModeloCatalogo, type MotorDetectado, type MotorTaller, type OrigenCatalogo, type ProveedorResumen, type ProviderView } from '../lib/bridge'
 import { cn } from '../lib/cn'
-import { type EstiloId, type Gustos } from '../tinta/estilo-propio'
+import { Apariencia, type Pieles } from './Apariencia'
 
 type Pestana = 'motores' | 'presupuesto' | 'apariencia'
 type Vista = 'conectados' | 'suscripcion' | 'catalogo' | 'local'
@@ -262,66 +262,7 @@ function Presupuesto() {
   )
 }
 
-function Apariencia({ tema, onTema, estilo, onEstilo, gustos, onGustos }: {
-  tema: 'noche' | 'dia'; onTema(t: 'noche' | 'dia'): void; estilo: EstiloId; onEstilo(e: EstiloId): void; gustos: Gustos; onGustos(g: Gustos): void
-}) {
-  const op = (id: 'noche' | 'dia', Icono: typeof Moon, titulo: string, sub: string) => (
-    <button type="button" onClick={() => onTema(id)} aria-pressed={tema === id}
-      className={cn('grid gap-3 rounded-3 border p-4 text-left transition-colors', tema === id ? 'aurora-borde border-transparent bg-s2' : 'border-linea bg-s1 hover:bg-s2')}>
-      <Icono className="size-5 text-texto-2" strokeWidth={1.5} /><span className="grid gap-0.5"><span className="text-sm font-medium">{titulo}</span><span className="text-xs text-texto-3">{sub}</span></span>
-    </button>)
-  const MUESTRAS: Record<EstiloId, [string, string]> = {
-    esmeralda: ['#8af7e1', '#05080f'], quartz: ['#6ef0d2', '#232630'], lime: ['#cad649', '#1a1a17'],
-    grabado: ['#5ef0d4', '#0f1117'], propio: [`hsl(${gustos.tono} 82% 66%)`, `hsl(${250 - gustos.papel * 2.1} 18% 8%)`],
-  }
-  const vestido = (id: EstiloId, nombre: string, sub: string) => {
-    const [a, b] = MUESTRAS[id]
-    return (
-      <button type="button" onClick={() => onEstilo(id)} aria-pressed={estilo === id}
-        className={cn('flex items-center gap-3 rounded-3 border p-3 text-left transition-colors', estilo === id ? 'aurora-borde border-transparent bg-s2' : 'border-linea bg-s1 hover:bg-s2')}>
-        <span className="grid size-9 shrink-0 place-content-center overflow-hidden rounded-full border border-linea" style={{ background: b }}>
-          <span className="size-5 rounded-full" style={{ background: a }} />
-        </span>
-        <span className="grid gap-0.5"><span className="text-sm font-medium">{nombre}</span><span className="text-xs text-texto-3">{sub}</span></span>
-      </button>)
-  }
-  const marco = (nombre: string, min: number, max: number, v: number, alCambiar: (n: number) => void, izquierda: string, derecha: string) => (
-    <label className="grid gap-1.5">
-      <span className="flex justify-between text-xs text-texto-2"><span>{nombre}</span><span className="text-texto-3 tabular-nums">{v}</span></span>
-      <input type="range" min={min} max={max} value={v} onChange={(e) => alCambiar(Number(e.target.value))} className="accent-acento" />
-      <span className="flex justify-between text-[10.5px] text-texto-3"><span>{izquierda}</span><span>{derecha}</span></span>
-    </label>)
-  return (
-    <div className="grid max-w-[560px] gap-3">
-      <p className="m-0 text-sm text-texto-2">Esme no tiene un color: es neutra en claro y oscuro, y el color solo aparece vivo —la aurora— donde algo está pasando. Vístela como quieras, o mueve la ecuación y que todo derive.</p>
-      <div className="grid grid-cols-2 gap-3">{op('noche', Moon, 'Noche', 'Para trabajar horas sin cansarte')}{op('dia', Sun, 'Día', 'Con mucha luz o para presentar')}</div>
-      <div className="grid grid-cols-2 gap-3">
-        {vestido('esmeralda', 'Esmeralda', 'marino y luz esmeralda (el original)')}
-        {vestido('quartz', 'Quartz', 'acero frío para agentes')}
-        {vestido('lime', 'Lime', 'crema cálida para consumir')}
-        {vestido('grabado', 'Grabado', 'tinta y luz de la primera esme')}
-      </div>
-      <button type="button" onClick={() => onEstilo('propio')} aria-pressed={estilo === 'propio'}
-        className={cn('flex items-center justify-between rounded-3 border p-3 text-left transition-colors', estilo === 'propio' ? 'aurora-borde border-transparent bg-s2' : 'border-linea bg-s1 hover:bg-s2')}>
-        <span className="grid gap-0.5"><span className="text-sm font-medium">Propio — la ecuación</span><span className="text-xs text-texto-3">nadie elige por ti: mueve el tono y todo el sistema deriva</span></span>
-        <span className="grid size-9 shrink-0 place-content-center overflow-hidden rounded-full border border-linea" style={{ background: `hsl(${250 - gustos.papel * 2.1} 18% ${tema === 'noche' ? '7%' : '96%'})` }}>
-          <span className="size-5 rounded-full" style={{ background: `hsl(${gustos.tono} 82% ${tema === 'noche' ? '66%' : '34%'})` }} />
-        </span>
-      </button>
-      {estilo === 'propio' && (
-        <div className="grid gap-4 rounded-3 border border-linea bg-s1 p-4">
-          {marco('Tono de la luz', 0, 360, gustos.tono, (tono) => onGustos({ ...gustos, tono }), 'frío', 'cálido')}
-          {marco('Temperatura del papel', 0, 100, gustos.papel, (papel) => onGustos({ ...gustos, papel }), 'azul de observatorio', 'ámbar de lámpara')}
-          {marco('Fuerza', 0, 100, gustos.fuerza, (fuerza) => onGustos({ ...gustos, fuerza }), 'casi gris', 'vividísimo')}
-        </div>
-      )}
-    </div>
-  )
-}
-
-export function Ajustes({ tema, onTema, estilo, onEstilo, gustos, onGustos }: {
-  tema: 'noche' | 'dia'; onTema(t: 'noche' | 'dia'): void; estilo: EstiloId; onEstilo(e: EstiloId): void; gustos: Gustos; onGustos(g: Gustos): void
-}) {
+export function Ajustes({ tema, onTema, pieles }: { tema: 'noche' | 'dia'; onTema(t: 'noche' | 'dia'): void; pieles: Pieles }) {
   const [pestana, setPestana] = useState<Pestana>('motores')
   return (
     <div className="h-full overflow-y-auto">
@@ -333,7 +274,7 @@ export function Ajustes({ tema, onTema, estilo, onEstilo, gustos, onGustos }: {
         <Segmentos<Pestana> id="pestana" valor={pestana} onCambio={setPestana} opciones={[{ id: 'motores', texto: 'Motores' }, { id: 'presupuesto', texto: 'Presupuesto' }, { id: 'apariencia', texto: 'Apariencia' }]} />
         {pestana === 'motores' && <Motores />}
         {pestana === 'presupuesto' && <Presupuesto />}
-        {pestana === 'apariencia' && <Apariencia tema={tema} onTema={onTema} estilo={estilo} onEstilo={onEstilo} gustos={gustos} onGustos={onGustos} />}
+        {pestana === 'apariencia' && <Apariencia tema={tema} onTema={onTema} pieles={pieles} />}
         <p className="m-0 flex items-center gap-2 text-xs text-texto-3"><Wallet className="size-3.5" strokeWidth={1.5} />Los precios vienen de models.dev y se actualizan solos cada día.</p>
       </div>
     </div>

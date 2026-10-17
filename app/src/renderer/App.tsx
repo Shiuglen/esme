@@ -10,7 +10,10 @@ import { FirmaMente } from './marca/Sello'
 import { firmaDe } from './marca/sello'
 import { RedNeuronal, type Hueco, type Recordado, type RedHandle } from './memoria/RedNeuronal'
 import { Ajustes } from './paginas/Ajustes'
-import { aplicarPropio, quitarPropio, type EstiloId, type Gustos } from './tinta/estilo-propio'
+import type { EstiloId, Gustos } from './tinta/estilo-propio'
+import { deshacer, historialDe, rehacer, vestir, type Historial } from './tinta/historial'
+import { PIEL_BASE, validarPiel, type Piel } from './tinta/piel'
+import { vestirApp } from './tinta/vestir'
 import { Portada, type EventoMente } from './paginas/Portada'
 import { notaTaller } from './paginas/portada'
 import { Proximamente } from './paginas/Proximamente'
@@ -37,8 +40,24 @@ export function App() {
   const [seccion, setSeccion] = useState<SeccionId>(() => cargar('seccion', 'inicio'))
   const [visitadas, setVisitadas] = useState<Set<SeccionId>>(() => new Set([cargar<SeccionId>('seccion', 'inicio')]))
   const [tema, setTema] = useState<'noche' | 'dia'>(() => cargar('tema', 'noche'))
-  const [estilo, setEstilo] = useState<EstiloId>(() => cargar('estilo', 'esmeralda'))
-  const [gustos, setGustos] = useState<Gustos>(() => cargar('gustos', { tono: 165, papel: 30, fuerza: 70 }))
+  // La piel (docs/superpowers/specs/2026-10-17-pieles.md) con su historial; quien ya tenía un estilo elegido lo conserva.
+  const [historial, setHistorial] = useState<Historial>(() => {
+    const guardado = cargar<Historial | null>('pieles', null), ok = guardado && validarPiel(guardado.actual)
+    const sanas = (l: unknown) => (Array.isArray(l) ? l : []).flatMap((x) => { const r = validarPiel(x); return r.ok ? [r.piel] : [] })
+    if (guardado && ok && ok.ok) return { actual: ok.piel, pasado: sanas(guardado.pasado), futuro: sanas(guardado.futuro) }
+    const estilo = cargar<EstiloId>('estilo', 'esmeralda'), gustos = cargar<Gustos>('gustos', { tono: 165, papel: 30, fuerza: 70 })
+    return historialDe({ ...PIEL_BASE, nombre: estilo === 'propio' ? 'Mi estilo' : PIEL_BASE.nombre,
+      color: estilo === 'propio' ? { tipo: 'gustos', gustos } : { tipo: 'estilo', estilo } })
+  })
+  // un ensayo (mientras arrastras un deslizador) se ve en vivo pero no entra en el historial hasta que sueltas
+  const [ensayo, setEnsayo] = useState<Piel | null>(null)
+  const piel = ensayo ?? historial.actual
+  const pieles = {
+    actual: piel, puedeDeshacer: historial.pasado.length > 0, puedeRehacer: historial.futuro.length > 0,
+    ensayar: (p: Piel) => setEnsayo(p),
+    vestir: (p: Piel) => { setEnsayo(null); setHistorial((h) => (JSON.stringify(h.actual) === JSON.stringify(p) ? h : vestir(h, p))) },
+    deshacer: () => { setEnsayo(null); setHistorial(deshacer) }, rehacer: () => { setEnsayo(null); setHistorial(rehacer) },
+  }
   const [paleta, setPaleta] = useState(false)
   const [brain, setBrain] = useState<BrainClient | null>(null)
   const [recuerdos, setRecuerdos] = useState<number | null>(null)
@@ -92,12 +111,8 @@ export function App() {
     }
   }, [tl.tareas, verTarea])
   useEffect(() => { document.documentElement.dataset.theme = tema; guardar('tema', tema) }, [tema])
-  // El estilo viste y el propio pinta en vivo: sin data-estilo, la raíz dice esmeralda.
-  useEffect(() => {
-    guardar('estilo', estilo)
-    if (estilo === 'propio') { guardar('gustos', gustos); aplicarPropio(gustos, tema); delete document.documentElement.dataset.estilo }
-    else { quitarPropio(); estilo === 'esmeralda' ? delete document.documentElement.dataset.estilo : (document.documentElement.dataset.estilo = estilo) }
-  }, [estilo, gustos, tema])
+  // La piel viste toda la app en vivo; el historial se guarda para deshacer también mañana.
+  useEffect(() => { vestirApp(piel, tema); guardar('pieles', historial) }, [piel, tema, historial])
   // en escritorio, los botones de la ventana toman el color de la barra del tema activo
   useEffect(() => {
     const v = bridge.ventana(); if (!v) return
@@ -116,13 +131,15 @@ export function App() {
       fondo: resuelto('var(--superficie-1)', '#0e1015'),
       simbolos: resuelto('var(--texto-2)', '#a3a9b4'),
     })
-  }, [tema])
+  }, [tema, piel])
 
   // atajos: Ctrl K paleta, Ctrl 1…6 secciones, Ctrl , ajustes
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return
       const t = e.key.toLowerCase()
+      // la salida de emergencia: Ctrl+Mayús+0 vuelve a la piel de casa, por mal que haya quedado la actual (se puede deshacer)
+      if (e.shiftKey && e.code === 'Digit0') { e.preventDefault(); setHistorial((h) => vestir(h, PIEL_BASE)); return }
       if (t === 'k') { e.preventDefault(); setPaleta((p) => !p) }
       else if (t === ',') { e.preventDefault(); ir('ajustes') }
       else if (/^[1-6]$/.test(t)) { e.preventDefault(); ir(SECCIONES[Number(t) - 1].id) }
@@ -190,7 +207,7 @@ export function App() {
       case 'taller': return <Taller tema={tema} tl={tl} foco={focoTaller} onIr={ir} />
       case 'memoria': return (
         <div className="flex h-full min-h-0 flex-col"><MemoryPanel brain={brain} focusId={enfocado} onFocus={(i) => redRef.current?.enfocar(i)} onChanged={refrescar} /></div>)
-      case 'ajustes': return <Ajustes tema={tema} onTema={setTema} estilo={estilo} onEstilo={setEstilo} gustos={gustos} onGustos={setGustos} />
+      case 'ajustes': return <Ajustes tema={tema} onTema={setTema} pieles={pieles} />
       case 'uso': return <Uso onIr={ir} />
       case 'tienda': return <Proximamente titulo="Tienda" texto="Aquí instalarás IAs, modelos locales, MCPs, plugins y compañeros para Esme, con un clic y con permiso." />
     }
@@ -212,7 +229,7 @@ export function App() {
 
   return (
     <FirmaMente.Provider value={firma}>
-    <FondoVivo tema={tema} estado={estadoEsme} />
+    <FondoVivo tema={tema} estado={estadoEsme} fondo={piel.fondo} clave={JSON.stringify(piel.color)} />
     <div className="relative z-10 grid h-full grid-rows-[48px_minmax(0,1fr)]">
       <BarraSuperior seccion={nombreDe(seccion)} estado={{ conectado: !!brain && recuerdos !== null, recuerdos, pensando }} tema={tema}
         onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} onBuscar={() => setPaleta(true)} paletaAbierta={paleta}
