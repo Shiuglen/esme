@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { candidatosDe, elegibles, elegir, elegirVarios, semillado, type Candidato } from './eleccion'
+import { candidatosDe, elegibles, elegir, elegirVarios, semillado, type Candidato, noListos } from './eleccion'
 
 const opcionModelo = (ids: string[], actual = ids[0]) => ({ id: 'model', nombre: 'Model', actual, valores: ids.map((id) => ({ id, nombre: `opencode/${id.split('/')[1]} Nombre` })) })
 const motores = [{ id: 'opencode', nombre: 'OpenCode', instalado: true }, { id: 'cline', nombre: 'Cline', instalado: true }, { id: 'gemini', nombre: 'Gemini CLI', instalado: false }]
@@ -51,5 +51,21 @@ describe('elegibles', () => {
     const vs = [{ motor: 'opencode', modelo: 'pago-bueno', exito: true }, { motor: 'opencode', modelo: 'local-malo', exito: false }]
     const r = elegibles([c('libre-free'), c('pago-bueno', false), c('local-malo', false), c('nunca', false)], vs)
     expect(r.map((x) => x.modelo)).toEqual(['libre-free', 'pago-bueno'])
+  })
+})
+
+describe('qué motores no están listos (aprendido de lo que pasó)', () => {
+  const t = (motor: string, inicio: number, estado: string, error?: string) => ({ id: `${motor}${inicio}`, motor, motorNombre: motor, inicio, estado, error }) as never
+  it('si su último intento falló por la sesión o porque no existe, no está listo y se dice por qué', () => {
+    const r = noListos([
+      t('qwen', 1, 'lista'), t('qwen', 2, 'error', 'Authentication required: please log in'),
+      t('pi', 1, 'error', "data: { code: 'ENOENT' }"),
+      t('opencode', 1, 'error', 'Authentication required'), t('opencode', 2, 'lista'),
+      t('cline', 1, 'error', 'Rate limit exceeded'),
+    ])
+    expect(r.get('qwen')).toBe('Inicia sesión en qwen')
+    expect(r.get('pi')).toBe('No se encuentra en este equipo')
+    expect(r.has('opencode')).toBe(false) // volvió a funcionar
+    expect(r.has('cline')).toBe(false)    // un límite es pasajero, no es «no listo»
   })
 })

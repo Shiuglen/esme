@@ -19,8 +19,8 @@ const AUTO = 'auto'
 const nuevoId = () => Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('')
 const corto = (e: Eleccion) => nombreValor({ id: e.modelo, nombre: e.modeloNombre })
 
-export function NuevaTarea({ motores, onCrear, onIrMotores }: {
-  motores: MotorTaller[]; onCrear(p: Peticion[]): Promise<boolean>; onIrMotores(): void
+export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores }: {
+  motores: MotorTaller[]; noListos?: Map<string, string>; onCrear(p: Peticion[]): Promise<boolean>; onIrMotores(): void
 }) {
   const instalados = motores.filter((m) => m.instalado)
   const [motor, setMotor] = useState<string | null>(() => leer<string | null>('motor', AUTO))
@@ -44,7 +44,7 @@ export function NuevaTarea({ motores, onCrear, onIrMotores }: {
       .then(([os, vs]) => { if (vivo) { setTodas(Object.fromEntries(os)); setVeredictos(vs) } })
     return () => { vivo = false }
   }, [instalados.map((m) => m.id).join()])   // eslint-disable-line react-hooks/exhaustive-deps
-  const candidatos = todas ? elegibles(candidatosDe(instalados, todas, leer<string[]>('caidos', [])), veredictos).filter((c) => auto || c.motor === actual?.id) : []
+  const candidatos = todas ? elegibles(candidatosDe(instalados, todas, leer<string[]>('caidos', [])), veredictos).filter((c) => auto ? !noListos.has(c.motor) : c.motor === actual?.id) : []
   const tirar = () => setRivales(elegirVarios(candidatos, veredictos, 3))
   useEffect(() => { if (arena) tirar() }, [arena, auto, actual?.id, todas])   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -109,10 +109,11 @@ export function NuevaTarea({ motores, onCrear, onIrMotores }: {
           <div className="flex flex-wrap items-center gap-2 border-t border-linea px-3 py-2.5">
             <div role="radiogroup" aria-label="Motor" className="relative flex rounded-full border border-linea bg-s1/70 p-0.5">
               {[{ id: AUTO, nombre: 'Automático' }, ...instalados].map((m) => {
-                const on = m.id === AUTO ? auto : m.id === actual?.id
+                const on = m.id === AUTO ? auto : m.id === actual?.id, motivo = noListos.get(m.id)
                 return (
-                  <button key={m.id} type="button" role="radio" aria-checked={on} onClick={() => elegirMotor(m.id)}
-                    className={cn('relative h-7 rounded-full px-3 text-[12.5px] transition-colors', on ? 'text-sobre-acento' : 'text-texto-2 hover:text-texto')}>
+                  <button key={m.id} type="button" role="radio" aria-checked={on} onClick={() => elegirMotor(m.id)} title={motivo}
+                    aria-description={motivo}
+                    className={cn('relative h-7 rounded-full px-3 text-[12.5px] transition-colors', on ? 'text-sobre-acento' : 'text-texto-2 hover:text-texto', motivo && !on && 'opacity-50 line-through decoration-texto-3/60')}>
                     {on && <motion.span layoutId="motor-elegido" className="absolute inset-0 rounded-full bg-acento" transition={{ type: 'spring', stiffness: 480, damping: 36 }} />}
                     <span className="relative inline-flex items-center gap-1.5">{m.id === AUTO ? <Sparkles className="size-3" strokeWidth={2} /> : <Bicho de={m.id} tamaño={13} vivo={on} />}{m.nombre}</span>
                   </button>

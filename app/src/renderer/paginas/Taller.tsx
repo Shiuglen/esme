@@ -14,6 +14,7 @@ import { NuevaTarea } from '../taller/NuevaTarea'
 import { Terminales } from '../taller/Terminales'
 import type { useTaller } from '../taller/useTaller'
 import { activa, archivable, explicarError } from '../taller/vista'
+import { noListos } from '../taller/eleccion'
 import { cn } from '../lib/cn'
 import { SerCasa } from '../marca/Ser'
 
@@ -73,6 +74,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
     for (const x of rivales) if (x.id !== id) await tl.descartar(x.id)
     setSeleccion(id); setPedida((v) => ({ p: 'revision', n: (v?.n ?? 0) + 1 }))
   }
+  const sinListo = useMemo(() => noListos(tl.tareas), [tl.tareas])
   const cuenta = (e: string) => ordenadas.filter((x) => x.estado === e).length
   // el tablero de operaciones: cada banda es una etapa de la fila de producción; nada se esconde
   const bandas = [
@@ -176,7 +178,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
                   onParar={() => void tl.parar(t.id)} onDescartar={() => void tl.descartar(t.id)} onAbrir={() => tl.abrir(t.id)} onReencarnar={() => void reincarna(t)}
                   onConfigurar={(o, v) => void tl.configurar(t.id, o, v)} />
               ) : (
-                <NuevaTarea motores={tl.motores} onIrMotores={() => onIr('ajustes')}
+                <NuevaTarea motores={tl.motores} noListos={sinListo} onIrMotores={() => onIr('ajustes')}
                   onCrear={async (ps) => {
                     // en arena, los competidores salen escalonados: los proveedores gratis limitan las peticiones a la vez
                     let primera: string | null = null

@@ -1,6 +1,8 @@
 // El router del Taller: Esme elige motor y modelo aprendiendo de lo que tú aplicas o descartas.
 // Muestreo de Thompson sobre una Beta(2 + aciertos, 2 + fallos) por modelo: explota lo que funciona y, de vez en cuando,
 // prueba lo que aún no conoce. A igualdad, lo gratis gana. Siempre explica por qué eligió.
+import type { TareaTaller } from '../lib/bridge'
+import { explicarError } from './vista'
 import type { MotorTaller, OpcionMotor } from '../lib/bridge'
 
 export type Candidato = { motor: string; motorNombre: string; modelo: string; modeloNombre: string; gratis: boolean }
@@ -67,3 +69,21 @@ export function elegirVarios(cs: Candidato[], vs: Veredicto[], n: number, o: Opc
 
 /** Qué puede elegir Esme sola: lo gratis, y lo local o de pago solo si alguna vez aplicaste una tarea hecha con ello. */
 export const elegibles = (cs: Candidato[], vs: Veredicto[]) => cs.filter((c) => c.gratis || cuenta(c, vs.filter((v) => v.exito)).aciertos > 0)
+
+/** Los motores que hoy no están listos, aprendido de su último intento real: si falló por la sesión o porque no existe en el
+ *  equipo, no se ofrece en Automático y su botón dice por qué. En cuanto vuelve a funcionar una vez, vuelve a estar listo.
+ *  Un límite de peticiones o un fallo de red es pasajero: no cuenta. */
+export function noListos(tareas: Pick<TareaTaller, 'motor' | 'motorNombre' | 'inicio' | 'estado' | 'error'>[]): Map<string, string> {
+  const ultimo = new Map<string, (typeof tareas)[number]>()
+  for (const t of tareas) {
+    if (t.estado !== 'lista' && t.estado !== 'error') continue
+    const u = ultimo.get(t.motor); if (!u || t.inicio > u.inicio) ultimo.set(t.motor, t)
+  }
+  const out = new Map<string, string>()
+  for (const [motor, t] of ultimo) {
+    if (t.estado !== 'error' || !t.error) continue
+    if (/ENOENT|not found|no se encuentra/i.test(t.error)) out.set(motor, 'No se encuentra en este equipo')
+    else if (explicarError(t.error, t.motorNombre, '')?.tipo === 'sesion') out.set(motor, `Inicia sesión en ${t.motorNombre}`)
+  }
+  return out
+}
