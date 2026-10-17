@@ -107,13 +107,13 @@ export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores
             placeholder="Describe qué quieres. Por ejemplo: añade un modo oscuro a la página de ajustes, con sus tests."
             className="block w-full resize-none bg-transparent px-4 pt-3.5 pb-2 text-[14.5px] leading-[22px] text-texto outline-none placeholder:text-texto-3" />
           <div className="flex flex-wrap items-center gap-2 border-t border-linea px-3 py-2.5">
-            <div role="radiogroup" aria-label="Motor" className="relative flex rounded-full border border-linea bg-s1/70 p-0.5">
+            <div role="radiogroup" aria-label="Motor" className="relative flex max-w-full overflow-x-auto rounded-full border border-linea bg-s1/70 p-0.5 [scrollbar-width:none]">
               {[{ id: AUTO, nombre: 'Automático' }, ...instalados].map((m) => {
                 const on = m.id === AUTO ? auto : m.id === actual?.id, motivo = noListos.get(m.id)
                 return (
                   <button key={m.id} type="button" role="radio" aria-checked={on} onClick={() => elegirMotor(m.id)} title={motivo}
                     aria-description={motivo}
-                    className={cn('relative h-7 rounded-full px-3 text-[12.5px] transition-colors', on ? 'text-sobre-acento' : 'text-texto-2 hover:text-texto', motivo && !on && 'opacity-50 line-through decoration-texto-3/60')}>
+                    className={cn('relative h-7 shrink-0 whitespace-nowrap rounded-full px-3 text-[12.5px] transition-colors', on ? 'text-sobre-acento' : 'text-texto-2 hover:text-texto', motivo && !on && 'opacity-50 line-through decoration-texto-3/60')}>
                     {on && <motion.span layoutId="motor-elegido" className="absolute inset-0 rounded-full bg-acento" transition={{ type: 'spring', stiffness: 480, damping: 36 }} />}
                     <span className="relative inline-flex items-center gap-1.5">{m.id === AUTO ? <Sparkles className="size-3" strokeWidth={2} /> : <Bicho de={m.id} tamaño={13} vivo={on} />}{m.nombre}</span>
                   </button>
