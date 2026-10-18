@@ -37,6 +37,7 @@ contextBridge.exposeInMainWorld('daimon', {
     onAlerta: (fn: (e: unknown) => void) => on('uso:alerta', (e) => fn(e)),
   },
   motores: { detectar: () => ipcRenderer.invoke('motores:detectar') },
+  licencia: { estado: () => ipcRenderer.invoke('licencia:estado'), activar: (c: string) => ipcRenderer.invoke('licencia:activar', c), quitar: () => ipcRenderer.invoke('licencia:quitar') },
   taller: {
     motores: () => ipcRenderer.invoke('taller:motores'), lista: () => ipcRenderer.invoke('taller:lista'),
     instalarMotor: (id: string) => ipcRenderer.invoke('taller:instalarMotor', id),

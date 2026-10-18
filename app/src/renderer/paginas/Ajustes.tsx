@@ -9,9 +9,10 @@ import { fmtTokens, fmtUSD } from '../chat/formatos'
 import { bridge, type EstadoUso, type ModeloCatalogo, type MotorDetectado, type MotorTaller, type OrigenCatalogo, type ProveedorResumen, type ProviderView } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { Apariencia, type Pieles } from './Apariencia'
+import { TuPlan } from './TuPlan'
 import { useMuelle } from '../tinta/movimiento'
 
-type Pestana = 'motores' | 'presupuesto' | 'apariencia'
+type Pestana = 'motores' | 'presupuesto' | 'apariencia' | 'plan'
 type Vista = 'conectados' | 'suscripcion' | 'catalogo' | 'local'
 
 function Segmentos<T extends string>({ valor, opciones, onCambio, id }: { valor: T; opciones: { id: T; texto: string }[]; onCambio(v: T): void; id: string }) {
@@ -273,11 +274,12 @@ export function Ajustes({ tema, onTema, pieles }: { tema: 'noche' | 'dia'; onTem
           <h1 className="m-0 font-display text-[32px] leading-[1.1] font-semibold tracking-[-0.03em]">Ajustes</h1>
           <p className="m-0 text-[15px] text-texto-2">Esme funciona con cualquier IA. Conecta las que quieras: por API, con tu suscripción o en tu ordenador.</p>
         </div>
-        <Segmentos<Pestana> id="pestana" valor={pestana} onCambio={setPestana} opciones={[{ id: 'motores', texto: 'Motores' }, { id: 'presupuesto', texto: 'Presupuesto' }, { id: 'apariencia', texto: 'Apariencia' }]} />
+        <Segmentos<Pestana> id="pestana" valor={pestana} onCambio={setPestana} opciones={[{ id: 'motores', texto: 'Motores' }, { id: 'presupuesto', texto: 'Presupuesto' }, { id: 'apariencia', texto: 'Apariencia' }, { id: 'plan', texto: 'Tu plan' }]} />
         {pestana === 'motores' && <Motores />}
         {pestana === 'presupuesto' && <Presupuesto />}
         {pestana === 'apariencia' && <Apariencia tema={tema} onTema={onTema} pieles={pieles} />}
-        <p className="m-0 flex items-center gap-2 text-xs text-texto-3"><Wallet className="size-3.5" strokeWidth={1.5} />Los precios vienen de models.dev y se actualizan solos cada día.</p>
+        {pestana === 'plan' && <TuPlan />}
+        {(pestana === 'motores' || pestana === 'presupuesto') && <p className="m-0 flex items-center gap-2 text-xs text-texto-3"><Wallet className="size-3.5" strokeWidth={1.5} />Los precios vienen de models.dev y se actualizan solos cada día.</p>}
       </div>
     </div>
   )
