@@ -124,6 +124,7 @@ Por pasos, cada uno impecable antes del siguiente:
 3. **Esme actúa en tu PC**: usa apps y webs por ti, con permiso explícito en cada acción delicada.
 4. **Esme en todas partes**: móvil y web conectados a tu Esme, mente sincronizada y cifrada.
 5. **Esme con tu equipo**: mentes compartidas, tareas entre personas y agentes, Tienda de pieles.
+6. **Versiones para todos (al terminar, pedido del creador 18-oct)**: instaladores de escritorio para Windows, macOS y Linux con electron-builder (macOS sin firmar desde Linux; firmar y notarizar exige un Mac o CI con macOS), para que el equipo vea el avance. Para la versión móvil de iOS, el creador propone **xtool** (compila apps Swift/SwiftPM de iOS desde Linux).
 Hecho ya el 17-18 oct: «Mando» (portada centro de mando con esfera viva), 23 escenas WebGL, voz manos libres 100 % local (Whisper + Piper) con subtítulos y conversación continua, panorama de la mente para responder con sustancia, licencias e invitaciones, copia privada en GitHub (Shiuglen/esme).
 Límite que no cambia: nada de ingeniería inversa de productos ajenos para copiarlos (riesgo legal y Esme debe ser propia); las ideas sí se toman de donde sea.
 
