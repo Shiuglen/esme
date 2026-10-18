@@ -9,6 +9,12 @@ const on = (channel: string, fn: (...a: unknown[]) => void) => {
 
 contextBridge.exposeInMainWorld('daimon', {
   brain: { info: () => ipcRenderer.invoke('brain:info'), onChange: (fn: (i: unknown) => void) => on('brain:changed', fn) },
+  lanzador: {
+    ocultar: () => ipcRenderer.send('lanzador:ocultar'), abrirEsme: (x: unknown) => ipcRenderer.send('lanzador:abrirEsme', x),
+    encargar: (t: string) => ipcRenderer.invoke('lanzador:encargar', t), onAbierto: (fn: () => void) => on('lanzador:abierto', () => fn()),
+    onIr: (fn: (x: unknown) => void) => on('lanzador:ir', (x) => fn(x)),
+    alternar: () => ipcRenderer.send('lanzador:alternar'), estado: () => ipcRenderer.invoke('lanzador:estado'),
+  },
   mente: { agentes: () => ipcRenderer.invoke('mente:agentes'), conectar: (id: string, si: boolean) => ipcRenderer.invoke('mente:conectar', id, si) },
   forja: { de: (id: string) => ipcRenderer.invoke('forja:de', id), instalar: (id: string) => ipcRenderer.invoke('forja:instalar', id), probar: (id: string) => ipcRenderer.invoke('forja:probar', id), encargar: (n: string, nombre?: string, agente?: string) => ipcRenderer.invoke('forja:encargar', n, nombre, agente) },
   herramientas: {

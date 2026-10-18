@@ -15,6 +15,8 @@ import { registerHilos } from './hilos/ipc'
 import { registerTienda } from './tienda/ipc'
 import { cerrarHerramientas, registerHerramientas } from './herramientas/ipc'
 import { registerForja } from './forja-ipc'
+import { registrarLanzador } from './lanzador/ventana'
+import { encargarDesdeChat } from './ipc-taller'
 import { AGENTES, conectar as conectarMente, desconectar as desconectarMente, estados as estadosMente } from './mente/compartir'
 import { listModels, PROVIDERS, type ProviderId } from './providers'
 import { rutasDe } from './rutas'
@@ -23,6 +25,7 @@ const RUTAS = rutasDe({ empaquetada: app.isPackaged, plataforma: process.platfor
 let win: BrowserWindow | null = null
 let ptyHost: UtilityProcess | null = null
 let bandeja: Tray | null = null
+let lanzador: ReturnType<typeof registrarLanzador> | null = null
 let saliendo = false
 let avisadoSegundoPlano = false
 const ficheroAjustes = () => join(app.getPath('userData'), 'ajustes.json')
@@ -169,7 +172,11 @@ app.whenReady().then(async () => {
   registerIpc()
   startPtyHost()
   createWindow()
+  // el lanzador: Esme desde cualquier app con Ctrl+Mayús+Espacio
+  lanzador = registrarLanzador({ preload: join(__dirname, '../preload/index.mjs'), encargar: (t) => encargarDesdeChat(t),
+    abrirEsme: (x) => { mostrar(); win?.webContents.send('lanzador:ir', x) } })
   brain.start().catch((err) => console.error('[cerebro] no arrancó:', err))
 })
 
+app.on('will-quit', () => lanzador?.cerrar())
 app.on('window-all-closed', () => { void cerrarHerramientas(); cerrarTaller(); brain.stop(); ptyHost?.kill(); app.quit() })

@@ -201,6 +201,10 @@ export function App() {
     if (voz && piel.portada === 'mando') { setVisitadas((v) => (v.has('conversacion') ? v : new Set(v).add('conversacion'))); setVivo({ pregunta: q, texto: '', fin: false }) }
     else ir('conversacion')
   }
+  // desde el lanzador (Ctrl+Mayús+Espacio): «Seguir en Esme» repite la pregunta en la conversación; «Abrir tu mente» va a Memoria
+  const alLanzador = useRef<(x: { seccion?: string; pregunta?: string }) => void>(() => {})
+  alLanzador.current = (x) => { if (x.pregunta) preguntar(x.pregunta); else if (x.seccion === 'memoria' || x.seccion === 'conversacion' || x.seccion === 'taller') ir(x.seccion) }
+  useEffect(() => (window as unknown as { daimon?: { lanzador?: { onIr(f: (x: unknown) => void): () => void } } }).daimon?.lanzador?.onIr((x) => alLanzador.current(x as { seccion?: string; pregunta?: string })), [])
   // la voz (lib/voz.ts): lo que dices se oye en el cerebro local; la respuesta a una pregunta hablada, Esme la dice
   const oir = async (pcm: Float32Array) => {
     if (!brain) { toast.error('Para oírte necesito el cerebro encendido.'); return }

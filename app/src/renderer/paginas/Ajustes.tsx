@@ -277,6 +277,7 @@ function Sistema() {
   }
   return (
     <div className="grid gap-5">
+    <Lanzador />
     <MenteCompartida />
     <section className="vidrio grid gap-3 rounded-4 border p-5">
       <h3 className="m-0 text-sm font-semibold">Al cerrar la ventana</h3>
@@ -288,6 +289,22 @@ function Sistema() {
       )}
     </section>
     </div>
+  )
+}
+
+// El lanzador: Esme desde cualquier app con un atajo
+function Lanzador() {
+  const lz = (window as unknown as { daimon?: { lanzador?: { alternar(): void; estado(): Promise<{ atajo: string; registrado: boolean }> } } }).daimon?.lanzador
+  const [e, setE] = useState<{ atajo: string; registrado: boolean } | null>(null)
+  useEffect(() => { void lz?.estado().then(setE) }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <section className="vidrio grid gap-3 rounded-4 border p-5">
+      <h3 className="m-0 text-sm font-semibold">Esme desde cualquier sitio</h3>
+      <p className="m-0 max-w-[640px] text-[13px] leading-5 text-texto-2">
+        {e ? (e.registrado ? <>Pulsa <kbd className="rounded-1 border border-linea px-1.5 py-0.5 font-sans text-[12px] text-texto">{e.atajo}</kbd> en cualquier app: preguntas, encargas a tu equipo o buscas en tu mente sin cambiar de ventana.</> : `Otra app usa ${e.atajo}: el lanzador sigue disponible con el botón.`) : 'Cargando…'}
+      </p>
+      <button type="button" onClick={() => lz?.alternar()} className="h-8 w-fit rounded-full border border-linea px-4 text-[12.5px] text-texto-2 hover:text-texto">Probarlo</button>
+    </section>
   )
 }
 
