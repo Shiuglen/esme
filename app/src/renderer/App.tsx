@@ -30,6 +30,7 @@ import { BarraSuperior } from './shell/BarraSuperior'
 import { Paleta } from './shell/Paleta'
 import { FondoVivo, useHalos } from './shell/FondoVivo'
 import { Hoja, type Origen } from './shell/Hoja'
+import { marcoDe } from './shell/marcos'
 import { Leyenda, type NotaLugar } from './shell/Leyenda'
 import { AJUSTES, SECCIONES, nombreDe, type SeccionId } from './shell/secciones'
 
@@ -214,10 +215,13 @@ export function App() {
   }
 
   // Dónde va cada hoja, qué tapa de tu mente (para que la cámara la encuadre en el resto) y cuánto se atenúa la mente
-  const HOJA: Partial<Record<SeccionId, string>> = { conversacion: 'top-3 right-3 bottom-3 w-[min(680px,50%)]', memoria: 'top-3 bottom-3 left-[76px] w-[400px]' }
-  const grande = 'top-3 right-3 bottom-3 left-[76px]'
-  const hueco: Hueco = seccion === 'conversacion' ? { izquierda: 76, derecha: Math.min(680, ancho * 0.5) + 12 }
-    : seccion === 'memoria' ? { izquierda: 76 + 400 + 12, derecha: 0 } : seccion === 'inicio' ? { izquierda: 300, derecha: 0 } : { izquierda: 0, derecha: 0 }
+  // (el sitio libre depende de cómo navega la piel: leyenda, riel o muelle — shell/marcos.ts)
+  const marco = marcoDe(piel.navegacion)
+  const HOJA: Partial<Record<SeccionId, string>> = { conversacion: 'top-3 right-3 w-[min(680px,50%)]', memoria: 'top-3 w-[400px]' }
+  const grande = 'top-3 right-3'
+  const sitioDe = (id: SeccionId): React.CSSProperties => (id === 'conversacion' ? { bottom: marco.abajo } : { left: marco.izquierda, bottom: marco.abajo })
+  const hueco: Hueco = seccion === 'conversacion' ? { izquierda: marco.izquierda, derecha: Math.min(680, ancho * 0.5) + 12 }
+    : seccion === 'memoria' ? { izquierda: marco.izquierda + 400 + 12, derecha: 0 } : seccion === 'inicio' ? { izquierda: marco.inicio, derecha: 0 } : { izquierda: 0, derecha: 0 }
   const tapada = seccion === 'taller' || seccion === 'uso' || seccion === 'tienda' || seccion === 'ajustes'
   const notas: Partial<Record<SeccionId, NotaLugar>> = {
     conversacion: preguntas ? { texto: `${preguntas} ${preguntas === 1 ? 'pregunta' : 'preguntas'} en esta sesión` } : undefined,
@@ -240,10 +244,10 @@ export function App() {
           <RedNeuronal ref={redRef} atlas={atlas} tema={tema} recordados={recordados} onPick={(id) => { setEnfocado(id); if (seccion !== 'memoria') ir('memoria') }}
             adornos={seccion === 'memoria'} hueco={hueco} />
         </div>
-        <Portada visible={seccion === 'inicio'} conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} eventos={eventos}
+        <Portada sitio={marco.portada} visible={seccion === 'inicio'} conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} eventos={eventos}
           memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar} />
         {[...SECCIONES, AJUSTES].filter(({ id }) => id !== 'inicio' && visitadas.has(id)).map(({ id }) => (
-          <Hoja key={id} abierta={seccion === id} origen={origenes[id] ?? { x: 40, y: innerHeight - 40 }} etiqueta={nombreDe(id)} className={HOJA[id] ?? grande}>
+          <Hoja key={id} abierta={seccion === id} origen={origenes[id] ?? { x: 40, y: innerHeight - 40 }} etiqueta={nombreDe(id)} className={HOJA[id] ?? grande} sitio={sitioDe(id)}>
             {pagina(id)}
           </Hoja>
         ))}

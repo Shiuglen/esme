@@ -17,8 +17,8 @@ const entrada = (i: number) => ({ initial: { opacity: 0, y: 8 }, animate: { opac
 // el texto se lee sobre la tinta del mapa gracias a un halo del color del papel, como los rótulos de un atlas
 const HALO = '[text-shadow:0_0_2px_var(--papel),0_0_10px_var(--papel),0_0_22px_var(--papel)]'
 
-export function Portada({ visible, conectado, recuerdos, atlas, eventos, memoria, onMemoria, onPreguntar }: {
-  visible: boolean; conectado: boolean; recuerdos: number | null; atlas: Atlas | null; eventos: EventoMente[]
+export function Portada({ sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, visible, conectado, recuerdos, atlas, eventos, memoria, onMemoria, onPreguntar }: {
+  sitio?: { izquierda: number; abajo: number; cabecera: number }; visible: boolean; conectado: boolean; recuerdos: number | null; atlas: Atlas | null; eventos: EventoMente[]
   memoria: boolean; onMemoria(v: boolean): void; onPreguntar(q: string): void
 }) {
   const contados = useMemo(() => {
@@ -42,7 +42,7 @@ export function Portada({ visible, conectado, recuerdos, atlas, eventos, memoria
   return (
     <div aria-hidden={!visible} inert={!visible}
       className={cn('pointer-events-none absolute inset-0 z-10 transition-opacity duration-500', visible ? 'opacity-100' : 'opacity-0')}>
-      <header className={cn('pointer-events-auto absolute top-6 left-7 grid max-w-[540px] gap-3', HALO)}>
+      <header style={{ left: sitio.cabecera }} className={cn('pointer-events-auto absolute top-6 grid max-w-[540px] gap-3', HALO)}>
         <motion.p {...entrada(0)} className="m-0 text-[13px] text-texto-2">{fechaLarga(new Date())}</motion.p>
         <motion.h1 {...entrada(1)} className="m-0 text-[clamp(46px,5.6vw,76px)] leading-[0.95] font-medium italic tracking-[-0.01em] text-texto" style={{ fontFamily: ROTULO }}>
           {saludo()}.
@@ -69,7 +69,7 @@ export function Portada({ visible, conectado, recuerdos, atlas, eventos, memoria
             </li>))}
         </motion.ol>
       </header>
-      <motion.div {...entrada(4)} className="pointer-events-auto absolute right-8 bottom-6 left-[240px] mx-auto max-w-[880px]">
+      <motion.div {...entrada(4)} className="pointer-events-auto absolute right-8 mx-auto max-w-[880px]" style={{ left: sitio.izquierda, bottom: sitio.abajo }}>
         <Compositor onEnviar={onPreguntar} memoria={memoria} onMemoria={onMemoria} contexto={conectado ? [] : ['el cerebro está apagado']} autoFocus />
         <motion.div {...entrada(5)} className="mt-2.5 flex flex-wrap justify-center gap-x-5 gap-y-1">
           {rituales.map((r) => (

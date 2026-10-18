@@ -8,7 +8,7 @@ export type Origen = { x: number; y: number }
 type Estado = 'cerrada' | 'abriendo' | 'abierta' | 'cerrando'
 const quieto = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
-export function Hoja({ abierta, origen, etiqueta, className, children }: { abierta: boolean; origen: Origen; etiqueta: string; className?: string; children: React.ReactNode }) {
+export function Hoja({ abierta, origen, etiqueta, className, sitio, children }: { abierta: boolean; origen: Origen; etiqueta: string; className?: string; sitio?: React.CSSProperties; children: React.ReactNode }) {
   const ref = useRef<HTMLElement>(null)
   const [estado, setEstado] = useState<Estado>('cerrada')
   const [o, setO] = useState({ x: 0, y: 0 })
@@ -27,7 +27,7 @@ export function Hoja({ abierta, origen, etiqueta, className, children }: { abier
     <section ref={ref} aria-label={etiqueta} inert={!abierta}
       onTransitionEnd={(e) => { if (e.target === e.currentTarget && e.propertyName === 'clip-path' && estado === 'cerrando') setEstado('cerrada') }}
       className={cn('hoja absolute z-20 overflow-hidden', className, estado === 'cerrada' && 'invisible')}
-      style={{ clipPath: `circle(${desplegada ? 150 : 0}% at ${o.x}px ${o.y}px)`, transition: `clip-path ${desplegada ? 620 : 380}ms cubic-bezier(.16,1,.3,1)` }}>
+      style={{ ...sitio, clipPath: `circle(${desplegada ? 150 : 0}% at ${o.x}px ${o.y}px)`, transition: `clip-path ${desplegada ? 620 : 380}ms cubic-bezier(.16,1,.3,1)` }}>
       {children}
     </section>
   )
