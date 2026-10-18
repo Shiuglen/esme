@@ -2,13 +2,15 @@
 import { ArrowUp, Waypoints } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '../lib/cn'
-import ElectricBorder from '../ui/efectos/ElectricBorder'
+import { BordeTrabajo } from '../tinta/PiezasVivas'
+import { usePiezas } from '../tinta/movimiento'
 import { Vidrio } from './Vidrio'
 
 // Va en vidrio líquido (shell/Vidrio.tsx) y, mientras Esme trabaja, un borde eléctrico lo recorre (React Bits).
 export function Compositor({ onEnviar, memoria, onMemoria, contexto, autoFocus, trabajando = false }: {
   onEnviar(texto: string): void; memoria: boolean; onMemoria(v: boolean): void; contexto?: string[]; autoFocus?: boolean; trabajando?: boolean
 }) {
+  const { piezas } = usePiezas()
   const [texto, setTexto] = useState('')
   const area = useRef<HTMLTextAreaElement>(null)
   useEffect(() => { const a = area.current; if (!a) return; a.style.height = '0px'; a.style.height = `${Math.min(160, a.scrollHeight)}px` }, [texto])
@@ -37,7 +39,5 @@ export function Compositor({ onEnviar, memoria, onMemoria, contexto, autoFocus, 
     </form>
   )
   const vidrio = <Vidrio radio={24}>{caja}</Vidrio>
-  return trabajando
-    ? <ElectricBorder color={getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#7df9ff'} speed={1} chaos={0.4} borderRadius={24}>{vidrio}</ElectricBorder>
-    : vidrio
+  return <BordeTrabajo pieza={piezas.trabajo} activo={trabajando} radio={24}>{vidrio}</BordeTrabajo>
 }

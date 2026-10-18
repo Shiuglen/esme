@@ -373,3 +373,4 @@
 /* La conversación: un brillo que recorre el texto mientras Esme trabaja, y su esfera que late mientras escribe. */
 @keyframes brillo { from { background-position: 200% 0 } to { background-position: -200% 0 } }
 @keyframes latido { 50% { transform: scale(1.18); box-shadow: 0 0 26px 2px var(--acento) } }
+@keyframes pulso-trabajo { 50% { box-shadow: 0 0 0 1px color-mix(in oklab, var(--acento), transparent 40%), 0 0 40px -6px var(--acento) } }

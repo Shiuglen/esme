@@ -20,7 +20,8 @@ import { diarioDe, type Entrada } from './diario'
 import { islaDe, pasosDe } from './mando'
 import { fechaLarga } from './portada'
 import { useEscucha, useNivelVoz } from '../lib/voz'
-import BlurText from '../ui/efectos/BlurText'
+import { Saludo } from '../tinta/PiezasVivas'
+import { usePiezas } from '../tinta/movimiento'
 
 const saludo = (h = new Date().getHours()) => (h < 6 ? 'Buenas noches' : h < 13 ? 'Buenos días' : h < 20 ? 'Buenas tardes' : 'Buenas noches')
 const acento = () => getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#5fffd0'
@@ -34,6 +35,7 @@ export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24,
   // manos libres: hablas, y al callarte un momento Esme te oye y responde (lib/voz.ts)
   const { escuchando, nivel, empezar, parar } = useEscucha((pcm) => onOir?.(pcm))
   const nivelVoz = useNivelVoz()
+  const { piezas } = usePiezas()
   // conversación continua: cuando Esme termina de hablar, vuelve a escucharte (tócala para salir)
   const [continua, setContinua] = useState(() => { try { return localStorage.getItem('esme:voz-continua') !== 'no' } catch { return true } })
   useEffect(() => { try { localStorage.setItem('esme:voz-continua', continua ? 'si' : 'no') } catch { /* sin almacenamiento */ } }, [continua])
@@ -73,7 +75,7 @@ export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24,
         <p className="m-0 mt-1 text-[13px] tracking-wide text-texto-3">{fechaLarga(new Date())}</p>
         <h1 className="m-0 mt-1 text-[clamp(40px,4.6vw,60px)] leading-none font-light tracking-[-0.04em] text-texto">
           {/* el saludo se enfoca letra a letra, como si Esme despertara (React Bits) */}
-          <BlurText text={`${saludo()}.`} animateBy="letters" delay={45} direction="bottom" className="justify-center" />
+          <Saludo texto={`${saludo()}.`} pieza={piezas.saludo} />
         </h1>
         <p className="m-0 mt-3 text-[15px] text-texto-2">
           {escuchando ? 'Te escucho. Habla con naturalidad.' : conectado

@@ -35,6 +35,7 @@ import { Hoja, type Origen } from './shell/Hoja'
 import { marcoDe } from './shell/marcos'
 import { callar, paraDecir, reproducir } from './lib/voz'
 import { Escena } from './shell/Escena'
+import { AlPulsar } from './tinta/PiezasVivas'
 import { encenderLuz } from './shell/Luz'
 import { MovimientoPiel } from './tinta/movimiento'
 import { MotionConfig } from 'motion/react'
@@ -240,7 +241,7 @@ export function App() {
   // Dónde va cada hoja, qué tapa de tu mente (para que la cámara la encuadre en el resto) y cuánto se atenúa la mente
   // (el sitio libre depende de cómo navega la piel: leyenda, riel o muelle — shell/marcos.ts)
   const marco = marcoDe(piel.navegacion)
-  const movimientoPiel = useMemo(() => ({ caracter: piel.caracter, movimiento: piel.movimiento }), [piel.caracter, piel.movimiento])
+  const movimientoPiel = useMemo(() => ({ caracter: piel.caracter, movimiento: piel.movimiento, piezas: piel.piezas }), [piel.caracter, piel.movimiento, piel.piezas])
   const HOJA: Partial<Record<SeccionId, string>> = { memoria: 'top-3 w-[400px]' }
   const grande = 'top-3 right-3'
   const sitioDe = (_id: SeccionId): React.CSSProperties => ({ left: marco.izquierda, bottom: marco.abajo })
@@ -261,6 +262,7 @@ export function App() {
     <MotionConfig reducedMotion={piel.movimiento === 'nada' ? 'always' : 'user'}>
     <FondoVivo tema={tema} estado={estadoEsme} fondo={piel.fondo} clave={JSON.stringify(piel.color)} />
     <Escena id={piel.escena} atenuada={seccion !== 'inicio'} clave={`${tema}${JSON.stringify(piel.color)}`} />
+    <AlPulsar pieza={piel.piezas.pulsar}>
     <div className="relative z-10 grid h-full grid-rows-[48px_minmax(0,1fr)]">
       <BarraSuperior seccion={nombreDe(seccion)} estado={{ conectado: !!brain && recuerdos !== null, recuerdos, pensando }} tema={tema}
         onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} onBuscar={() => setPaleta(true)} paletaAbierta={paleta}
@@ -290,6 +292,7 @@ export function App() {
       <Toaster theme={tema === 'noche' ? 'dark' : 'light'} position="bottom-right" toastOptions={{ style: { background: 'var(--superficie-2)', border: '1px solid var(--linea)', color: 'var(--texto)', fontFamily: 'inherit' } }} />
       <HojasVivas tareas={tl.tareas} onVer={verTarea} />
     </div>
+    </AlPulsar>
     </MotionConfig>
     </MovimientoPiel>
     </FirmaMente.Provider>

@@ -3,6 +3,7 @@
 // piel que trae algo que no es un color o una opción conocida se rechaza), se completa con la base (una IA puede mandar solo
 // una parte), se deriva la paleta entera desde cuatro colores y se comprueba que todo se lea (contraste WCAG AA).
 import { ESCENA_IDS, type EscenaId } from './escenas'
+import { PIEZAS_BASE, validarPiezas, type Piezas } from './piezas'
 import { ESTILOS, paletaPropia, type EstiloId, type Gustos } from './estilo-propio'
 import { aRgb } from './luz'
 
@@ -38,13 +39,13 @@ export type Piel = {
   version: 1; nombre: string; color: ColorPiel
   letra: { titulos: LetraId; texto: LetraId; escala: number }
   forma: { radio: number; sombra: Sombra }
-  densidad: Densidad; movimiento: Movimiento; caracter: Caracter; fondo: FondoPiel; navegacion: Navegacion; portada: PortadaPiel; escena: EscenaPiel; presencia: Presencia
+  densidad: Densidad; movimiento: Movimiento; caracter: Caracter; fondo: FondoPiel; navegacion: Navegacion; portada: PortadaPiel; escena: EscenaPiel; presencia: Presencia; piezas: Piezas
 }
 
 export const PIEL_BASE: Piel = {
   version: 1, nombre: 'Esmeralda', color: { tipo: 'estilo', estilo: 'esmeralda' },
   letra: { titulos: 'funnel', texto: 'funnel', escala: 1 }, forma: { radio: 1, sombra: 'suave' },
-  densidad: 'comoda', movimiento: 'sutil', caracter: 'preciso', fondo: 'aurora', navegacion: 'leyenda', portada: 'mando', escena: 'velo', presencia: 'orbe',
+  densidad: 'comoda', movimiento: 'sutil', caracter: 'preciso', fondo: 'aurora', navegacion: 'leyenda', portada: 'mando', escena: 'velo', presencia: 'orbe', piezas: PIEZAS_BASE,
 }
 
 const SOMBRAS: Sombra[] = ['plana', 'suave', 'honda'], DENSIDADES: Densidad[] = ['compacta', 'comoda', 'amplia']
@@ -102,6 +103,7 @@ export function validarPiel(x: unknown): { ok: true; piel: Piel } | { ok: false;
     else e.push(`${k}: «${String(x[k])}» no es una opción`)
   }
   enumera('densidad', DENSIDADES); enumera('movimiento', MOVIMIENTOS); enumera('fondo', FONDOS); enumera('navegacion', NAVEGACIONES); enumera('caracter', CARACTERES); enumera('portada', PORTADAS); enumera('escena', ESCENAS_PIEL); enumera('presencia', PRESENCIAS)
+  { const v = validarPiezas(x.piezas); p.piezas = v.piezas; e.push(...v.errores) }
   return e.length ? { ok: false, errores: e } : { ok: true, piel: p }
 }
 

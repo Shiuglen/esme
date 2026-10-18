@@ -3,8 +3,9 @@
 import { createContext, useContext, useMemo } from 'react'
 import { muelleCon } from './caracter'
 import type { Caracter, Movimiento } from './piel'
+import { PIEZAS_BASE, type Piezas } from './piezas'
 
-const Ctx = createContext<{ caracter: Caracter; movimiento: Movimiento }>({ caracter: 'preciso', movimiento: 'sutil' })
+const Ctx = createContext<{ caracter: Caracter; movimiento: Movimiento; piezas: Piezas }>({ caracter: 'preciso', movimiento: 'sutil', piezas: PIEZAS_BASE })
 export const MovimientoPiel = Ctx.Provider
 
 /** El muelle de este componente con el carácter de la piel (con el movimiento en «nada», sin animación). */
@@ -13,3 +14,6 @@ export function useMuelle(base: { stiffness: number; damping: number; mass?: num
   const { stiffness, damping, mass = 1 } = base
   return useMemo(() => muelleCon(caracter, movimiento, { type: 'spring', stiffness, damping, mass }), [caracter, movimiento, stiffness, damping, mass])
 }
+
+/** Las piezas elegidas en la piel (tinta/piezas.ts). */
+export const usePiezas = () => ({ piezas: useContext(Ctx).piezas })

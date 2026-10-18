@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { muelleCon } from '../tinta/caracter'
 import { ESCENA_IDS, ESCENAS } from '../tinta/escenas'
+import { PIEZAS, type Hueco, type Piezas } from '../tinta/piezas'
+import { AlPulsar, BordeTrabajo, Saludo } from '../tinta/PiezasVivas'
 import { disenarPiel } from '../tinta/disenar'
 import { cn } from '../lib/cn'
 import { paletaPropia } from '../tinta/estilo-propio'
@@ -280,6 +282,28 @@ export function Apariencia({ tema, onTema, pieles }: { tema: Tema; onTema(t: Tem
           <label className="grid gap-1.5 text-xs text-texto-2">Presencia de Esme<Segmentado etiqueta="Presencia de Esme" valor={p.presencia} onCambio={(presencia) => cambia({ presencia })} opciones={[['orbe', 'Esfera viva'], ['ninguna', 'Ninguna']]} /></label>
           <label className="grid gap-1.5 text-xs text-texto-2">Portada<Segmentado etiqueta="Portada" valor={p.portada} onCambio={(portada) => cambia({ portada })} opciones={[['mando', 'Centro de mando'], ['mente', 'Tu mente']]} /></label>
         </div>
+      </Capa>
+
+      <Capa titulo="Piezas">
+        <p className="m-0 text-xs text-texto-3">Cada detalle de Esme tiene muchas formas. Elige la tuya: lo que ves aquí está vivo.</p>
+        {(Object.keys(PIEZAS) as Hueco[]).map((h) => (
+          <div key={h} className="grid gap-2">
+            <span className="text-xs text-texto-2">{PIEZAS[h].nombre}</span>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-2" role="radiogroup" aria-label={PIEZAS[h].nombre}>
+              {PIEZAS[h].variantes.map((v) => (
+                <button key={v.id} type="button" role="radio" aria-checked={p.piezas[h] === v.id} onClick={() => cambia({ piezas: { ...p.piezas, [h]: v.id } })}
+                  className={cn('grid min-h-[88px] content-between gap-2 rounded-3 border p-3 text-left transition-all', p.piezas[h] === v.id ? 'border-acento ring-2 ring-acento/35' : 'border-linea hover:border-linea-fuerte')}>
+                  <span className="grid min-h-9 place-items-center overflow-hidden text-[19px] font-light text-texto">
+                    {h === 'saludo' && <Saludo texto="Hola." pieza={v.id as Piezas['saludo']} />}
+                    {h === 'trabajo' && <BordeTrabajo pieza={v.id as Piezas['trabajo']} activo radio={12}><span className="block rounded-[12px] border border-linea bg-s2/60 px-4 py-1.5 text-[13px] text-texto-2">pensando…</span></BordeTrabajo>}
+                    {h === 'pulsar' && <AlPulsar pieza={v.id as Piezas['pulsar']}><span className="block px-3 py-1.5 text-[13px] text-texto-2">pulsa aquí</span></AlPulsar>}
+                  </span>
+                  <span className="text-[12px] text-texto-2">{v.nombre}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
       </Capa>
 
       <Capa titulo="Ritmo y fondo">
