@@ -4,7 +4,7 @@
 // Sin foco, sin pestaña visible o con «menos movimiento», todo queda quieto (y la GPU descansa).
 import { NeuroNoise, PaperTexture } from '@paper-design/shaders-react'
 import { useEffect, useState } from 'react'
-import type { EstadoSenal } from '../marca/Senal'
+import type { EstadoSenal } from '../marca/SenalVista'
 import { anguloSol } from '../tinta/sol'
 
 const LUZ: Record<EstadoSenal, { brillo: number; velocidad: number; opacidad: number }> = {

@@ -7,7 +7,7 @@ import { fmtTokens, fmtUSD } from '../chat/formatos'
 import { bridge, type EstadoUso, type ResumenUso, type UsoExterno } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { diasSeguidos, rejillaActividad } from '../uso/vista'
-import { Bicho } from '../marca/Ser'
+import { Bicho } from '../marca/SerVista'
 import { useMuelle } from '../tinta/movimiento'
 
 type Rango = 'hoy' | '7' | '30'

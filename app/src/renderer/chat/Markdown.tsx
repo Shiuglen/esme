@@ -6,7 +6,7 @@ import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useMemo, useState } from 'react'
 import { datosVivos, fichasDe, leerPrisma, tablasVivas, type TablaViva } from './prisma'
-import { PrismaPanel } from './Prisma'
+import { PrismaPanel } from './PrismaVista'
 
 const fmt = (n: number) => new Intl.NumberFormat('es-ES', { notation: Math.abs(n) > 999999 ? 'compact' : 'standard', maximumFractionDigits: 2 }).format(n)
 

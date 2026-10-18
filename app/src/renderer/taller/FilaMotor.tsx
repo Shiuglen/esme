@@ -6,7 +6,7 @@ import { cn } from '../lib/cn'
 import { fmtTokens, fmtUSD } from '../chat/formatos'
 import { BarrasActividad } from './Micrografica'
 import { AgentFace } from 'agentfaces/react'
-import { Sello } from '../marca/Sello'
+import { Sello } from '../marca/SelloVista'
 import { giroSello } from '../marca/sello'
 import { barrasDe, ESTADOS, actividadAhora, activa, duracion, explicarError, silencioMs } from './vista'
 

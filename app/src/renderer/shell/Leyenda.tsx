@@ -2,7 +2,7 @@
 // En reposo lista los lugares con su estado vivo (en frases cortas); con una hoja abierta se recoge en una columna de
 // iconos para no quitarle sitio. Encabeza la rosa de los vientos: la Señal, Esme viva.
 import { cn } from '../lib/cn'
-import { Senal, type EstadoSenal } from '../marca/Senal'
+import { Senal, type EstadoSenal } from '../marca/SenalVista'
 import { ROTULO } from '../memoria/pintar'
 import type { Navegacion } from '../tinta/piel'
 import type { Origen } from './Hoja'

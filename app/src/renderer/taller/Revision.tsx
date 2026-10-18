@@ -11,7 +11,7 @@ import { lados, leerDiff, type FicheroDiff } from './diff'
 import { describirHerramienta, type ItemLinea } from './linea'
 import { lenguajeDe, resaltar, type Pieza } from './resaltado'
 import { activa } from './vista'
-import { Sello } from '../marca/Sello'
+import { Sello } from '../marca/SelloVista'
 import { giroSello } from '../marca/sello'
 
 const MAX_LINEAS = 400

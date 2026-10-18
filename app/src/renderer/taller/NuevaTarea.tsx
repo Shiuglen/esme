@@ -11,7 +11,7 @@ import { bridge, type MotorTaller, type OpcionMotor } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { candidatosDe, elegibles, elegir, elegirVarios, type Eleccion, type Veredicto } from './eleccion'
 import { configInicial, nombreValor, SelectorOpcion } from './Opciones'
-import { Bicho } from '../marca/Ser'
+import { Bicho } from '../marca/SerVista'
 import { useMuelle } from '../tinta/movimiento'
 
 const leer = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(`esme:taller:${k}`); return v === null ? d : (JSON.parse(v) as T) } catch { return d } }

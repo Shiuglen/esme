@@ -1,7 +1,7 @@
 // Ajustes: los motores de Esme (por API, por tu suscripción, en tu ordenador y el catálogo entero), tu presupuesto y la apariencia.
 // Las claves van al llavero del sistema y nunca vuelven a la interfaz; las suscripciones las abres tú en su CLI oficial.
 import { Check, ChevronRight, Cpu, KeyRound, Laptop, Package, Search, ShieldAlert, ShieldCheck, ShieldQuestion, Wallet } from 'lucide-react'
-import { Bicho } from '../marca/Ser'
+import { Bicho } from '../marca/SerVista'
 import { motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'

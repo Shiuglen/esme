@@ -2,7 +2,7 @@
 // Tinta de línea, trama de luz, ojos que respiran. De la era agentiva: viven sin pedir nada.
 import { motion, useReducedMotion } from 'motion/react'
 import { useContext, useMemo } from 'react'
-import { FirmaMente } from './Sello'
+import { FirmaMente } from './SelloVista'
 import { nacer } from './ser'
 
 export function Ser({ de, tamaño = 18, vivo = false, className }: { de: string; tamaño?: number; vivo?: boolean; className?: string }) {

@@ -12,7 +12,7 @@ import { esGrafito, nivelTinta, radioTrazo } from '../tinta/trazo'
 import { aguadasDe } from './aguadas'
 import { leerTinta, pintarAguadas as pintarAguadasEn, pintarPuntos, radioEn, rotular as rotularTemas, ROTULO, tintaDe } from './pintar'
 import { construirRed, type EnlaceRed, type NodoRed } from './red'
-import { Tiempo } from './Tiempo'
+import { Tiempo } from './TiempoVista'
 import { etiquetaFecha, histograma, rangoDe, visiblesEn } from './tiempo'
 
 export type RedHandle = { encender(ids: string[]): void; enfocar(id: string): void }

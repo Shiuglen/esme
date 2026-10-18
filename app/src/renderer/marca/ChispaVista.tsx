@@ -4,7 +4,7 @@
 import { useContext, useId, useMemo } from 'react'
 import { cn } from '../lib/cn'
 import { chispaDe, type P } from './chispa'
-import { FirmaMente } from './Sello'
+import { FirmaMente } from './SelloVista'
 
 export type EstadoChispa = 'reposo' | 'pensando' | 'recordando'
 const d = (pts: P[]) => `M${pts.map((p) => `${p[0]} ${p[1]}`).join('L')}Z`

@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { bridge, type ProgramadoVisto } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { recorta } from '../paginas/diario'
-import { Bicho } from '../marca/Ser'
+import { Bicho } from '../marca/SerVista'
 import { fraseCuando } from './cuando'
 
 export function useAgenda() {
