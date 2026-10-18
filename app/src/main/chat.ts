@@ -77,7 +77,8 @@ async function pump(to: WebContents, req: ChatRequest, ac: AbortController, d: D
       const manos = manosPara(to, req, ac, d)
       // las propias de Esme y las que conectaste en la Tienda; lo que no arranca se dice como un paso fallido
       const { tools: conectadas, fallos } = await herramientasConectadas(manos).catch((e) => ({ tools: {}, fallos: [String(e)] }))
-      fallos.forEach((f, i) => to.send(`chat:paso:${req.id}`, { fase: 'error', id: `mcp-${i}`, nombre: 'herramienta conectada', error: f }))
+      // las que esperan a que inicies sesión no ensucian la conversación: eso se ve y se arregla en la Tienda
+      fallos.filter((f) => !/401|unauthori[sz]ed|iniciar sesión/i.test(f)).forEach((f, i) => to.send(`chat:paso:${req.id}`, { fase: 'error', id: `mcp-${i}`, nombre: 'herramienta conectada', error: f }))
       tools = { ...conectadas, ...herramientasPropias(manos) }
     }
     const result = streamText({ model: makeModel(req.provider, req.model, (id) => keys.get(id)),

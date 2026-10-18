@@ -12,7 +12,9 @@ const limpio = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replac
 /** El nombre corto que prefija sus acciones (figma__crear_marco): del final del nombre o, si es genérico, del dominio. */
 export function slugDe(nombre: string): string {
   const [dominio = '', resto = ''] = nombre.split('/')
-  if (resto && !GENERICO.test(resto)) return limpio(resto)
+  // sin «mcp» ni «server», que no dicen nada; si queda algo muy corto (hf), manda el dominio (huggingface)
+  const propio = limpio(resto).split('_').filter((p) => !/^(mcp|server)$/.test(p)).join('_')
+  if (propio.length >= 3 && !GENERICO.test(propio)) return propio
   const parte = dominio.split('.').find((p) => !RAICES.has(p.toLowerCase()))
   return limpio(parte ?? (dominio || nombre)) || 'herramienta'
 }

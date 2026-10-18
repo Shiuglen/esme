@@ -38,7 +38,7 @@
  },
  {
   "id": "com.atlassian/atlassian-mcp-server",
-  "slug": "atlassian_mcp_server",
+  "slug": "atlassian",
   "titulo": "Atlassian Rovo MCP Server",
   "descripcion": "Connect to Atlassian Jira, Confluence, Loom, and more to search, create, and manage your work.",
   "version": "2.0.0",
@@ -63,7 +63,7 @@
  },
  {
   "id": "co.huggingface/hf-mcp-server",
-  "slug": "hf_mcp_server",
+  "slug": "huggingface",
   "titulo": "Hugging Face",
   "descripcion": "Connect to Hugging Face Hub and thousands of Gradio AI Applications",
   "version": "0.2.33",
@@ -152,8 +152,8 @@
  },
  {
   "id": "com.apify/apify-mcp-server",
-  "slug": "apify_mcp_server",
-  "titulo": "Apify mcp server",
+  "slug": "apify",
+  "titulo": "Apify",
   "descripcion": "Extract data from any website with thousands of scrapers, crawlers, and automations on Apify Store ⚡",
   "version": "0.18.4",
   "conexion": {

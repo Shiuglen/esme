@@ -21,7 +21,7 @@ describe('la ficha de una herramienta del registro', () => {
   })
   it('sin título, se usa un nombre legible (nunca «mcp»)', () => {
     expect(fichaDe({ name: 'com.notion/mcp', remotes: remoto.remotes })!.titulo).toBe('Notion')
-    expect(fichaDe({ name: 'io.github.someone/blender-mcp', remotes: remoto.remotes })!.titulo).toBe('Blender mcp')
+    expect(fichaDe({ name: 'io.github.someone/blender-mcp', remotes: remoto.remotes })!.titulo).toBe('Blender')
   })
   it('si trae remota y paquete, prefiere la remota (no ejecuta nada en tu equipo)', () => {
     expect(fichaDe({ ...npm, remotes: remoto.remotes })!.conexion.tipo).toBe('remoto')
@@ -36,7 +36,9 @@ describe('la ficha de una herramienta del registro', () => {
 describe('el nombre corto de cada herramienta (prefijo de sus acciones)', () => {
   it('sale del dominio o del nombre, en minúsculas y sin símbolos', () => {
     expect(slugDe('com.figma.mcp/mcp')).toBe('figma')
-    expect(slugDe('io.github.someone/Blender-MCP')).toBe('blender_mcp')
+    expect(slugDe('io.github.someone/Blender-MCP')).toBe('blender')
+    expect(slugDe('co.huggingface/hf-mcp-server')).toBe('huggingface')
+    expect(slugDe('io.github.x/mcp-server-postgres')).toBe('postgres')
     expect(slugDe('ai.exa/exa')).toBe('exa')
     expect(slugDe('app.linear/linear')).toBe('linear')
     expect(slugDe(`io.github.x/${'a'.repeat(60)}`).length).toBeLessThanOrEqual(24)
