@@ -1,5 +1,8 @@
 // El detalle de una tarea: qué se pidió, qué hace el motor en vivo (plan, herramientas, texto), los permisos que pide,
 // los cambios en su copia y cómo seguir. Descartar es en dos pasos: borra la copia y su rama, y eso no se deshace.
+import { AgentFace } from 'agentfaces/react'
+import AILoadingState from '../ui/ai-loading'
+import { pasosDe } from '../paginas/mando'
 import {
   ArrowUp, Brain, Hourglass, Check, ChevronRight, Circle, CircleCheck, Eye, FolderOpen, GitBranch, Globe, LoaderCircle, MoveRight, PencilLine, RefreshCcw,
   Search, ShieldCheck, Square, SquareTerminal, Trash2, Wrench, X, type LucideIcon,
@@ -16,7 +19,6 @@ import { VistaPrevia } from './VistaPrevia'
 import { contarLineas } from './diff'
 import { PastillaEstado } from './FilaMotor'
 import { describirHerramienta, type ItemLinea } from './linea'
-import { Bicho } from '../marca/Ser'
 import { SelectorOpcion } from './Opciones'
 import { activa, barrasDe, duracion, explicarError, motivoFin } from './vista'
 import { BarrasActividad } from './Micrografica'
@@ -25,6 +27,8 @@ const ICONO_CLASE: Record<string, LucideIcon> = {
   read: Eye, edit: PencilLine, delete: Trash2, move: MoveRight, search: Search, execute: SquareTerminal, think: Brain, fetch: Globe,
 }
 const PERMISO: Record<string, string> = { allow_once: 'Permitir', allow_always: 'Permitir siempre', reject_once: 'Rechazar', reject_always: 'Rechazar siempre' }
+
+const CARA_DETALLE = { preparando: 'starting', trabajando: 'working', esperando: 'needs-you', lista: 'done', error: 'alert', parada: 'sleeping' } as const
 
 export type Pestana = 'vivo' | 'revision' | 'previa' | 'arena'
 export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, onDescartar, onAbrir, onConfigurar, onTerminal, revision, onPestana, arena, pedida, onReencarnar, ahora = Date.now() }: {
@@ -48,13 +52,8 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
     <div className="flex h-full min-h-0 flex-col">
       <header className="border-b border-linea px-5 pt-4 pb-3">
         <div className="flex items-start gap-3">
-          {/* El medallón de quién trabaja: el bichito del motor, anillado por el estado de la tarea */}
-          <span aria-hidden className={cn(
-            'grid size-10 shrink-0 place-items-center rounded-full border',
-            enMarcha ? 'border-transparent' : t.estado === 'error' ? 'border-peligro/40 text-peligro' : 'border-linea-fuerte/80 text-texto-2')}
-            style={enMarcha ? { background: 'color-mix(in oklab, var(--luz) 14%, transparent)' } : t.estado === 'error' ? { background: 'var(--peligro-velo)' } : { background: 'var(--s1)' }}>
-            <Bicho de={t.motor} tamaño={19} vivo={enMarcha} className="" />
-          </span>
+          {/* quién trabaja: la cara del agente, que dice en qué está (agentfaces) */}
+          <span className="shrink-0"><AgentFace state={CARA_DETALLE[t.estado]} size={52} color={getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || undefined} /></span>
           <h2 className="line-clamp-2 min-w-0 flex-1 font-display text-[19px] leading-[25px] tracking-[-0.01em] text-texto">{t.titulo}</h2>
           <div className="flex shrink-0 items-center gap-1">
             {enMarcha && <Accion icono={Square} texto="Parar" onClick={onParar} />}
@@ -96,6 +95,8 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
           <BarrasActividad valores={barrasDe(t.actividad, 30)} viva={t.estado === 'trabajando'} ancho={440} alto={18} completo className="min-w-0 flex-1" />
           <span className="shrink-0 font-mono text-[10.5px] text-texto" title="Cuánto lleva (o llevó) el turno">{t.primeraRespuestaMs ? `1.ª res. ${duracion(t.primeraRespuestaMs)} · ` : ''}{duracion((t.fin ?? ahora) - t.inicio)}</span>
         </div>
+        {/* mientras trabaja o espera, sus pasos en directo (Kokonut UI) */}
+        {(enMarcha || t.estado === 'esperando') && <div className="mt-3 rounded-3 border border-linea/60 bg-s1/40 p-2"><AILoadingState steps={pasosDe(t)} collapseWhenDone={false} /></div>}
         <nav className="mt-3 flex items-center gap-1 border-b border-linea/70 pb-1" aria-label="Vista de la tarea">
           {(['vivo', 'revision', 'previa', ...(arena && arena.tareas.length > 1 ? ['arena' as const] : [])] as Pestana[]).map((p) => (
             <button key={p} type="button" onClick={() => setPestana(p)} aria-current={pestana === p}
