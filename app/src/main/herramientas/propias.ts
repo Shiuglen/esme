@@ -19,6 +19,7 @@ export type Manos = {
   verEquipo(): { titulo: string; estado: string; agente: string }[]
   encargar(encargo: string, agente?: string): Promise<{ id: string; titulo: string; agente: string }>
   programar(p: Pick<NuevoProgramado, 'texto' | 'cuando'> & { agente?: string }): Promise<{ ok: true } | { ok: false; error: string }> | { ok: true } | { ok: false; error: string }
+  forjar(necesidad: string, o: { nombre?: string; agente?: string }): Promise<{ tarea: string; herramienta: string; agente: string; siguiente: string }>
   buscarWeb(consulta: string): Promise<{ fuente: string; resultados: Resultado[] }>
   leerWeb(url: string): Promise<{ titulo: string; texto: string; url: string }>
   preguntar(nombre: string, args: unknown, id: string): Promise<Respuesta>
@@ -102,6 +103,11 @@ export function herramientasPropias(m: Manos): ToolSet {
       description: 'Encarga un trabajo de programación o de ficheros a un agente del Taller. Trabaja en una copia aislada; el usuario revisa los cambios antes de aplicarlos. Describe el encargo con detalle.',
       inputSchema: z.object({ encargo: z.string().min(10).max(20_000), agente: z.string().optional().describe('id del agente; si no, Esme elige') }),
       execute: g('encargar_al_equipo', ({ encargo, agente }: { encargo: string; agente?: string }) => m.encargar(encargo, agente)),
+    }),
+    forjar_herramienta: tool({
+      description: 'La Forja: cuando ninguna herramienta disponible sirve para lo que el usuario necesita, encarga a un agente del Taller que fabrique una nueva (un servidor MCP en Python). El usuario la revisa e instala desde el Taller; después la podrás usar. Describe la necesidad con detalle: qué entra, qué sale y de dónde salen los datos.',
+      inputSchema: z.object({ necesidad: z.string().min(15).max(4000), nombre: z.string().regex(/^[a-z][a-z0-9_]{2,19}$/).optional().describe('nombre corto en minúsculas con guiones bajos, p. ej. dias_hasta'), agente: z.string().optional() }),
+      execute: g('forjar_herramienta', ({ necesidad, nombre, agente }: { necesidad: string; nombre?: string; agente?: string }) => m.forjar(necesidad, { ...(nombre ? { nombre } : {}), ...(agente ? { agente } : {}) })),
     }),
     programar_encargo: tool({
       description: 'Deja un encargo en la agenda del Taller para que el equipo lo haga solo más tarde o cada día.',

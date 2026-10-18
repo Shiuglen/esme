@@ -1,7 +1,7 @@
 // La Tienda, paso 2 (docs/superpowers/specs/2026-10-18-manos.md): herramientas MCP del registro oficial. Buscas,
 // conectas (tus claves van al llavero), Esme la prueba de verdad y desde ese momento la usan la conversación y el
 // Taller, siempre con permiso. Arriba, lo que ya tienes conectado; abajo, cómo busca Esme en internet.
-import { Cloud, Globe, Laptop, Plug, Search, Trash2 } from 'lucide-react'
+import { Cloud, Globe, Hammer, Laptop, Plug, Search, Trash2 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -36,7 +36,7 @@ export function TiendaHerramientas() {
                 <Tipo f={c.ficha} />
                 <div className="min-w-0 flex-1">
                   <p className="m-0 truncate text-[14px] text-texto">{c.ficha.titulo}</p>
-                  <p className="m-0 truncate text-[12px] text-texto-3">{c.faltan.length ? `Falta: ${c.faltan.join(', ')}` : c.activa ? `Activa · sus acciones se llaman ${c.ficha.slug}__…` : 'En pausa'}</p>
+                  <p className="m-0 truncate text-[12px] text-texto-3">{c.ficha.conexion.tipo === 'forjada' && c.activa ? `Forjada por Esme · ${c.ficha.descripcion}` : c.faltan.length ? `Falta: ${c.faltan.join(', ')}` : c.activa ? `Activa · sus acciones se llaman ${c.ficha.slug}__…` : 'En pausa'}</p>
                 </div>
                 <button type="button" role="switch" aria-checked={c.activa} aria-label={c.activa ? 'Pausar' : 'Activar'}
                   onClick={() => void bridge.herramientas.alternar(c.ficha.slug, !c.activa).then(recargar)}
@@ -50,6 +50,8 @@ export function TiendaHerramientas() {
           </ul>
         </section>
       )}
+
+      <Forjar />
 
       <section className="grid gap-4">
         <div className="flex flex-wrap items-center gap-3">
@@ -74,8 +76,33 @@ export function TiendaHerramientas() {
   )
 }
 
+// La Forja: si ninguna herramienta hace lo que necesitas, tu equipo te la fabrica. La revisas en el Taller y la instalas.
+function Forjar() {
+  const [necesidad, setNecesidad] = useState('')
+  const [enviando, setEnviando] = useState(false)
+  const forjar = async () => {
+    setEnviando(true)
+    const r = await bridge.forja.encargar(necesidad)
+    setEnviando(false)
+    if (!r.ok) { toast.error(r.error); return }
+    toast.success(`${r.agente} está forjando «${r.herramienta}»`, { description: 'Cuando termine, revísala en el Taller y pulsa «Instalar como herramienta».' })
+    setNecesidad('')
+  }
+  return (
+    <section className="grid gap-3 rounded-4 border border-acento/35 bg-[color-mix(in_oklab,var(--acento)_6%,transparent)] p-5">
+      <h2 className="m-0 flex items-center gap-2 text-[15px] font-medium text-texto"><Hammer className="size-4 text-acento" strokeWidth={1.75} />¿No existe? Fórjala</h2>
+      <p className="m-0 max-w-[70ch] text-[13px] leading-5 text-texto-2">Describe qué necesitas: qué le das, qué te devuelve y de dónde salen los datos. Un agente de tu equipo la fabrica en una copia aislada; tú ves qué hace y decides si se instala.</p>
+      <textarea value={necesidad} onChange={(e) => setNecesidad(e.target.value)} rows={3} placeholder="Por ejemplo: dada una fecha AAAA-MM-DD, dime cuántos días faltan desde hoy y qué día de la semana cae."
+        className="resize-none rounded-3 border border-linea bg-s1/70 px-3.5 py-2.5 text-[13.5px] leading-5 text-texto outline-none placeholder:text-texto-3 focus:border-foco" />
+      <button type="button" disabled={necesidad.trim().length < 15 || enviando} onClick={() => void forjar()}
+        className="inline-flex h-9 w-fit items-center gap-2 rounded-full bg-acento px-4 text-[13px] font-medium text-sobre-acento disabled:opacity-40"><Hammer className="size-4" />{enviando ? 'Encargando…' : 'Forjar'}</button>
+    </section>
+  )
+}
+
 function Tipo({ f }: { f: Ficha }) {
-  const remota = f.conexion.tipo === 'remoto'
+  const remota = f.conexion.tipo === 'remoto', forjada = f.conexion.tipo === 'forjada'
+  if (forjada) return <span title="Forjada por Esme: la fabricó tu equipo y la aprobaste tú" className="grid size-9 shrink-0 place-items-center rounded-3 bg-acento/15 text-acento"><Hammer className="size-4" strokeWidth={1.75} /></span>
   return (
     <span title={remota ? 'Remota: se usa por internet, no ejecuta nada en tu equipo' : `Local: se ejecuta en tu equipo (${f.conexion.tipo === 'npm' ? 'npx' : 'uvx'})`}
       className="grid size-9 shrink-0 place-items-center rounded-3 bg-s2 text-texto-2">{remota ? <Cloud className="size-4" strokeWidth={1.75} /> : <Laptop className="size-4" strokeWidth={1.75} />}</span>

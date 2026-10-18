@@ -6,7 +6,7 @@ import { motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { fmtTokens, fmtUSD } from '../chat/formatos'
-import { bridge, type AlCerrar, type EstadoUso, type ModeloCatalogo, type MotorDetectado, type MotorTaller, type OrigenCatalogo, type ProveedorResumen, type ProviderView } from '../lib/bridge'
+import { bridge, type AgenteMente, type AlCerrar, type EstadoUso, type ModeloCatalogo, type MotorDetectado, type MotorTaller, type OrigenCatalogo, type ProveedorResumen, type ProviderView } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { Apariencia, type Pieles } from './Apariencia'
 import { TuPlan } from './TuPlan'
@@ -276,6 +276,8 @@ function Sistema() {
     nunca: 'Esme se cierra del todo al cerrar la ventana, aunque haya encargos programados: no se harán hasta que la abras.',
   }
   return (
+    <div className="grid gap-5">
+    <MenteCompartida />
     <section className="vidrio grid gap-3 rounded-4 border p-5">
       <h3 className="m-0 text-sm font-semibold">Al cerrar la ventana</h3>
       {v === null ? <span className="h-10 w-72 animate-pulse rounded-3 bg-s2/70" /> : (
@@ -284,6 +286,37 @@ function Sistema() {
           <p className="m-0 max-w-[620px] text-[13px] leading-5 text-texto-2">{AYUDA[v]}</p>
         </>
       )}
+    </section>
+    </div>
+  )
+}
+
+// Tu mente para todas tus IAs: Esme registra su memoria en los agentes que usas fuera de ella. Adiós a los .md.
+function MenteCompartida() {
+  const [agentes, setAgentes] = useState<AgenteMente[] | null>(null)
+  const recargar = () => void bridge.mente.agentes().then(setAgentes)
+  useEffect(recargar, [])
+  const cambiar = async (a: AgenteMente) => {
+    const r = await bridge.mente.conectar(a.id, !a.conectado)
+    if (!r.ok) { toast.error(r.error); return }
+    toast.success(a.conectado ? `${a.nombre} ya no usa tu mente` : `${a.nombre} ya usa tu mente`, { description: a.conectado ? undefined : 'Reinícialo para que la vea. Guardé una copia de su configuración anterior.' })
+    recargar()
+  }
+  return (
+    <section className="vidrio grid gap-3 rounded-4 border p-5">
+      <h3 className="m-0 text-sm font-semibold">Tu mente en tus otras IAs</h3>
+      <p className="m-0 max-w-[640px] text-[13px] leading-5 text-texto-2">Los agentes que usas fuera de Esme pueden recordar con tu mente en vez de con ficheros .md: lo que aprende uno lo saben todos. Solo funciona en este equipo (127.0.0.1) y con tu token.</p>
+      <ul className="m-0 grid list-none gap-2 p-0">
+        {(agentes ?? []).map((a) => (
+          <li key={a.id} className="flex items-center gap-3">
+            <span className="min-w-0 flex-1 text-[13.5px] text-texto">{a.nombre}<span className="ml-2 text-[12px] text-texto-3">{a.instalado ? a.fichero.replace(/^.*?(\.[^/]+.*)$/, '~/$1') : 'no lo tienes en este equipo'}</span></span>
+            <button type="button" role="switch" aria-checked={a.conectado} aria-label={`Tu mente en ${a.nombre}`} disabled={!a.instalado && !a.conectado}
+              onClick={() => void cambiar(a)} className={cn('relative h-6 w-10 rounded-full transition-colors disabled:opacity-30', a.conectado ? 'bg-acento' : 'bg-s3')}>
+              <span className={cn('absolute top-1 size-4 rounded-full bg-white transition-all', a.conectado ? 'left-5' : 'left-1')} />
+            </button>
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }

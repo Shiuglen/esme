@@ -11,6 +11,8 @@ import type { NuevoProgramado, Programado } from '../../main/taller/agenda'
 import type { Paso } from '../../main/herramientas/propias'
 import type { Ficha } from '../../main/herramientas/registro-mcp'
 export type { Ficha }
+export type AgenteMente = { id: string; nombre: string; fichero: string; instalado: boolean; conectado: boolean }
+export type EncargoForja = { slug: string; necesidad: string; instalada?: boolean; listo: boolean; avisos: string[] }
 export type ConectadaVista = { ficha: Ficha; activa: boolean; faltan: string[] }
 type ResultadoConexion = { ok: true; acciones: number; aviso?: string; sesion?: boolean } | { ok: false; error: string }
 export type AlCerrar = 'auto' | 'siempre' | 'nunca'
@@ -42,6 +44,8 @@ export type OrigenCatalogo = { origen: 'red' | 'cache' | 'semilla'; fecha: numbe
 
 type ElectronApi = {
   brain: { info(): Promise<BrainInfo | null>; onChange(fn: (i: BrainInfo | null) => void): () => void }
+  mente: { agentes(): Promise<AgenteMente[]>; conectar(id: string, si: boolean): Promise<ResultadoTaller> }
+  forja: { encargar(n: string, nombre?: string, agente?: string): Promise<{ ok: true; tarea: string; herramienta: string; agente: string } | { ok: false; error: string }>; probar(id: string): Promise<{ ok: true; acciones: { nombre: string; descripcion: string }[] } | { ok: false; error: string }>; de(id: string): Promise<EncargoForja | null>; instalar(id: string): Promise<{ ok: true; herramienta: string; acciones: number } | { ok: false; error: string }> }
   herramientas: {
     buscar(q: string): Promise<{ ok: true; fichas: Ficha[] } | { ok: false; error: string }>; conectadas(): Promise<ConectadaVista[]>
     conectar(f: Ficha, v: Record<string, string>): Promise<ResultadoConexion>; alternar(slug: string, activa: boolean): Promise<ResultadoTaller>; quitar(slug: string): Promise<ResultadoTaller>
@@ -98,6 +102,16 @@ let seq = 0
 const newId = () => `${Date.now().toString(36)}-${(seq++).toString(36)}`
 
 export const bridge = {
+  mente: {
+    agentes: async (): Promise<AgenteMente[]> => (isElectron() ? window.daimon!.mente.agentes() : []),
+    conectar: async (id: string, si: boolean): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.mente.conectar(id, si) : { ok: false, error: 'Solo en la app.' }),
+  },
+  forja: {
+    de: async (id: string): Promise<EncargoForja | null> => (isElectron() ? window.daimon!.forja.de(id) : null),
+    instalar: async (id: string) => (isElectron() ? window.daimon!.forja.instalar(id) : { ok: false as const, error: 'Solo en la app.' }),
+    probar: async (id: string) => (isElectron() ? window.daimon!.forja.probar(id) : { ok: false as const, error: 'Solo en la app.' }),
+    encargar: async (n: string, nombre?: string, agente?: string) => (isElectron() ? window.daimon!.forja.encargar(n, nombre, agente) : { ok: false as const, error: 'Solo en la app.' }),
+  },
   herramientas: {
     buscar: async (q: string) => (isElectron() ? window.daimon!.herramientas.buscar(q) : { ok: false as const, error: 'Solo en la app.' }),
     conectadas: async (): Promise<ConectadaVista[]> => (isElectron() ? window.daimon!.herramientas.conectadas() : []),

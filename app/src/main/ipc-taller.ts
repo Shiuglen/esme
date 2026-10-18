@@ -52,6 +52,9 @@ export async function encargarDesdeChat(encargo: string, agente?: string) {
   const t = taller.crear({ motor, carpeta: null, texto: encargo })
   return { id: t.id, titulo: t.titulo, agente: t.motorNombre }
 }
+/** La carpeta de trabajo (copia aislada) de una tarea, para la Forja. */
+export const copiaDeTarea = (id: string) => taller?.lista().find((x) => x.id === id)?.copia?.ruta ?? null
+export const estadoDeTarea = (id: string) => taller?.lista().find((x) => x.id === id)?.estado ?? null
 export async function programarDesdeChat(p: { texto: string; cuando: unknown; agente?: string }) {
   if (!programarInterno) return { ok: false as const, error: 'La agenda aún no está lista.' }
   const motor = p.agente ?? await agentePreferido()

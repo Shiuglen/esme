@@ -3,6 +3,7 @@
 // prefieren: no ejecutan nada en tu equipo. Lo que Esme aún no sabe lanzar (docker, nuget…) se descarta.
 export type Variable = { nombre: string; descripcion: string; secreta: boolean; requerida: boolean; donde: 'env' | 'cabecera' }
 export type Conexion = { tipo: 'remoto'; url: string } | { tipo: 'npm'; paquete: string; version?: string } | { tipo: 'pypi'; paquete: string; version?: string }
+  | { tipo: 'forjada'; fichero: string }   // hecha por la Forja: se arranca con el Python de Esme
 export type Ficha = { id: string; slug: string; titulo: string; descripcion: string; version: string; web?: string; conexion: Conexion; variables: Variable[] }
 
 const GENERICO = /^(mcp|server|mcp-?server|main|default|api)$/i

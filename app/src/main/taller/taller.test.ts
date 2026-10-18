@@ -412,6 +412,16 @@ describe('Taller: límites de peticiones', () => {
     await esperar(tarea.id, 'error')
     expect(t!.lista()[0].error).toContain('429')
   })
+  it('si el modelo gratis llega a su límite, pasa a otro gratis del mismo motor sin esperar (nunca a uno de pago)', async () => {
+    const opciones = [{ id: 'model', nombre: 'Model', actual: 'opencode/glm-free', valores: [{ id: 'pago/opus', nombre: 'Opus' }, { id: 'opencode/glm-free', nombre: 'GLM' }, { id: 'opencode/nemotron-free', nombre: 'Nemotron' }] }]
+    let intentos = 0
+    const s = sesiones(async (o) => { o.alEvento({ tipo: 'opciones', opciones }); if (++intentos === 1) throw new Error('Rate limit exceeded'); return 'end_turn' })
+    const tarea = crear(s.abrir, undefined, { esperasReintento: [60_000] }).crear({ motor, carpeta: null, texto: 'x' })
+    await esperar(tarea.id, 'lista')
+    expect(s.configurar).toHaveBeenCalledWith('model', 'opencode/nemotron-free')
+    const ev = await t!.eventos(tarea.id)
+    expect(ev.find((e) => e.tipo === 'reintento')).toMatchObject({ ms: 0, motivo: expect.stringMatching(/nemotron-free/) })
+  })
   it('otros errores no se reintentan', async () => {
     let intentos = 0
     const s = sesiones(async () => { intentos++; throw new Error('Model is unavailable') })

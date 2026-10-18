@@ -11,6 +11,7 @@ function manos(x: Partial<Manos> = {}): Manos & { pasos: unknown[] } {
     verEquipo: vi.fn(() => [{ titulo: 'tests', estado: 'trabajando', agente: 'Qwen Code' }]),
     encargar: vi.fn(async () => ({ id: 'abc123', titulo: 'haz X', agente: 'OpenCode' })),
     programar: vi.fn(() => ({ ok: true as const })),
+    forjar: vi.fn(async () => ({ tarea: 't1', herramienta: 'divisas', agente: 'OpenCode', siguiente: 'revisa' })),
     buscarWeb: vi.fn(async () => ({ fuente: 'Wikipedia', resultados: [{ titulo: 'Ada', url: 'https://es.wikipedia.org/wiki/Ada', resumen: 'r' }] })),
     leerWeb: vi.fn(async () => ({ titulo: 'T', texto: 'cuerpo', url: 'https://es.wikipedia.org/wiki/Ada' })),
     preguntar: vi.fn(async () => 'una' as const),
@@ -49,6 +50,16 @@ describe('las herramientas propias de Esme', () => {
     const m = manos({ buscarWeb: vi.fn(async () => { throw new Error('sin red') }) }); const h = herramientasPropias(m)
     expect(await ejecutar(h, 'buscar_en_internet', { consulta: 'x' })).toMatch(/sin red/)
     expect(m.pasos.at(-1)).toMatchObject({ fase: 'error', id: 'l1' })
+  })
+})
+
+describe('la Forja desde la conversación', () => {
+  it('forjar una herramienta pide permiso y encarga al equipo lo que falta', async () => {
+    const m = manos(); const h = herramientasPropias(m)
+    const args = { necesidad: 'convertir divisas con el cambio del BCE', nombre: 'divisas' }
+    expect(await ejecutar(h, 'forjar_herramienta', args)).toMatchObject({ herramienta: 'divisas' })
+    expect(m.preguntar).toHaveBeenCalledWith('forjar_herramienta', args, 'l1')
+    expect(m.forjar).toHaveBeenCalledWith('convertir divisas con el cambio del BCE', { nombre: 'divisas' })
   })
 })
 

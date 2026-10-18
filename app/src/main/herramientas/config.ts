@@ -13,7 +13,7 @@ const conectadaValida = (c: unknown): c is Conectada => {
   if (!objeto(c) || typeof c.activa !== 'boolean' || !objeto(c.ficha)) return false
   const f = c.ficha, k = f.conexion
   return typeof f.id === 'string' && typeof f.slug === 'string' && /^[a-z0-9_]{1,24}$/.test(f.slug) && typeof f.titulo === 'string' && Array.isArray(f.variables)
-    && objeto(k) && ((k.tipo === 'remoto' && typeof k.url === 'string' && /^https?:\/\//.test(k.url)) || ((k.tipo === 'npm' || k.tipo === 'pypi') && typeof k.paquete === 'string'))
+    && objeto(k) && ((k.tipo === 'remoto' && typeof k.url === 'string' && /^https?:\/\//.test(k.url)) || ((k.tipo === 'npm' || k.tipo === 'pypi') && typeof k.paquete === 'string') || (k.tipo === 'forjada' && typeof k.fichero === 'string' && k.fichero.endsWith('.py')))
 }
 
 export function leerConfig(f: string): ConfigManos {

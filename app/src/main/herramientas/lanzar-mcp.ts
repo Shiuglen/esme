@@ -13,8 +13,13 @@ export type Lanzamiento = { tipo: 'stdio'; comando: string; args: string[]; env:
 const conValor = (f: Ficha, valores: Record<string, string>, donde: 'env' | 'cabecera') =>
   Object.fromEntries(f.variables.filter((v) => v.donde === donde && valores[v.nombre]).map((v) => [v.nombre, valores[v.nombre]]))
 
-export function lanzamientoDe(f: Ficha, valores: Record<string, string>): Lanzamiento {
+export type PythonEsme = { python: string; extraPython: string | null }
+export function lanzamientoDe(f: Ficha, valores: Record<string, string>, py?: PythonEsme): Lanzamiento {
   const c = f.conexion
+  if (c.tipo === 'forjada') {
+    if (!py) throw new Error('Falta el Python de Esme para arrancar una herramienta forjada.')
+    return { tipo: 'stdio', comando: py.python, args: [c.fichero], env: py.extraPython ? { PYTHONPATH: py.extraPython, PYTHONNOUSERSITE: '1' } : {} }
+  }
   if (c.tipo === 'remoto') return { tipo: 'http', url: c.url, headers: conValor(f, valores, 'cabecera') }
   if (c.tipo === 'npm') return { tipo: 'stdio', comando: 'npx', args: ['-y', c.version ? `${c.paquete}@${c.version}` : c.paquete], env: conValor(f, valores, 'env') }
   return { tipo: 'stdio', comando: 'uvx', args: [c.version ? `${c.paquete}==${c.version}` : c.paquete], env: conValor(f, valores, 'env') }
@@ -32,12 +37,12 @@ export class GestorMCP {
   private clientes = new Map<string, Promise<Cliente>>()
 
   // authDe: el inicio de sesión OAuth de cada herramienta remota (en la conversación, nunca abre el navegador)
-  constructor(private readonly valoresDe: (f: Ficha) => Record<string, string>, private readonly authDe?: (f: Ficha) => OAuthClientProvider) {}
+  constructor(private readonly valoresDe: (f: Ficha) => Record<string, string>, private readonly authDe?: (f: Ficha) => OAuthClientProvider, private readonly py?: PythonEsme) {}
 
   private cliente(f: Ficha): Promise<Cliente> {
     const previo = this.clientes.get(f.slug)
     if (previo) return previo
-    const l = lanzamientoDe(f, this.valoresDe(f))
+    const l = lanzamientoDe(f, this.valoresDe(f), this.py)
     const transport = l.tipo === 'http'
       ? { type: 'http' as const, url: l.url, headers: l.headers, redirect: 'follow' as const, ...(this.authDe ? { authProvider: this.authDe(f) } : {}) }
       : new Experimental_StdioMCPTransport({ command: l.comando, args: l.args, env: { ...process.env as Record<string, string>, ...l.env } })

@@ -24,6 +24,7 @@ const FRASES: Record<string, (a: Record<string, unknown>) => [string, string, st
   buscar_en_memoria: (a) => [`Recordando «${corto(a.consulta)}»`, `Recordó «${corto(a.consulta)}»`, `Quiere recordar «${corto(a.consulta)}»`],
   ver_equipo: () => ['Mirando a tu equipo', 'Miró a tu equipo', 'Quiere mirar a tu equipo'],
   encargar_al_equipo: (a) => [`Encargando al equipo «${corto(a.encargo)}»`, `Encargó al equipo «${corto(a.encargo)}»`, `Quiere encargar al equipo «${corto(a.encargo)}»`],
+  forjar_herramienta: (a) => [`Forjando una herramienta: «${corto(a.necesidad)}»`, `Encargó a la Forja «${corto(a.necesidad)}»`, `Quiere forjar una herramienta: «${corto(a.necesidad)}»`],
   programar_encargo: (a) => [`Programando «${corto(a.encargo)}»`, `Programó «${corto(a.encargo)}»`, `Quiere programar «${corto(a.encargo)}»`],
 }
 

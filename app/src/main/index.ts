@@ -1,6 +1,7 @@
 // Proceso principal: lanza el cerebro, abre la ventana y conecta chat, claves y terminales con la interfaz.
 import { app, BrowserWindow, ipcMain, Menu, nativeImage, Notification, shell, Tray, utilityProcess, type UtilityProcess } from 'electron'
 import { homedir } from 'node:os'
+import { randomBytes } from 'node:crypto'
 import { join } from 'node:path'
 import { agentCommand, listAgents } from './agents'
 import { BrainProcess, type BrainInfo } from './brain-process'
@@ -13,6 +14,8 @@ import { registerLicencia } from './licencia/ipc'
 import { registerHilos } from './hilos/ipc'
 import { registerTienda } from './tienda/ipc'
 import { cerrarHerramientas, registerHerramientas } from './herramientas/ipc'
+import { registerForja } from './forja-ipc'
+import { AGENTES, conectar as conectarMente, desconectar as desconectarMente, estados as estadosMente } from './mente/compartir'
 import { listModels, PROVIDERS, type ProviderId } from './providers'
 import { rutasDe } from './rutas'
 
@@ -25,7 +28,10 @@ let avisadoSegundoPlano = false
 const ficheroAjustes = () => join(app.getPath('userData'), 'ajustes.json')
 const ICONO = join(__dirname, '../../resources/esme.png')
 
-const brain = new BrainProcess({ python: RUTAS.python, extraPython: RUTAS.extraPython }, RUTAS.mente, (info: BrainInfo | null) => win?.webContents.send('brain:changed', info))
+// tu mente siempre en el mismo sitio (127.0.0.1:47321) y con su token fijo en el llavero: así tus otras IAs la encuentran
+const MENTE_PUERTO = 47321
+const tokenMente = () => { let t = keys.get('mente'); if (!t) { t = randomBytes(32).toString('hex'); keys.set('mente', t) } return t }
+const brain = new BrainProcess({ python: RUTAS.python, extraPython: RUTAS.extraPython, puerto: MENTE_PUERTO, token: tokenMente }, RUTAS.mente, (info: BrainInfo | null) => win?.webContents.send('brain:changed', info))
 
 const MAC = process.platform === 'darwin'
 // Una sola Esme: si ya está abierta (por ejemplo, al pulsar otra vez el icono del escritorio), la abierta se trae al frente
@@ -109,7 +115,17 @@ function registerIpc() {
   registerLicencia()
   registerHilos()
   registerTienda()
-  registerHerramientas()
+  registerHerramientas({ python: { python: RUTAS.python, extraPython: RUTAS.extraPython } })
+  registerForja()
+  // tu mente para todas tus IAs: se registra en la configuración de cada agente que uses fuera de Esme
+  ipcMain.handle('mente:agentes', () => estadosMente(homedir()))
+  ipcMain.handle('mente:conectar', (_e, id: unknown, conectada: unknown) => {
+    const a = AGENTES.find((x) => x.id === id)
+    if (!a || typeof conectada !== 'boolean') return { ok: false, error: 'Datos no válidos.' }
+    if (conectada && !brain.info) return { ok: false, error: 'Tu mente aún no está despierta: espera unos segundos.' }
+    try { if (conectada) conectarMente(a, homedir(), `${brain.info!.url}/mcp`, tokenMente()); else desconectarMente(a, homedir()); return { ok: true } }
+    catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) } }
+  })
   ipcMain.handle('brain:info', () => brain.info)
   ipcMain.handle('ajustes:alCerrar', () => leerPreferencia(ficheroAjustes()))
   ipcMain.handle('ajustes:ponerAlCerrar', (_e, v: unknown) => {

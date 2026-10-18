@@ -9,6 +9,8 @@ const on = (channel: string, fn: (...a: unknown[]) => void) => {
 
 contextBridge.exposeInMainWorld('daimon', {
   brain: { info: () => ipcRenderer.invoke('brain:info'), onChange: (fn: (i: unknown) => void) => on('brain:changed', fn) },
+  mente: { agentes: () => ipcRenderer.invoke('mente:agentes'), conectar: (id: string, si: boolean) => ipcRenderer.invoke('mente:conectar', id, si) },
+  forja: { de: (id: string) => ipcRenderer.invoke('forja:de', id), instalar: (id: string) => ipcRenderer.invoke('forja:instalar', id), probar: (id: string) => ipcRenderer.invoke('forja:probar', id), encargar: (n: string, nombre?: string, agente?: string) => ipcRenderer.invoke('forja:encargar', n, nombre, agente) },
   herramientas: {
     buscar: (q: string) => ipcRenderer.invoke('herramientas:buscar', q), conectadas: () => ipcRenderer.invoke('herramientas:conectadas'),
     conectar: (f: unknown, v: unknown) => ipcRenderer.invoke('herramientas:conectar', f, v),

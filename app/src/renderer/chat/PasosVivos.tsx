@@ -30,7 +30,7 @@ export function Pasos({ pasos }: { pasos: PasoVisto[] }) {
 // lo que se va a hacer, en claro: el encargo o la dirección, nunca un JSON crudo si se puede evitar
 const detalle = (args: unknown) => {
   const a = (args && typeof args === 'object' ? args : {}) as Record<string, unknown>
-  const t = a.encargo ?? a.url ?? a.consulta
+  const t = a.encargo ?? a.necesidad ?? a.url ?? a.consulta
   return typeof t === 'string' ? t : Object.keys(a).length ? JSON.stringify(a, null, 1) : ''
 }
 

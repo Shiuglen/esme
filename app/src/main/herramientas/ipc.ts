@@ -5,7 +5,7 @@ import { app, ipcMain, shell } from 'electron'
 import { join } from 'node:path'
 import { keys } from '../keys'
 import { guardarConfig, leerConfig, type ConfigManos } from './config'
-import { faltan, GestorMCP, lanzamientoDe, type Conectada } from './lanzar-mcp'
+import { faltan, GestorMCP, lanzamientoDe, type Conectada, type PythonEsme } from './lanzar-mcp'
 import { esperarCodigo, ProveedorOAuth, PUERTO_OAUTH } from './oauth'
 import type { Manos } from './propias'
 import destacadasDeCasa from './destacadas.json'
@@ -19,7 +19,9 @@ const valoresDe = (f: Ficha, c: ConfigManos = leerConfig(fichero())): Record<str
 })
 const llavero = { get: (k: string) => keys.get(k as `mcp:${string}`), set: (k: string, v: string) => keys.set(k as `mcp:${string}`, v), remove: (k: string) => keys.remove(k as `mcp:${string}`) }
 const proveedor = (f: Ficha, interactivo: boolean) => new ProveedorOAuth(f.slug, llavero, { interactivo, abrir: (u) => void shell.openExternal(u), puerto: PUERTO_OAUTH })
-const gestor = new GestorMCP((f) => valoresDe(f), (f) => proveedor(f, false))
+// el Python de Esme (el del .venv o el de dentro de la app): con él se arrancan las herramientas forjadas
+let py: PythonEsme | undefined
+let gestor = new GestorMCP((f) => valoresDe(f), (f) => proveedor(f, false))
 
 // inicia sesión en tu navegador y guarda el token cifrado (solo cuando tú lo pides, al conectar)
 async function iniciarSesion(f: Ficha) {
@@ -42,7 +44,7 @@ export function herramientasConectadas(m: Pick<Manos, 'preguntar' | 'politicas' 
 export function mcpParaTaller(): ({ name: string; command: string; args: string[]; env: { name: string; value: string }[] } | { type: 'http'; name: string; url: string; headers: { name: string; value: string }[] })[] {
   const c = leerConfig(fichero())
   return (c.conectadas ?? []).filter((x) => x.activa).map(({ ficha }) => {
-    const l = lanzamientoDe(ficha, valoresDe(ficha, c))
+    const l = lanzamientoDe(ficha, valoresDe(ficha, c), py)
     const par = (o: Record<string, string>) => Object.entries(o).map(([name, value]) => ({ name, value }))
     return l.tipo === 'http' ? { type: 'http' as const, name: ficha.slug, url: l.url, headers: par(l.headers) } : { name: ficha.slug, command: l.comando, args: l.args, env: par(l.env) }
   })
@@ -56,7 +58,24 @@ const fichaValida = (f: unknown): f is Ficha => {
 }
 const mensaje = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
-export function registerHerramientas() {
+/** Conecta una herramienta forjada ya instalada y la prueba de verdad: cuántas acciones trae. */
+export async function conectarForjada(f: Ficha): Promise<{ acciones: number }> {
+  const c = leerConfig(fichero())
+  guardarConfig(fichero(), { ...c, conectadas: [...(c.conectadas ?? []).filter((x) => x.ficha.slug !== f.slug), { ficha: f, activa: true }] })
+  await gestor.olvidar(f.slug)
+  return { acciones: (await gestor.acciones(f)).length }
+}
+export const pythonDeEsme = () => py
+/** Arranca una herramienta forjada desde su copia, sin instalarla, y dice qué acciones trae (para revisarla antes). */
+export async function probarForjada(fichero: string, slug: string) {
+  const ficha: Ficha = { id: `esme.prueba/${slug}`, slug: `prueba_${slug}`.slice(0, 24), titulo: slug, descripcion: '', version: '0', conexion: { tipo: 'forjada', fichero }, variables: [] }
+  try { return await gestor.acciones(ficha) } finally { await gestor.olvidar(ficha.slug) }
+}
+export const slugsEnUso = () => (leerConfig(fichero()).conectadas ?? []).map((c) => c.ficha.slug)
+
+export function registerHerramientas(o: { python: PythonEsme }) {
+  py = o.python
+  gestor = new GestorMCP((f) => valoresDe(f), (f) => proveedor(f, false), py)
   ipcMain.handle('herramientas:buscar', async (_e, q: unknown) => {
     try {
       if (typeof q === 'string' && q.trim()) return { ok: true, fichas: await buscarEnRegistro(q.slice(0, 100)) }

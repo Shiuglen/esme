@@ -15,6 +15,7 @@ import { cn } from '../lib/cn'
 import { useMuelle } from '../tinta/movimiento'
 import { Revision, type AccionesRevision } from './Revision'
 import { Arena } from './Arena'
+import { Forja } from './Forja'
 import { VistaPrevia } from './VistaPrevia'
 import { contarLineas } from './diff'
 import { PastillaEstado } from './FilaMotor'
@@ -133,6 +134,7 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
         {pestana === 'arena' && arena ? <Arena {...arena} actual={t.id} /> : pestana === 'previa' ? <VistaPrevia t={t} linea={linea} onPedir={onSeguir} /> : pestana === 'revision' ? <Revision t={t} linea={linea} acciones={revision} /> : <EnVivo t={t} linea={linea} />}
       </div>
 
+      <Forja t={t} />
       {t.permiso && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} role="alertdialog" aria-label={`${t.motorNombre} pide permiso`}
           className="mx-4 mb-3 rounded-3 border border-atencion/50 bg-atencion-velo px-4 py-3">

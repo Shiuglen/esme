@@ -46,6 +46,22 @@ describe('BrainProcess', () => {
     expect(opts.env.PYTHONNOUSERSITE).toBe('1')
   })
 
+  it('con puerto y token fijos, el cerebro los recibe (así tus otras IAs lo encuentran siempre en el mismo sitio)', () => {
+    const c = fakeChild(); spawnMock.mockReturnValue(c)
+    new BrainProcess({ python: 'py', extraPython: null, puerto: 47321, token: 'tok' }, '/h', () => {}).start().catch(() => {})
+    expect(spawnMock.mock.calls[0][1].slice(2)).toEqual(['/h', '47321', 'tok'])
+  })
+
+  it('si el puerto fijo está ocupado (muere enseguida), reintenta con uno libre', () => {
+    vi.useFakeTimers()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const a = fakeChild(), b = fakeChild(); spawnMock.mockReturnValueOnce(a).mockReturnValueOnce(b)
+    new BrainProcess({ python: 'py', extraPython: null, puerto: 47321, token: 'tok' }, '/h', () => {}).start().catch(() => {})
+    a.emit('exit', 1)
+    vi.advanceTimersByTime(2500)
+    expect(spawnMock.mock.calls[1][1].slice(2)).toEqual(['/h', '0', 'tok'])
+  })
+
   it('con código 3 no reintenta y deja info=null', () => {
     vi.useFakeTimers()
     const err = vi.spyOn(console, 'error').mockImplementation(() => {})

@@ -5,6 +5,7 @@ import { appendFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } fr
 import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { abrirSesionACP, type EventoMotor, type OpcionConfig } from '../motores/sesion-acp'
+import { otroModeloGratis } from './gratis'
 import { aplicarParche, cambiosCopia, commitCopia, crearCopia, diffCopia, exportarCopia, parcheCopia, quitarCopia, type Cambios, type Copia } from './copias'
 
 export type EstadoTarea = 'preparando' | 'trabajando' | 'esperando' | 'lista' | 'parada' | 'error'
@@ -366,14 +367,28 @@ export class Taller {
     this.cambio(r, true)
   }
 
-  // Los proveedores gratis limitan las peticiones a la vez: ante un límite se reintenta con espera creciente, y se cuenta.
+  // Los proveedores gratis limitan las peticiones a la vez: ante un límite, primero se pasa a otro modelo gratis del mismo
+  // motor (sin esperar); si no quedan, se reintenta con espera creciente. Todo se cuenta en la línea de tiempo.
   private async preguntar(r: Registro, texto: string): Promise<string> {
-    for (let intento = 0; ; intento++) {
+    const probados = new Set<string>()
+    for (let intento = 0; ; ) {
       try { return await r.sesion!.preguntar(texto) } catch (e) {
         const motivo = e instanceof Error ? e.message : String(e)
         const limite = /rate limit|too many requests|\b429\b|quota exceeded/i.test(motivo)
+        if (limite && !r.cancelado && !r.descartada && !this.cerrado) {
+          const actual = r.tarea.opciones?.find((o) => o.id === 'model')?.actual
+          if (actual) probados.add(actual)
+          const otro = probados.size <= 5 ? otroModeloGratis(r.tarea.opciones, probados) : null
+          if (otro) {
+            await r.sesion!.configurar('model', otro).catch(() => {})
+            probados.add(otro)
+            this.registrar(r, { tipo: 'reintento', ms: 0, motivo: `${motivo} · paso a ${otro}` })
+            this.cambio(r, true)
+            continue
+          }
+        }
         if (!limite || intento >= this.esperas.length || r.cancelado || r.descartada || this.cerrado) throw e
-        const ms = this.esperas[intento]
+        const ms = this.esperas[intento++]
         this.registrar(r, { tipo: 'reintento', ms, motivo })
         this.cambio(r, true)
         const fin = Date.now() + ms

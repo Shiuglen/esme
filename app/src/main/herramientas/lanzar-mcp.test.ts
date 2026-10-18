@@ -19,6 +19,12 @@ describe('cómo se arranca cada herramienta', () => {
   it('remota: su dirección y sus cabeceras', () => {
     expect(lanzamientoDe(remota, { Authorization: 'Bearer t' })).toEqual({ tipo: 'http', url: 'https://mcp.figma.com/mcp', headers: { Authorization: 'Bearer t' } })
   })
+  it('forjada: con el Python de Esme y sus paquetes', () => {
+    const forjada: Ficha = { ...npm, id: 'esme.forja/divisas', slug: 'divisas', conexion: { tipo: 'forjada', fichero: '/datos/forja/divisas/herramienta.py' }, variables: [] }
+    expect(lanzamientoDe(forjada, {}, { python: '/esme/python3', extraPython: '/esme/paquetes' }))
+      .toEqual({ tipo: 'stdio', comando: '/esme/python3', args: ['/datos/forja/divisas/herramienta.py'], env: { PYTHONPATH: '/esme/paquetes', PYTHONNOUSERSITE: '1' } })
+    expect(lanzamientoDe(forjada, {}, { python: '/venv/python3', extraPython: null })).toMatchObject({ comando: '/venv/python3', env: {} })
+  })
   it('dice qué claves obligatorias faltan', () => {
     expect(faltan(npm, {})).toEqual(['PERPLEXITY_API_KEY'])
     expect(faltan(npm, { PERPLEXITY_API_KEY: 'k' })).toEqual([])

@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import type { ProviderId } from './providers'
 
 // además de los proveedores: la clave de Brave (buscar) y las de cada herramienta conectada (mcp:<herramienta>:<variable>)
-export type IdClave = ProviderId | 'brave' | `mcp:${string}`
+export type IdClave = ProviderId | 'brave' | 'mente' | `mcp:${string}`
 const file = () => join(app.getPath('userData'), 'keys.json')
 const load = (): Record<string, string> => (existsSync(file()) ? JSON.parse(readFileSync(file(), 'utf8')) : {})
 

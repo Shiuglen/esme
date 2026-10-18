@@ -11,6 +11,7 @@ import { herramientasPropias, type Manos, type Respuesta } from './herramientas/
 import { herramientasConectadas } from './herramientas/ipc'
 import { buscarWeb, leerPagina } from './herramientas/web'
 import { encargarDesdeChat, equipoParaChat, programarDesdeChat } from './ipc-taller'
+import { forjarDesdeChat } from './forja-ipc'
 import { keys } from './keys'
 import { anotarConsumo } from './ipc-proveedores'
 import { buildSystem, makeModel, type ProviderId } from './providers'
@@ -53,6 +54,7 @@ function manosPara(to: WebContents, req: ChatRequest, ac: AbortController, d: De
     verEquipo: equipoParaChat,
     encargar: encargarDesdeChat,
     programar: programarDesdeChat,
+    forjar: forjarDesdeChat,
     // la clave de Brave vive en el llavero como la de cualquier proveedor
     buscarWeb: (q) => buscarWeb(q, { brave: keys.get('brave'), searxng: cfg.searxng }),
     leerWeb: (u) => leerPagina(u),
