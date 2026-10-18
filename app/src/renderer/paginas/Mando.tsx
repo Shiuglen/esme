@@ -19,18 +19,26 @@ import { AlDia } from './AlDia'
 import { diarioDe, type Entrada } from './diario'
 import { islaDe, pasosDe } from './mando'
 import { fechaLarga } from './portada'
-import { useEscucha } from '../lib/voz'
+import { useEscucha, useNivelVoz } from '../lib/voz'
 
 const saludo = (h = new Date().getHours()) => (h < 6 ? 'Buenas noches' : h < 13 ? 'Buenos días' : h < 20 ? 'Buenas tardes' : 'Buenas noches')
 const acento = () => getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#5fffd0'
 
-export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, visible, conectado, recuerdos, atlas, tareas, memoria, onMemoria, onPreguntar, onOir, onIr }: {
+export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, visible, conectado, recuerdos, atlas, tareas, memoria, onMemoria, onPreguntar, onOir, onIr, vivo = null, turnoVoz = 0, onCerrarVivo, onConversacion }: {
   presencia?: 'orbe' | 'ninguna'; sitio?: { izquierda: number; abajo: number; cabecera: number }
   visible: boolean; conectado: boolean; recuerdos: number | null; atlas: Atlas | null; tareas: TareaTaller[]
-  memoria: boolean; onMemoria(v: boolean): void; onPreguntar(q: string): void; onOir?(pcm: Float32Array): void; onIr(ir: NonNullable<Entrada['ir']>): void
+  memoria: boolean; onMemoria(v: boolean): void; onPreguntar(q: string): void; onOir?(pcm: Float32Array): void
+  vivo?: { pregunta: string; texto: string; fin: boolean } | null; turnoVoz?: number; onCerrarVivo?(): void; onConversacion?(): void; onIr(ir: NonNullable<Entrada['ir']>): void
 }) {
   // manos libres: hablas, y al callarte un momento Esme te oye y responde (lib/voz.ts)
   const { escuchando, nivel, empezar, parar } = useEscucha((pcm) => onOir?.(pcm))
+  const nivelVoz = useNivelVoz()
+  // conversación continua: cuando Esme termina de hablar, vuelve a escucharte (tócala para salir)
+  const [continua, setContinua] = useState(() => { try { return localStorage.getItem('esme:voz-continua') !== 'no' } catch { return true } })
+  useEffect(() => { try { localStorage.setItem('esme:voz-continua', continua ? 'si' : 'no') } catch { /* sin almacenamiento */ } }, [continua])
+  const enConversacion = useRef(false)
+  useEffect(() => { if (turnoVoz && continua && visible && enConversacion.current) empezar().catch(() => {}) }, [turnoVoz])  // eslint-disable-line react-hooks/exhaustive-deps
+  const pensandoVoz = !!vivo && !vivo.fin
   const setEscuchando = (v: boolean | ((x: boolean) => boolean)) => { const quiere = typeof v === 'function' ? v(escuchando) : v; if (quiere) empezar().catch(() => toast.error('No puedo usar el micrófono: revisa que esté conectado y permitido.')); else parar(false) }
   const [alDia, setAlDia] = useState(false)
   const [color, setColor] = useState(acento)
@@ -56,10 +64,10 @@ export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24,
 
       {/* la presencia de Esme */}
       <div className="absolute top-[7%] left-1/2 grid w-[min(560px,80%)] -translate-x-1/2 justify-items-center text-center">
-        <button type="button" onClick={() => setEscuchando((v) => !v)} aria-pressed={escuchando} aria-label={escuchando ? 'Dejar de escuchar' : 'Hablar con Esme (manos libres)'}
+        <button type="button" onClick={() => { if (escuchando) { parar(false); enConversacion.current = false } else if (nivelVoz > 0 || vivo) { onCerrarVivo?.(); enConversacion.current = false } else { enConversacion.current = true; setEscuchando(true) } }} aria-pressed={escuchando} aria-label={escuchando ? 'Dejar de escuchar' : 'Hablar con Esme (manos libres)'}
           className="relative size-[300px] rounded-full outline-none focus-visible:ring-2 focus-visible:ring-acento">
-          {visible && presencia === 'orbe' && <Orb colors={[color, '#ffffff', color]} size={1} glow={escuchando ? 1.6 + nivel * 2 : 1} wobble={escuchando ? 0.4 + nivel : 0.25}
-            speed={escuchando ? 1.4 : 0.6} hoverIntensity={0.35} rotateOnHover forceHoverState={escuchando} backgroundColor="transparent" />}
+          {visible && presencia === 'orbe' && <Orb colors={[color, '#ffffff', color]} size={1} glow={escuchando ? 1.6 + nivel * 2 : nivelVoz > 0 ? 1.5 + nivelVoz * 2.5 : pensandoVoz ? 1.4 : 1} wobble={escuchando ? 0.4 + nivel : nivelVoz > 0 ? 0.35 + nivelVoz * 1.2 : 0.25}
+            speed={escuchando || nivelVoz > 0 ? 1.4 : pensandoVoz ? 2.2 : 0.6} hoverIntensity={0.35} rotateOnHover forceHoverState={escuchando || nivelVoz > 0 || pensandoVoz} backgroundColor="transparent" />}
         </button>
         <p className="m-0 mt-1 text-[13px] tracking-wide text-texto-3">{fechaLarga(new Date())}</p>
         <h1 className="m-0 mt-1 text-[clamp(40px,4.6vw,60px)] leading-none font-light tracking-[-0.04em] text-texto">{saludo()}.</h1>
@@ -69,6 +77,20 @@ export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24,
             : 'Toca la esfera para hablar, o escribe abajo.'}
         </p>
         <AnimatePresence>
+          {vivo && !escuchando && (
+            <motion.div key="vivo" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} transition={muelle}
+              className="mt-4 grid w-[min(640px,90vw)] gap-2 text-left" aria-live="polite">
+              <p className="m-0 text-[13px] text-texto-3">Tú: <span className="text-texto-2">{vivo.pregunta}</span></p>
+              <p className="m-0 max-h-[22vh] overflow-hidden text-[19px] leading-[1.5] font-light text-texto [mask-image:linear-gradient(to_top,black_70%,transparent)]">
+                {vivo.texto ? vivo.texto.slice(-420) : 'Pensando con tu memoria…'}{!vivo.fin && <span className="ml-0.5 inline-block h-[1em] w-[2px] translate-y-[3px] animate-pulse bg-acento" />}
+              </p>
+              <div className="flex flex-wrap items-center gap-3 text-[13px]">
+                <button type="button" onClick={onConversacion} className="text-texto-2 underline decoration-linea-fuerte underline-offset-4 hover:text-texto">Ver en la conversación</button>
+                <button type="button" onClick={() => setContinua((c) => !c)} aria-pressed={continua} className="text-texto-3 hover:text-texto">Conversación continua: {continua ? 'sí' : 'no'}</button>
+                <button type="button" onClick={() => { enConversacion.current = false; onCerrarVivo?.() }} className="ml-auto text-texto-3 hover:text-texto">Terminar</button>
+              </div>
+            </motion.div>
+          )}
           {escuchando && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} transition={muelle} className="mt-4">
               <AI_Voice level={nivel} onSend={() => parar(true)} onDiscard={() => parar(false)} />

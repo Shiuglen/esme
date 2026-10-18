@@ -3,7 +3,7 @@
 // JSON aunque venga envuelto en prosa, lo valida y comprueba que se lea; si algo falla, se lo devuelve a la IA una vez con lo
 // que hay que corregir. Lo que llega aquí nunca se aplica sin pasar por validarPiel: una piel es solo datos.
 import { bridge, type ChatMsg } from '../lib/bridge'
-import { explicarFallo, ordenMotores } from '../panels/motor'
+import { explicarFallo, GRATIS_QUE_OBEDECEN, ordenMotores } from '../panels/motor'
 import { LETRAS, revisarContraste, validarPiel, variablesDePiel, type Piel } from './piel'
 
 export function mensajesDisenador(peticion: string, actual: Piel): ChatMsg[] {
@@ -49,8 +49,7 @@ export function leerPielDeRespuesta(texto: string): Record<string, unknown> | nu
 
 const problemas = (p: Piel) => (p.color.tipo === 'estilo' ? [] : [...revisarContraste(variablesDePiel(p, 'noche')).map((x) => `de noche, ${x}`), ...revisarContraste(variablesDePiel(p, 'dia')).map((x) => `de día, ${x}`)])
 
-// Los modelos gratis que obedecen el formato a la primera (probados por el puente el 16-17 oct)
-const PREFERIDOS = ['cohere/north-mini-code:free', 'google/gemma-4-31b-it:free', 'google/gemma-4-26b-a4b-it:free', 'poolside/laguna-s-2.1:free']
+const PREFERIDOS = GRATIS_QUE_OBEDECEN
 const NO_SIRVE = /embed|reasoning|safety|guard|omni|[-/]vl\b/i
 
 /** Con qué modelos diseñar, en orden (tres como mucho). Nunca uno de pago que no hayas elegido tú: primero el que elegiste en

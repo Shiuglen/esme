@@ -71,14 +71,30 @@ export function useEscucha(onAudio: (pcm: Float32Array) => void, { silencioMs = 
   return { escuchando, nivel, empezar, parar }
 }
 
-let sonando: HTMLAudioElement | null = null
-/** Reproduce lo que dice Esme (un WAV); si ya estaba hablando, la corta para decir lo nuevo. */
-export function reproducir(wav: Blob, alTerminar?: () => void) {
-  sonando?.pause()
-  const url = URL.createObjectURL(wav), a = new Audio(url)
-  sonando = a
-  a.onended = () => { URL.revokeObjectURL(url); if (sonando === a) sonando = null; alTerminar?.() }
-  void a.play()
-  return () => { a.pause(); URL.revokeObjectURL(url) }
+// —— lo que dice Esme: se reproduce con un analizador para que la esfera vibre al ritmo real de su voz ——
+const oyentes = new Set<(n: number) => void>()
+const avisar = (n: number) => oyentes.forEach((f) => f(n))
+/** Lo fuerte que habla Esme ahora mismo (0–1): la esfera lo usa para vibrar con su voz. */
+export function useNivelVoz() {
+  const [n, setN] = useState(0)
+  useEffect(() => { oyentes.add(setN); return () => { oyentes.delete(setN) } }, [])
+  return n
 }
-export const callar = () => { sonando?.pause(); sonando = null }
+let sonando: { parar(): void } | null = null
+/** Reproduce lo que dice Esme (un WAV); si ya estaba hablando, la corta para decir lo nuevo. */
+export async function reproducir(wav: Blob, alTerminar?: () => void) {
+  sonando?.parar()
+  const ctx = new AudioContext(), buf = await ctx.decodeAudioData(await wav.arrayBuffer())
+  const src = ctx.createBufferSource(), an = ctx.createAnalyser()
+  an.fftSize = 512; src.buffer = buf; src.connect(an); an.connect(ctx.destination)
+  const datos = new Uint8Array(an.fftSize)
+  let raf = 0, cortada = false
+  const medir = () => { an.getByteTimeDomainData(datos); let m = 0; for (const v of datos) m = Math.max(m, Math.abs(v - 128)); avisar(Math.min(1, (m / 128) * 1.8)); raf = requestAnimationFrame(medir) }
+  const fin = () => { cancelAnimationFrame(raf); avisar(0); void ctx.close(); if (sonando === yo) sonando = null }
+  const yo = { parar: () => { cortada = true; try { src.stop() } catch { /* ya paró */ } fin() } }
+  sonando = yo
+  src.onended = () => { fin(); if (!cortada) alTerminar?.() }
+  src.start(); medir()
+}
+export const callar = () => sonando?.parar()
+export const hablando = () => sonando !== null

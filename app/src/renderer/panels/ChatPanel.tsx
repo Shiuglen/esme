@@ -7,11 +7,11 @@ import { TiraUso, type UsoSesion } from '../chat/TiraUso'
 import { cn } from '../lib/cn'
 import { Compositor } from '../shell/Compositor'
 import { bridge, type ChatMsg, type ProviderView } from '../lib/bridge'
-import { explicarFallo, ordenMotores } from './motor'
+import { explicarFallo, modeloInicial, ordenMotores } from './motor'
 
 type Turn = { role: 'user' | 'assistant'; content: string; query?: string; ids?: string[]; abstained?: boolean; tokens?: number; error?: boolean; judged?: boolean; who?: string; pensamiento?: string }
 
-export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string): void; onRecalled(tokens: number): void; seed?: { q: string; n: number; voz?: boolean }; onBusy?(b: boolean): void; onHablar?(texto: string): void }) {
+export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string): void; onRecalled(tokens: number): void; seed?: { q: string; n: number; voz?: boolean }; onBusy?(b: boolean): void; onHablar?(texto: string): void; onVivo?(texto: string, fin: boolean): void }) {
   const [providers, setProviders] = useState<ProviderView[]>([])
   const [provider, setProvider] = useState('')   // se elige el primero que responde (panels/motor.ts)
   const [aviso, setAviso] = useState<string | null>(null)
@@ -45,7 +45,7 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
       const def = providers.find((p) => p.id === provider)?.defaultModel
       let recordado: string | null = null
       try { recordado = localStorage.getItem(`esme:modelo:${provider}`) } catch { /* sin almacenamiento */ }
-      setModel(m.includes(recordado ?? '') ? recordado! : m.includes(def ?? '') ? def! : m.find((x) => !/embed/i.test(x)) ?? m[0] ?? '')
+      setModel(modeloInicial(m, def, recordado))
     }).catch((e) => setAviso(explicarFallo(String(e?.message ?? e), nombre)))
   }, [provider, providers])
   const elegirMotor = (id: string) => { setProvider(id); try { localStorage.setItem('esme:proveedor', id) } catch { /* sin almacenamiento */ } }
@@ -86,11 +86,12 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
     let dicho = ''
     const s = bridge.chat(provider, model, history, memory)
     s.onUsage((u) => setSesion((v) => ({ costeUSD: v.costeUSD + u.costeUSD, ultimaEntrada: u.entrada, memoria: memTokens })))
-    s.onChunk((d) => { dicho += d; return setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + d }; return c }) })
+    s.onChunk((d) => { dicho += d; if (porVoz) props.onVivo?.(dicho, false); return setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + d }; return c }) })
     // El pensado viaja en su hilo: los que piensan antes de hablar no dejan el chat mudo.
     s.onPensamiento((d) => setTurns((t) => { const c = [...t]; const u = c[c.length - 1]; c[c.length - 1] = { ...u, pensamiento: (u.pensamiento ?? '') + d }; return c }))
     s.onDone(() => {
       setBusy(false)
+      if (porVoz) props.onVivo?.(dicho.trim() || 'El modelo respondió vacío. Prueba con otro modelo.', true)
       if (porVoz && dicho.trim()) props.onHablar?.(dicho)
       // Honestidad ante modelos que responden vacío:sin texto ni pensado, la burbuja no es una pregunta es un agujero.
       setTurns((t) => {
@@ -101,7 +102,7 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
         return c
       })
     })
-    s.onError((m) => { setBusy(false); setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: explicarFallo(m, current?.label ?? provider), error: true }; return c }) })
+    s.onError((m) => { setBusy(false); if (porVoz) props.onVivo?.(explicarFallo(m, current?.label ?? provider), true); setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: explicarFallo(m, current?.label ?? provider), error: true }; return c }) })
   }
 
   async function judge(i: number, useful: boolean) {
