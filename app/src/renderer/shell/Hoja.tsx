@@ -20,7 +20,9 @@ export function Hoja({ abierta, origen, etiqueta, className, sitio, children }: 
     setEstado('abriendo') // se pinta plegada un fotograma y luego se despliega: así la transición tiene desde dónde partir
     let b = 0
     const a = requestAnimationFrame(() => { b = requestAnimationFrame(() => setEstado('abierta')) })
-    return () => { cancelAnimationFrame(a); cancelAnimationFrame(b) }
+    // con la ventana en segundo plano Chromium congela los fotogramas: el temporizador abre la hoja igualmente
+    const plan = setTimeout(() => setEstado('abierta'), 90)
+    return () => { cancelAnimationFrame(a); cancelAnimationFrame(b); clearTimeout(plan) }
   }, [abierta])
   const desplegada = estado === 'abierta'
   return (

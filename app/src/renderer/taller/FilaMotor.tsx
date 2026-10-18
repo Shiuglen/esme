@@ -69,7 +69,7 @@ export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida
     <div role="button" tabIndex={0} onClick={() => onElegir(t.id)} onPointerEnter={() => onResaltar(t.id)} onPointerLeave={() => onResaltar(null)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onElegir(t.id) } }}
       aria-pressed={elegida} aria-label={`${t.motorNombre}: ${t.titulo}. ${ESTADOS[t.estado].texto}.`}
-      className={cn('halo group/card relative w-full overflow-hidden rounded-3 border px-4 text-left outline-none', plegada ? 'py-2' : 'pt-3 pb-2.5', ' transition-[transform,background-color] duration-300 ease-salida',
+      className={cn('halo group/card relative w-full overflow-hidden rounded-3 border border-linea/70 bg-s1/40 px-4 text-left outline-none hover:border-linea-fuerte', plegada ? 'py-2' : 'pt-3 pb-2.5', ' transition-[transform,background-color] duration-300 ease-salida',
         elegida ? 'aurora-borde bg-s2/40' : resaltada && '-translate-y-px')}>
       <span aria-hidden className={cn('absolute inset-y-3 left-0 w-[2px] rounded-full',
         t.estado === 'trabajando' && '[background:var(--aurora)]', t.estado === 'esperando' && 'bg-atencion', t.estado === 'error' && 'bg-peligro',

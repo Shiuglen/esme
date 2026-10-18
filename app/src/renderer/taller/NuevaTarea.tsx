@@ -1,5 +1,7 @@
 // Pedir una tarea: qué quieres, con qué motor y modelo, y sobre qué carpeta. Esme monta una copia aislada y el motor trabaja ahí.
 // Recuerda tu motor, tu carpeta y tus opciones por motor; si el motor trae un modelo lento o de pago, propone uno gratis.
+import { LayoutTemplate as ILayoutTemplate, Rocket as IRocket, Plus as IPlus, FlaskConical as IFlaskConical, Wrench as IWrench, ScanSearch as IScanSearch, ShieldCheck as IShieldCheck, PackageCheck as IPackageCheck, BookOpen as IBookOpen, FileText as IFileText, Shuffle as IShuffle, Languages as ILanguages, Gauge as IGauge, Accessibility as IAccessibility, Sparkles as ISparkles, type LucideIcon } from 'lucide-react'
+import { CATEGORIAS, RECETAS } from './recetas'
 import { CornerDownLeft, Dices, Folder, FolderPlus, Sparkles, Swords, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
@@ -13,7 +15,6 @@ import { useMuelle } from '../tinta/movimiento'
 
 const leer = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(`esme:taller:${k}`); return v === null ? d : (JSON.parse(v) as T) } catch { return d } }
 const guardar = (k: string, v: unknown) => { try { localStorage.setItem(`esme:taller:${k}`, JSON.stringify(v)) } catch { /* sin almacenamiento */ } }
-const IDEAS = ['Revisa el proyecto y dime qué mejorarías primero', 'Escribe tests para lo que aún no tenga', 'Arregla los errores de tipos', 'Crea una página de presentación para este proyecto']
 
 type Peticion = { motor: string; carpeta: string | null; texto: string; config: Record<string, string>; arena?: string }
 const AUTO = 'auto'
@@ -175,14 +176,7 @@ export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores
         </div>
       )}
 
-      {instalados.length > 0 && !texto && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {IDEAS.map((i) => (
-            <button key={i} type="button" onClick={() => setTexto(i)}
-              className="h-8 rounded-full border border-linea bg-s1/50 px-3 text-[12.5px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">{i}</button>
-          ))}
-        </div>
-      )}
+      {instalados.length > 0 && !texto && <Recetas onElegir={setTexto} />}
       {motores.some((m) => !m.instalado) && (
         <p className="mt-auto pt-6 text-xs text-texto-3">
           {motores.filter((m) => !m.instalado).length} motores más disponibles.{' '}
@@ -190,5 +184,40 @@ export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores
         </p>
       )}
     </div>
+  )
+}
+
+const ICONOS_RECETA: Record<string, LucideIcon> = { LayoutTemplate: ILayoutTemplate, Rocket: IRocket, Plus: IPlus, FlaskConical: IFlaskConical, Wrench: IWrench, ScanSearch: IScanSearch, ShieldCheck: IShieldCheck, PackageCheck: IPackageCheck, BookOpen: IBookOpen, FileText: IFileText, Shuffle: IShuffle, Languages: ILanguages, Gauge: IGauge, Accessibility: IAccessibility, Sparkles: ISparkles }
+
+// La galería de recetas (taller/recetas.ts): encargos completos por categoría; al elegir uno, su texto queda en la caja.
+function Recetas({ onElegir }: { onElegir(texto: string): void }) {
+  const [cat, setCat] = useState<(typeof CATEGORIAS)[number] | 'Todas'>('Todas')
+  const vistas = RECETAS.filter((r) => cat === 'Todas' || r.categoria === cat)
+  return (
+    <section aria-label="Recetas" className="mt-5 grid gap-3">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-[13px] font-medium text-texto">Recetas</span>
+        {(['Todas', ...CATEGORIAS] as const).map((c) => (
+          <button key={c} type="button" onClick={() => setCat(c)} aria-pressed={cat === c}
+            className={cn('h-7 rounded-full px-3 text-[12.5px] transition-colors', cat === c ? 'bg-s3 text-texto' : 'text-texto-2 hover:text-texto')}>{c}</button>
+        ))}
+      </div>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2.5">
+        {vistas.map((r) => {
+          const Icono = ICONOS_RECETA[r.icono] ?? ISparkles
+          return (
+            <button key={r.titulo} type="button" onClick={() => onElegir(r.encargo)}
+              className="group grid content-start gap-1.5 rounded-3 border border-linea/70 bg-s1/40 p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-linea-fuerte hover:bg-s2/50">
+              <span className="flex items-center gap-2">
+                <span className="grid size-7 place-items-center rounded-2 bg-acento-velo text-acento"><Icono className="size-4" strokeWidth={1.75} /></span>
+                <span className="text-[13.5px] font-medium text-texto">{r.titulo}</span>
+              </span>
+              <span className="text-[12.5px] leading-snug text-texto-2">{r.descripcion}</span>
+              <span className="text-[11px] text-texto-3">{r.categoria}</span>
+            </button>
+          )
+        })}
+      </div>
+    </section>
   )
 }
