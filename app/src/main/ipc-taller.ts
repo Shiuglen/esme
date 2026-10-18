@@ -13,6 +13,7 @@ import { abrirSesionACP, type OpcionConfig } from './motores/sesion-acp'
 import { anotarConsumo } from './ipc-proveedores'
 import { keys } from './keys'
 import { Taller, type MotorElegido } from './taller/taller'
+import { mcpParaTaller } from './herramientas/ipc'
 import { servirCopia, type Servidor } from './taller/vista-previa'
 import { guardarAgenda, leerAgenda, nuevoIdProgramado, proximaVez, tocan, validarProgramado, type Programado } from './taller/agenda'
 
@@ -206,6 +207,7 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
     dir: join(app.getPath('userData'), 'taller'),
     emitir: (canal, dato) => emitir(`taller:${canal}`, dato),
     mcp: () => { const i = o.brainInfo(); return i ? { nombre: 'esme', url: `${i.url}/mcp`, token: i.token } : null },
+    masMcp: () => { try { return mcpParaTaller() } catch { return [] } },
     resolverMotor: async (id) => { const m = await elegirMotor(id); return 'error' in m ? null : m },
     // Cada turno que termina alimenta el Uso de la app: la historia del gasto real por tarea.
     alAnotar: (a) => anotarConsumo({ ts: Date.now(), proveedor: a.motorId, modelo: a.modelo ?? a.motorNombre, entrada: a.delta.entrada,

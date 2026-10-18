@@ -18,6 +18,7 @@ export type EventoMotor =
 type Opciones = { comando: string; args: string[]; cwd: string; env?: Record<string, string>
   config?: Record<string, string>   // id de opción → valor deseado; se aplica antes de cada pregunta
   mcp?: { nombre: string; url: string; token: string }
+  masMcp?: McpServer[]
   alEvento: (e: EventoMotor) => void
   alPedirPermiso: (p: { titulo: string; opciones: { id: string; nombre: string; tipo: string }[] }) => Promise<string | 'cancelar'>
   lanzar?: typeof spawnReal }
@@ -122,8 +123,12 @@ export async function abrirSesionACP(o: Opciones): Promise<{ preguntar(texto: st
   })
   try {
     const ini = await vivo(conn.initialize({ protocolVersion: PROTOCOL_VERSION, clientCapabilities: {}, clientInfo: { name: 'esme', version: '0.1.0' } }))
-    const mcpServers: McpServer[] = o.mcp && ini.agentCapabilities?.mcpCapabilities?.http
-      ? [{ type: 'http', name: o.mcp.nombre, url: o.mcp.url, headers: [{ name: 'Authorization', value: `Bearer ${o.mcp.token}` }] }] : []
+    const http = !!ini.agentCapabilities?.mcpCapabilities?.http
+    const mcpServers: McpServer[] = [
+      ...(o.mcp && http ? [{ type: 'http' as const, name: o.mcp.nombre, url: o.mcp.url, headers: [{ name: 'Authorization', value: `Bearer ${o.mcp.token}` }] }] : []),
+      // las herramientas que conectaste en la Tienda: las locales siempre; las remotas, si el agente habla HTTP
+      ...(o.masMcp ?? []).filter((x) => !('type' in x) || http),
+    ]
     const nueva = await vivo(conn.newSession({ cwd: o.cwd, mcpServers }))
     const { sessionId } = nueva
     if (nueva.configOptions) nuevasOpciones({ tipo: 'opciones', opciones: traducirOpciones(nueva.configOptions) })

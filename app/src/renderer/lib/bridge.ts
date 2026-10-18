@@ -9,6 +9,10 @@ import type { Producto } from '../../main/tienda/catalogo'
 import type { Tarea as TareaTaller, Veredicto as VeredictoTaller } from '../../main/taller/taller'
 import type { NuevoProgramado, Programado } from '../../main/taller/agenda'
 import type { Paso } from '../../main/herramientas/propias'
+import type { Ficha } from '../../main/herramientas/registro-mcp'
+export type { Ficha }
+export type ConectadaVista = { ficha: Ficha; activa: boolean; faltan: string[] }
+type ResultadoConexion = { ok: true; acciones: number; aviso?: string; sesion?: boolean } | { ok: false; error: string }
 export type AlCerrar = 'auto' | 'siempre' | 'nunca'
 export type ProgramadoVisto = Programado & { proxima: number | null }
 import type { Consumo, Presupuesto, RegistroUso } from '../../main/uso/registro'
@@ -38,6 +42,11 @@ export type OrigenCatalogo = { origen: 'red' | 'cache' | 'semilla'; fecha: numbe
 
 type ElectronApi = {
   brain: { info(): Promise<BrainInfo | null>; onChange(fn: (i: BrainInfo | null) => void): () => void }
+  herramientas: {
+    buscar(q: string): Promise<{ ok: true; fichas: Ficha[] } | { ok: false; error: string }>; conectadas(): Promise<ConectadaVista[]>
+    conectar(f: Ficha, v: Record<string, string>): Promise<ResultadoConexion>; alternar(slug: string, activa: boolean): Promise<ResultadoTaller>; quitar(slug: string): Promise<ResultadoTaller>
+    busqueda(): Promise<{ brave: boolean; searxng: string }>; ponerBusqueda(o: { brave?: string; searxng?: string }): Promise<ResultadoTaller>
+  }
   ajustes: { alCerrar(): Promise<AlCerrar>; ponerAlCerrar(v: AlCerrar): Promise<ResultadoTaller> }
   ventana: { plataforma: string; colores(c: { fondo: string; simbolos: string }): void; zoom?(f: number): void }
   providers: { list(): Promise<ProviderView[]>; models(id: string): Promise<{ ok: boolean; models?: string[]; error?: string }> }
@@ -89,6 +98,15 @@ let seq = 0
 const newId = () => `${Date.now().toString(36)}-${(seq++).toString(36)}`
 
 export const bridge = {
+  herramientas: {
+    buscar: async (q: string) => (isElectron() ? window.daimon!.herramientas.buscar(q) : { ok: false as const, error: 'Solo en la app.' }),
+    conectadas: async (): Promise<ConectadaVista[]> => (isElectron() ? window.daimon!.herramientas.conectadas() : []),
+    conectar: async (f: Ficha, v: Record<string, string>): Promise<ResultadoConexion> => (isElectron() ? window.daimon!.herramientas.conectar(f, v) : { ok: false, error: 'Solo en la app.' }),
+    alternar: async (slug: string, activa: boolean): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.herramientas.alternar(slug, activa) : { ok: false, error: 'Solo en la app.' }),
+    quitar: async (slug: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.herramientas.quitar(slug) : { ok: false, error: 'Solo en la app.' }),
+    busqueda: async () => (isElectron() ? window.daimon!.herramientas.busqueda() : { brave: false, searxng: '' }),
+    ponerBusqueda: async (o: { brave?: string; searxng?: string }): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.herramientas.ponerBusqueda(o) : { ok: false, error: 'Solo en la app.' }),
+  },
   ajustes: {
     alCerrar: async (): Promise<AlCerrar> => (isElectron() ? window.daimon!.ajustes.alCerrar() : 'auto'),
     ponerAlCerrar: async (v: AlCerrar): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.ajustes.ponerAlCerrar(v) : { ok: false, error: 'Solo en la app.' }),

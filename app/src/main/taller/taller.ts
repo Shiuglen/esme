@@ -1,4 +1,5 @@
 // Runtime del Taller: tareas con motores ACP, cada una en su copia aislada, con permisos, uso, cambios y persistencia.
+import type { McpServer } from '@agentclientprotocol/sdk'
 import { randomBytes } from 'node:crypto'
 import { appendFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { readFile, rm } from 'node:fs/promises'
@@ -22,7 +23,7 @@ export type Tarea = {
 }
 export type MotorElegido = { id: string; nombre: string; comando: string; args: string[]; env?: Record<string, string> }
 export type SesionMotor = { preguntar(texto: string): Promise<string>; cancelar(): Promise<void>; cerrar(): void; configurar(id: string, valor: string): Promise<void> }
-export type AbrirSesion = (o: { comando: string; args: string[]; cwd: string; env?: Record<string, string>; mcp?: { nombre: string; url: string; token: string }; config?: Record<string, string>
+export type AbrirSesion = (o: { comando: string; args: string[]; cwd: string; env?: Record<string, string>; mcp?: { nombre: string; url: string; token: string }; masMcp?: McpServer[]; config?: Record<string, string>
   alEvento(e: EventoMotor): void; alPedirPermiso(p: Permiso): Promise<string | 'cancelar'> }) => Promise<SesionMotor>
 export type OperacionesCopia = { crear: typeof crearCopia; cambios: typeof cambiosCopia; diff: typeof diffCopia; quitar: typeof quitarCopia
   parche: typeof parcheCopia; aplicar: typeof aplicarParche; commit: typeof commitCopia; exportar: typeof exportarCopia }
@@ -64,6 +65,7 @@ export class Taller {
   private readonly abrirSesion: AbrirSesion
   private readonly copias: OperacionesCopia
   private readonly mcp: () => Mcp | null
+  private readonly masMcp: () => McpServer[]
   private readonly resolverMotor?: (id: string) => Promise<MotorElegido | null>
   private readonly alAnotar?: (a: Anoto) => void
   private readonly ahora: () => number
@@ -72,7 +74,7 @@ export class Taller {
   private cerrado = false
 
   constructor(o: { dir: string; emitir(canal: 'cambio' | 'evento' | 'quitada', dato: unknown): void
-    abrirSesion?: AbrirSesion; copias?: OperacionesCopia; mcp?: () => Mcp | null
+    abrirSesion?: AbrirSesion; copias?: OperacionesCopia; mcp?: () => Mcp | null; masMcp?: () => McpServer[]
     resolverMotor?: (id: string) => Promise<MotorElegido | null>; alAnotar?: (a: Anoto) => void; ahora?: () => number; esperasReintento?: number[] }) {
     this.dir = o.dir
     this.dirCopias = join(o.dir, 'copias')
@@ -80,6 +82,7 @@ export class Taller {
     this.abrirSesion = o.abrirSesion ?? ((x) => abrirSesionACP(x))
     this.copias = o.copias ?? { crear: crearCopia, cambios: cambiosCopia, diff: diffCopia, quitar: quitarCopia, parche: parcheCopia, aplicar: aplicarParche, commit: commitCopia, exportar: exportarCopia }
     this.mcp = o.mcp ?? (() => null)
+    this.masMcp = o.masMcp ?? (() => [])
     this.resolverMotor = o.resolverMotor
     this.alAnotar = o.alAnotar
     this.ahora = o.ahora ?? Date.now
@@ -337,7 +340,7 @@ export class Taller {
       if (parada()) return
       if (!r.sesion) {
         const motor = r.motor!
-        r.sesion = await this.abrirSesion({ comando: motor.comando, args: motor.args, cwd: t.copia.ruta, env: motor.env, mcp: this.mcp() ?? undefined, config: { ...r.config },
+        r.sesion = await this.abrirSesion({ comando: motor.comando, args: motor.args, cwd: t.copia.ruta, env: motor.env, mcp: this.mcp() ?? undefined, masMcp: this.masMcp(), config: { ...r.config },
           alEvento: (e) => this.alEvento(r, e), alPedirPermiso: (p) => this.alPedirPermiso(r, p) })
       }
       if (r.descartada || this.cerrado || parada()) return

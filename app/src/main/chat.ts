@@ -8,6 +8,7 @@ import type { BrainInfo } from './brain-process'
 import { leerConfig, guardarConfig } from './herramientas/config'
 import { Conocidas } from './herramientas/permisos'
 import { herramientasPropias, type Manos, type Respuesta } from './herramientas/propias'
+import { herramientasConectadas } from './herramientas/ipc'
 import { buscarWeb, leerPagina } from './herramientas/web'
 import { encargarDesdeChat, equipoParaChat, programarDesdeChat } from './ipc-taller'
 import { keys } from './keys'
@@ -53,7 +54,7 @@ function manosPara(to: WebContents, req: ChatRequest, ac: AbortController, d: De
     encargar: encargarDesdeChat,
     programar: programarDesdeChat,
     // la clave de Brave vive en el llavero como la de cualquier proveedor
-    buscarWeb: (q) => buscarWeb(q, { brave: keys.get('brave' as ProviderId), searxng: cfg.searxng }),
+    buscarWeb: (q) => buscarWeb(q, { brave: keys.get('brave'), searxng: cfg.searxng }),
     leerWeb: (u) => leerPagina(u),
     preguntar: (nombre, args, id) => new Promise<Respuesta>((res) => {
       const k = `${req.id}:${id}`
@@ -71,10 +72,18 @@ function manosPara(to: WebContents, req: ChatRequest, ac: AbortController, d: De
 async function pump(to: WebContents, req: ChatRequest, ac: AbortController, d: Deps) {
   try {
     const conManos = req.herramientas !== false
+    let tools = {}
+    if (conManos) {
+      const manos = manosPara(to, req, ac, d)
+      // las propias de Esme y las que conectaste en la Tienda; lo que no arranca se dice como un paso fallido
+      const { tools: conectadas, fallos } = await herramientasConectadas(manos).catch((e) => ({ tools: {}, fallos: [String(e)] }))
+      fallos.forEach((f, i) => to.send(`chat:paso:${req.id}`, { fase: 'error', id: `mcp-${i}`, nombre: 'herramienta conectada', error: f }))
+      tools = { ...conectadas, ...herramientasPropias(manos) }
+    }
     const result = streamText({ model: makeModel(req.provider, req.model, (id) => keys.get(id)),
       system: buildSystem(req.memory, { panorama: req.panorama, voz: req.voz, herramientas: conManos }),
       messages: req.messages, abortSignal: ac.signal,
-      ...(conManos ? { tools: herramientasPropias(manosPara(to, req, ac, d)), stopWhen: stepCountIs(8) } : {}) })
+      ...(conManos ? { tools, stopWhen: stepCountIs(8) } : {}) })
     let hablo = false
     const { error } = await bombear(result.fullStream, (canal, x) => { if (canal === 'chunk' && x) hablo = true; to.send(`chat:${canal}:${req.id}`, x) })
     // hay modelos que no aceptan herramientas: se repite sin ellas en vez de dejar al usuario sin respuesta

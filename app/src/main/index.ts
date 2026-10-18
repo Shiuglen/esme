@@ -12,6 +12,7 @@ import { keys } from './keys'
 import { registerLicencia } from './licencia/ipc'
 import { registerHilos } from './hilos/ipc'
 import { registerTienda } from './tienda/ipc'
+import { cerrarHerramientas, registerHerramientas } from './herramientas/ipc'
 import { listModels, PROVIDERS, type ProviderId } from './providers'
 import { rutasDe } from './rutas'
 
@@ -108,6 +109,7 @@ function registerIpc() {
   registerLicencia()
   registerHilos()
   registerTienda()
+  registerHerramientas()
   ipcMain.handle('brain:info', () => brain.info)
   ipcMain.handle('ajustes:alCerrar', () => leerPreferencia(ficheroAjustes()))
   ipcMain.handle('ajustes:ponerAlCerrar', (_e, v: unknown) => {
@@ -154,4 +156,4 @@ app.whenReady().then(async () => {
   brain.start().catch((err) => console.error('[cerebro] no arrancó:', err))
 })
 
-app.on('window-all-closed', () => { cerrarTaller(); brain.stop(); ptyHost?.kill(); app.quit() })
+app.on('window-all-closed', () => { void cerrarHerramientas(); cerrarTaller(); brain.stop(); ptyHost?.kill(); app.quit() })

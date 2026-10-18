@@ -9,6 +9,12 @@ const on = (channel: string, fn: (...a: unknown[]) => void) => {
 
 contextBridge.exposeInMainWorld('daimon', {
   brain: { info: () => ipcRenderer.invoke('brain:info'), onChange: (fn: (i: unknown) => void) => on('brain:changed', fn) },
+  herramientas: {
+    buscar: (q: string) => ipcRenderer.invoke('herramientas:buscar', q), conectadas: () => ipcRenderer.invoke('herramientas:conectadas'),
+    conectar: (f: unknown, v: unknown) => ipcRenderer.invoke('herramientas:conectar', f, v),
+    alternar: (slug: string, activa: boolean) => ipcRenderer.invoke('herramientas:alternar', slug, activa), quitar: (slug: string) => ipcRenderer.invoke('herramientas:quitar', slug),
+    busqueda: () => ipcRenderer.invoke('herramientas:busqueda'), ponerBusqueda: (o: unknown) => ipcRenderer.invoke('herramientas:ponerBusqueda', o),
+  },
   ajustes: { alCerrar: () => ipcRenderer.invoke('ajustes:alCerrar'), ponerAlCerrar: (v: string) => ipcRenderer.invoke('ajustes:ponerAlCerrar', v) },
   ventana: { plataforma: process.platform, colores: (c: { fondo: string; simbolos: string }) => ipcRenderer.send('ventana:colores', c),
     // el tamaño de una piel: el zoom de verdad de la ventana (como Ctrl +), entre 85 % y 120 %

@@ -14,4 +14,10 @@ describe('la configuración de las manos', () => {
     writeFileSync(f, JSON.stringify({ politicas: { x: 'quizas', y: 'nunca' }, searxng: 'ftp://x' }))
     expect(leerConfig(f)).toEqual({ politicas: { y: 'nunca' } })
   })
+  it('guarda las herramientas conectadas y sus valores no secretos; descarta las que no tienen forma', () => {
+    const f = join(mkdtempSync(join(tmpdir(), 'manos-')), 'herramientas.json')
+    const ficha = { id: 'ai.exa/exa', slug: 'exa', titulo: 'Exa', descripcion: '', version: '1', conexion: { tipo: 'remoto', url: 'https://mcp.exa.ai/mcp' }, variables: [] }
+    writeFileSync(f, JSON.stringify({ politicas: {}, conectadas: [{ ficha, activa: true }, { ficha: { id: 'x' }, activa: true }, 'basura'], valores: { exa: { REGION: 'eu' }, malo: 3 } }))
+    expect(leerConfig(f)).toEqual({ politicas: {}, conectadas: [{ ficha, activa: true }], valores: { exa: { REGION: 'eu' } } })
+  })
 })

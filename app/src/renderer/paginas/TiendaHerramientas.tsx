@@ -1,0 +1,164 @@
+// La Tienda, paso 2 (docs/superpowers/specs/2026-10-18-manos.md): herramientas MCP del registro oficial. Buscas,
+// conectas (tus claves van al llavero), Esme la prueba de verdad y desde ese momento la usan la conversación y el
+// Taller, siempre con permiso. Arriba, lo que ya tienes conectado; abajo, cómo busca Esme en internet.
+import { Cloud, Globe, Laptop, Plug, Search, Trash2 } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { bridge, type ConectadaVista, type Ficha } from '../lib/bridge'
+import { cn } from '../lib/cn'
+
+export function TiendaHerramientas() {
+  const [q, setQ] = useState('')
+  const [fichas, setFichas] = useState<Ficha[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [conectadas, setConectadas] = useState<ConectadaVista[]>([])
+  const [abierta, setAbierta] = useState<string | null>(null)
+  const recargar = () => void bridge.herramientas.conectadas().then(setConectadas)
+  useEffect(recargar, [])
+  // se busca al dejar de teclear; sin texto, las destacadas (las oficiales de empresas conocidas)
+  useEffect(() => {
+    let vivo = true
+    setFichas(null); setError(null)
+    const t = setTimeout(() => void bridge.herramientas.buscar(q).then((r) => { if (!vivo) return; if (r.ok) setFichas(r.fichas); else { setError(r.error); setFichas([]) } }), q ? 450 : 0)
+    return () => { vivo = false; clearTimeout(t) }
+  }, [q])
+  const tengo = new Set(conectadas.map((c) => c.ficha.id))
+
+  return (
+    <div className="grid gap-8">
+      {conectadas.length > 0 && (
+        <section className="grid gap-3">
+          <h2 className="m-0 text-[15px] font-medium text-texto">Conectadas · Esme y tu equipo ya las usan</h2>
+          <ul className="m-0 grid list-none gap-2 p-0">
+            {conectadas.map((c) => (
+              <li key={c.ficha.slug} className="vidrio flex items-center gap-3 rounded-3 border px-4 py-3">
+                <Tipo f={c.ficha} />
+                <div className="min-w-0 flex-1">
+                  <p className="m-0 truncate text-[14px] text-texto">{c.ficha.titulo}</p>
+                  <p className="m-0 truncate text-[12px] text-texto-3">{c.faltan.length ? `Falta: ${c.faltan.join(', ')}` : c.activa ? `Activa · sus acciones se llaman ${c.ficha.slug}__…` : 'En pausa'}</p>
+                </div>
+                <button type="button" role="switch" aria-checked={c.activa} aria-label={c.activa ? 'Pausar' : 'Activar'}
+                  onClick={() => void bridge.herramientas.alternar(c.ficha.slug, !c.activa).then(recargar)}
+                  className={cn('relative h-6 w-10 rounded-full transition-colors', c.activa ? 'bg-acento' : 'bg-s3')}>
+                  <span className={cn('absolute top-1 size-4 rounded-full bg-white transition-all', c.activa ? 'left-5' : 'left-1')} />
+                </button>
+                <button type="button" aria-label={`Quitar ${c.ficha.titulo}`} onClick={() => void bridge.herramientas.quitar(c.ficha.slug).then(() => { toast(`Quitaste ${c.ficha.titulo}`); recargar() })}
+                  className="grid size-8 place-items-center rounded-full text-texto-3 hover:bg-s2 hover:text-peligro"><Trash2 className="size-4" strokeWidth={1.75} /></button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="grid gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex h-10 w-[380px] max-w-full items-center gap-2 rounded-full border border-linea bg-s1/70 px-4 backdrop-blur focus-within:border-foco">
+            <Search className="size-4 text-texto-3" strokeWidth={1.75} />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Busca entre ~10.000: github, blender, figma, postgres…" aria-label="Buscar herramientas"
+              className="min-w-0 flex-1 bg-transparent text-[14px] text-texto outline-none placeholder:text-texto-3" />
+          </label>
+          <p className="m-0 text-xs text-texto-3">{q ? 'Del registro oficial de MCP' : 'Destacadas: las oficiales de cada empresa'}</p>
+        </div>
+        {error && <p className="m-0 text-[13px] text-peligro">El registro no responde ahora ({error}). Vuelve a intentarlo en un momento.</p>}
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
+          {fichas === null
+            ? Array.from({ length: 6 }, (_, i) => <span key={i} className="h-40 animate-pulse rounded-4 bg-s2/60" />)
+            : fichas.map((f) => <Tarjeta key={f.id} f={f} conectada={tengo.has(f.id)} abierta={abierta === f.id} onAbrir={() => setAbierta((a) => (a === f.id ? null : f.id))} onConectada={() => { setAbierta(null); recargar() }} />)}
+          {fichas?.length === 0 && !error && <p className="col-span-full m-0 py-8 text-center text-texto-3">Nada con «{q}». Prueba otra palabra.</p>}
+        </div>
+      </section>
+
+      <Busqueda />
+    </div>
+  )
+}
+
+function Tipo({ f }: { f: Ficha }) {
+  const remota = f.conexion.tipo === 'remoto'
+  return (
+    <span title={remota ? 'Remota: se usa por internet, no ejecuta nada en tu equipo' : `Local: se ejecuta en tu equipo (${f.conexion.tipo === 'npm' ? 'npx' : 'uvx'})`}
+      className="grid size-9 shrink-0 place-items-center rounded-3 bg-s2 text-texto-2">{remota ? <Cloud className="size-4" strokeWidth={1.75} /> : <Laptop className="size-4" strokeWidth={1.75} />}</span>
+  )
+}
+
+function Tarjeta({ f, conectada, abierta, onAbrir, onConectada }: { f: Ficha; conectada: boolean; abierta: boolean; onAbrir(): void; onConectada(): void }) {
+  const [valores, setValores] = useState<Record<string, string>>({})
+  const [probando, setProbando] = useState(false)
+  const conectar = async () => {
+    setProbando(true)
+    const r = await bridge.herramientas.conectar(f, valores)
+    setProbando(false)
+    if (!r.ok) { toast.error(r.error); return }
+    if (r.aviso) toast.warning(`${f.titulo} quedó guardada`, { description: r.aviso })
+    else toast.success(`${f.titulo} conectada${r.sesion ? ' con tu cuenta' : ''}`, { description: `${r.acciones} ${r.acciones === 1 ? 'acción' : 'acciones'} para Esme y tu equipo.` })
+    onConectada()
+  }
+  return (
+    <article className="vidrio grid content-start gap-3 rounded-4 border p-4">
+      <div className="flex items-start gap-3">
+        <Tipo f={f} />
+        <div className="min-w-0 flex-1">
+          <h3 className="m-0 truncate text-[15px] font-medium text-texto" title={f.id}>{f.titulo}</h3>
+          <p className="m-0 truncate text-[11.5px] text-texto-3">{f.id}{f.version ? ` · v${f.version}` : ''}</p>
+        </div>
+      </div>
+      <p className="m-0 line-clamp-3 text-[13px] leading-5 text-texto-2">{f.descripcion || 'Sin descripción.'}</p>
+      <div className="flex items-center gap-2">
+        {conectada ? <span className="text-[12.5px] text-exito">Conectada</span> : (
+          <button type="button" onClick={onAbrir} aria-expanded={abierta} className="inline-flex h-8 items-center gap-1.5 rounded-full bg-acento px-3.5 text-[12.5px] font-medium text-sobre-acento"><Plug className="size-3.5" />Conectar</button>
+        )}
+        {f.web && <a href={f.web} target="_blank" rel="noreferrer" className="text-[12.5px] text-texto-3 underline decoration-linea underline-offset-2 hover:text-texto">Su web</a>}
+      </div>
+      <AnimatePresence initial={false}>
+        {abierta && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="grid gap-2.5 overflow-hidden">
+            <p className="m-0 rounded-2 bg-[color-mix(in_oklab,var(--atencion)_10%,transparent)] px-3 py-2 text-[12px] leading-5 text-texto-2">
+              {f.conexion.tipo === 'remoto' ? 'Remota: lo que Esme le pida viaja a su servidor.' : 'Local: se descarga y se ejecuta en tu equipo.'} Esme no la ha revisado: conéctala si confías en quien la publica. Cada acción te pedirá permiso.
+            </p>
+            {f.variables.map((v) => (
+              <label key={v.nombre} className="grid gap-1 text-[12px] text-texto-2">
+                <span>{v.nombre}{v.requerida ? ' *' : ''}{v.descripcion ? ` · ${v.descripcion}` : ''}</span>
+                <input type={v.secreta ? 'password' : 'text'} autoComplete="off" value={valores[v.nombre] ?? ''} onChange={(e) => setValores((x) => ({ ...x, [v.nombre]: e.target.value }))}
+                  className="h-9 rounded-2 border border-linea bg-s1/70 px-3 text-[13px] text-texto outline-none focus:border-foco" />
+              </label>
+            ))}
+            <button type="button" disabled={probando} onClick={() => void conectar()} className="h-9 rounded-full bg-acento text-[13px] font-medium text-sobre-acento disabled:opacity-50">
+              {probando ? (f.conexion.tipo === 'remoto' ? 'Conectando… si pide tu cuenta, se abre tu navegador' : 'Descargando y probando…') : 'Conectar y probar'}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </article>
+  )
+}
+
+// cómo busca Esme en internet: Wikipedia siempre; mejor con tu clave gratuita de Brave o con tu propio SearXNG
+function Busqueda() {
+  const [estado, setEstado] = useState<{ brave: boolean; searxng: string } | null>(null)
+  const [brave, setBrave] = useState('')
+  const [searxng, setSearxng] = useState('')
+  useEffect(() => { void bridge.herramientas.busqueda().then((e) => { setEstado(e); setSearxng(e.searxng) }) }, [])
+  const guardar = async () => {
+    const r = await bridge.herramientas.ponerBusqueda({ ...(brave ? { brave } : {}), searxng })
+    if (!r.ok) { toast.error(r.error); return }
+    toast.success('Búsqueda guardada'); setBrave(''); setEstado(await bridge.herramientas.busqueda())
+  }
+  return (
+    <section className="vidrio grid gap-3 rounded-4 border p-5">
+      <h2 className="m-0 flex items-center gap-2 text-[15px] font-medium text-texto"><Globe className="size-4" strokeWidth={1.75} />Cómo busca Esme en internet</h2>
+      <p className="m-0 max-w-[70ch] text-[13px] leading-5 text-texto-2">
+        Ahora: {estado?.brave ? 'Brave Search' : estado?.searxng ? 'tu SearXNG' : 'Wikipedia (siempre funciona, sin claves)'}. Para buscar en toda la web, pon una clave gratuita de Brave Search (2.000 búsquedas al mes) o la dirección de tu propio SearXNG.
+      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="grid gap-1 text-[12px] text-texto-2">Clave de Brave Search{estado?.brave ? ' (guardada; escribe otra para cambiarla)' : ''}
+          <input type="password" autoComplete="off" value={brave} onChange={(e) => setBrave(e.target.value)} className="h-9 w-[260px] rounded-2 border border-linea bg-s1/70 px-3 text-[13px] text-texto outline-none focus:border-foco" />
+        </label>
+        <label className="grid gap-1 text-[12px] text-texto-2">Tu SearXNG
+          <input value={searxng} onChange={(e) => setSearxng(e.target.value)} placeholder="http://…" className="h-9 w-[260px] rounded-2 border border-linea bg-s1/70 px-3 text-[13px] text-texto outline-none focus:border-foco" />
+        </label>
+        <button type="button" onClick={() => void guardar()} className="h-9 rounded-full border border-linea px-4 text-[13px] text-texto-2 hover:text-texto">Guardar</button>
+      </div>
+    </section>
+  )
+}
