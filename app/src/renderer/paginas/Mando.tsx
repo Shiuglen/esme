@@ -21,6 +21,7 @@ import { StatusIsland } from '../ui/status-island'
 import { AlDia } from './AlDia'
 import { diarioDe, type Entrada } from './diario'
 import { islaDe, pasosDe } from './mando'
+import { archivable } from '../taller/vista'
 import { fechaLarga } from './portada'
 import { useEscucha, useNivelVoz } from '../lib/voz'
 import { Saludo } from '../tinta/PiezasVivas'
@@ -56,7 +57,7 @@ export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24,
   const activos = useMemo(() => tareas.filter((t) => t.estado === 'trabajando' || t.estado === 'preparando').slice(0, 2), [tareas])
   const esperan = useMemo(() => tareas.filter((t) => t.estado === 'esperando'), [tareas])
   const estado = estadoDeEsme({ escuchando, hablando: nivelVoz > 0, pensando: pensandoVoz, trabajando: activos.length, esperando: esperan.length })
-  const listas = tareas.filter((t) => t.estado === 'lista' && !t.aplicada).length
+  const listas = tareas.filter((t) => t.estado === 'lista' && !t.aplicada && !archivable(t, ahora)).length   // las mismas que enseña el Taller
   const diario = useMemo(() => (alDia ? diarioDe({ tareas, atlas, desde: ahora - 864e5, ahora }) : []), [alDia, tareas, atlas, ahora])
   const muelle = useMuelle({ stiffness: 300, damping: 30 })
   const temas = atlas?.clusters.length ?? 0

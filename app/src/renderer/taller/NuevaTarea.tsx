@@ -21,12 +21,14 @@ const AUTO = 'auto'
 const nuevoId = () => Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('')
 const corto = (e: Eleccion) => nombreValor({ id: e.modelo, nombre: e.modeloNombre })
 
-export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores }: {
-  motores: MotorTaller[]; noListos?: Map<string, string>; onCrear(p: Peticion[]): Promise<boolean>; onIrMotores(): void
+export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores, motorPedido }: {
+  motores: MotorTaller[]; noListos?: Map<string, string>; onCrear(p: Peticion[]): Promise<boolean>; onIrMotores(): void; motorPedido?: { id: string; n: number } | null
 }) {
   const muelle = useMuelle({ stiffness: 480, damping: 36 })
   const instalados = motores.filter((m) => m.instalado)
   const [motor, setMotor] = useState<string | null>(() => leer<string | null>('motor', AUTO))
+  // pulsar un agente libre en la sala lo deja elegido aquí
+  useEffect(() => { if (motorPedido) setMotor(motorPedido.id) }, [motorPedido?.n])  // eslint-disable-line react-hooks/exhaustive-deps
   const [arena, setArena] = useState(false)
   const [rivales, setRivales] = useState<Eleccion[]>([])
   const [todas, setTodas] = useState<Record<string, OpcionMotor[]> | null>(null)

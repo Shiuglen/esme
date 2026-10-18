@@ -34,7 +34,8 @@ const CARA_SALA = { preparando: 'starting', trabajando: 'working', esperando: 'n
 export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<typeof useTaller>; foco: { id: string; n: number } | null; onIr(id: SeccionId): void }) {
   const muelle = useMuelle({ stiffness: 420, damping: 38 })
   const [seleccion, setSeleccion] = useState<string | null>(null)
-  const [motorVisto, setMotorVisto] = useState<string | null>(null)   // pulsar un agente de la sala filtra la fila por él
+  const [motorVisto, setMotorVisto] = useState<string | null>(null)
+  const [motorPedido, setMotorPedido] = useState<{ id: string; n: number } | null>(null)   // pulsar un agente de la sala filtra la fila por él
   const [resaltada, setResaltada] = useState<string | null>(null)
   const [terminal, setTerminal] = useState(false)
   const [pestana, setPestana] = useState<Pestana>('vivo')
@@ -106,6 +107,8 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
     a.total++; if (URGENCIA.indexOf(x.estado) < URGENCIA.indexOf(a.estado)) a.estado = x.estado
     acc[x.motor] = a; return acc
   }, {})).sort((a, b) => URGENCIA.indexOf(a.estado) - URGENCIA.indexOf(b.estado) || b.total - a.total)
+  // los agentes libres: instalados, listos y sin tareas ahora mismo (esperan encargo)
+  const libres = tl.motores.filter((m) => m.instalado && !sinListo.has(m.id) && !equipo.some((e) => e.motor === m.id)).slice(0, 8)
   const acento = getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || undefined
   return (
     <div className="relative flex h-full flex-col overflow-hidden">
@@ -128,6 +131,16 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
                 </span>
                 <span className="w-full truncate text-center text-[11.5px] font-medium text-texto">{m.nombre}</span>
                 <span className={cn('w-full truncate text-center text-[10.5px]', m.estado === 'esperando' ? 'text-atencion' : m.estado === 'error' ? 'text-peligro' : 'text-texto-3')}>{ESTADOS[m.estado].texto}</span>
+              </button>
+            </li>
+          ))}
+          {libres.map((m) => (
+            <li key={m.id}>
+              <button type="button" onClick={() => { setSeleccion(null); setMotorPedido((v) => ({ id: m.id, n: (v?.n ?? 0) + 1 })) }} title={`${m.nombre}: libre. Pulsa para darle un encargo`}
+                className="grid w-[96px] justify-items-center gap-1 rounded-4 px-1.5 pt-2 pb-1.5 opacity-70 transition-all hover:bg-s2/60 hover:opacity-100">
+                <AgentFace state="idle" size={36} color={acento} />
+                <span className="w-full truncate text-center text-[11.5px] font-medium text-texto">{m.nombre}</span>
+                <span className="w-full truncate text-center text-[10.5px] text-texto-3">Libre</span>
               </button>
             </li>
           ))}
@@ -201,7 +214,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
                   onParar={() => void tl.parar(t.id)} onDescartar={() => void tl.descartar(t.id)} onAbrir={() => tl.abrir(t.id)} onReencarnar={() => void reincarna(t)}
                   onConfigurar={(o, v) => void tl.configurar(t.id, o, v)} />
               ) : (
-                <NuevaTarea motores={tl.motores} noListos={sinListo} onIrMotores={() => onIr('ajustes')}
+                <NuevaTarea motores={tl.motores} noListos={sinListo} motorPedido={motorPedido} onIrMotores={() => onIr('ajustes')}
                   onCrear={async (ps) => {
                     // en arena, los competidores salen escalonados: los proveedores gratis limitan las peticiones a la vez
                     let primera: string | null = null
