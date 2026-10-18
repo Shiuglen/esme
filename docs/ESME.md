@@ -107,7 +107,15 @@
 - **P1 ✅** motor de pieles (`tinta/piel.ts`): una piel es solo datos (color, letra, forma, densidad, movimiento, fondo), validada y con contraste AA comprobado; historial con deshacer/rehacer y ensayo en vivo; `Ctrl+Mayús+0` vuelve a la de casa. 11 pieles de casa (Esmeralda, Tinta y Luz, Cuarzo, Lima, Medianoche, Monocromo, Editorial, Boreal, Terminal, Nube, Estudio) y 7 letras nuevas que se cargan al elegirlas. Ajustes › Apariencia es el vestidor.
 - **P2 ✅ (código)** «Pídesela a Esme»: la IA diseña la piel, Esme la valida y la ensaya en toda la app. Nunca un modelo de pago sin elegirlo. El 17-oct no se pudo ver una propuesta real: OpenRouter había gastado las peticiones gratis del día.
 - **Arreglos de paso:** la ecuación del estilo propio dejaba vacíos fondo, superficie y texto; el fondo ignoraba el estilo (papel negro fijo); y el chat se tragaba los errores del proveedor (acababa mudo). Los tres arreglados con test.
-- **Siguiente:** P3 (la mente, la portada y la navegación como piezas intercambiables) y P4 (Tienda de pieles). Pieles desde un enlace o una captura («como esta web»).
+- **Siguiente:** P3 (la mente y la portada como piezas intercambiables; la navegación ya lo es) y P4 (Tienda de pieles). Pieles desde un enlace o una captura («como esta web»).
+
+## 3b. Noche del 17-oct: navegación, carácter, «Al día» y negocio
+- **Navegación como capa de la piel ✅**: leyenda, riel o muelle (`shell/Leyenda.tsx`); hojas, portada y saludo se colocan según `shell/marcos.ts`. Probado en la app con los tres modos.
+- **Carácter del movimiento ✅** (`tinta/caracter.ts`): preciso, pesado, magnético, elástico, lanzado. Transforma con física (ω y ζ) los 13 muelles de la app (`useMuelle`) y las curvas de CSS (`--curva`, `--lento`, `--ease-salida`). Con movimiento «nada», tampoco anima Motion. Control y bola de prueba en Ajustes › Apariencia.
+- **«Al día» ✅** (`paginas/diario.ts`): «¿Qué me perdí hoy?» cuenta las últimas 24 horas en frases, sin gastar IA (tareas, fallos, permisos pendientes primero, lo aplicado, recuerdos nuevos por tema).
+- **Planes y licencias ✅** (spec `superpowers/specs/2026-10-17-planes-y-licencias.md`): códigos ESME- firmados con Ed25519, comprobados sin servidor. Invitar a un colaborador: `node scripts/esme-licencias.mjs invitar --para "Nombre"` (la clave privada está solo en `~/.config/esme-licencias/`). Precios: los decide el creador.
+- **Ideas de los guardados de X**: `docs/ideas/2026-10-17-marcadores-x.md` (qué entra, qué viene y qué no entra nunca).
+- **Pendiente**: lint (el proyecto no tiene configuración de ESLint 9); el Sueño (lecciones de las tareas del Taller → memoria); cobro con una tienda que haga de comerciante; GitHub (sin sesión iniciada en `gh`).
 
 ## 3. Estado real (12-oct)
 **Leyenda:** ✅ hecho y verificado · 🟡 a medias · ❌ pendiente · ⚠️ roto.
