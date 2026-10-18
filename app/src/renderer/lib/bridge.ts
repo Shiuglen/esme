@@ -7,6 +7,8 @@ import type { Hilo, ResumenHilo, TurnoHilo } from '../../main/hilos/hilos'
 import type { RespuestaCatalogo } from '../../main/tienda/ipc'
 import type { Producto } from '../../main/tienda/catalogo'
 import type { Tarea as TareaTaller, Veredicto as VeredictoTaller } from '../../main/taller/taller'
+import type { NuevoProgramado, Programado } from '../../main/taller/agenda'
+export type ProgramadoVisto = Programado & { proxima: number | null }
 import type { Consumo, Presupuesto, RegistroUso } from '../../main/uso/registro'
 import type { UsoExterno as UsoExternoMain } from '../../main/uso/externo'
 import type { EstadoUso as EstadoUsoMain, ProveedorResumen as ProveedorResumenMain } from '../../main/uso/estado'
@@ -63,6 +65,9 @@ type ElectronApi = {
     parar(id: string): Promise<ResultadoTaller>; descartar(id: string): Promise<ResultadoTaller>
     diff(id: string): Promise<{ texto: string; truncado: boolean }>; carpeta(): Promise<string | null>; abrir(id: string): Promise<ResultadoTaller>
     onCambio(fn: (t: TareaTaller) => void): () => void; onEvento(fn: (e: { id: string; n: number; evento: EventoTaller }) => void): () => void; onQuitada(fn: (id: string) => void): () => void
+    agenda(): Promise<ProgramadoVisto[]>; programar(p: NuevoProgramado): Promise<ResultadoTaller>
+    pausarProgramado(id: string, activo: boolean): Promise<ResultadoTaller>; quitarProgramado(id: string): Promise<ResultadoTaller>
+    onAgenda(fn: (l: ProgramadoVisto[]) => void): () => void
   }
   agents: { list(): Promise<AgentView[]> }
   pty: {
@@ -207,6 +212,11 @@ export const bridge = {
     onCambio: (fn: (t: TareaTaller) => void): (() => void) => (isElectron() ? window.daimon!.taller.onCambio(fn) : () => {}),
     onEvento: (fn: (e: { id: string; n: number; evento: EventoTaller }) => void): (() => void) => (isElectron() ? window.daimon!.taller.onEvento(fn) : () => {}),
     onQuitada: (fn: (id: string) => void): (() => void) => (isElectron() ? window.daimon!.taller.onQuitada(fn) : () => {}),
+    agenda: async (): Promise<ProgramadoVisto[]> => (isElectron() ? window.daimon!.taller.agenda() : []),
+    programar: async (p: NuevoProgramado): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.programar(p) : { ok: false, error: 'Solo en la app.' }),
+    pausarProgramado: async (id: string, activo: boolean): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.pausarProgramado(id, activo) : { ok: false, error: 'Solo en la app.' }),
+    quitarProgramado: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.quitarProgramado(id) : { ok: false, error: 'Solo en la app.' }),
+    onAgenda: (fn: (l: ProgramadoVisto[]) => void): (() => void) => (isElectron() ? window.daimon!.taller.onAgenda(fn) : () => {}),
   },
 
   agents: async (): Promise<AgentView[]> => (isElectron() ? window.daimon!.agents.list() : []),

@@ -14,12 +14,14 @@ import { anotarConsumo } from './ipc-proveedores'
 import { keys } from './keys'
 import { Taller, type MotorElegido } from './taller/taller'
 import { servirCopia, type Servidor } from './taller/vista-previa'
+import { guardarAgenda, leerAgenda, nuevoIdProgramado, proximaVez, tocan, validarProgramado, type Programado } from './taller/agenda'
 
 export type MotorTaller = { id: string; nombre: string; instalado: boolean; cumplimiento: Cumplimiento; login: string; nota: string; via?: 'local' | 'registro'; instalacion?: string | null; credencia?: string | null }
 
 const ID = /^[a-z0-9]{6,16}$/
 const MAX_TEXTO = 20_000
 let taller: Taller | null = null
+let relojAgenda: NodeJS.Timeout | null = null
 const vistas = new Map<string, Servidor>()
 const cerrarVista = (id: string) => { vistas.get(id)?.cerrar(); vistas.delete(id) }
 // Dónde está la web dentro de la copia: la raíz o una de las carpetas habituales.
@@ -263,6 +265,42 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
     const fallo = await shell.openPath(copia.ruta)
     return fallo ? { ok: false, error: fallo } : { ok: true }
   })
+  // La agenda: encargos que tu equipo hace solo. Cada minuto se lanza lo que toca como una tarea normal.
+  const ficheroAgenda = join(app.getPath('userData'), 'taller', 'agenda.json')
+  let agenda: Programado[] = leerAgenda(ficheroAgenda)
+  const conProxima = () => agenda.map((p) => ({ ...p, proxima: proximaVez(p, Date.now()) }))
+  const guardar = () => { guardarAgenda(ficheroAgenda, agenda); emitir('taller:agenda', conProxima()) }
+  const revisarAgenda = async () => {
+    const ahora = Date.now(), toca = tocan(agenda, ahora)
+    for (const p of toca) {
+      p.ultima = ahora
+      if (p.cuando.tipo === 'una') p.activo = false
+      const motor = await elegirMotor(p.motor)
+      if ('error' in motor) { console.error('[agenda] no lancé', p.id, motor.error); continue }
+      try { t.crear({ motor, carpeta: p.carpeta, texto: p.texto }) } catch (e) { console.error('[agenda] no lancé', p.id, mensaje(e)) }
+    }
+    if (toca.length) guardar()
+  }
+  relojAgenda = setInterval(() => { void revisarAgenda() }, 60_000)
+  setTimeout(() => { void revisarAgenda() }, 15_000)   // al abrir, lo atrasado mientras el equipo estuvo apagado
+  ipcMain.handle('taller:agenda', () => conProxima())
+  ipcMain.handle('taller:programar', (_e, v: unknown) => {
+    const r = validarProgramado(v)
+    if (!r.ok) return { ok: false, error: r.motivo }
+    if (agenda.length >= 50) return { ok: false, error: 'Ya tienes 50 encargos programados: quita alguno.' }
+    agenda.push({ id: nuevoIdProgramado(), ...r.valor, activo: true, creado: Date.now() }); guardar()
+    return { ok: true }
+  })
+  ipcMain.handle('taller:pausarProgramado', (_e, id: unknown, activo: unknown) => {
+    const p = agenda.find((x) => x.id === id)
+    if (!p || typeof activo !== 'boolean') return entrada
+    p.activo = activo; if (activo && p.cuando.tipo === 'diaria') p.ultima = Date.now(); guardar(); return { ok: true }
+  })
+  ipcMain.handle('taller:quitarProgramado', (_e, id: unknown) => {
+    const antes = agenda.length; agenda = agenda.filter((x) => x.id !== id)
+    if (agenda.length === antes) return entrada
+    guardar(); return { ok: true }
+  })
 }
 
-export function cerrar() { for (const s of vistas.values()) s.cerrar(); vistas.clear(); taller?.cerrarTodo() }
+export function cerrar() { if (relojAgenda) clearInterval(relojAgenda); for (const s of vistas.values()) s.cerrar(); vistas.clear(); taller?.cerrarTodo() }

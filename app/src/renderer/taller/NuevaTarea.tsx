@@ -2,7 +2,8 @@
 // Recuerda tu motor, tu carpeta y tus opciones por motor; si el motor trae un modelo lento o de pago, propone uno gratis.
 import { LayoutTemplate as ILayoutTemplate, Rocket as IRocket, Plus as IPlus, FlaskConical as IFlaskConical, Wrench as IWrench, ScanSearch as IScanSearch, ShieldCheck as IShieldCheck, PackageCheck as IPackageCheck, BookOpen as IBookOpen, FileText as IFileText, Shuffle as IShuffle, Languages as ILanguages, Gauge as IGauge, Accessibility as IAccessibility, Sparkles as ISparkles, type LucideIcon } from 'lucide-react'
 import { CATEGORIAS, RECETAS } from './recetas'
-import { CornerDownLeft, Dices, Folder, FolderPlus, Sparkles, Swords, X } from 'lucide-react'
+import { CalendarClock, CornerDownLeft, Dices, Folder, FolderPlus, Sparkles, Swords, X } from 'lucide-react'
+import { cuandoDe, fraseCuando, type OpcionCuando } from './cuando'
 import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
@@ -38,6 +39,8 @@ export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores
   const [opciones, setOpciones] = useState<OpcionMotor[] | null>(null)
   const [config, setConfig] = useState<Record<string, string>>({})
   const [enviando, setEnviando] = useState(false)
+  const [cuando, setCuando] = useState<OpcionCuando>({ modo: 'ahora' })
+  const regla = arena ? null : cuandoDe(cuando, Date.now())
   const auto = motor === AUTO
   const actual = auto ? undefined : instalados.find((m) => m.id === motor) ?? instalados[0]
 
@@ -88,7 +91,12 @@ export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores
       const elegida = Object.fromEntries((opciones ?? []).filter((o) => o.id === 'model' || o.id === 'mode').map((o) => [o.id, config[o.id] ?? o.actual]))
       peticiones = [{ motor: actual!.id, carpeta, texto: q, config: { ...config, ...elegida } }]
     }
-    if (peticiones.length && await onCrear(peticiones)) { setTexto(''); setArena(false) }
+    if (regla && peticiones[0]) {
+      // programado: la agenda lo lanzará a su hora como una tarea normal
+      const r = await bridge.taller.programar({ motor: peticiones[0].motor, carpeta, texto: q, cuando: regla })
+      if (r.ok) { toast(`Programado: ${fraseCuando(regla)}`, { description: 'Tu equipo lo hará solo, con la app abierta. Lo ves en la agenda del Taller.' }); setTexto(''); setCuando({ modo: 'ahora' }) }
+      else toast.error(r.error)
+    } else if (peticiones.length && await onCrear(peticiones)) { setTexto(''); setArena(false) }
     setEnviando(false)
   }
   const nombreCarpeta = carpeta?.split(/[\\/]/).filter(Boolean).pop()
@@ -148,10 +156,29 @@ export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores
             </span>
             <button type="button" onClick={() => void empezar()} disabled={!texto.trim() || enviando || !listo || (arena && rivales.length < 2)}
               className="cta-viva ml-auto inline-flex h-8 items-center gap-2 rounded-full bg-acento px-4 text-[13px] font-medium text-sobre-acento transition-opacity disabled:opacity-35">
-              {enviando ? 'Montando…' : !listo ? 'Leyendo los motores…' : arena ? `Empezar arena de ${rivales.length}` : 'Empezar'}
+              {enviando ? 'Montando…' : !listo ? 'Leyendo los motores…' : arena ? `Empezar arena de ${rivales.length}` : regla ? 'Programar' : 'Empezar'}
               <kbd className="inline-flex items-center gap-0.5 font-sans text-[11px] opacity-70">Ctrl<CornerDownLeft className="size-3" /></kbd>
             </button>
           </div>
+          {!arena && (
+            <div role="radiogroup" aria-label="Cuándo" className="flex flex-wrap items-center gap-1.5 border-t border-linea px-3 py-2 text-[12.5px]">
+              <CalendarClock className="mr-0.5 size-3.5 text-texto-3" strokeWidth={1.5} aria-hidden />
+              {([['ahora', 'Ahora'], ['noche', 'Esta noche'], ['manana', 'Mañana a las 9'], ['diaria', 'Cada día']] as const).map(([m, nombre]) => (
+                <button key={m} type="button" role="radio" aria-checked={cuando.modo === m}
+                  onClick={() => setCuando(m === 'diaria' ? { modo: 'diaria', hora: '07:00', laborables: false } : { modo: m })}
+                  className={cn('h-7 rounded-full px-2.5 transition-colors', cuando.modo === m ? 'bg-s2 text-texto' : 'text-texto-3 hover:text-texto')}>{nombre}</button>
+              ))}
+              {cuando.modo === 'diaria' && (
+                <>
+                  <input type="time" value={cuando.hora} aria-label="Hora" onChange={(e) => setCuando({ ...cuando, hora: e.target.value })}
+                    className="h-7 rounded-2 border border-linea bg-s1/70 px-2 text-texto outline-none [color-scheme:dark] focus:border-acento" />
+                  <button type="button" role="switch" aria-checked={!!cuando.laborables} onClick={() => setCuando({ ...cuando, laborables: !cuando.laborables })}
+                    className={cn('h-7 rounded-full border px-2.5 transition-colors', cuando.laborables ? 'border-acento/60 text-texto' : 'border-linea text-texto-3 hover:text-texto')}>Solo laborables</button>
+                </>
+              )}
+              {regla && <span className="ml-auto text-texto-3">{fraseCuando(regla)}</span>}
+            </div>
+          )}
           <AnimatePresence initial={false}>
             {(arena || auto) && todas && (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">

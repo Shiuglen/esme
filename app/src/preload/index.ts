@@ -59,6 +59,10 @@ contextBridge.exposeInMainWorld('daimon', {
     onCambio: (fn: (t: unknown) => void) => on('taller:cambio', (t) => fn(t)),
     onEvento: (fn: (e: unknown) => void) => on('taller:evento', (e) => fn(e)),
     onQuitada: (fn: (id: string) => void) => on('taller:quitada', (id) => fn(id as string)),
+    agenda: () => ipcRenderer.invoke('taller:agenda'), programar: (p: unknown) => ipcRenderer.invoke('taller:programar', p),
+    pausarProgramado: (id: string, activo: boolean) => ipcRenderer.invoke('taller:pausarProgramado', id, activo),
+    quitarProgramado: (id: string) => ipcRenderer.invoke('taller:quitarProgramado', id),
+    onAgenda: (fn: (l: unknown) => void) => on('taller:agenda', (l) => fn(l)),
   },
   agents: { list: () => ipcRenderer.invoke('agents:list') },
   pty: {

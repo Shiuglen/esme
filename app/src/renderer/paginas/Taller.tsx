@@ -17,6 +17,7 @@ import { activa, archivable, ESTADOS, explicarError } from '../taller/vista'
 import { noListos } from '../taller/eleccion'
 import { cn } from '../lib/cn'
 import { useMuelle } from '../tinta/movimiento'
+import { Agenda, useAgenda } from '../taller/Agenda'
 
 function useAhora(cada: number) {
   const [ahora, setAhora] = useState(() => Date.now())
@@ -54,6 +55,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
       localStorage.setItem('esme:taller:caidos', JSON.stringify([...new Set([...ya, ...caidos])]))
     } catch { /* sin almacenamiento */ }
   }, [tl.tareas])
+  const agenda = useAgenda()
   const login = (motor: string) => tl.motores.find((m) => m.id === motor)?.login ?? ''
 
   // Reencarna una tarea muerta con el siguiente motor instalado: misma petición, copia nueva, hermana de la fallida.
@@ -170,6 +172,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
             )}
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto pr-1 pb-1">
+            <Agenda lista={agenda} nombreDe={(id) => tl.motores.find((m) => m.id === id)?.nombre ?? id} />
             <AnimatePresence initial={false}>
               {bandasVistas.map((b) => (
                 <motion.section key={b.id} layout initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
