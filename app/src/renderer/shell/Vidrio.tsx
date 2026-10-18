@@ -6,13 +6,15 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { cn } from '../lib/cn'
 import GlassSurface from '../ui/efectos/GlassSurface'
 
+// el vidrio refractante solo con la superficie «vidrio»; las demás superficies se pintan con CSS (.flota en esme.css)
 const reducida = () => (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-transparency: reduce)').matches) || document.documentElement.dataset.transparencia === 'reducida'
+  || (document.documentElement.dataset.superficie ?? 'vidrio') !== 'vidrio'
 
 export function Vidrio({ children, className, radio = 24, fuerza = 1 }: { children: ReactNode; className?: string; radio?: number; fuerza?: number }) {
   const [sin, setSin] = useState(reducida)
-  useEffect(() => { const o = new MutationObserver(() => setSin(reducida())); o.observe(document.documentElement, { attributes: true, attributeFilter: ['data-transparencia'] }); return () => o.disconnect() }, [])
+  useEffect(() => { const o = new MutationObserver(() => setSin(reducida())); o.observe(document.documentElement, { attributes: true, attributeFilter: ['data-transparencia', 'data-superficie'] }); return () => o.disconnect() }, [])
   return (
-    <div className={cn('relative isolate', className)} style={{ borderRadius: radio }}>
+    <div className={cn('flota relative isolate', className)} style={{ borderRadius: radio }}>
       {!sin && (
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" style={{ borderRadius: radio }}>
           <GlassSurface width="100%" height="100%" borderRadius={radio} brightness={52} opacity={0.9} blur={10} displace={0.6 * fuerza}

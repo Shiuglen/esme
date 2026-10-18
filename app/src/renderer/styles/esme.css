@@ -374,3 +374,21 @@
 @keyframes brillo { from { background-position: 200% 0 } to { background-position: -200% 0 } }
 @keyframes latido { 50% { transform: scale(1.18); box-shadow: 0 0 26px 2px var(--acento) } }
 @keyframes pulso-trabajo { 50% { box-shadow: 0 0 0 1px color-mix(in oklab, var(--acento), transparent 40%), 0 0 40px -6px var(--acento) } }
+
+/* Las superficies (pieza «superficie», tinta/piezas.ts): el vidrio líquido es solo una opción. Cada una cambia las hojas
+   (.hoja) y lo que flota (.flota: barra, navegación, compositor) en toda la app a la vez. */
+@layer components {
+  .flota { border-radius: inherit }
+  [data-superficie="esmerilado"] .hoja { background: color-mix(in oklab, var(--hoja) 62%, transparent); backdrop-filter: blur(44px) saturate(1.8) }
+  [data-superficie="esmerilado"] .flota { background: color-mix(in oklab, var(--superficie-1) 55%, transparent); backdrop-filter: blur(30px) saturate(1.7); border: 1px solid color-mix(in oklab, var(--texto) 12%, transparent) }
+  [data-superficie="papel"] .hoja, [data-superficie="papel"] .flota { background: var(--hoja); backdrop-filter: none; border: 1px solid var(--linea); box-shadow: 0 1px 0 rgb(0 0 0 / 0.05), 0 18px 40px -24px rgb(0 0 0 / 0.45) }
+  [data-superficie="papel"] .hoja::before { display: none }
+  [data-superficie="neon"] .hoja, [data-superficie="neon"] .flota { background: color-mix(in oklab, var(--fondo) 82%, transparent); backdrop-filter: blur(12px);
+    border: 1px solid var(--acento); box-shadow: 0 0 0 1px color-mix(in oklab, var(--acento), transparent 60%), 0 0 28px -6px var(--acento), inset 0 0 22px -12px var(--acento) }
+  [data-superficie="neon"] .hoja::before { opacity: 1 }
+  [data-superficie="clay"] .hoja, [data-superficie="clay"] .flota { background: var(--superficie-1); backdrop-filter: none; border: 0; border-radius: 26px;
+    box-shadow: inset 5px 5px 12px color-mix(in oklab, white 7%, transparent), inset -8px -8px 18px rgb(0 0 0 / 0.35), 0 20px 40px -18px rgb(0 0 0 / 0.6) }
+  [data-superficie="clay"] .hoja::before, [data-superficie="clay"] .hoja::after { display: none }
+  [data-superficie="brutal"] .hoja, [data-superficie="brutal"] .flota { background: var(--hoja); backdrop-filter: none; border: 2px solid var(--texto); border-radius: 6px; box-shadow: 6px 6px 0 var(--texto) }
+  [data-superficie="brutal"] .hoja::before, [data-superficie="brutal"] .hoja::after { display: none }
+}

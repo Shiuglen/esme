@@ -23,3 +23,9 @@ export async function sonar(evento: EventoSonoro) {
     await playSound(s.dataUri, { volume: VOLUMEN[n] ?? 0.6 })
   } catch { /* sin audio: no pasa nada */ }
 }
+
+/** Para la galería: cómo suena un modo, sin cambiar el modo puesto. */
+export async function probarSonido(m: ModoSonido) {
+  const antes = modo; modo = m
+  try { await sonar(m === 'completo' ? 'pulsar' : 'respuesta') } finally { modo = antes }
+}

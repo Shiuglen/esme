@@ -4,10 +4,14 @@
 import { LoaderCircle, Moon, Redo2, RotateCcw, Sparkles, Sun, Undo2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
+import { toast } from 'sonner'
 import { muelleCon } from '../tinta/caracter'
 import { ESCENA_IDS, ESCENAS } from '../tinta/escenas'
 import { PIEZAS, type Hueco, type Piezas } from '../tinta/piezas'
 import { AlPulsar, BordeTrabajo, Saludo } from '../tinta/PiezasVivas'
+import { probarSonido } from '../tinta/sonido'
+import type { ModoSonido } from '../tinta/estado'
+import { codigoAPiel, pielACodigo } from '../tinta/compartir'
 import { disenarPiel } from '../tinta/disenar'
 import { cn } from '../lib/cn'
 import { paletaPropia } from '../tinta/estilo-propio'
@@ -99,6 +103,29 @@ const MUESTRAS: Record<string, string> = {
   grano: 'linear-gradient(135deg, var(--acento), color-mix(in oklab, var(--acento), black 70%))', hiperespacio: 'repeating-linear-gradient(90deg, transparent 0 20px, var(--acento) 21px, transparent 23px), linear-gradient(transparent 40%, #000), #000',
 }
 const muestraDe = (id: string) => MUESTRAS[id] ?? 'var(--s2)'
+
+// Compartir tu diseño: tu piel entera en un código que otra persona pega en su Esme (tinta/compartir.ts). Un código ajeno
+// se valida como cualquier piel antes de vestirlo, y se puede deshacer como siempre.
+function Compartir({ piel, onVestir }: { piel: Piel; onVestir(p: Piel): void }) {
+  const [codigo, setCodigo] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const copiar = async () => { await navigator.clipboard.writeText(pielACodigo(piel)); toast.success(`Código de «${piel.nombre}» copiado: compártelo con quien quieras`) }
+  const vestir = () => { const r = codigoAPiel(codigo); if (!r.ok) { setError(r.motivo); return } onVestir(r.piel); setCodigo(''); setError(null); toast.success(`Llevas «${r.piel.nombre}». Ctrl+Z en Apariencia para deshacer.`) }
+  return (
+    <section aria-label="Compartir pieles" className="grid gap-2 rounded-4 border border-linea p-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-sm font-medium text-texto">Comparte tu diseño o viste el de otra persona</span>
+        <button type="button" onClick={() => void copiar()} className="ml-auto rounded-3 border border-linea px-3 py-1.5 text-[13px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">Copiar el código de mi piel</button>
+      </div>
+      <div className="flex gap-2">
+        <input value={codigo} onChange={(e) => { setCodigo(e.target.value); setError(null) }} placeholder="Pega aquí un código ESME-PIEL-…" spellCheck={false}
+          className="h-9 min-w-0 flex-1 rounded-3 border border-linea bg-s1 px-3 font-mono text-[12.5px] text-texto outline-none placeholder:text-texto-3 focus:border-foco" />
+        <button type="button" disabled={!codigo.trim()} onClick={vestir} className="rounded-3 bg-acento px-4 text-[13px] font-medium text-sobre-acento disabled:opacity-40">Vestirla</button>
+      </div>
+      {error && <p role="alert" className="m-0 text-[13px] text-peligro">{error}</p>}
+    </section>
+  )
+}
 
 function Capa({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
@@ -205,6 +232,8 @@ export function Apariencia({ tema, onTema, pieles }: { tema: Tema; onTema(t: Tem
         {PIELES_CASA.map((c) => <div role="listitem" key={c.nombre}><Tarjeta p={c} tema={tema} puesta={p.nombre === c.nombre && igual(p, c)} onVestir={() => pieles.vestir(c)} /></div>)}
       </div>
 
+      <Compartir piel={p} onVestir={pieles.vestir} />
+
       {avisos.length > 0 && (
         <div role="alert" className="grid gap-1 rounded-3 border border-atencion/40 bg-atencion-velo px-4 py-3 text-[13px] text-texto">
           <span className="font-medium text-atencion">Esto no se lee bien con esta piel:</span>
@@ -296,6 +325,8 @@ export function Apariencia({ tema, onTema, pieles }: { tema: Tema; onTema(t: Tem
                   <span className="grid min-h-9 place-items-center overflow-hidden text-[19px] font-light text-texto">
                     {h === 'saludo' && <Saludo texto="Hola." pieza={v.id as Piezas['saludo']} />}
                     {h === 'trabajo' && <BordeTrabajo pieza={v.id as Piezas['trabajo']} activo radio={12}><span className="block rounded-[12px] border border-linea bg-s2/60 px-4 py-1.5 text-[13px] text-texto-2">pensando…</span></BordeTrabajo>}
+                    {h === 'superficie' && <span data-superficie={v.id} className="block"><span className={cn('hoja flota block rounded-[12px] px-4 py-2 text-[13px] text-texto-2', v.id === 'vidrio' && 'bg-s2/40 backdrop-blur-xl')}>Aa · tu Esme</span></span>}
+                    {h === 'sonido' && <span role="presentation" onClick={(e) => { e.stopPropagation(); void probarSonido(v.id as ModoSonido) }} className="rounded-full border border-linea px-3 py-1 text-[12px] text-texto-2 hover:text-texto">{v.id === 'nada' ? '—' : '▶ escuchar'}</span>}
                     {h === 'pulsar' && <AlPulsar pieza={v.id as Piezas['pulsar']}><span className="block px-3 py-1.5 text-[13px] text-texto-2">pulsa aquí</span></AlPulsar>}
                   </span>
                   <span className="text-[12px] text-texto-2">{v.nombre}</span>

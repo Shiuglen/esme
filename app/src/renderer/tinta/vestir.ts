@@ -32,6 +32,7 @@ export function vestirApp(p: Piel, tema: 'noche' | 'dia') {
   if (p.color.tipo === 'estilo' && p.color.estilo !== 'esmeralda') raiz.dataset.estilo = p.color.estilo
   else delete raiz.dataset.estilo
   raiz.dataset.movimiento = p.movimiento
+  raiz.dataset.superficie = p.piezas.superficie   // la superficie de hojas y de lo que flota (esme.css)
   const c = curvaDe(p.caracter)   // las transiciones de CSS también tienen el carácter de la piel
   raiz.style.setProperty('--curva', c.curva); raiz.style.setProperty('--lento', String(c.factor))
   raiz.dataset.fondo = p.fondo

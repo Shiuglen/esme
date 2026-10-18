@@ -2,6 +2,10 @@
 // bibliotecas (React Bits, Kokonut UI…) y de lo que vaya llegando. Aquí solo hay datos —qué huecos hay y qué variantes
 // valen—; cómo se pinta cada una vive en tinta/Piezas.tsx. Sumar una variante es añadir una línea aquí y su dibujo allí.
 export const PIEZAS = {
+  superficie: { nombre: 'Superficies', variantes: [
+    { id: 'vidrio', nombre: 'Vidrio líquido' }, { id: 'esmerilado', nombre: 'Cristal esmerilado' }, { id: 'papel', nombre: 'Papel' },
+    { id: 'neon', nombre: 'Neón' }, { id: 'clay', nombre: 'Arcilla suave' }, { id: 'brutal', nombre: 'Brutal' },
+  ] },
   saludo: { nombre: 'Cómo aparece el saludo', variantes: [
     { id: 'enfoque', nombre: 'Se enfoca letra a letra' }, { id: 'descifrar', nombre: 'Se descifra como un código' },
     { id: 'brillo', nombre: 'Un brillo lo recorre' }, { id: 'degradado', nombre: 'Degradado vivo' },
@@ -18,7 +22,7 @@ export const PIEZAS = {
 
 export type Hueco = keyof typeof PIEZAS
 export type Piezas = { [H in Hueco]: (typeof PIEZAS)[H]['variantes'][number]['id'] }
-export const PIEZAS_BASE: Piezas = { saludo: 'enfoque', pulsar: 'nada', sonido: 'avisos', trabajo: 'electrico' }
+export const PIEZAS_BASE: Piezas = { superficie: 'vidrio', saludo: 'enfoque', pulsar: 'nada', sonido: 'avisos', trabajo: 'electrico' }
 
 /** Valida las piezas que trae una piel: completa lo que falta con la base y devuelve los errores de lo que no existe. */
 export function validarPiezas(x: unknown): { piezas: Piezas; errores: string[] } {
