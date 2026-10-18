@@ -1,5 +1,6 @@
 // Viste la app con una piel (tinta/piel.ts): pone sus variables en vivo, su estilo, su movimiento y su fondo, carga su letra
 // solo cuando se elige (no las doce de golpe: la memoria es sagrada) y ajusta el tamaño con el zoom real de la ventana.
+import { curvaDe } from './caracter'
 import { bridge } from '../lib/bridge'
 import { quitarPropio } from './estilo-propio'
 import { variablesDePiel, type LetraId, type Piel } from './piel'
@@ -31,6 +32,8 @@ export function vestirApp(p: Piel, tema: 'noche' | 'dia') {
   if (p.color.tipo === 'estilo' && p.color.estilo !== 'esmeralda') raiz.dataset.estilo = p.color.estilo
   else delete raiz.dataset.estilo
   raiz.dataset.movimiento = p.movimiento
+  const c = curvaDe(p.caracter)   // las transiciones de CSS también tienen el carácter de la piel
+  raiz.style.setProperty('--curva', c.curva); raiz.style.setProperty('--lento', String(c.factor))
   raiz.dataset.fondo = p.fondo
   void cargarLetra(p.letra.titulos); void cargarLetra(p.letra.texto)
   bridge.ventana()?.zoom?.(p.letra.escala)

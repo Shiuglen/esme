@@ -47,7 +47,7 @@
   --radius-2: var(--forma-r2);
   --radius-3: var(--forma-r3);
   --radius-4: var(--forma-r4);
-  --ease-salida: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-salida: var(--curva, cubic-bezier(0.16, 1, 0.3, 1));   /* sigue al carácter de la piel */
   --ease-muelle: cubic-bezier(0.34, 1.56, 0.64, 1);
   --shadow-flotante: var(--sombra-flotante);
   --animate-late: late 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;

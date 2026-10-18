@@ -5,6 +5,7 @@ import { Clock, CornerDownLeft, MessageSquare, Search, SunMoon, X } from 'lucide
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { AJUSTES, SECCIONES, type SeccionId } from './secciones'
+import { useMuelle } from '../tinta/movimiento'
 
 const fila = 'flex h-[38px] cursor-pointer items-center gap-2.5 rounded-2 px-2.5 text-texto-2 data-[selected=true]:bg-s3/80 data-[selected=true]:text-texto'
 const titulo = '[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-texto-3'
@@ -16,6 +17,7 @@ const guardar = (v: string[]) => { try { localStorage.setItem('esme:recientes', 
 export function Paleta({ abierta, onCerrar, onIr, onPreguntar, onTema }: {
   abierta: boolean; onCerrar(): void; onIr(id: SeccionId): void; onPreguntar(q: string): void; onTema(): void
 }) {
+  const muelle = useMuelle(MUELLE)
   const [texto, setTexto] = useState('')
   const [recientes, setRecientes] = useState<string[]>(leer)
   const entrada = useRef<HTMLInputElement>(null)
@@ -31,7 +33,7 @@ export function Paleta({ abierta, onCerrar, onIr, onPreguntar, onTema }: {
         <>
           <motion.div key="velo" className="fixed inset-0 z-40 bg-black/35 backdrop-blur-[3px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }} onClick={onCerrar} aria-hidden />
-          <motion.div key="paleta" layoutId="buscador" transition={MUELLE} role="dialog" aria-modal="true" aria-label="Paleta de comandos"
+          <motion.div key="paleta" layoutId="buscador" transition={muelle} role="dialog" aria-modal="true" aria-label="Paleta de comandos"
             className="vidrio fixed top-[14vh] z-50 w-[600px] max-w-[calc(100vw-32px)] overflow-hidden border shadow-flotante"
             style={{ left: 'calc(50% - min(300px, (100vw - 32px) / 2))', borderRadius: 22 }}>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.08, duration: 0.18 } }} exit={{ opacity: 0, transition: { duration: 0.06 } }}>

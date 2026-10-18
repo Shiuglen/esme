@@ -14,7 +14,9 @@ export function mensajesDisenador(peticion: string, actual: Piel): ChatMsg[] {
                             "dia": {"fondo": "#rrggbb", "superficie": "#rrggbb", "texto": "#rrggbb", "acento": "#rrggbb"}},
  "letra": {"titulos": LETRA, "texto": LETRA, "escala": número entre 0.85 y 1.2},
  "forma": {"radio": número entre 0 y 2.5 (1 es normal, 0 esquinas cuadradas, 2 muy redondas), "sombra": "plana" | "suave" | "honda"},
- "densidad": "compacta" | "comoda" | "amplia", "movimiento": "nada" | "sutil" | "vivo", "fondo": "liso" | "aurora" | "papel"}
+ "densidad": "compacta" | "comoda" | "amplia", "movimiento": "nada" | "sutil" | "vivo",
+ "caracter": "preciso" | "pesado" | "magnetico" | "elastico" | "lanzado" (cómo se siente lo que se mueve),
+ "fondo": "liso" | "aurora" | "papel", "navegacion": "leyenda" | "riel" | "muelle" (caja en la esquina, columna fina a la izquierda o barra flotante abajo)}
 LETRA es una de: ${letras}.
 Reglas: colores solo en hex #rrggbb. Contraste WCAG AA obligatorio en día y en noche: texto sobre fondo y sobre superficie al menos 4.5;
 el acento sobre el fondo al menos 3. De noche la superficie es un poco más clara que el fondo; de día, blanca o casi blanca.

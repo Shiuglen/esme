@@ -31,6 +31,8 @@ import { Paleta } from './shell/Paleta'
 import { FondoVivo, useHalos } from './shell/FondoVivo'
 import { Hoja, type Origen } from './shell/Hoja'
 import { marcoDe } from './shell/marcos'
+import { MovimientoPiel } from './tinta/movimiento'
+import { MotionConfig } from 'motion/react'
 import { Leyenda, type NotaLugar } from './shell/Leyenda'
 import { AJUSTES, SECCIONES, nombreDe, type SeccionId } from './shell/secciones'
 
@@ -217,6 +219,7 @@ export function App() {
   // Dónde va cada hoja, qué tapa de tu mente (para que la cámara la encuadre en el resto) y cuánto se atenúa la mente
   // (el sitio libre depende de cómo navega la piel: leyenda, riel o muelle — shell/marcos.ts)
   const marco = marcoDe(piel.navegacion)
+  const movimientoPiel = useMemo(() => ({ caracter: piel.caracter, movimiento: piel.movimiento }), [piel.caracter, piel.movimiento])
   const HOJA: Partial<Record<SeccionId, string>> = { conversacion: 'top-3 right-3 w-[min(680px,50%)]', memoria: 'top-3 w-[400px]' }
   const grande = 'top-3 right-3'
   const sitioDe = (id: SeccionId): React.CSSProperties => (id === 'conversacion' ? { bottom: marco.abajo } : { left: marco.izquierda, bottom: marco.abajo })
@@ -233,6 +236,9 @@ export function App() {
 
   return (
     <FirmaMente.Provider value={firma}>
+    <MovimientoPiel value={movimientoPiel}>
+    {/* con el movimiento en «nada», Motion tampoco anima (lo de JavaScript no lo para el CSS) */}
+    <MotionConfig reducedMotion={piel.movimiento === 'nada' ? 'always' : 'user'}>
     <FondoVivo tema={tema} estado={estadoEsme} fondo={piel.fondo} clave={JSON.stringify(piel.color)} />
     <div className="relative z-10 grid h-full grid-rows-[48px_minmax(0,1fr)]">
       <BarraSuperior seccion={nombreDe(seccion)} estado={{ conectado: !!brain && recuerdos !== null, recuerdos, pensando }} tema={tema}
@@ -258,6 +264,8 @@ export function App() {
       <Toaster theme={tema === 'noche' ? 'dark' : 'light'} position="bottom-right" toastOptions={{ style: { background: 'var(--superficie-2)', border: '1px solid var(--linea)', color: 'var(--texto)', fontFamily: 'inherit' } }} />
       <HojasVivas tareas={tl.tareas} onVer={verTarea} />
     </div>
+    </MotionConfig>
+    </MovimientoPiel>
     </FirmaMente.Provider>
   )
 }

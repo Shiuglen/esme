@@ -29,21 +29,23 @@ export type Densidad = 'compacta' | 'comoda' | 'amplia'
 export type Movimiento = 'nada' | 'sutil' | 'vivo'
 export type FondoPiel = 'liso' | 'aurora' | 'papel'
 export type Navegacion = 'leyenda' | 'riel' | 'muelle'
+export type Caracter = 'preciso' | 'pesado' | 'magnetico' | 'elastico' | 'lanzado'
 export type Piel = {
   version: 1; nombre: string; color: ColorPiel
   letra: { titulos: LetraId; texto: LetraId; escala: number }
   forma: { radio: number; sombra: Sombra }
-  densidad: Densidad; movimiento: Movimiento; fondo: FondoPiel; navegacion: Navegacion
+  densidad: Densidad; movimiento: Movimiento; caracter: Caracter; fondo: FondoPiel; navegacion: Navegacion
 }
 
 export const PIEL_BASE: Piel = {
   version: 1, nombre: 'Esmeralda', color: { tipo: 'estilo', estilo: 'esmeralda' },
   letra: { titulos: 'funnel', texto: 'funnel', escala: 1 }, forma: { radio: 1, sombra: 'suave' },
-  densidad: 'comoda', movimiento: 'sutil', fondo: 'aurora', navegacion: 'leyenda',
+  densidad: 'comoda', movimiento: 'sutil', caracter: 'preciso', fondo: 'aurora', navegacion: 'leyenda',
 }
 
 const SOMBRAS: Sombra[] = ['plana', 'suave', 'honda'], DENSIDADES: Densidad[] = ['compacta', 'comoda', 'amplia']
 const MOVIMIENTOS: Movimiento[] = ['nada', 'sutil', 'vivo'], FONDOS: FondoPiel[] = ['liso', 'aurora', 'papel'], NAVEGACIONES: Navegacion[] = ['leyenda', 'riel', 'muelle']
+export const CARACTERES: Caracter[] = ['preciso', 'pesado', 'magnetico', 'elastico', 'lanzado']
 // Solo colores de verdad: hex, rgb() o hsl() con números. Nada de url(), var(), expresiones ni texto suelto.
 const COLOR = /^(#[0-9a-f]{3}|#[0-9a-f]{6}|(?:rgb|hsl)a?\(\s*[-\d.%\s,/]+\))$/i
 const limita = (v: unknown, a: number, b: number, d: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(b, Math.max(a, v)) : d)
@@ -88,12 +90,12 @@ export function validarPiel(x: unknown): { ok: true; piel: Piel } | { ok: false;
     p.forma.radio = limita(f.radio, 0, 2.5, PIEL_BASE.forma.radio)
     if (f.sombra !== undefined) { if (SOMBRAS.includes(f.sombra as Sombra)) p.forma.sombra = f.sombra as Sombra; else e.push('forma.sombra: desconocida') }
   }
-  const enumera = <T extends string>(k: 'densidad' | 'movimiento' | 'fondo' | 'navegacion', lista: T[]) => {
+  const enumera = <T extends string>(k: 'densidad' | 'movimiento' | 'caracter' | 'fondo' | 'navegacion', lista: T[]) => {
     if (x[k] === undefined) return
     if (lista.includes(x[k] as T)) (p as Record<string, unknown>)[k] = x[k]
     else e.push(`${k}: «${String(x[k])}» no es una opción`)
   }
-  enumera('densidad', DENSIDADES); enumera('movimiento', MOVIMIENTOS); enumera('fondo', FONDOS); enumera('navegacion', NAVEGACIONES)
+  enumera('densidad', DENSIDADES); enumera('movimiento', MOVIMIENTOS); enumera('fondo', FONDOS); enumera('navegacion', NAVEGACIONES); enumera('caracter', CARACTERES)
   return e.length ? { ok: false, errores: e } : { ok: true, piel: p }
 }
 

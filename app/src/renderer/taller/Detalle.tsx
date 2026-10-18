@@ -9,6 +9,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Markdown } from '../chat/Markdown'
 import type { TareaTaller } from '../lib/bridge'
 import { cn } from '../lib/cn'
+import { useMuelle } from '../tinta/movimiento'
 import { Revision, type AccionesRevision } from './Revision'
 import { Arena } from './Arena'
 import { VistaPrevia } from './VistaPrevia'
@@ -33,6 +34,7 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
   onSeguir(texto: string): Promise<boolean>; onResponder(opcion: string): void; onParar(): void; onDescartar(): void; onAbrir(): void; onReencarnar(): void
   onConfigurar(opcion: string, valor: string): void
 }) {
+  const muelle = useMuelle({ stiffness: 500, damping: 40 })
   const [pestana, setPestana] = useState<Pestana>(t.arena ? 'arena' : 'vivo')
   const [confirmar, setConfirmar] = useState(false)
   useEffect(() => { setPestana(t.arena && arena && arena.tareas.length > 1 ? 'arena' : 'vivo'); setConfirmar(false) }, [t.id])   // eslint-disable-line react-hooks/exhaustive-deps
@@ -104,7 +106,7 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
               {pestana === p && (
                 <motion.span layoutId="pestaña-taller" aria-hidden
                   className="absolute inset-x-2.5 -bottom-1 h-[2px] rounded-full [background:var(--aurora-lineal)]"
-                  transition={{ type: 'spring', stiffness: 500, damping: 40 }} />
+                  transition={muelle} />
               )}
             </button>
           ))}

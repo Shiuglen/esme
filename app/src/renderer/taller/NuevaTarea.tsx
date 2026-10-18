@@ -9,6 +9,7 @@ import { cn } from '../lib/cn'
 import { candidatosDe, elegibles, elegir, elegirVarios, type Eleccion, type Veredicto } from './eleccion'
 import { configInicial, nombreValor, SelectorOpcion } from './Opciones'
 import { Bicho } from '../marca/Ser'
+import { useMuelle } from '../tinta/movimiento'
 
 const leer = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(`esme:taller:${k}`); return v === null ? d : (JSON.parse(v) as T) } catch { return d } }
 const guardar = (k: string, v: unknown) => { try { localStorage.setItem(`esme:taller:${k}`, JSON.stringify(v)) } catch { /* sin almacenamiento */ } }
@@ -22,6 +23,7 @@ const corto = (e: Eleccion) => nombreValor({ id: e.modelo, nombre: e.modeloNombr
 export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores }: {
   motores: MotorTaller[]; noListos?: Map<string, string>; onCrear(p: Peticion[]): Promise<boolean>; onIrMotores(): void
 }) {
+  const muelle = useMuelle({ stiffness: 480, damping: 36 })
   const instalados = motores.filter((m) => m.instalado)
   const [motor, setMotor] = useState<string | null>(() => leer<string | null>('motor', AUTO))
   const [arena, setArena] = useState(false)
@@ -114,7 +116,7 @@ export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores
                   <button key={m.id} type="button" role="radio" aria-checked={on} onClick={() => elegirMotor(m.id)} title={motivo}
                     aria-description={motivo}
                     className={cn('relative h-7 shrink-0 whitespace-nowrap rounded-full px-3 text-[12.5px] transition-colors', on ? 'text-sobre-acento' : 'text-texto-2 hover:text-texto', motivo && !on && 'opacity-50 line-through decoration-texto-3/60')}>
-                    {on && <motion.span layoutId="motor-elegido" className="absolute inset-0 rounded-full bg-acento" transition={{ type: 'spring', stiffness: 480, damping: 36 }} />}
+                    {on && <motion.span layoutId="motor-elegido" className="absolute inset-0 rounded-full bg-acento" transition={muelle} />}
                     <span className="relative inline-flex items-center gap-1.5">{m.id === AUTO ? <Sparkles className="size-3" strokeWidth={2} /> : <Bicho de={m.id} tamaño={13} vivo={on} />}{m.nombre}</span>
                   </button>
                 )

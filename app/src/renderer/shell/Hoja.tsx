@@ -27,7 +27,7 @@ export function Hoja({ abierta, origen, etiqueta, className, sitio, children }: 
     <section ref={ref} aria-label={etiqueta} inert={!abierta}
       onTransitionEnd={(e) => { if (e.target === e.currentTarget && e.propertyName === 'clip-path' && estado === 'cerrando') setEstado('cerrada') }}
       className={cn('hoja absolute z-20 overflow-hidden', className, estado === 'cerrada' && 'invisible')}
-      style={{ ...sitio, clipPath: `circle(${desplegada ? 150 : 0}% at ${o.x}px ${o.y}px)`, transition: `clip-path ${desplegada ? 620 : 380}ms cubic-bezier(.16,1,.3,1)` }}>
+      style={{ ...sitio, clipPath: `circle(${desplegada ? 150 : 0}% at ${o.x}px ${o.y}px)`, transition: `clip-path calc(${desplegada ? 620 : 380}ms * var(--lento, 1)) var(--curva, cubic-bezier(.16,1,.3,1))` }}>
       {children}
     </section>
   )

@@ -9,17 +9,19 @@ import { fmtTokens, fmtUSD } from '../chat/formatos'
 import { bridge, type EstadoUso, type ModeloCatalogo, type MotorDetectado, type MotorTaller, type OrigenCatalogo, type ProveedorResumen, type ProviderView } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { Apariencia, type Pieles } from './Apariencia'
+import { useMuelle } from '../tinta/movimiento'
 
 type Pestana = 'motores' | 'presupuesto' | 'apariencia'
 type Vista = 'conectados' | 'suscripcion' | 'catalogo' | 'local'
 
 function Segmentos<T extends string>({ valor, opciones, onCambio, id }: { valor: T; opciones: { id: T; texto: string }[]; onCambio(v: T): void; id: string }) {
+  const muelle = useMuelle({ stiffness: 520, damping: 40 })
   return (
     <div role="tablist" className="inline-flex gap-0.5 justify-self-start vidrio rounded-3 border p-1">
       {opciones.map((o) => (
         <button key={o.id} type="button" role="tab" aria-selected={valor === o.id} onClick={() => onCambio(o.id)}
           className={cn('relative h-8 rounded-2 px-3.5 text-[13px] font-medium transition-colors', valor === o.id ? 'text-texto' : 'text-texto-2 hover:text-texto')}>
-          {valor === o.id && <motion.span layoutId={`seg-${id}`} className="absolute inset-0 rounded-2 bg-s3" transition={{ type: 'spring', stiffness: 520, damping: 40 }} />}
+          {valor === o.id && <motion.span layoutId={`seg-${id}`} className="absolute inset-0 rounded-2 bg-s3" transition={muelle} />}
           <span className="relative">{o.texto}</span>
         </button>
       ))}

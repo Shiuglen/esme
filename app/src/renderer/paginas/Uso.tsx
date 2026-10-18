@@ -8,6 +8,7 @@ import { bridge, type EstadoUso, type ResumenUso, type UsoExterno } from '../lib
 import { cn } from '../lib/cn'
 import { diasSeguidos, rejillaActividad } from '../uso/vista'
 import { Bicho } from '../marca/Ser'
+import { useMuelle } from '../tinta/movimiento'
 
 type Rango = 'hoy' | '7' | '30'
 const DIA = 86_400_000
@@ -26,6 +27,7 @@ function Cifra({ etiqueta, children, pie }: { etiqueta: string; children: React.
 }
 
 export function Uso({ onIr }: { onIr(id: 'ajustes'): void }) {
+  const muelle = useMuelle({ stiffness: 520, damping: 40 })
   const [rango, setRango] = useState<Rango>('30')
   const [resumen, setResumen] = useState<ResumenUso | null>(null)
   const [anual, setAnual] = useState<ResumenUso | null>(null)
@@ -72,7 +74,7 @@ export function Uso({ onIr }: { onIr(id: 'ajustes'): void }) {
             {([['hoy', 'Hoy'], ['7', '7 días'], ['30', '30 días']] as const).map(([id, t]) => (
               <button key={id} type="button" role="tab" aria-selected={rango === id} onClick={() => setRango(id)}
                 className={cn('relative h-8 rounded-2 px-3.5 text-[13px] font-medium transition-colors', rango === id ? 'text-texto' : 'text-texto-2 hover:text-texto')}>
-                {rango === id && <motion.span layoutId="rango-uso" className="absolute inset-0 rounded-2 bg-s3" transition={{ type: 'spring', stiffness: 520, damping: 40 }} />}
+                {rango === id && <motion.span layoutId="rango-uso" className="absolute inset-0 rounded-2 bg-s3" transition={muelle} />}
                 <span className="relative">{t}</span>
               </button>))}
           </div>

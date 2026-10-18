@@ -8,11 +8,13 @@ import { cn } from '../lib/cn'
 import { limpiarElegido, pedidoSobre, type Elegido } from './inspector'
 import type { ItemLinea } from './linea'
 import { activa } from './vista'
+import { useMuelle } from '../tinta/movimiento'
 
 const ANCHOS = { movil: 390, tableta: 820, escritorio: 0 } as const
 type Ancho = keyof typeof ANCHOS
 
 export function VistaPrevia({ t, linea, onPedir }: { t: TareaTaller; linea: ItemLinea[] | undefined; onPedir(texto: string): Promise<boolean> }) {
+  const muelle = useMuelle({ stiffness: 420, damping: 34 })
   const [url, setUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [ancho, setAncho] = useState<Ancho>('escritorio')
@@ -90,7 +92,7 @@ export function VistaPrevia({ t, linea, onPedir }: { t: TareaTaller; linea: Item
         <AnimatePresence>
           {elegido && (
             <motion.div initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8 }}
-              transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+              transition={muelle}
               className="vidrio absolute inset-x-6 bottom-6 mx-auto max-w-[560px] rounded-4 border p-3.5 shadow-flotante">
               <div className="flex items-start gap-2">
                 <p className="min-w-0 flex-1 text-[12.5px] text-texto-2">

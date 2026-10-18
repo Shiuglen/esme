@@ -3,10 +3,12 @@
 // para afinarla. Los deslizadores ensayan en vivo y solo se guarda en el historial lo que sueltas.
 import { LoaderCircle, Moon, Redo2, RotateCcw, Sparkles, Sun, Undo2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { motion } from 'motion/react'
+import { muelleCon } from '../tinta/caracter'
 import { disenarPiel } from '../tinta/disenar'
 import { cn } from '../lib/cn'
 import { paletaPropia } from '../tinta/estilo-propio'
-import { LETRAS, PIEL_BASE, revisarContraste, variablesDePiel, type Base, type LetraId, type Piel } from '../tinta/piel'
+import { LETRAS, PIEL_BASE, revisarContraste, variablesDePiel, type Base, type Caracter, type LetraId, type Movimiento, type Piel } from '../tinta/piel'
 import { PIELES_CASA } from '../tinta/pieles-casa'
 import { cargarLetra } from '../tinta/vestir'
 
@@ -61,6 +63,19 @@ function Segmentado<T extends string>({ valor, opciones, onCambio, etiqueta }: {
           className={cn('h-7 rounded-full px-3 text-[12.5px] transition-colors', valor === id ? 'bg-acento text-sobre-acento' : 'text-texto-2 hover:text-texto')}>{texto}</button>
       ))}
     </div>
+  )
+}
+
+// Para sentir el carácter antes de vestirlo: una bola que cruza su carril con la física elegida (y vuelve al tocarla).
+function Sentir({ caracter, movimiento }: { caracter: Caracter; movimiento: Movimiento }) {
+  const [lado, setLado] = useState(false)
+  useEffect(() => { setLado((l) => !l) }, [caracter])
+  return (
+    <button type="button" onClick={() => setLado((l) => !l)} title="Tócalo para sentirlo otra vez" aria-label="Probar el carácter del movimiento"
+      className="relative h-8 w-36 shrink-0 rounded-full border border-linea bg-s2/60">
+      <motion.span aria-hidden className="absolute top-1 left-1 size-6 rounded-full bg-acento shadow-[0_0_14px_var(--acento-velo)]"
+        animate={{ x: lado ? 108 : 0 }} transition={muelleCon(caracter, movimiento, { type: 'spring', stiffness: 420, damping: 38, mass: 0.9 })} />
+    </button>
   )
 }
 
@@ -235,7 +250,16 @@ export function Apariencia({ tema, onTema, pieles }: { tema: Tema; onTema(t: Tem
         <div className="flex flex-wrap gap-x-6 gap-y-3">
           <label className="grid gap-1.5 text-xs text-texto-2">Densidad<Segmentado etiqueta="Densidad" valor={p.densidad} onCambio={(densidad) => cambia({ densidad })} opciones={[['compacta', 'Compacta'], ['comoda', 'Cómoda'], ['amplia', 'Amplia']]} /></label>
           <label className="grid gap-1.5 text-xs text-texto-2">Movimiento<Segmentado etiqueta="Movimiento" valor={p.movimiento} onCambio={(movimiento) => cambia({ movimiento })} opciones={[['nada', 'Nada'], ['sutil', 'Sutil'], ['vivo', 'Vivo']]} /></label>
+          <label className="grid gap-1.5 text-xs text-texto-2">Navegación<Segmentado etiqueta="Navegación" valor={p.navegacion} onCambio={(navegacion) => cambia({ navegacion })} opciones={[['leyenda', 'Leyenda'], ['riel', 'Riel'], ['muelle', 'Muelle']]} /></label>
           <label className="grid gap-1.5 text-xs text-texto-2">Fondo<Segmentado etiqueta="Fondo" valor={p.fondo} onCambio={(fondo) => cambia({ fondo })} opciones={[['liso', 'Liso'], ['aurora', 'Resplandor'], ['papel', 'Papel']]} /></label>
+        </div>
+        <div className="grid gap-1.5 text-xs text-texto-2">
+          Carácter del movimiento
+          <div className="flex flex-wrap items-center gap-4">
+            <Segmentado etiqueta="Carácter del movimiento" valor={p.caracter} onCambio={(caracter) => cambia({ caracter })}
+              opciones={[['preciso', 'Preciso'], ['pesado', 'Pesado'], ['magnetico', 'Magnético'], ['elastico', 'Elástico'], ['lanzado', 'Lanzado']]} />
+            <Sentir caracter={p.caracter} movimiento={p.movimiento} />
+          </div>
         </div>
         <p className="m-0 text-xs text-texto-3">«Liso» y «Nada» son lo que menos consume: ni el fondo ni la interfaz trabajan cuando no haces nada.</p>
       </Capa>

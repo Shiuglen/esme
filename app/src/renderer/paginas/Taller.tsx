@@ -17,6 +17,7 @@ import { activa, archivable, explicarError } from '../taller/vista'
 import { noListos } from '../taller/eleccion'
 import { cn } from '../lib/cn'
 import { SerCasa } from '../marca/Ser'
+import { useMuelle } from '../tinta/movimiento'
 
 function useAhora(cada: number) {
   const [ahora, setAhora] = useState(() => Date.now())
@@ -30,6 +31,7 @@ function useAhora(cada: number) {
 }
 
 export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<typeof useTaller>; foco: { id: string; n: number } | null; onIr(id: SeccionId): void }) {
+  const muelle = useMuelle({ stiffness: 420, damping: 38 })
   const [seleccion, setSeleccion] = useState<string | null>(null)
   const [resaltada, setResaltada] = useState<string | null>(null)
   const [terminal, setTerminal] = useState(false)
@@ -149,7 +151,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
                     <AnimatePresence initial={false}>
                       {b.items.map((x) => (
                         <motion.div key={x.id} layout initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                          transition={{ type: 'spring', stiffness: 420, damping: 38 }}>
+                          transition={muelle}>
                           <FilaMotor t={x} login={login(x.motor)} ahora={ahora} inicioTurno={tl.inicioTurno.get(x.id)} haciendo={actividadActual(tl.lineas[x.id] ?? [])}
                             elegida={x.id === seleccion} resaltada={x.id === resaltada} onElegir={elegir} onResaltar={setResaltada}
                             onReencarnar={() => void reincarna(x)} onAplicar={() => tl.aplicar(x.id, () => void tl.deshacer(x.id))} onParar={() => void tl.parar(x.id)} />

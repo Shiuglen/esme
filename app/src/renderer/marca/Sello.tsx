@@ -4,6 +4,7 @@
 import { motion } from 'motion/react'
 import { createContext, useContext, useId, useMemo } from 'react'
 import { type Firma, trazosSello } from './sello'
+import { useMuelle } from '../tinta/movimiento'
 
 /** La firma de tu mente (los temas del atlas). La pone App; cualquier sello la lee sin pasarla de mano en mano. */
 export const FirmaMente = createContext<Firma>([])
@@ -44,11 +45,12 @@ export function SelloTrazo({ textura = false }: { textura?: boolean }) {
 export function Sello({ lado = 28, giro = 0, estampar = false, titulo = 'Tu sello: lo aprobaste tú' }: {
   lado?: number; giro?: number; estampar?: boolean; titulo?: string
 }) {
+  const muelle = useMuelle({ stiffness: 520, damping: 15, mass: 0.7 })
   const golpe = estampar && !quieto()
   return (
     <motion.svg width={lado} height={lado} viewBox="0 0 100 100" role="img" aria-label={titulo} className="shrink-0 overflow-visible"
       initial={golpe ? { scale: 1.15, opacity: 0, rotate: giro - 3 } : false} animate={{ scale: 1, opacity: 1, rotate: giro }}
-      transition={{ type: 'spring', stiffness: 520, damping: 15, mass: 0.7 }}>
+      transition={muelle}>
       <title>{titulo}</title>
       <SelloTrazo textura={lado >= 22} />
     </motion.svg>

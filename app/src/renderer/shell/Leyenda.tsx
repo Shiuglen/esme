@@ -21,7 +21,7 @@ export function Leyenda({ actual, recogida: recogidaPedida, estado, notas, onIr,
   const ir = (id: SeccionId, e: React.MouseEvent<HTMLElement>) => { const r = e.currentTarget.getBoundingClientRect(); onIr(id, { x: r.left + r.width / 2, y: r.top + r.height / 2 }) }
   return (
     <nav aria-label="Lugares de Esme"
-      className={cn('hoja absolute z-30 flex overflow-hidden transition-[width] duration-500 ease-[cubic-bezier(.16,1,.3,1)]',
+      className={cn('hoja absolute z-30 flex overflow-hidden transition-[width] duration-500 ease-salida',
         modo === 'leyenda' && cn('bottom-4 left-4 flex-col', recogida ? 'w-[52px]' : 'w-[232px]'),
         modo === 'riel' && 'top-3 bottom-3 left-3 w-[52px] flex-col',
         muelle && 'bottom-3 left-1/2 -translate-x-1/2 flex-row items-center')}>

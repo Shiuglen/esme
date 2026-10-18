@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { bridge, type AgentView } from '../lib/bridge'
 import { cn } from '../lib/cn'
+import { useMuelle } from '../tinta/movimiento'
 
 type Pestana = { id: string; agente: AgentView }
 const color = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim()
@@ -36,6 +37,7 @@ function Consola({ p, visible, tema }: { p: Pestana; visible: boolean; tema: str
 }
 
 export function Terminales({ abierto, onCerrar, tema }: { abierto: boolean; onCerrar(): void; tema: string }) {
+  const muelle = useMuelle({ stiffness: 380, damping: 40 })
   const [agentes, setAgentes] = useState<AgentView[]>([])
   const [pestanas, setPestanas] = useState<Pestana[]>([])
   const [activa, setActiva] = useState<string | null>(null)
@@ -47,7 +49,7 @@ export function Terminales({ abierto, onCerrar, tema }: { abierto: boolean; onCe
   return (
     <AnimatePresence>
       {(abierto || pestanas.length > 0) && (
-        <motion.div initial={{ y: '100%' }} animate={{ y: abierto ? 0 : '100%' }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 380, damping: 40 }}
+        <motion.div initial={{ y: '100%' }} animate={{ y: abierto ? 0 : '100%' }} exit={{ y: '100%' }} transition={muelle}
           className="vidrio absolute inset-x-5 bottom-0 z-30 flex h-[46%] min-h-[260px] flex-col overflow-hidden rounded-t-4 border border-b-0 shadow-flotante" aria-hidden={!abierto}>
           <div aria-hidden className="h-px shrink-0 bg-gradient-to-r from-transparent via-[color-mix(in_srgb,var(--luz)_45%,transparent)] to-transparent" />
           <div className="flex h-11 shrink-0 items-center gap-1 border-b border-linea px-2">

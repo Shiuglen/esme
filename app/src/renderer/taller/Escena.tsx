@@ -16,6 +16,7 @@ import { anguloSol } from '../tinta/sol'
 import { CRUCES, RAYAS, SEPARACION, sombras, type Sombras } from './grabado'
 import { asignarLugares, caja, conducto, iso, lugares, ruta, type Punto } from './iso'
 import { duracion, ordenPlanta, textoCambios } from './vista'
+import { useMuelle } from '../tinta/movimiento'
 
 const LUGARES = lugares()
 const ALTO_PULSO = 0.42
@@ -214,6 +215,8 @@ function Caras({ c, luz, punteada }: { c: ReturnType<typeof caja>; luz: Sombras;
 function Pieza({ m, luz, elegida, resaltada, ahora, vivo, etiqueta, onElegir, onResaltar }: {
   m: Maquina; luz: Sombras; elegida: boolean; resaltada: boolean; ahora: number; vivo: Vivos; etiqueta: boolean; onElegir(id: string): void; onResaltar(id: string | null): void
 }) {
+  const muelleEntrada = useMuelle({ stiffness: 260, damping: 24 })
+  const muelleAlzar = useMuelle({ stiffness: 320, damping: 26 })
   const t = m.t, h = ALTURA[t.estado]
   const x0 = m.lugar.x + 0.16, y0 = m.lugar.y + 0.16, w = 0.68
   const c = caja(x0, y0, w, w, h)
@@ -226,11 +229,11 @@ function Pieza({ m, luz, elegida, resaltada, ahora, vivo, etiqueta, onElegir, on
   // Solo hablan las máquinas con algo que decir, o cuando te fijas en ellas; el reposo calla.
   const habla = elegida || resaltada || t.estado !== 'parada'
   return (
-    <motion.g initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 14 }} transition={{ type: 'spring', stiffness: 260, damping: 24 }}>
+    <motion.g initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 14 }} transition={muelleEntrada}>
       <g className="planta-maquina cursor-pointer" data-resaltada={resaltada || elegida} style={{ pointerEvents: 'all' }}
         onClick={() => onElegir(t.id)} onPointerEnter={() => onResaltar(t.id)} onPointerLeave={() => onResaltar(null)}>
         {/* la pieza elegida se levanta del suelo: el foco la front stepping hacia ti (muelle, amortiguado) */}
-        <motion.g animate={{ y: elegida || resaltada ? -5 : 0 }} transition={{ type: 'spring', stiffness: 320, damping: 26 }}>
+        <motion.g animate={{ y: elegida || resaltada ? -5 : 0 }} transition={muelleAlzar}>
         {(elegida || resaltada) && (
           <path d={caja(m.lugar.x + 0.04, m.lugar.y + 0.04, 0.92, 0.92, 0).arriba} fill="none" style={{ stroke: elegida ? 'var(--texto)' : 'var(--texto-3)' }}
             strokeOpacity={elegida ? 0.9 : 0.6} strokeWidth={1.25} vectorEffect="non-scaling-stroke" />
