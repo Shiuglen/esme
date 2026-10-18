@@ -1,0 +1,15 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": { "config": "", "css": "src/renderer/styles/esme.css", "baseColor": "neutral", "cssVariables": true },
+  "aliases": { "components": "src/renderer/ui", "utils": "src/renderer/lib/cn", "ui": "src/renderer/ui", "lib": "src/renderer/lib", "hooks": "src/renderer/hooks" },
+  "iconLibrary": "lucide",
+  "registries": {
+    "@magicui": "https://magicui.design/r/{name}.json",
+    "@kokonutui": "https://kokonutui.com/r/{name}.json",
+    "@reactbits": "https://reactbits.dev/r/{name}.json",
+    "@aceternity": "https://ui.aceternity.com/registry/{name}.json"
+  }
+}

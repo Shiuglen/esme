@@ -15,6 +15,7 @@ import { deshacer, historialDe, rehacer, vestir, type Historial } from './tinta/
 import { PIEL_BASE, validarPiel, type Piel } from './tinta/piel'
 import { vestirApp } from './tinta/vestir'
 import { Portada, type EventoMente } from './paginas/Portada'
+import { Mando } from './paginas/Mando'
 import { notaTaller } from './paginas/portada'
 import { Proximamente } from './paginas/Proximamente'
 import { Taller } from './paginas/Taller'
@@ -246,13 +247,16 @@ export function App() {
         taller={{ trabajando: tl.tareas.filter((t) => t.estado === 'trabajando' || t.estado === 'preparando').length, esperando: tl.tareas.filter((t) => t.estado === 'esperando').length }}
         onTaller={() => ir('taller')} />
       <main className="relative min-h-0 overflow-hidden">
-        <div className={cn('absolute inset-0 transition-opacity duration-500', tapada && 'opacity-40')}>
+        <div className={cn('absolute inset-0 transition-opacity duration-500', tapada && 'opacity-40', piel.portada === 'mando' && seccion === 'inicio' && 'opacity-0')}>
           <RedNeuronal ref={redRef} atlas={atlas} tema={tema} recordados={recordados} onPick={(id) => { setEnfocado(id); if (seccion !== 'memoria') ir('memoria') }}
             adornos={seccion === 'memoria'} hueco={hueco} />
         </div>
-        <Portada sitio={marco.portada} visible={seccion === 'inicio'} conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} eventos={eventos}
+        {piel.portada === 'mando' ? (
+          <Mando sitio={marco.portada} visible={seccion === 'inicio'} conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} tareas={tl.tareas}
+            memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar} onIr={(d) => (d.lugar === 'taller' ? verTarea(d.id) : ir('memoria'))} />
+        ) : <Portada sitio={marco.portada} visible={seccion === 'inicio'} conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} eventos={eventos}
           memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar}
-          tareas={tl.tareas} onIr={(d) => (d.lugar === 'taller' ? verTarea(d.id) : ir('memoria'))} />
+          tareas={tl.tareas} onIr={(d) => (d.lugar === 'taller' ? verTarea(d.id) : ir('memoria'))} />}
         {[...SECCIONES, AJUSTES].filter(({ id }) => id !== 'inicio' && visitadas.has(id)).map(({ id }) => (
           <Hoja key={id} abierta={seccion === id} origen={origenes[id] ?? { x: 40, y: innerHeight - 40 }} etiqueta={nombreDe(id)} className={HOJA[id] ?? grande} sitio={sitioDe(id)}>
             {pagina(id)}
