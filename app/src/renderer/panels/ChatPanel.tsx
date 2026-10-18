@@ -245,7 +245,7 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
         </div>
 
         <div className="mx-auto grid w-full max-w-[800px] gap-1.5 pt-2">
-          <Compositor onEnviar={(q) => void send(q)} memoria={memoryOn} onMemoria={setMemoryOn} />
+          <Compositor onEnviar={(q) => void send(q)} memoria={memoryOn} onMemoria={setMemoryOn} trabajando={busy} />
           <TiraUso proveedor={provider} modelo={model} etiqueta={`${current?.label ?? provider} · ${model || 'sin modelo'}`} sesion={sesion} />
         </div>
       </section>

@@ -2,6 +2,7 @@
 import { Moon, Search, Sun } from 'lucide-react'
 import { motion } from 'motion/react'
 import { cn } from '../lib/cn'
+import { Vidrio } from './Vidrio'
 import { Senal } from '../marca/Senal'
 import { Bicho, SerCasa } from '../marca/Ser'
 import { MUELLE } from './Paleta'
@@ -13,18 +14,22 @@ export function BarraSuperior({ seccion, estado, tema, onTema, onBuscar, paletaA
   taller: { trabajando: number; esperando: number }; onTaller(): void }) {
   const muelle = useMuelle(MUELLE)
   return (
-    <header className="barra-ventana flex h-12 shrink-0 items-center gap-3.5 vidrio-fino border-b border-linea pl-[18px]">
+    <header className="barra-ventana flex h-12 shrink-0 items-center gap-2.5 px-3 pt-1">
+      {/* piezas de vidrio líquido flotando sobre la escena, no una franja: la barra es parte de la capa de navegación */}
+      <Vidrio radio={18} className="flex h-9 items-center gap-2.5 pr-4 pl-2.5">
       <span className="flex items-center gap-2"><Senal tam={22} estado={estado.pensando ? 'pensando' : 'reposo'} tapa="var(--superficie-1)" /><span className="font-display text-[21px] leading-none font-[650] tracking-[-0.045em]">esme</span></span>
       <span className="text-texto-3">/</span>
       <span className="font-medium text-texto-2">{seccion}</span>
+      </Vidrio>
       {/* el buscador y la paleta son el mismo objeto: al abrirla, este botón se estira hasta convertirse en ella */}
-      {paletaAbierta ? <span className="ml-auto h-[30px] w-[300px]" aria-hidden /> : (
-        <motion.button layoutId="buscador" transition={muelle} type="button" onClick={onBuscar} style={{ borderRadius: 10 }}
-          className="ml-auto flex h-[30px] w-[300px] items-center gap-2 bg-s2 px-2.5 text-[13px] text-texto-3 transition-colors hover:bg-s3">
+      {paletaAbierta ? <span className="ml-auto h-9 w-[320px]" aria-hidden /> : (
+        <motion.button layoutId="buscador" transition={muelle} type="button" onClick={onBuscar} style={{ borderRadius: 18 }}
+          className="ml-auto flex h-9 w-[320px] items-center gap-2 border border-[color-mix(in_oklab,var(--texto)_10%,transparent)] bg-[color-mix(in_oklab,var(--superficie-1)_50%,transparent)] px-3 text-[13px] text-texto-3 shadow-[inset_0_1px_0_rgb(255_255_255/0.07)] backdrop-blur-xl transition-colors hover:text-texto-2">
           <Search className="size-4" strokeWidth={1.5} aria-hidden />Busca o pregunta
           <kbd className="ml-auto rounded-[5px] border border-linea bg-s1 px-1.5 py-0.5 font-sans text-[11px] text-texto-3">Ctrl K</kbd>
         </motion.button>
       )}
+      <Vidrio radio={18} className="flex h-9 items-center gap-1.5 px-1.5">
       {(taller.esperando > 0 || taller.trabajando > 0) && (
         <button type="button" onClick={onTaller} title="Ir al Taller"
           className={cn('inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors',
@@ -44,6 +49,7 @@ export function BarraSuperior({ seccion, estado, tema, onTema, onBuscar, paletaA
         className="grid size-8 place-items-center rounded-2 text-texto-2 transition-colors hover:bg-s2 hover:text-texto">
         {tema === 'noche' ? <Sun className="size-4" strokeWidth={1.5} /> : <Moon className="size-4" strokeWidth={1.5} />}
       </button>
+      </Vidrio>
     </header>
   )
 }

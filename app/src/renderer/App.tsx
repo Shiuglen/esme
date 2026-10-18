@@ -35,6 +35,7 @@ import { Hoja, type Origen } from './shell/Hoja'
 import { marcoDe } from './shell/marcos'
 import { callar, paraDecir, reproducir } from './lib/voz'
 import { Escena } from './shell/Escena'
+import { encenderLuz } from './shell/Luz'
 import { MovimientoPiel } from './tinta/movimiento'
 import { MotionConfig } from 'motion/react'
 import { Leyenda, type NotaLugar } from './shell/Leyenda'
@@ -208,6 +209,7 @@ export function App() {
   const enfocarRecuerdo = (id: string) => { setEnfocado(id); redRef.current?.enfocar(id) }
 
   useHalos()
+  useEffect(() => encenderLuz(), [])   // los filos de cristal brillan donde está el cursor (shell/Luz.ts)
   const tallerOcupado = tl.tareas.some((t) => t.estado === 'trabajando' || t.estado === 'preparando')
   const resumenTaller = useMemo(() => {
     const k = (f: (t: (typeof tl.tareas)[number]) => boolean) => tl.tareas.filter(f).length

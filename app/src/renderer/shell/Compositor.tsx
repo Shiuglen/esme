@@ -2,17 +2,20 @@
 import { ArrowUp, Waypoints } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '../lib/cn'
+import ElectricBorder from '../ui/efectos/ElectricBorder'
+import { Vidrio } from './Vidrio'
 
-export function Compositor({ onEnviar, memoria, onMemoria, contexto, autoFocus }: {
-  onEnviar(texto: string): void; memoria: boolean; onMemoria(v: boolean): void; contexto?: string[]; autoFocus?: boolean
+// Va en vidrio líquido (shell/Vidrio.tsx) y, mientras Esme trabaja, un borde eléctrico lo recorre (React Bits).
+export function Compositor({ onEnviar, memoria, onMemoria, contexto, autoFocus, trabajando = false }: {
+  onEnviar(texto: string): void; memoria: boolean; onMemoria(v: boolean): void; contexto?: string[]; autoFocus?: boolean; trabajando?: boolean
 }) {
   const [texto, setTexto] = useState('')
   const area = useRef<HTMLTextAreaElement>(null)
   useEffect(() => { const a = area.current; if (!a) return; a.style.height = '0px'; a.style.height = `${Math.min(160, a.scrollHeight)}px` }, [texto])
   const enviar = () => { const q = texto.trim(); if (!q) return; onEnviar(q); setTexto('') }
-  return (
+  const caja = (
     <form onSubmit={(e) => { e.preventDefault(); enviar() }}
-      className="aurora-foco flex items-end gap-3 vidrio rounded-4 border px-5 py-3.5 transition-colors focus-within:border-transparent">
+      className="aurora-foco flex items-end gap-3 rounded-[24px] border border-[color-mix(in_oklab,var(--texto)_12%,transparent)] bg-[color-mix(in_oklab,var(--superficie-1)_45%,transparent)] px-5 py-3.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_24px_60px_-24px_rgb(0_0_0/0.7)] transition-colors focus-within:border-transparent">
       <div className="grid min-w-0 flex-1 gap-2">
         <textarea ref={area} rows={1} value={texto} autoFocus={autoFocus} onChange={(e) => setTexto(e.target.value)} aria-label="Mensaje para Esme"
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar() } }}
@@ -33,4 +36,8 @@ export function Compositor({ onEnviar, memoria, onMemoria, contexto, autoFocus }
       </button>
     </form>
   )
+  const vidrio = <Vidrio radio={24}>{caja}</Vidrio>
+  return trabajando
+    ? <ElectricBorder color={getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#7df9ff'} speed={1} chaos={0.4} borderRadius={24}>{vidrio}</ElectricBorder>
+    : vidrio
 }

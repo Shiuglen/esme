@@ -6,6 +6,7 @@ import { Senal, type EstadoSenal } from '../marca/Senal'
 import { ROTULO } from '../memoria/pintar'
 import type { Navegacion } from '../tinta/piel'
 import type { Origen } from './Hoja'
+import { Vidrio } from './Vidrio'
 import { AJUSTES, SECCIONES, type SeccionId } from './secciones'
 
 export type NotaLugar = { texto: string; tono?: 'atencion' | 'peligro' | 'vida' }
@@ -20,11 +21,12 @@ export function Leyenda({ actual, recogida: recogidaPedida, estado, notas, onIr,
   const recogida = modo !== 'leyenda' || recogidaPedida, muelle = modo === 'muelle'
   const ir = (id: SeccionId, e: React.MouseEvent<HTMLElement>) => { const r = e.currentTarget.getBoundingClientRect(); onIr(id, { x: r.left + r.width / 2, y: r.top + r.height / 2 }) }
   return (
-    <nav aria-label="Lugares de Esme"
-      className={cn('hoja absolute z-30 flex overflow-hidden transition-[width] duration-500 ease-salida',
-        modo === 'leyenda' && cn('bottom-4 left-4 flex-col', recogida ? 'w-[52px]' : 'w-[232px]'),
-        modo === 'riel' && 'top-3 bottom-3 left-3 w-[52px] flex-col',
-        muelle && 'bottom-3 left-1/2 -translate-x-1/2 flex-row items-center')}>
+    // la navegación es capa de navegación: vidrio líquido (shell/Vidrio.tsx), no una hoja de contenido
+    <Vidrio radio={18} className={cn('!absolute z-30 overflow-hidden border border-[color-mix(in_oklab,var(--texto)_10%,transparent)] bg-[color-mix(in_oklab,var(--superficie-1)_35%,transparent)] shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_24px_60px_-24px_rgb(0_0_0/0.7)] transition-[width] duration-500 ease-salida',
+        modo === 'leyenda' && cn('bottom-4 left-4', recogida ? 'w-[52px]' : 'w-[232px]'),
+        modo === 'riel' && 'top-3 bottom-3 left-3 w-[52px]',
+        muelle && 'bottom-3 left-1/2 -translate-x-1/2')}>
+    <nav aria-label="Lugares de Esme" className={cn('flex h-full', muelle ? 'flex-row items-center' : 'flex-col')}>
       <button type="button" data-lugar="inicio" onClick={(e) => ir('inicio', e)} title="Tu mente (Esc)"
         className={cn('flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-s2/60', muelle ? 'border-r border-linea' : 'border-b border-linea', actual === 'inicio' && 'bg-s2/40')}>
         <Senal tam={26} estado={estado} titulo="Esme" />
@@ -52,5 +54,6 @@ export function Leyenda({ actual, recogida: recogidaPedida, estado, notas, onIr,
         })}
       </ul>
     </nav>
+    </Vidrio>
   )
 }

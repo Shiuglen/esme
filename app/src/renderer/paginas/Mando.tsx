@@ -20,6 +20,7 @@ import { diarioDe, type Entrada } from './diario'
 import { islaDe, pasosDe } from './mando'
 import { fechaLarga } from './portada'
 import { useEscucha, useNivelVoz } from '../lib/voz'
+import BlurText from '../ui/efectos/BlurText'
 
 const saludo = (h = new Date().getHours()) => (h < 6 ? 'Buenas noches' : h < 13 ? 'Buenos días' : h < 20 ? 'Buenas tardes' : 'Buenas noches')
 const acento = () => getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#5fffd0'
@@ -70,7 +71,10 @@ export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24,
             speed={escuchando || nivelVoz > 0 ? 1.4 : pensandoVoz ? 2.2 : 0.6} hoverIntensity={0.35} rotateOnHover forceHoverState={escuchando || nivelVoz > 0 || pensandoVoz} backgroundColor="transparent" />}
         </button>
         <p className="m-0 mt-1 text-[13px] tracking-wide text-texto-3">{fechaLarga(new Date())}</p>
-        <h1 className="m-0 mt-1 text-[clamp(40px,4.6vw,60px)] leading-none font-light tracking-[-0.04em] text-texto">{saludo()}.</h1>
+        <h1 className="m-0 mt-1 text-[clamp(40px,4.6vw,60px)] leading-none font-light tracking-[-0.04em] text-texto">
+          {/* el saludo se enfoca letra a letra, como si Esme despertara (React Bits) */}
+          <BlurText text={`${saludo()}.`} animateBy="letters" delay={45} direction="bottom" className="justify-center" />
+        </h1>
         <p className="m-0 mt-3 text-[15px] text-texto-2">
           {escuchando ? 'Te escucho. Habla con naturalidad.' : conectado
             ? <>Tu mente guarda <b className="font-medium text-texto">{(recuerdos ?? 0).toLocaleString('es-ES')} recuerdos</b> en {temas} temas{listas ? <> · <b className="font-medium text-texto">{listas}</b> tareas listas para revisar</> : null}.</>

@@ -309,8 +309,27 @@
 .red-tinta-pista { color: var(--texto-3); font-size: 11.5px }
 
 /* Una hoja de la Ventana: papel apoyado sobre el papel de tu mente (borde de 1 px y sombra de papel, sin desenfoques). */
-.hoja { background: var(--hoja); border: 1px solid var(--linea); border-radius: 10px;
-  box-shadow: 0 1px 0 rgb(0 0 0 / 0.04), 0 22px 60px -28px rgb(0 0 0 / 0.5) }
+/* Una hoja de Esme: cristal esmerilado sobre la escena viva (la escena respira a través de toda la app). Legible: la
+   hoja guarda el 80 % de su color, así el texto conserva su contraste. El filo atrapa la luz donde está tu cursor
+   (--mx/--my, una sola escucha para toda la app; ver shell/Luz.ts) como un cristal que gira hacia una lámpara.
+   Con «reducir transparencia» (del sistema o de la piel) vuelve a ser papel opaco. */
+@layer components {
+.hoja { position: relative; isolation: isolate; border-radius: 14px;
+  background: color-mix(in oklab, var(--hoja) 80%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6); backdrop-filter: blur(28px) saturate(1.6);
+  border: 1px solid color-mix(in oklab, var(--texto) 9%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, white 9%, transparent), inset 0 0 0 1px color-mix(in oklab, white 2%, transparent),
+    0 2px 4px -2px rgb(0 0 0 / 0.25), 0 30px 80px -30px rgb(0 0 0 / 0.65) }
+.hoja::before { content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 1;
+  background: radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), color-mix(in oklab, var(--acento), white 35%), transparent 60%) fixed;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0.75; transition: opacity 0.3s }
+.hoja::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+  background: linear-gradient(180deg, color-mix(in oklab, white 5%, transparent), transparent 22%) }
+@media (prefers-reduced-transparency: reduce) { .hoja { background: var(--hoja); backdrop-filter: none } }
+[data-transparencia="reducida"] .hoja { background: var(--hoja); backdrop-filter: none }
+[data-movimiento="nada"] .hoja::before { display: none }
+}
 
 /* La chispa esmeralda (marca/Chispa.tsx): dos facetas planas por esquirla, un filo de luz y el núcleo. Quieta en reposo; al
    pensar gira despacio y el núcleo late; al recordar se encienden las esquirlas de los temas que usa. Todo es transform u
