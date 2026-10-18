@@ -1,0 +1,10 @@
+# Lo que necesita el cerebro de Esme en una versión instalada (app/scripts/preparar-cerebro.mjs).
+# Las mismas dependencias que pyproject.toml más la voz local (Whisper para oír, Piper para hablar).
+numpy
+model2vec
+mcp
+onnxruntime>=1.20
+tokenizers>=0.20
+huggingface_hub>=0.30
+faster-whisper
+piper-tts

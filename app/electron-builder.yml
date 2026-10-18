@@ -1,0 +1,46 @@
+# Las versiones de Esme (docs/superpowers/specs/2026-10-18-versiones.md). El cerebro de cada sistema se prepara antes con
+# `node scripts/preparar-cerebro.mjs <sistema>` y viaja como recurso en resources/cerebro.
+appId: app.esme.escritorio
+productName: Esme
+extraMetadata:
+  name: esme
+  productName: Esme
+copyright: © 2026 Esme
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - out/**
+  - resources/**
+  - package.json
+asarUnpack:
+  - resources/**
+extraResources:
+  - from: build/cerebro-${os}-${arch}
+    to: cerebro
+    filter: ["**/*"]
+npmRebuild: false
+linux:
+  target: [AppImage, deb]
+  category: Utility
+  icon: resources/esme.png
+  executableName: esme
+  synopsis: Tu mente y tu equipo de agentes, en tu ordenador
+  desktop:
+    entry:
+      StartupWMClass: esme
+deb:
+  depends: [libnotify4, libxtst6, libnss3]
+win:
+  target: [nsis]
+  icon: resources/esme.png
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+mac:
+  target: [dmg]
+  category: public.app-category.productivity
+  icon: resources/esme.png
+appImage:
+  artifactName: Esme-${version}-${arch}.${ext}

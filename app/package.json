@@ -11,7 +11,11 @@
     "build": "electron-vite build",
     "web": "vite --config vite.web.config.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "cerebro": "node scripts/preparar-cerebro.mjs",
+    "version:linux": "electron-vite build && electron-builder --linux --x64",
+    "version:win": "electron-vite build && electron-builder --win --x64",
+    "version:mac": "electron-vite build && electron-builder --mac"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
@@ -20,6 +24,7 @@
     "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^5.2.0",
     "electron": "^44.7.0",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.7",
@@ -77,5 +82,10 @@
   "allowScripts": {
     "esbuild@0.25.12": true,
     "esbuild@0.28.2": true
-  }
+  },
+  "author": {
+    "name": "Esme",
+    "email": "esme@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/Shiuglen/esme"
 }
