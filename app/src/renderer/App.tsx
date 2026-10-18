@@ -239,12 +239,11 @@ export function App() {
   // (el sitio libre depende de cómo navega la piel: leyenda, riel o muelle — shell/marcos.ts)
   const marco = marcoDe(piel.navegacion)
   const movimientoPiel = useMemo(() => ({ caracter: piel.caracter, movimiento: piel.movimiento }), [piel.caracter, piel.movimiento])
-  const HOJA: Partial<Record<SeccionId, string>> = { conversacion: 'top-3 right-3 w-[min(680px,50%)]', memoria: 'top-3 w-[400px]' }
+  const HOJA: Partial<Record<SeccionId, string>> = { memoria: 'top-3 w-[400px]' }
   const grande = 'top-3 right-3'
-  const sitioDe = (id: SeccionId): React.CSSProperties => (id === 'conversacion' ? { bottom: marco.abajo } : { left: marco.izquierda, bottom: marco.abajo })
-  const hueco: Hueco = seccion === 'conversacion' ? { izquierda: marco.izquierda, derecha: Math.min(680, ancho * 0.5) + 12 }
-    : seccion === 'memoria' ? { izquierda: marco.izquierda + 400 + 12, derecha: 0 } : seccion === 'inicio' ? { izquierda: marco.inicio, derecha: 0 } : { izquierda: 0, derecha: 0 }
-  const tapada = seccion === 'taller' || seccion === 'uso' || seccion === 'tienda' || seccion === 'ajustes'
+  const sitioDe = (_id: SeccionId): React.CSSProperties => ({ left: marco.izquierda, bottom: marco.abajo })
+  const hueco: Hueco = seccion === 'memoria' ? { izquierda: marco.izquierda + 400 + 12, derecha: 0 } : seccion === 'inicio' ? { izquierda: marco.inicio, derecha: 0 } : { izquierda: 0, derecha: 0 }
+  const tapada = seccion === 'conversacion' || seccion === 'taller' || seccion === 'uso' || seccion === 'tienda' || seccion === 'ajustes'
   const notas: Partial<Record<SeccionId, NotaLugar>> = {
     conversacion: preguntas ? { texto: `${preguntas} ${preguntas === 1 ? 'pregunta' : 'preguntas'} en esta sesión` } : undefined,
     taller: notaTaller(resumenTaller),

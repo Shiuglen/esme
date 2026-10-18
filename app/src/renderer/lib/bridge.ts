@@ -3,6 +3,7 @@ import type { MotorACP } from '../../main/motores/acp-motores'
 import type { MotorTaller } from '../../main/ipc-taller'
 import type { EventoMotor as EventoTaller, OpcionConfig as OpcionMotor } from '../../main/motores/sesion-acp'
 import type { EstadoPlan } from '../../main/licencia/licencia'
+import type { Hilo, ResumenHilo, TurnoHilo } from '../../main/hilos/hilos'
 import type { Tarea as TareaTaller, Veredicto as VeredictoTaller } from '../../main/taller/taller'
 import type { Consumo, Presupuesto, RegistroUso } from '../../main/uso/registro'
 import type { UsoExterno as UsoExternoMain } from '../../main/uso/externo'
@@ -22,7 +23,7 @@ export type UsoExterno = UsoExternoMain
 export type ConsumoConCoste = Consumo & { costeUSD: number }
 export type MotorDetectado = MotorACP & { instalado: boolean; ruta?: string }
 export type ResumenUso = ReturnType<RegistroUso['resumen']>
-export type { EstadoPlan }
+export type { EstadoPlan, Hilo, ResumenHilo, TurnoHilo }
 export type { VeredictoTaller, EventoTaller, OpcionMotor, MotorTaller, TareaTaller }
 export type ResultadoTaller = { ok: true } | { ok: false; error: string; ficheros?: string[] }
 export type InstalarMotor = { ok: true; nombre: string } | { ok: false; error: string }
@@ -44,6 +45,7 @@ type ElectronApi = {
     onConsumo(fn: (c: ConsumoConCoste) => void): () => void; onAlerta(fn: (e: EstadoUso['evaluacion']) => void): () => void
   }
   motores: { detectar(): Promise<MotorDetectado[]> }
+  hilos: { lista(): Promise<ResumenHilo[]>; leer(id: string): Promise<Hilo | null>; guardar(h: Hilo): Promise<boolean>; borrar(id: string): Promise<boolean>; buscar(q: string): Promise<(ResumenHilo & { trozo: string })[]>; nuevoId(): Promise<string> }
   licencia: { estado(): Promise<EstadoPlan>; activar(c: string): Promise<{ ok: boolean; motivo?: string; estado: EstadoPlan }>; quitar(): Promise<EstadoPlan> }
   taller: {
     motores(): Promise<MotorTaller[]>; lista(): Promise<TareaTaller[]>; eventos(id: string): Promise<EventoTaller[]>
@@ -160,6 +162,14 @@ export const bridge = {
     onAlerta: (fn: (e: EstadoUso['evaluacion']) => void): (() => void) => (isElectron() ? window.daimon!.uso.onAlerta(fn) : () => {}),
   },
   motores: { detectar: async (): Promise<MotorDetectado[]> => (isElectron() ? window.daimon!.motores.detectar() : []) },
+  hilos: {
+    lista: async (): Promise<ResumenHilo[]> => (isElectron() ? window.daimon!.hilos.lista() : []),
+    leer: async (id: string): Promise<Hilo | null> => (isElectron() ? window.daimon!.hilos.leer(id) : null),
+    guardar: async (h: Hilo) => (isElectron() ? window.daimon!.hilos.guardar(h) : false),
+    borrar: async (id: string) => (isElectron() ? window.daimon!.hilos.borrar(id) : false),
+    buscar: async (q: string) => (isElectron() ? window.daimon!.hilos.buscar(q) : []),
+    nuevoId: async (): Promise<string> => (isElectron() ? window.daimon!.hilos.nuevoId() : `c-${Date.now().toString(36)}-web`),
+  },
   licencia: {
     estado: async (): Promise<EstadoPlan> => (isElectron() ? window.daimon!.licencia.estado() : { plan: 'gratis', nombre: 'Gratis' }),
     activar: async (c: string): Promise<{ ok: boolean; motivo?: string; estado: EstadoPlan }> => (isElectron() ? window.daimon!.licencia.activar(c) : { ok: false, motivo: 'Solo en la app de escritorio.', estado: { plan: 'gratis', nombre: 'Gratis' } }),

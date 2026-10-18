@@ -37,6 +37,8 @@ contextBridge.exposeInMainWorld('daimon', {
     onAlerta: (fn: (e: unknown) => void) => on('uso:alerta', (e) => fn(e)),
   },
   motores: { detectar: () => ipcRenderer.invoke('motores:detectar') },
+  hilos: { lista: () => ipcRenderer.invoke('hilos:lista'), leer: (id: string) => ipcRenderer.invoke('hilos:leer', id), guardar: (h: unknown) => ipcRenderer.invoke('hilos:guardar', h),
+    borrar: (id: string) => ipcRenderer.invoke('hilos:borrar', id), buscar: (q: string) => ipcRenderer.invoke('hilos:buscar', q), nuevoId: () => ipcRenderer.invoke('hilos:nuevoId') },
   licencia: { estado: () => ipcRenderer.invoke('licencia:estado'), activar: (c: string) => ipcRenderer.invoke('licencia:activar', c), quitar: () => ipcRenderer.invoke('licencia:quitar') },
   taller: {
     motores: () => ipcRenderer.invoke('taller:motores'), lista: () => ipcRenderer.invoke('taller:lista'),
