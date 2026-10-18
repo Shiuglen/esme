@@ -251,7 +251,8 @@ export function App() {
             adornos={seccion === 'memoria'} hueco={hueco} />
         </div>
         <Portada sitio={marco.portada} visible={seccion === 'inicio'} conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} eventos={eventos}
-          memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar} />
+          memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar}
+          tareas={tl.tareas} onIr={(d) => (d.lugar === 'taller' ? verTarea(d.id) : ir('memoria'))} />
         {[...SECCIONES, AJUSTES].filter(({ id }) => id !== 'inicio' && visitadas.has(id)).map(({ id }) => (
           <Hoja key={id} abierta={seccion === id} origen={origenes[id] ?? { x: 40, y: innerHeight - 40 }} etiqueta={nombreDe(id)} className={HOJA[id] ?? grande} sitio={sitioDe(id)}>
             {pagina(id)}

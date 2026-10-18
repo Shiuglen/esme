@@ -1,13 +1,16 @@
 // La portada (La Ventana): no es una página, es lo que se lee sobre tu mente cuando no hay ninguna hoja abierta.
 // Arriba a la izquierda, el cartucho del mapa: la fecha, el saludo en la cursiva de los rótulos, tu mente contada en
 // frases y lo último que pasó. Abajo, en el centro, la pregunta. El resto de la pantalla es tu mente.
-import { motion } from 'motion/react'
-import { useMemo } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
+import { useMemo, useState } from 'react'
+import type { TareaTaller } from '../lib/bridge'
 import type { Atlas } from '../lib/brain'
 import { cn } from '../lib/cn'
 import { ROTULO } from '../memoria/pintar'
 import { Compositor } from '../shell/Compositor'
 import { esGrafito } from '../tinta/trazo'
+import { AlDia } from './AlDia'
+import { diarioDe, type Entrada } from './diario'
 import { fechaLarga, hace, historiaMente } from './portada'
 
 export type EventoMente = { id: number; ts: number; tipo: 'recall' | 'remember' | 'forget' | 'ingest' | 'taller-lista' | 'taller-permiso' | 'taller-error'; texto: string; detalle?: string; onVer?: () => void }
@@ -17,9 +20,10 @@ const entrada = (i: number) => ({ initial: { opacity: 0, y: 8 }, animate: { opac
 // el texto se lee sobre la tinta del mapa gracias a un halo del color del papel, como los rótulos de un atlas
 const HALO = '[text-shadow:0_0_2px_var(--papel),0_0_10px_var(--papel),0_0_22px_var(--papel)]'
 
-export function Portada({ sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, visible, conectado, recuerdos, atlas, eventos, memoria, onMemoria, onPreguntar }: {
+export function Portada({ sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, visible, conectado, recuerdos, atlas, eventos, memoria, onMemoria, onPreguntar, tareas = [], onIr }: {
   sitio?: { izquierda: number; abajo: number; cabecera: number }; visible: boolean; conectado: boolean; recuerdos: number | null; atlas: Atlas | null; eventos: EventoMente[]
   memoria: boolean; onMemoria(v: boolean): void; onPreguntar(q: string): void
+  tareas?: TareaTaller[]; onIr?(ir: NonNullable<Entrada['ir']>): void
 }) {
   const contados = useMemo(() => {
     const pts = atlas?.points ?? []
@@ -37,6 +41,9 @@ export function Portada({ sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, v
     { texto: `${contados.grafito} en grafito`, pregunta: contados.grafito > 0 ? 'Muéstrame los recuerdos en grafito que aún no confirmo, de los más recientes primero' : null },
     { texto: `${(recuerdos ?? contados.pts).toLocaleString('es')} recuerdos`, pregunta: '¿Qué sabe mi mente de lo más reciente?' },
   ] : []
+  // «¿Qué me perdí hoy?» no gasta IA: lo cuenta el diario al instante (y desde ahí se le puede pedir más a Esme)
+  const [alDia, setAlDia] = useState(false)
+  const diario = useMemo(() => { const ahora = Date.now(); return alDia ? diarioDe({ tareas, atlas, desde: ahora - 864e5, ahora }) : [] }, [alDia, tareas, atlas])
   const rituales = ['¿Qué me perdí hoy?', '¿Qué es lo más importante en mi mente ahora?', 'Continúa la última tarea del taller']
 
   return (
@@ -70,10 +77,14 @@ export function Portada({ sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, v
         </motion.ol>
       </header>
       <motion.div {...entrada(4)} className="pointer-events-auto absolute right-8 mx-auto max-w-[880px]" style={{ left: sitio.izquierda, bottom: sitio.abajo }}>
+        <AnimatePresence>
+          {alDia && <AlDia key="al-dia" entradas={diario} onCerrar={() => setAlDia(false)} onIr={(ir) => { setAlDia(false); onIr?.(ir) }}
+            onPreguntar={() => { setAlDia(false); onPreguntar('¿Qué me perdí hoy?') }} />}
+        </AnimatePresence>
         <Compositor onEnviar={onPreguntar} memoria={memoria} onMemoria={onMemoria} contexto={conectado ? [] : ['el cerebro está apagado']} autoFocus />
         <motion.div {...entrada(5)} className="mt-2.5 flex flex-wrap justify-center gap-x-5 gap-y-1">
           {rituales.map((r) => (
-            <button key={r} type="button" onClick={() => onPreguntar(r)} style={{ fontFamily: ROTULO }}
+            <button key={r} type="button" aria-expanded={r === rituales[0] ? alDia : undefined} onClick={() => (r === rituales[0] ? setAlDia((v) => !v) : onPreguntar(r))} style={{ fontFamily: ROTULO }}
               className="rounded-3 px-2 py-0.5 text-[14px] italic text-texto-2 underline decoration-transparent decoration-1 underline-offset-4 transition-colors hover:text-texto hover:decoration-linea-fuerte">
               {r}
             </button>
