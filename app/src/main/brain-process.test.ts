@@ -20,17 +20,37 @@ describe('BrainProcess', () => {
 
   it('pasa DAIMON_PARENT_PID al hijo conservando el entorno', () => {
     const c = fakeChild(); spawnMock.mockReturnValue(c)
-    new BrainProcess('daimon', '/h', () => {}).start().catch(() => {})
+    new BrainProcess({ python: 'py', extraPython: null }, '/h', () => {}).start().catch(() => {})
     const opts = spawnMock.mock.calls[0][2]
     expect(opts.env.DAIMON_PARENT_PID).toBe(String(process.pid))
     expect(opts.env.PATH).toBe(process.env.PATH)
+  })
+
+  it('lanza el Python que le digan con el envoltorio limpio y la mente como argumento', () => {
+    const c = fakeChild(); spawnMock.mockReturnValue(c)
+    new BrainProcess({ python: '/r/cerebro/python/bin/python3', extraPython: null }, '/datos/mente', () => {}).start().catch(() => {})
+    const [cmd, args, opts] = spawnMock.mock.calls[0]
+    expect(cmd).toBe('/r/cerebro/python/bin/python3')
+    expect(args[0]).toBe('-c')
+    expect(args[1]).toContain('closerange')
+    expect(args[1]).toContain('daimon.cli')
+    expect(args.slice(2)).toEqual(['/datos/mente'])
+    expect(opts.env.PYTHONPATH).toBeUndefined()
+  })
+
+  it('instalada, sus paquetes van por PYTHONPATH y no mira los del usuario', () => {
+    const c = fakeChild(); spawnMock.mockReturnValue(c)
+    new BrainProcess({ python: 'py', extraPython: '/r/cerebro/paquetes' }, '/h', () => {}).start().catch(() => {})
+    const opts = spawnMock.mock.calls[0][2]
+    expect(opts.env.PYTHONPATH).toBe('/r/cerebro/paquetes')
+    expect(opts.env.PYTHONNOUSERSITE).toBe('1')
   })
 
   it('con código 3 no reintenta y deja info=null', () => {
     vi.useFakeTimers()
     const err = vi.spyOn(console, 'error').mockImplementation(() => {})
     const c = fakeChild(); spawnMock.mockReturnValue(c)
-    const b = new BrainProcess('daimon', '/h', () => {})
+    const b = new BrainProcess({ python: 'py', extraPython: null }, '/h', () => {})
     b.start().catch(() => {})
     c.emit('exit', 3)
     vi.advanceTimersByTime(10_000)
@@ -42,7 +62,7 @@ describe('BrainProcess', () => {
   it('stop envía SIGTERM y SIGKILL a los 5 s si sigue vivo', () => {
     vi.useFakeTimers()
     const c = fakeChild(); spawnMock.mockReturnValue(c)
-    const b = new BrainProcess('daimon', '/h', () => {})
+    const b = new BrainProcess({ python: 'py', extraPython: null }, '/h', () => {})
     b.start().catch(() => {})
     b.stop()
     expect(c.kill).toHaveBeenCalledWith('SIGTERM')

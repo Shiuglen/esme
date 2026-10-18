@@ -1,7 +1,7 @@
 // Proceso principal: lanza el cerebro, abre la ventana y conecta chat, claves y terminales con la interfaz.
 import { app, BrowserWindow, ipcMain, Menu, nativeImage, Notification, shell, Tray, utilityProcess, type UtilityProcess } from 'electron'
 import { homedir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { agentCommand, listAgents } from './agents'
 import { BrainProcess, type BrainInfo } from './brain-process'
 import { registerChat } from './chat'
@@ -13,9 +13,9 @@ import { registerLicencia } from './licencia/ipc'
 import { registerHilos } from './hilos/ipc'
 import { registerTienda } from './tienda/ipc'
 import { listModels, PROVIDERS, type ProviderId } from './providers'
+import { rutasDe } from './rutas'
 
-const ROOT = resolve(process.env.DAIMON_ROOT ?? join(homedir(), 'Daimon'))
-const HOME = resolve(process.env.DAIMON_HOME ?? join(ROOT, 'data', 'mente_v2'))
+const RUTAS = rutasDe({ empaquetada: app.isPackaged, plataforma: process.platform, home: homedir(), userData: app.getPath('userData'), resources: process.resourcesPath, env: process.env })
 let win: BrowserWindow | null = null
 let ptyHost: UtilityProcess | null = null
 let bandeja: Tray | null = null
@@ -24,7 +24,7 @@ let avisadoSegundoPlano = false
 const ficheroAjustes = () => join(app.getPath('userData'), 'ajustes.json')
 const ICONO = join(__dirname, '../../resources/esme.png')
 
-const brain = new BrainProcess(join(ROOT, '.venv', 'bin', 'daimon'), HOME, (info: BrainInfo | null) => win?.webContents.send('brain:changed', info))
+const brain = new BrainProcess({ python: RUTAS.python, extraPython: RUTAS.extraPython }, RUTAS.mente, (info: BrainInfo | null) => win?.webContents.send('brain:changed', info))
 
 const MAC = process.platform === 'darwin'
 // Una sola Esme: si ya está abierta (por ejemplo, al pulsar otra vez el icono del escritorio), la abierta se trae al frente
@@ -133,7 +133,7 @@ function registerIpc() {
   ipcMain.handle('agents:list', () => listAgents())
   ipcMain.handle('pty:spawn', (_e, p: { id: string; agent: string; cwd?: string; cols: number; rows: number }) => {
     const { cmd, args, env } = agentCommand(p.agent, brain.info)
-    ptyHost?.postMessage({ type: 'spawn', id: p.id, cmd, args, env, cwd: p.cwd ?? ROOT, cols: p.cols, rows: p.rows })
+    ptyHost?.postMessage({ type: 'spawn', id: p.id, cmd, args, env, cwd: p.cwd ?? RUTAS.cwdTerminal, cols: p.cols, rows: p.rows })
     return { ok: true }
   })
   ipcMain.on('pty:write', (_e, id: string, data: string) => ptyHost?.postMessage({ type: 'write', id, data }))
