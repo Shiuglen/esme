@@ -6,13 +6,13 @@ import { motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { fmtTokens, fmtUSD } from '../chat/formatos'
-import { bridge, type EstadoUso, type ModeloCatalogo, type MotorDetectado, type MotorTaller, type OrigenCatalogo, type ProveedorResumen, type ProviderView } from '../lib/bridge'
+import { bridge, type AlCerrar, type EstadoUso, type ModeloCatalogo, type MotorDetectado, type MotorTaller, type OrigenCatalogo, type ProveedorResumen, type ProviderView } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { Apariencia, type Pieles } from './Apariencia'
 import { TuPlan } from './TuPlan'
 import { useMuelle } from '../tinta/movimiento'
 
-type Pestana = 'motores' | 'presupuesto' | 'apariencia' | 'plan'
+type Pestana = 'motores' | 'presupuesto' | 'apariencia' | 'plan' | 'sistema'
 type Vista = 'conectados' | 'suscripcion' | 'catalogo' | 'local'
 
 function Segmentos<T extends string>({ valor, opciones, onCambio, id }: { valor: T; opciones: { id: T; texto: string }[]; onCambio(v: T): void; id: string }) {
@@ -265,6 +265,29 @@ function Presupuesto() {
   )
 }
 
+// Qué hace Esme al cerrar su ventana: quedarse junto al reloj para que tu equipo siga trabajando, o cerrarse del todo.
+function Sistema() {
+  const [v, setV] = useState<AlCerrar | null>(null)
+  useEffect(() => { void bridge.ajustes.alCerrar().then(setV) }, [])
+  const poner = async (n: AlCerrar) => { setV(n); const r = await bridge.ajustes.ponerAlCerrar(n); if (!r.ok) toast.error(r.error) }
+  const AYUDA: Record<AlCerrar, string> = {
+    auto: 'Si tu equipo tiene encargos programados o agentes trabajando, Esme se queda junto al reloj para hacerlos. Si no, se cierra.',
+    siempre: 'Esme se queda siempre junto al reloj al cerrar la ventana. Para cerrarla del todo: su icono → Salir del todo.',
+    nunca: 'Esme se cierra del todo al cerrar la ventana, aunque haya encargos programados: no se harán hasta que la abras.',
+  }
+  return (
+    <section className="vidrio grid gap-3 rounded-4 border p-5">
+      <h3 className="m-0 text-sm font-semibold">Al cerrar la ventana</h3>
+      {v === null ? <span className="h-10 w-72 animate-pulse rounded-3 bg-s2/70" /> : (
+        <>
+          <Segmentos<AlCerrar> id="al-cerrar" valor={v} onCambio={(n) => void poner(n)} opciones={[{ id: 'auto', texto: 'Si hay trabajo pendiente' }, { id: 'siempre', texto: 'Quedarse siempre' }, { id: 'nunca', texto: 'Cerrarse del todo' }]} />
+          <p className="m-0 max-w-[620px] text-[13px] leading-5 text-texto-2">{AYUDA[v]}</p>
+        </>
+      )}
+    </section>
+  )
+}
+
 export function Ajustes({ tema, onTema, pieles }: { tema: 'noche' | 'dia'; onTema(t: 'noche' | 'dia'): void; pieles: Pieles }) {
   const [pestana, setPestana] = useState<Pestana>('motores')
   return (
@@ -274,11 +297,12 @@ export function Ajustes({ tema, onTema, pieles }: { tema: 'noche' | 'dia'; onTem
           <h1 className="m-0 font-display text-[32px] leading-[1.1] font-semibold tracking-[-0.03em]">Ajustes</h1>
           <p className="m-0 text-[15px] text-texto-2">Esme funciona con cualquier IA. Conecta las que quieras: por API, con tu suscripción o en tu ordenador.</p>
         </div>
-        <Segmentos<Pestana> id="pestana" valor={pestana} onCambio={setPestana} opciones={[{ id: 'motores', texto: 'Motores' }, { id: 'presupuesto', texto: 'Presupuesto' }, { id: 'apariencia', texto: 'Apariencia' }, { id: 'plan', texto: 'Tu plan' }]} />
+        <Segmentos<Pestana> id="pestana" valor={pestana} onCambio={setPestana} opciones={[{ id: 'motores', texto: 'Motores' }, { id: 'presupuesto', texto: 'Presupuesto' }, { id: 'apariencia', texto: 'Apariencia' }, { id: 'plan', texto: 'Tu plan' }, { id: 'sistema', texto: 'Sistema' }]} />
         {pestana === 'motores' && <Motores />}
         {pestana === 'presupuesto' && <Presupuesto />}
         {pestana === 'apariencia' && <Apariencia tema={tema} onTema={onTema} pieles={pieles} />}
         {pestana === 'plan' && <TuPlan />}
+        {pestana === 'sistema' && <Sistema />}
         {(pestana === 'motores' || pestana === 'presupuesto') && <p className="m-0 flex items-center gap-2 text-xs text-texto-3"><Wallet className="size-3.5" strokeWidth={1.5} />Los precios vienen de models.dev y se actualizan solos cada día.</p>}
       </div>
     </div>

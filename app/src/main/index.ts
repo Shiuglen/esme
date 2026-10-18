@@ -1,11 +1,12 @@
 // Proceso principal: lanza el cerebro, abre la ventana y conecta chat, claves y terminales con la interfaz.
-import { app, BrowserWindow, ipcMain, shell, utilityProcess, type UtilityProcess } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, nativeImage, Notification, shell, Tray, utilityProcess, type UtilityProcess } from 'electron'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { agentCommand, listAgents } from './agents'
 import { BrainProcess, type BrainInfo } from './brain-process'
 import { registerChat } from './chat'
-import { cerrar as cerrarTaller, registerTaller } from './ipc-taller'
+import { alLanzar, cerrar as cerrarTaller, pendienteTaller, registerTaller } from './ipc-taller'
+import { alCerrarVentana, guardarPreferencia, leerPreferencia, resumenBandeja, type PreferenciaCierre } from './segundo-plano'
 import { registerProveedores } from './ipc-proveedores'
 import { keys } from './keys'
 import { registerLicencia } from './licencia/ipc'
@@ -17,6 +18,11 @@ const ROOT = resolve(process.env.DAIMON_ROOT ?? join(homedir(), 'Daimon'))
 const HOME = resolve(process.env.DAIMON_HOME ?? join(ROOT, 'data', 'mente_v2'))
 let win: BrowserWindow | null = null
 let ptyHost: UtilityProcess | null = null
+let bandeja: Tray | null = null
+let saliendo = false
+let avisadoSegundoPlano = false
+const ficheroAjustes = () => join(app.getPath('userData'), 'ajustes.json')
+const ICONO = join(__dirname, '../../resources/esme.png')
 
 const brain = new BrainProcess(join(ROOT, '.venv', 'bin', 'daimon'), HOME, (info: BrainInfo | null) => win?.webContents.send('brain:changed', info))
 
@@ -25,7 +31,34 @@ const MAC = process.platform === 'darwin'
 // y la nueva se va. Dos Esmes pelearían por la misma mente (el cerebro rechaza a la segunda).
 const UNICA = app.requestSingleInstanceLock()
 if (!UNICA) app.quit()
-app.on('second-instance', () => { if (!win) return; if (win.isMinimized()) win.restore(); win.show(); win.focus() })
+app.on('second-instance', () => mostrar())
+app.on('before-quit', () => { saliendo = true })
+const avisar = (title: string, body: string) => { if (Notification.isSupported()) new Notification({ title, body, icon: ICONO }).show() }
+
+function mostrar() {
+  if (!win || win.isDestroyed()) { createWindow(); return }
+  if (win.isMinimized()) win.restore()
+  win.show(); win.focus()
+}
+
+// El icono junto al reloj: dice qué hace tu equipo y deja volver a la ventana o salir del todo.
+function crearBandeja() {
+  if (bandeja) return
+  bandeja = new Tray(nativeImage.createFromPath(ICONO).resize({ width: 22, height: 22 }))
+  const pintar = () => {
+    if (!bandeja || bandeja.isDestroyed()) return
+    const r = resumenBandeja(pendienteTaller())
+    bandeja.setToolTip(r)
+    bandeja.setContextMenu(Menu.buildFromTemplate([
+      { label: r, enabled: false }, { type: 'separator' },
+      { label: 'Abrir Esme', click: mostrar },
+      { label: 'Salir del todo', click: () => { saliendo = true; app.quit() } },
+    ]))
+  }
+  pintar()
+  setInterval(pintar, 30_000).unref()
+  bandeja.on('click', mostrar)
+}
 const ALTO_BARRA = 48
 
 // Sin barra del sistema: la barra superior de esme hace de barra de la ventana. En macOS quedan los semáforos;
@@ -38,6 +71,16 @@ function createWindow() {
     webPreferences: { preload: join(__dirname, '../preload/index.mjs'), contextIsolation: true, sandbox: false, nodeIntegration: false },
   })
   win.once('ready-to-show', () => win?.show())
+  // Cerrar la ventana no apaga a tu equipo: si hay encargos programados o agentes trabajando, Esme se queda junto al reloj.
+  win.on('close', (e) => {
+    if (saliendo) return
+    const pendiente = pendienteTaller()
+    if (alCerrarVentana({ preferencia: leerPreferencia(ficheroAjustes()), ...pendiente }) === 'salir') return
+    e.preventDefault()
+    win?.hide()
+    crearBandeja()
+    if (!avisadoSegundoPlano) { avisadoSegundoPlano = true; avisar('Esme sigue aquí, junto al reloj', `${resumenBandeja(pendiente)}. Para cerrarla del todo: icono → Salir del todo.`) }
+  })
   // Ni ventanas nuevas ni navegar fuera de la app: los enlaces web (por ejemplo, los que escribe una IA) se abren en tu navegador.
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
@@ -66,6 +109,11 @@ function registerIpc() {
   registerHilos()
   registerTienda()
   ipcMain.handle('brain:info', () => brain.info)
+  ipcMain.handle('ajustes:alCerrar', () => leerPreferencia(ficheroAjustes()))
+  ipcMain.handle('ajustes:ponerAlCerrar', (_e, v: unknown) => {
+    if (v !== 'auto' && v !== 'siempre' && v !== 'nunca') return { ok: false, error: 'Valor no válido.' }
+    guardarPreferencia(ficheroAjustes(), v as PreferenciaCierre); return { ok: true }
+  })
   ipcMain.on('ventana:colores', (_e, c: { fondo: string; simbolos: string }) => {
     // un color impuro (mezcla cruda, variable, vacío) no puede tumbar el proceso: se suelta y se cuenta
     try {
@@ -94,6 +142,8 @@ function registerIpc() {
   registerProveedores()
   registerChat()
   registerTaller({ brainInfo: () => brain.info })
+  // lo que la agenda lanza sola se avisa fuera de la ventana si no la estás mirando
+  alLanzar((p) => { if (!win?.isFocused()) avisar('Tu equipo empezó un encargo programado', p.texto.replace(/\s+/g, ' ').slice(0, 140)) })
 }
 
 app.whenReady().then(async () => {

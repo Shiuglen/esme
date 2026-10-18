@@ -9,6 +9,7 @@ const on = (channel: string, fn: (...a: unknown[]) => void) => {
 
 contextBridge.exposeInMainWorld('daimon', {
   brain: { info: () => ipcRenderer.invoke('brain:info'), onChange: (fn: (i: unknown) => void) => on('brain:changed', fn) },
+  ajustes: { alCerrar: () => ipcRenderer.invoke('ajustes:alCerrar'), ponerAlCerrar: (v: string) => ipcRenderer.invoke('ajustes:ponerAlCerrar', v) },
   ventana: { plataforma: process.platform, colores: (c: { fondo: string; simbolos: string }) => ipcRenderer.send('ventana:colores', c),
     // el tamaño de una piel: el zoom de verdad de la ventana (como Ctrl +), entre 85 % y 120 %
     zoom: (f: number) => webFrame.setZoomFactor(Math.min(1.2, Math.max(0.85, f))) },

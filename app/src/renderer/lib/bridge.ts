@@ -8,6 +8,7 @@ import type { RespuestaCatalogo } from '../../main/tienda/ipc'
 import type { Producto } from '../../main/tienda/catalogo'
 import type { Tarea as TareaTaller, Veredicto as VeredictoTaller } from '../../main/taller/taller'
 import type { NuevoProgramado, Programado } from '../../main/taller/agenda'
+export type AlCerrar = 'auto' | 'siempre' | 'nunca'
 export type ProgramadoVisto = Programado & { proxima: number | null }
 import type { Consumo, Presupuesto, RegistroUso } from '../../main/uso/registro'
 import type { UsoExterno as UsoExternoMain } from '../../main/uso/externo'
@@ -35,6 +36,7 @@ export type OrigenCatalogo = { origen: 'red' | 'cache' | 'semilla'; fecha: numbe
 
 type ElectronApi = {
   brain: { info(): Promise<BrainInfo | null>; onChange(fn: (i: BrainInfo | null) => void): () => void }
+  ajustes: { alCerrar(): Promise<AlCerrar>; ponerAlCerrar(v: AlCerrar): Promise<ResultadoTaller> }
   ventana: { plataforma: string; colores(c: { fondo: string; simbolos: string }): void; zoom?(f: number): void }
   providers: { list(): Promise<ProviderView[]>; models(id: string): Promise<{ ok: boolean; models?: string[]; error?: string }> }
   keys: { status(): Promise<{ secure: boolean; backend: string }>; set(id: string, v: string): Promise<unknown>; remove(id: string): Promise<unknown> }
@@ -84,6 +86,10 @@ let seq = 0
 const newId = () => `${Date.now().toString(36)}-${(seq++).toString(36)}`
 
 export const bridge = {
+  ajustes: {
+    alCerrar: async (): Promise<AlCerrar> => (isElectron() ? window.daimon!.ajustes.alCerrar() : 'auto'),
+    ponerAlCerrar: async (v: AlCerrar): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.ajustes.ponerAlCerrar(v) : { ok: false, error: 'Solo en la app.' }),
+  },
   mode: (): 'electron' | 'web' => (isElectron() ? 'electron' : 'web'),
   ventana: () => (isElectron() ? window.daimon!.ventana : null),
 

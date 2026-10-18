@@ -22,6 +22,14 @@ const ID = /^[a-z0-9]{6,16}$/
 const MAX_TEXTO = 20_000
 let taller: Taller | null = null
 let relojAgenda: NodeJS.Timeout | null = null
+let agenda: Programado[] = []
+let alLanzarProgramado: (p: Programado) => void = () => {}
+/** Lo que tu equipo tiene pendiente (para decidir si Esme se queda junto al reloj al cerrar la ventana). */
+export function pendienteTaller() {
+  const ahora = Date.now(), proximas = agenda.map((p) => proximaVez(p, ahora)).filter((x): x is number => x !== null)
+  return { programados: proximas.length, trabajando: taller?.lista().filter((x) => x.estado === 'trabajando' || x.estado === 'preparando').length ?? 0, proxima: proximas.length ? Math.min(...proximas) : null }
+}
+export const alLanzar = (fn: (p: Programado) => void) => { alLanzarProgramado = fn }
 const vistas = new Map<string, Servidor>()
 const cerrarVista = (id: string) => { vistas.get(id)?.cerrar(); vistas.delete(id) }
 // Dónde está la web dentro de la copia: la raíz o una de las carpetas habituales.
@@ -267,7 +275,7 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
   })
   // La agenda: encargos que tu equipo hace solo. Cada minuto se lanza lo que toca como una tarea normal.
   const ficheroAgenda = join(app.getPath('userData'), 'taller', 'agenda.json')
-  let agenda: Programado[] = leerAgenda(ficheroAgenda)
+  agenda = leerAgenda(ficheroAgenda)
   const conProxima = () => agenda.map((p) => ({ ...p, proxima: proximaVez(p, Date.now()) }))
   const guardar = () => { guardarAgenda(ficheroAgenda, agenda); emitir('taller:agenda', conProxima()) }
   const revisarAgenda = async () => {
@@ -277,7 +285,7 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
       if (p.cuando.tipo === 'una') p.activo = false
       const motor = await elegirMotor(p.motor)
       if ('error' in motor) { console.error('[agenda] no lancé', p.id, motor.error); continue }
-      try { t.crear({ motor, carpeta: p.carpeta, texto: p.texto }) } catch (e) { console.error('[agenda] no lancé', p.id, mensaje(e)) }
+      try { t.crear({ motor, carpeta: p.carpeta, texto: p.texto }); alLanzarProgramado(p) } catch (e) { console.error('[agenda] no lancé', p.id, mensaje(e)) }
     }
     if (toca.length) guardar()
   }
