@@ -13,7 +13,6 @@ import { Compositor } from '../shell/Compositor'
 import { useMuelle } from '../tinta/movimiento'
 import AILoadingState from '../ui/ai-loading'
 import AI_Voice from '../ui/ai-voice'
-import DarkVeil from '../ui/DarkVeil'
 import Orb from '../ui/Orb'
 import { StatusIsland } from '../ui/status-island'
 import { AlDia } from './AlDia'
@@ -43,8 +42,8 @@ function useNivelMicro(activo: boolean) {
   return nivel
 }
 
-export function Mando({ sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, visible, conectado, recuerdos, atlas, tareas, memoria, onMemoria, onPreguntar, onIr }: {
-  sitio?: { izquierda: number; abajo: number; cabecera: number }
+export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, visible, conectado, recuerdos, atlas, tareas, memoria, onMemoria, onPreguntar, onIr }: {
+  presencia?: 'orbe' | 'ninguna'; sitio?: { izquierda: number; abajo: number; cabecera: number }
   visible: boolean; conectado: boolean; recuerdos: number | null; atlas: Atlas | null; tareas: TareaTaller[]
   memoria: boolean; onMemoria(v: boolean): void; onPreguntar(q: string): void; onIr(ir: NonNullable<Entrada['ir']>): void
 }) {
@@ -67,9 +66,6 @@ export function Mando({ sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, vis
 
   return (
     <div aria-hidden={!visible} inert={!visible} className={cn('absolute inset-0 z-10 transition-opacity duration-700', visible ? 'opacity-100' : 'pointer-events-none opacity-0')}>
-      {/* el velo de luz: solo se pinta mientras la portada está a la vista */}
-      {visible && <div className="absolute inset-0 opacity-70"><DarkVeil color={color} speed={0.35} brightness={0.9} glow={0.6} grain={0.05} /></div>}
-      <div className="absolute inset-0 bg-[radial-gradient(70%_60%_at_50%_42%,transparent,var(--fondo)_95%)]" />
 
       <div className="absolute top-4 left-1/2 z-20 -translate-x-1/2">
         {isla.length > 0 && <StatusIsland tasks={isla} />}
@@ -79,7 +75,7 @@ export function Mando({ sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, vis
       <div className="absolute top-[7%] left-1/2 grid w-[min(560px,80%)] -translate-x-1/2 justify-items-center text-center">
         <button type="button" onClick={() => setEscuchando((v) => !v)} aria-pressed={escuchando} aria-label={escuchando ? 'Dejar de escuchar' : 'Hablar con Esme (manos libres)'}
           className="relative size-[300px] rounded-full outline-none focus-visible:ring-2 focus-visible:ring-acento">
-          {visible && <Orb colors={[color, '#ffffff', color]} size={1} glow={escuchando ? 1.6 + nivel * 2 : 1} wobble={escuchando ? 0.4 + nivel : 0.25}
+          {visible && presencia === 'orbe' && <Orb colors={[color, '#ffffff', color]} size={1} glow={escuchando ? 1.6 + nivel * 2 : 1} wobble={escuchando ? 0.4 + nivel : 0.25}
             speed={escuchando ? 1.4 : 0.6} hoverIntensity={0.35} rotateOnHover forceHoverState={escuchando} backgroundColor="transparent" />}
         </button>
         <p className="m-0 mt-1 text-[13px] tracking-wide text-texto-3">{fechaLarga(new Date())}</p>

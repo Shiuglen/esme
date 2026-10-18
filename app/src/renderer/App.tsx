@@ -32,6 +32,7 @@ import { Paleta } from './shell/Paleta'
 import { FondoVivo, useHalos } from './shell/FondoVivo'
 import { Hoja, type Origen } from './shell/Hoja'
 import { marcoDe } from './shell/marcos'
+import { Escena } from './shell/Escena'
 import { MovimientoPiel } from './tinta/movimiento'
 import { MotionConfig } from 'motion/react'
 import { Leyenda, type NotaLugar } from './shell/Leyenda'
@@ -241,6 +242,7 @@ export function App() {
     {/* con el movimiento en «nada», Motion tampoco anima (lo de JavaScript no lo para el CSS) */}
     <MotionConfig reducedMotion={piel.movimiento === 'nada' ? 'always' : 'user'}>
     <FondoVivo tema={tema} estado={estadoEsme} fondo={piel.fondo} clave={JSON.stringify(piel.color)} />
+    <Escena id={piel.escena} atenuada={seccion !== 'inicio'} clave={`${tema}${JSON.stringify(piel.color)}`} />
     <div className="relative z-10 grid h-full grid-rows-[48px_minmax(0,1fr)]">
       <BarraSuperior seccion={nombreDe(seccion)} estado={{ conectado: !!brain && recuerdos !== null, recuerdos, pensando }} tema={tema}
         onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} onBuscar={() => setPaleta(true)} paletaAbierta={paleta}
@@ -252,7 +254,7 @@ export function App() {
             adornos={seccion === 'memoria'} hueco={hueco} />
         </div>
         {piel.portada === 'mando' ? (
-          <Mando sitio={marco.portada} visible={seccion === 'inicio'} conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} tareas={tl.tareas}
+          <Mando presencia={piel.presencia} sitio={marco.portada} visible={seccion === 'inicio'} conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} tareas={tl.tareas}
             memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar} onIr={(d) => (d.lugar === 'taller' ? verTarea(d.id) : ir('memoria'))} />
         ) : <Portada sitio={marco.portada} visible={seccion === 'inicio'} conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} eventos={eventos}
           memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar}

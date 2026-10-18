@@ -5,6 +5,7 @@ import { LoaderCircle, Moon, Redo2, RotateCcw, Sparkles, Sun, Undo2 } from 'luci
 import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { muelleCon } from '../tinta/caracter'
+import { ESCENA_IDS, ESCENAS } from '../tinta/escenas'
 import { disenarPiel } from '../tinta/disenar'
 import { cn } from '../lib/cn'
 import { paletaPropia } from '../tinta/estilo-propio'
@@ -78,6 +79,24 @@ function Sentir({ caracter, movimiento }: { caracter: Caracter; movimiento: Movi
     </button>
   )
 }
+
+// una muestra de cada escena para la galería (sin WebGL: 24 lienzos a la vez pesarían); la de verdad se ve detrás
+const MUESTRAS: Record<string, string> = {
+  ninguna: 'var(--s2)', velo: 'radial-gradient(80% 90% at 30% 40%, var(--acento), transparent 70%), #0b0b10',
+  eter: 'radial-gradient(60% 70% at 70% 40%, var(--acento), transparent), radial-gradient(50% 60% at 20% 80%, color-mix(in oklab, var(--acento), white 40%), transparent), #070709',
+  'aurora-suave': 'linear-gradient(170deg, transparent 30%, color-mix(in oklab, var(--acento), transparent 30%) 55%, transparent 80%), #08080c',
+  aurora: 'linear-gradient(180deg, var(--acento), transparent 70%), #050507', seda: 'repeating-linear-gradient(115deg, color-mix(in oklab, var(--acento), black 50%) 0 14px, var(--acento) 22px, color-mix(in oklab, var(--acento), black 50%) 34px)',
+  iridiscencia: 'conic-gradient(from 40deg, var(--acento), #9ff, #f9f, var(--acento))', galaxia: 'radial-gradient(1px 1px at 20% 30%, white, transparent), radial-gradient(1px 1px at 70% 60%, white, transparent), radial-gradient(2px 2px at 40% 80%, var(--acento), transparent), radial-gradient(60% 60% at 60% 40%, color-mix(in oklab, var(--acento), transparent 70%), transparent), #020205',
+  prisma: 'conic-gradient(from 200deg at 50% 60%, transparent, var(--acento), white, transparent 40%), #050508', plasma: 'radial-gradient(circle at 30% 30%, var(--acento), transparent 50%), radial-gradient(circle at 70% 70%, color-mix(in oklab, var(--acento), white 30%), transparent 45%), #000',
+  hilos: 'repeating-linear-gradient(170deg, transparent 0 9px, color-mix(in oklab, var(--acento), transparent 30%) 10px, transparent 11px), #060608', rayos: 'conic-gradient(from 160deg at 50% -10%, transparent, color-mix(in oklab, var(--acento), transparent 40%), transparent 30%), #050507',
+  haces: 'repeating-linear-gradient(100deg, transparent 0 18px, color-mix(in oklab, var(--acento), transparent 50%) 22px, transparent 26px), #050505', particulas: 'radial-gradient(2px 2px at 20% 40%, var(--acento), transparent), radial-gradient(2px 2px at 60% 20%, white, transparent), radial-gradient(2px 2px at 80% 70%, var(--acento), transparent), radial-gradient(2px 2px at 35% 75%, white, transparent), #050507',
+  olas: 'repeating-radial-gradient(ellipse at 50% 120%, transparent 0 10px, color-mix(in oklab, var(--acento), transparent 50%) 11px, transparent 12px), #050507', cromo: 'linear-gradient(135deg, #222, color-mix(in oklab, var(--acento), white 30%), #111, var(--acento), #222)',
+  tormenta: 'linear-gradient(100deg, transparent 45%, var(--acento) 49%, white 50%, transparent 55%), #030305', persianas: 'repeating-linear-gradient(90deg, var(--acento) 0 12px, color-mix(in oklab, var(--acento), black 60%) 12px 24px)',
+  estallido: 'repeating-conic-gradient(from 0deg at 50% 50%, var(--acento) 0 6deg, transparent 6deg 18deg), #050505', pilar: 'radial-gradient(14% 100% at 50% 50%, var(--acento), transparent), #050507',
+  lineas: 'repeating-linear-gradient(160deg, transparent 0 14px, var(--acento) 15px, transparent 16px), #060608', curvas: 'radial-gradient(70% 90% at 0% 100%, var(--acento), transparent), radial-gradient(70% 90% at 100% 0%, color-mix(in oklab, var(--acento), white 40%), transparent), #08080a',
+  grano: 'linear-gradient(135deg, var(--acento), color-mix(in oklab, var(--acento), black 70%))', hiperespacio: 'repeating-linear-gradient(90deg, transparent 0 20px, var(--acento) 21px, transparent 23px), linear-gradient(transparent 40%, #000), #000',
+}
+const muestraDe = (id: string) => MUESTRAS[id] ?? 'var(--s2)'
 
 function Capa({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
@@ -244,6 +263,23 @@ export function Apariencia({ tema, onTema, pieles }: { tema: Tema; onTema(t: Tem
       <Capa titulo="Forma">
         {deslizador('Esquinas', 0, 2.5, 0.1, p.forma.radio, (r) => ({ forma: { ...p.forma, radio: r } }), 'cuadradas', 'muy redondas', (n) => `${Math.round(n * 100)} %`)}
         <Segmentado etiqueta="Sombras" valor={p.forma.sombra} onCambio={(sombra) => cambia({ forma: { ...p.forma, sombra } })} opciones={[['plana', 'Planas'], ['suave', 'Suaves'], ['honda', 'Hondas']]} />
+      </Capa>
+
+      <Capa titulo="Escena">
+        <p className="m-0 text-xs text-texto-3">Un fondo vivo detrás de toda Esme, teñido con tu piel. Toca uno y míralo detrás de esta hoja.</p>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(132px,1fr))] gap-2" role="radiogroup" aria-label="Escena">
+          {(['ninguna', ...ESCENA_IDS] as const).map((id) => (
+            <button key={id} type="button" role="radio" aria-checked={p.escena === id} onClick={() => cambia({ escena: id })}
+              className={cn('group relative h-16 overflow-hidden rounded-3 border text-left transition-all', p.escena === id ? 'border-acento ring-2 ring-acento/40' : 'border-linea hover:border-linea-fuerte')}>
+              <span aria-hidden className="absolute inset-0 opacity-80 transition-opacity group-hover:opacity-100" style={{ background: muestraDe(id) }} />
+              <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 px-2 pt-4 pb-1.5 text-[12px] font-medium text-white">{id === 'ninguna' ? 'Sin escena' : ESCENAS[id].nombre}</span>
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-x-6 gap-y-3">
+          <label className="grid gap-1.5 text-xs text-texto-2">Presencia de Esme<Segmentado etiqueta="Presencia de Esme" valor={p.presencia} onCambio={(presencia) => cambia({ presencia })} opciones={[['orbe', 'Esfera viva'], ['ninguna', 'Ninguna']]} /></label>
+          <label className="grid gap-1.5 text-xs text-texto-2">Portada<Segmentado etiqueta="Portada" valor={p.portada} onCambio={(portada) => cambia({ portada })} opciones={[['mando', 'Centro de mando'], ['mente', 'Tu mente']]} /></label>
+        </div>
       </Capa>
 
       <Capa titulo="Ritmo y fondo">
