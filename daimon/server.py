@@ -10,6 +10,8 @@ import threading
 from collections import deque
 from pathlib import Path
 
+import numpy as np
+
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -90,7 +92,7 @@ def _event_dict(e) -> dict:
             "compartment": e.compartment}
 
 
-def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None):
+def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, voz=None):
     from mcp.server.transport_security import TransportSecuritySettings
 
     bus, lock = EventBus(), threading.Lock()
@@ -158,6 +160,36 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None):
     @mcp.custom_route("/atlas", methods=["GET"])
     async def atlas(_: Request):
         return JSONResponse(await locked(atlas_for)(home))
+
+    # La voz de Esme (daimon/voz.py): oír PCM float32 a 16 kHz (hasta 3 min) y decir texto como WAV.
+    if voz is None:
+        from daimon.voz import Voz
+        voz = Voz()
+    voz_cerrojo = threading.Lock()
+
+    def con_voz(fn):
+        def run(*a):
+            with voz_cerrojo:
+                return fn(*a)
+        return lambda *a: run_in_threadpool(run, *a)
+
+    @mcp.custom_route("/voz/oir", methods=["POST"])
+    async def voz_oir(req: Request):
+        datos = await req.body()
+        if not datos or len(datos) % 4:
+            return JSONResponse({"error": "falta el audio (PCM float32 a 16 kHz)"}, 400)
+        if len(datos) > 16000 * 4 * 180:
+            return JSONResponse({"error": "el audio pasa de 3 minutos"}, 413)
+        pcm = np.frombuffer(datos, dtype="<f4")
+        texto = await con_voz(voz.oir)(pcm, req.query_params.get("idioma", "es"))
+        return JSONResponse({"texto": texto})
+
+    @mcp.custom_route("/voz/decir", methods=["POST"])
+    async def voz_decir(req: Request):
+        texto = str((await req.json()).get("texto", "")).strip()[:4000]
+        if not texto:
+            return JSONResponse({"error": "no hay nada que decir"}, 400)
+        return Response(await con_voz(voz.decir)(texto), media_type="audio/wav")
 
     @mcp.custom_route("/events", methods=["GET"])
     async def events(_: Request):

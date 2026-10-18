@@ -37,6 +37,19 @@ export class BrainClient {
   forget(id: string) { return this.call<Certificate>('/forget', { body: { id } }) }
   ingest(paths: string[]) { return this.call<{ added: number; memories: number }>('/ingest', { body: { paths } }) }
   atlas() { return this.call<Atlas>('/atlas') }
+  /** El oído de Esme: PCM float32 mono a 16 kHz → texto (en el equipo, sin salir a internet). */
+  async oir(pcm: Float32Array, idioma = 'es'): Promise<string> {
+    const res = await this.f(`${this.url}/voz/oir?idioma=${idioma}`, { method: 'POST', headers: { Authorization: `Bearer ${this.token}`, 'Content-Type': 'application/octet-stream' }, body: new Blob([pcm.slice().buffer as ArrayBuffer]) })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new BrainError((data as { error?: string }).error ?? `cerebro: HTTP ${res.status}`)
+    return (data as { texto: string }).texto
+  }
+  /** La voz de Esme: texto → WAV. */
+  async decir(texto: string): Promise<Blob> {
+    const res = await this.f(`${this.url}/voz/decir`, { method: 'POST', headers: { Authorization: `Bearer ${this.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ texto }) })
+    if (!res.ok) throw new BrainError(`cerebro: HTTP ${res.status}`)
+    return res.blob()
+  }
 
   eventsUrl() { return `${this.url}/events?token=${encodeURIComponent(this.token)}` }
 

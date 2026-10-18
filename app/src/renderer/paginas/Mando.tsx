@@ -19,37 +19,20 @@ import { AlDia } from './AlDia'
 import { diarioDe, type Entrada } from './diario'
 import { islaDe, pasosDe } from './mando'
 import { fechaLarga } from './portada'
+import { useEscucha } from '../lib/voz'
 
 const saludo = (h = new Date().getHours()) => (h < 6 ? 'Buenas noches' : h < 13 ? 'Buenos días' : h < 20 ? 'Buenas tardes' : 'Buenas noches')
 const acento = () => getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#5fffd0'
 
-// El nivel real del micrófono (0–1) mientras Esme te escucha; nada se graba ni sale de tu ordenador.
-function useNivelMicro(activo: boolean) {
-  const [nivel, setNivel] = useState(0)
-  useEffect(() => {
-    if (!activo) { setNivel(0); return }
-    let vivo = true, raf = 0, stream: MediaStream | null = null, ctx: AudioContext | null = null
-    navigator.mediaDevices.getUserMedia({ audio: true }).then((s) => {
-      if (!vivo) { s.getTracks().forEach((t) => t.stop()); return }
-      stream = s; ctx = new AudioContext()
-      const an = ctx.createAnalyser(); an.fftSize = 512; ctx.createMediaStreamSource(s).connect(an)
-      const buf = new Uint8Array(an.fftSize)
-      const paso = () => { an.getByteTimeDomainData(buf); let m = 0; for (const v of buf) m = Math.max(m, Math.abs(v - 128)); setNivel(Math.min(1, (m / 128) * 2.2)); raf = requestAnimationFrame(paso) }
-      paso()
-    }).catch(() => toast.error('No puedo usar el micrófono: revisa que esté conectado y permitido.'))
-    return () => { vivo = false; cancelAnimationFrame(raf); stream?.getTracks().forEach((t) => t.stop()); void ctx?.close() }
-  }, [activo])
-  return nivel
-}
-
-export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, visible, conectado, recuerdos, atlas, tareas, memoria, onMemoria, onPreguntar, onIr }: {
+export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, visible, conectado, recuerdos, atlas, tareas, memoria, onMemoria, onPreguntar, onOir, onIr }: {
   presencia?: 'orbe' | 'ninguna'; sitio?: { izquierda: number; abajo: number; cabecera: number }
   visible: boolean; conectado: boolean; recuerdos: number | null; atlas: Atlas | null; tareas: TareaTaller[]
-  memoria: boolean; onMemoria(v: boolean): void; onPreguntar(q: string): void; onIr(ir: NonNullable<Entrada['ir']>): void
+  memoria: boolean; onMemoria(v: boolean): void; onPreguntar(q: string): void; onOir?(pcm: Float32Array): void; onIr(ir: NonNullable<Entrada['ir']>): void
 }) {
-  const [escuchando, setEscuchando] = useState(false)
+  // manos libres: hablas, y al callarte un momento Esme te oye y responde (lib/voz.ts)
+  const { escuchando, nivel, empezar, parar } = useEscucha((pcm) => onOir?.(pcm))
+  const setEscuchando = (v: boolean | ((x: boolean) => boolean)) => { const quiere = typeof v === 'function' ? v(escuchando) : v; if (quiere) empezar().catch(() => toast.error('No puedo usar el micrófono: revisa que esté conectado y permitido.')); else parar(false) }
   const [alDia, setAlDia] = useState(false)
-  const nivel = useNivelMicro(escuchando)
   const [color, setColor] = useState(acento)
   useEffect(() => { const o = new MutationObserver(() => setColor(acento())); o.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'data-estilo'] }); return () => o.disconnect() }, [])
   const [ahora, setAhora] = useState(Date.now())
@@ -88,8 +71,8 @@ export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24,
         <AnimatePresence>
           {escuchando && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} transition={muelle} className="mt-4">
-              <AI_Voice level={nivel} onSend={() => { setEscuchando(false); toast('La transcripción local llega en el siguiente paso: por ahora, escríbemelo abajo.') }}
-                onDiscard={() => setEscuchando(false)} />
+              <AI_Voice level={nivel} onSend={() => parar(true)} onDiscard={() => parar(false)} />
+              <p className="m-0 mt-2 text-xs text-texto-3">Cuando te calles un momento, te respondo. Todo se queda en tu equipo.</p>
             </motion.div>
           )}
         </AnimatePresence>

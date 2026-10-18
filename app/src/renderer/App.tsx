@@ -32,6 +32,7 @@ import { Paleta } from './shell/Paleta'
 import { FondoVivo, useHalos } from './shell/FondoVivo'
 import { Hoja, type Origen } from './shell/Hoja'
 import { marcoDe } from './shell/marcos'
+import { paraDecir, reproducir } from './lib/voz'
 import { Escena } from './shell/Escena'
 import { MovimientoPiel } from './tinta/movimiento'
 import { MotionConfig } from 'motion/react'
@@ -78,7 +79,7 @@ export function App() {
   const vistas = useRef(new Map<string, TareaTaller>())
   const seccionRef = useRef(seccion); seccionRef.current = seccion
   const [memoria, setMemoria] = useState(true)
-  const [semilla, setSemilla] = useState<{ q: string; n: number }>({ q: '', n: 0 })
+  const [semilla, setSemilla] = useState<{ q: string; n: number; voz?: boolean }>({ q: '', n: 0 })
   const [enfocado, setEnfocado] = useState<string | null>(null)
   const redRef = useRef<RedHandle>(null)
   const [recordados, setRecordados] = useState<Recordado[]>([])
@@ -186,7 +187,14 @@ export function App() {
     })
   }, [brain, refrescar])
 
-  const preguntar = (q: string) => { setSemilla((s) => ({ q, n: s.n + 1 })); setPreguntas((n) => n + 1); ir('conversacion') }
+  const preguntar = (q: string, voz = false) => { setSemilla((s) => ({ q, n: s.n + 1, voz })); setPreguntas((n) => n + 1); ir('conversacion') }
+  // la voz (lib/voz.ts): lo que dices se oye en el cerebro local; la respuesta a una pregunta hablada, Esme la dice
+  const oir = async (pcm: Float32Array) => {
+    if (!brain) { toast.error('Para oírte necesito el cerebro encendido.'); return }
+    try { const t = (await brain.oir(pcm)).trim(); if (t) { toast(`Te oí: «${t}»`); preguntar(t, true) } else toast('No te entendí bien. ¿Me lo repites?') }
+    catch (e) { toast.error(`No pude oírte: ${(e as Error).message}`) }
+  }
+  const hablar = (texto: string) => { if (brain) void brain.decir(paraDecir(texto)).then((wav) => reproducir(wav)).catch(() => {}) }
   // una cita enfoca su recuerdo en tu mente sin salir de donde estás (la mente está siempre de fondo)
   const enfocarRecuerdo = (id: string) => { setEnfocado(id); redRef.current?.enfocar(id) }
 
@@ -207,7 +215,7 @@ export function App() {
       case 'inicio': return null
       case 'conversacion': return (
         <div className="flex h-full flex-col px-5 pt-4 pb-4">
-          <ChatPanel brain={memoria ? brain : null} onCite={enfocarRecuerdo} onRecalled={(t) => setMemoriaUsada((s) => s + t)} seed={semilla} onBusy={setPensando} />
+          <ChatPanel brain={memoria ? brain : null} onCite={enfocarRecuerdo} onRecalled={(t) => setMemoriaUsada((s) => s + t)} seed={semilla} onBusy={setPensando} onHablar={hablar} />
         </div>)
       case 'taller': return <Taller tema={tema} tl={tl} foco={focoTaller} onIr={ir} />
       case 'memoria': return (
@@ -255,7 +263,7 @@ export function App() {
         </div>
         {piel.portada === 'mando' ? (
           <Mando presencia={piel.presencia} sitio={marco.portada} visible={seccion === 'inicio'} conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} tareas={tl.tareas}
-            memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar} onIr={(d) => (d.lugar === 'taller' ? verTarea(d.id) : ir('memoria'))} />
+            memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar} onOir={oir} onIr={(d) => (d.lugar === 'taller' ? verTarea(d.id) : ir('memoria'))} />
         ) : <Portada sitio={marco.portada} visible={seccion === 'inicio'} conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} eventos={eventos}
           memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar}
           tareas={tl.tareas} onIr={(d) => (d.lugar === 'taller' ? verTarea(d.id) : ir('memoria'))} />}

@@ -11,7 +11,7 @@ import { explicarFallo, ordenMotores } from './motor'
 
 type Turn = { role: 'user' | 'assistant'; content: string; query?: string; ids?: string[]; abstained?: boolean; tokens?: number; error?: boolean; judged?: boolean; who?: string; pensamiento?: string }
 
-export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string): void; onRecalled(tokens: number): void; seed?: { q: string; n: number }; onBusy?(b: boolean): void }) {
+export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string): void; onRecalled(tokens: number): void; seed?: { q: string; n: number; voz?: boolean }; onBusy?(b: boolean): void; onHablar?(texto: string): void }) {
   const [providers, setProviders] = useState<ProviderView[]>([])
   const [provider, setProvider] = useState('')   // se elige el primero que responde (panels/motor.ts)
   const [aviso, setAviso] = useState<string | null>(null)
@@ -54,11 +54,13 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
   const handledSeed = useRef(0)
   useEffect(() => {   // preguntas desde el dock o Cmd+K: esperan a que haya modelo, nunca se pierden
     // espera a que el motor y su modelo por defecto estén resueltos: si no, saldría con el primero de la lista
-    if (props.seed?.q && props.seed.n !== handledSeed.current && providers.length && model && models.includes(model) && !busy) { handledSeed.current = props.seed.n; void send(props.seed.q) }
+    if (props.seed?.q && props.seed.n !== handledSeed.current && providers.length && model && models.includes(model) && !busy) { handledSeed.current = props.seed.n; vozRef.current = !!props.seed.voz; void send(props.seed.q) }
   }, [props.seed?.n, model, models, providers, busy])
 
   const current = providers.find((p) => p.id === provider)
 
+  // si la pregunta llegó por voz, la respuesta se dice en voz alta al terminar
+  const vozRef = useRef(false)
   async function send(text: string) {
     const q = text.trim()
     if (!q || busy || !model) return
@@ -80,13 +82,16 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
     }
     const history: ChatMsg[] = [...turns.filter((t) => !t.error).map((t) => ({ role: t.role, content: t.content })), { role: 'user', content: q }]
     setTurns((t) => [...t, { role: 'user', content: q }, { role: 'assistant', content: '', who: `${current?.label ?? provider} · ${model}`, ...meta }])
+    const porVoz = vozRef.current; vozRef.current = false
+    let dicho = ''
     const s = bridge.chat(provider, model, history, memory)
     s.onUsage((u) => setSesion((v) => ({ costeUSD: v.costeUSD + u.costeUSD, ultimaEntrada: u.entrada, memoria: memTokens })))
-    s.onChunk((d) => setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + d }; return c }))
+    s.onChunk((d) => { dicho += d; return setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + d }; return c }) })
     // El pensado viaja en su hilo: los que piensan antes de hablar no dejan el chat mudo.
     s.onPensamiento((d) => setTurns((t) => { const c = [...t]; const u = c[c.length - 1]; c[c.length - 1] = { ...u, pensamiento: (u.pensamiento ?? '') + d }; return c }))
     s.onDone(() => {
       setBusy(false)
+      if (porVoz && dicho.trim()) props.onHablar?.(dicho)
       // Honestidad ante modelos que responden vacío:sin texto ni pensado, la burbuja no es una pregunta es un agujero.
       setTurns((t) => {
         const c = [...t]; const la = c[c.length - 1]
