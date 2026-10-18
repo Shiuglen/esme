@@ -48,8 +48,11 @@ class Voz:
         with self._cerrojo:
             if self._oido is None:
                 from faster_whisper import WhisperModel
-                self._oido = WhisperModel(self.oido_nombre, device="cpu", compute_type="int8",
-                                          download_root=str(carpeta_voz() / "whisper"), cpu_threads=max(1, (os.cpu_count() or 2) // 2))
+                o = dict(device="cpu", compute_type="int8", download_root=str(carpeta_voz() / "whisper"), cpu_threads=max(1, (os.cpu_count() or 2) // 2))
+                try:   # del disco, sin preguntar a internet; solo si aún no está, se descarga una vez
+                    self._oido = WhisperModel(self.oido_nombre, local_files_only=True, **o)
+                except Exception:
+                    self._oido = WhisperModel(self.oido_nombre, **o)
             segs, _ = self._oido.transcribe(pcm.astype(np.float32), language=idioma or None, vad_filter=True, beam_size=5)
             texto = " ".join(s.text.strip() for s in segs).strip()
             self._usar()

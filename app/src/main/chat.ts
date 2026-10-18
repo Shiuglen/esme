@@ -7,7 +7,7 @@ import { buildSystem, makeModel, type ProviderId } from './providers'
 
 const running = new Map<string, AbortController>()
 
-export type ChatRequest = { id: string; provider: ProviderId; model: string; messages: ModelMessage[]; memory: { context: string; ids: string[] } | null; ahorrados?: number }
+export type ChatRequest = { id: string; provider: ProviderId; model: string; messages: ModelMessage[]; memory: { context: string; ids: string[] } | null; ahorrados?: number; panorama?: string; voz?: boolean }
 
 export function registerChat() {
   ipcMain.handle('chat:start', async (e, req: ChatRequest) => {
@@ -20,7 +20,7 @@ export function registerChat() {
 
 async function pump(to: WebContents, req: ChatRequest, ac: AbortController) {
   try {
-    const result = streamText({ model: makeModel(req.provider, req.model, (id) => keys.get(id)), system: buildSystem(req.memory),
+    const result = streamText({ model: makeModel(req.provider, req.model, (id) => keys.get(id)), system: buildSystem(req.memory, { panorama: req.panorama, voz: req.voz }),
       messages: req.messages, abortSignal: ac.signal })
     const { error } = await bombear(result.fullStream, (canal, x) => to.send(`chat:${canal}:${req.id}`, x))
     if (error) { to.send(`chat:error:${req.id}`, error); return }

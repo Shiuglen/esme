@@ -105,7 +105,7 @@ export const bridge = {
     remove: async (id: string) => { if (isElectron()) await window.daimon!.keys.remove(id) },
   },
 
-  chat(provider: string, model: string, messages: ChatMsg[], memory: { context: string; ids: string[] } | null, ahorrados?: number): ChatStream {
+  chat(provider: string, model: string, messages: ChatMsg[], memory: { context: string; ids: string[] } | null, ahorrados?: number, extra: { panorama?: string; voz?: boolean } = {}): ChatStream {
     const id = newId()
     const usageFns: ((u: ChatUso) => void)[] = []
     const chunkFns: ((d: string) => void)[] = [], pensadoFns: ((d: string) => void)[] = [], doneFns: (() => void)[] = [], errFns: ((m: string) => void)[] = []
@@ -117,7 +117,7 @@ export const bridge = {
         window.daimon!.chat.onDone(id, () => { doneFns.forEach((f) => f()); offs.forEach((o) => o()) }),
         window.daimon!.chat.onError(id, (m) => { errFns.forEach((f) => f(m)); offs.forEach((o) => o()) }),
       ]
-      void window.daimon!.chat.start({ id, provider, model, messages, memory, ahorrados })
+      void window.daimon!.chat.start({ id, provider, model, messages, memory, ahorrados, ...extra })
       return { onChunk: (f) => chunkFns.push(f), onPensamiento: (f) => pensadoFns.push(f), onDone: (f) => doneFns.push(f), onError: (f) => errFns.push(f), onUsage: (f) => usageFns.push(f), stop: () => void window.daimon!.chat.stop(id) }
     }
     // Modo web: Ollama directo (solo para ver y probar la interfaz)

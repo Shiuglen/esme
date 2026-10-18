@@ -27,8 +27,8 @@ const acento = () => getComputedStyle(document.documentElement).getPropertyValue
 export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, visible, conectado, recuerdos, atlas, tareas, memoria, onMemoria, onPreguntar, onOir, onIr, vivo = null, turnoVoz = 0, onCerrarVivo, onConversacion }: {
   presencia?: 'orbe' | 'ninguna'; sitio?: { izquierda: number; abajo: number; cabecera: number }
   visible: boolean; conectado: boolean; recuerdos: number | null; atlas: Atlas | null; tareas: TareaTaller[]
-  memoria: boolean; onMemoria(v: boolean): void; onPreguntar(q: string): void; onOir?(pcm: Float32Array): void
-  vivo?: { pregunta: string; texto: string; fin: boolean } | null; turnoVoz?: number; onCerrarVivo?(): void; onConversacion?(): void; onIr(ir: NonNullable<Entrada['ir']>): void
+  memoria: boolean; onMemoria(v: boolean): void; onPreguntar(q: string, voz?: boolean): void; onOir?(pcm: Float32Array): void
+  vivo?: { pregunta: string; texto: string; fin: boolean; sinPermiso?: { motor: string; id: string } } | null; turnoVoz?: number; onCerrarVivo?(): void; onConversacion?(): void; onIr(ir: NonNullable<Entrada['ir']>): void
 }) {
   // manos libres: hablas, y al callarte un momento Esme te oye y responde (lib/voz.ts)
   const { escuchando, nivel, empezar, parar } = useEscucha((pcm) => onOir?.(pcm))
@@ -84,6 +84,15 @@ export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24,
               <p className="m-0 max-h-[22vh] overflow-hidden text-[19px] leading-[1.5] font-light text-texto [mask-image:linear-gradient(to_top,black_70%,transparent)]">
                 {vivo.texto ? vivo.texto.slice(-420) : 'Pensando con tu memoria…'}{!vivo.fin && <span className="ml-0.5 inline-block h-[1em] w-[2px] translate-y-[3px] animate-pulse bg-acento" />}
               </p>
+              {vivo.fin && vivo.sinPermiso && (
+                <p className="m-0 flex flex-wrap items-center gap-x-2 text-[13px] text-atencion">
+                  Respondí sin tu memoria: {vivo.sinPermiso.motor} puede retener datos.
+                  <button type="button" className="underline underline-offset-4 hover:text-texto"
+                    onClick={() => { try { localStorage.setItem(`esme:memoria-a:${vivo.sinPermiso!.id}`, 'si') } catch { /* sin almacenamiento */ } toast(`Listo: ${vivo.sinPermiso!.motor} recibirá tu memoria cuando preguntes.`); onPreguntar(vivo.pregunta, true) }}>
+                    Usar mi memoria con {vivo.sinPermiso.motor} y repetir
+                  </button>
+                </p>
+              )}
               <div className="flex flex-wrap items-center gap-3 text-[13px]">
                 <button type="button" onClick={onConversacion} className="text-texto-2 underline decoration-linea-fuerte underline-offset-4 hover:text-texto">Ver en la conversación</button>
                 <button type="button" onClick={() => setContinua((c) => !c)} aria-pressed={continua} className="text-texto-3 hover:text-texto">Conversación continua: {continua ? 'sí' : 'no'}</button>

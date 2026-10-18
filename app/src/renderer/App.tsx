@@ -16,6 +16,7 @@ import { PIEL_BASE, validarPiel, type Piel } from './tinta/piel'
 import { vestirApp } from './tinta/vestir'
 import { Portada, type EventoMente } from './paginas/Portada'
 import { Mando } from './paginas/Mando'
+import { panoramaDe } from './paginas/panorama'
 import { notaTaller } from './paginas/portada'
 import { Proximamente } from './paginas/Proximamente'
 import { Taller } from './paginas/Taller'
@@ -188,7 +189,7 @@ export function App() {
   }, [brain, refrescar])
 
   // por voz, te quedas en el centro de mando: la respuesta sale como subtítulos y Esme la dice (la conversación trabaja detrás)
-  const [vivo, setVivo] = useState<{ pregunta: string; texto: string; fin: boolean } | null>(null)
+  const [vivo, setVivo] = useState<{ pregunta: string; texto: string; fin: boolean; sinPermiso?: { motor: string; id: string } } | null>(null)
   const [turnoVoz, setTurnoVoz] = useState(0)
   const preguntar = (q: string, voz = false) => {
     setSemilla((s) => ({ q, n: s.n + 1, voz })); setPreguntas((n) => n + 1)
@@ -201,6 +202,7 @@ export function App() {
     try { const t = (await brain.oir(pcm)).trim(); if (t) { toast(`Te oí: «${t}»`); preguntar(t, true) } else toast('No te entendí bien. ¿Me lo repites?') }
     catch (e) { toast.error(`No pude oírte: ${(e as Error).message}`) }
   }
+  const panorama = useMemo(() => panoramaDe(atlas, tl.tareas), [atlas, tl.tareas])
   const hablar = (texto: string) => { if (brain) void brain.decir(paraDecir(texto)).then((wav) => reproducir(wav, () => setTurnoVoz((n) => n + 1))).catch(() => {}) }
   // una cita enfoca su recuerdo en tu mente sin salir de donde estás (la mente está siempre de fondo)
   const enfocarRecuerdo = (id: string) => { setEnfocado(id); redRef.current?.enfocar(id) }
@@ -222,7 +224,7 @@ export function App() {
       case 'inicio': return null
       case 'conversacion': return (
         <div className="flex h-full flex-col px-5 pt-4 pb-4">
-          <ChatPanel brain={memoria ? brain : null} onCite={enfocarRecuerdo} onRecalled={(t) => setMemoriaUsada((s) => s + t)} seed={semilla} onBusy={setPensando} onHablar={hablar} onVivo={(texto, fin) => setVivo((v) => (v ? { ...v, texto, fin } : v))} />
+          <ChatPanel brain={memoria ? brain : null} onCite={enfocarRecuerdo} onRecalled={(t) => setMemoriaUsada((s) => s + t)} seed={semilla} onBusy={setPensando} onHablar={hablar} onVivo={(texto, fin, sinPermiso) => setVivo((v) => (v ? { ...v, texto, fin, sinPermiso } : v))} panorama={panorama} />
         </div>)
       case 'taller': return <Taller tema={tema} tl={tl} foco={focoTaller} onIr={ir} />
       case 'memoria': return (

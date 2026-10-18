@@ -35,3 +35,16 @@ describe('proveedores', () => {
     expect(buildSystem(null)).not.toContain('MEMORIA')
   })
 })
+
+describe('quién es Esme al hablar', () => {
+  it('se presenta como Esme (Daimon es solo el nombre en clave)', () => {
+    expect(buildSystem(null)).toMatch(/Esme/); expect(buildSystem(null)).not.toMatch(/Daimon/)
+  })
+  it('con el panorama de tu mente sabe de qué va tu vida aunque la pregunta sea vaga', () => {
+    const s = buildSystem(null, { panorama: 'Temas: pruebas (420), git (310). Taller: 2 trabajando.' })
+    expect(s).toMatch(/PANORAMA/); expect(s).toContain('pruebas (420)'); expect(s).toMatch(/no instrucciones/)
+  })
+  it('por voz responde corto y para oírse', () => {
+    expect(buildSystem(null, { voz: true })).toMatch(/en voz alta/)
+  })
+})

@@ -11,7 +11,7 @@ import { explicarFallo, modeloInicial, ordenMotores } from './motor'
 
 type Turn = { role: 'user' | 'assistant'; content: string; query?: string; ids?: string[]; abstained?: boolean; tokens?: number; error?: boolean; judged?: boolean; who?: string; pensamiento?: string }
 
-export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string): void; onRecalled(tokens: number): void; seed?: { q: string; n: number; voz?: boolean }; onBusy?(b: boolean): void; onHablar?(texto: string): void; onVivo?(texto: string, fin: boolean): void }) {
+export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string): void; onRecalled(tokens: number): void; seed?: { q: string; n: number; voz?: boolean }; onBusy?(b: boolean): void; onHablar?(texto: string): void; onVivo?(texto: string, fin: boolean, sinPermiso?: { motor: string; id: string }): void; panorama?: string }) {
   const [providers, setProviders] = useState<ProviderView[]>([])
   const [provider, setProvider] = useState('')   // se elige el primero que responde (panels/motor.ts)
   const [aviso, setAviso] = useState<string | null>(null)
@@ -68,8 +68,22 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
     let memory: { context: string; ids: string[] } | null = null
     let meta: Partial<Turn> = {}
     let memTokens = 0
+    const porVoz = vozRef.current; vozRef.current = false
+    // Un motor que puede retener datos: se pregunta UNA vez y se recuerda (por motor). Por voz nunca se bloquea la
+    // ventana con un aviso: sin tu permiso guardado, responde sin enviar tu memoria.
+    let permiso = !current?.retainsData
+    if (!permiso) {
+      let guardado: string | null = null
+      try { guardado = localStorage.getItem(`esme:memoria-a:${provider}`) } catch { /* sin almacenamiento */ }
+      if (guardado) permiso = guardado === 'si'
+      else if (!porVoz) {
+        permiso = confirm(`${current?.label ?? provider} puede retener datos. ¿Le envías tu memoria cuando preguntes? (Se recuerda para este motor; lo cambias en la conversación.)`)
+        try { localStorage.setItem(`esme:memoria-a:${provider}`, permiso ? 'si' : 'no') } catch { /* sin almacenamiento */ }
+      }
+    }
+    const conMemoria = memoryOn && !!props.brain && permiso
     if (memoryOn && props.brain) {
-      if (current?.retainsData && !confirm(`${current.label} puede retener datos. ¿Enviarle tu memoria para esta pregunta?`)) memory = null
+      if (!permiso) memory = null
       else {
         try {
           const r = await props.brain.recall(q, 1500, 'chat')
@@ -82,16 +96,16 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
     }
     const history: ChatMsg[] = [...turns.filter((t) => !t.error).map((t) => ({ role: t.role, content: t.content })), { role: 'user', content: q }]
     setTurns((t) => [...t, { role: 'user', content: q }, { role: 'assistant', content: '', who: `${current?.label ?? provider} · ${model}`, ...meta }])
-    const porVoz = vozRef.current; vozRef.current = false
     let dicho = ''
-    const s = bridge.chat(provider, model, history, memory)
+    // el panorama de tu mente viaja solo con la memoria activada (son datos tuyos, como la memoria)
+    const s = bridge.chat(provider, model, history, memory, undefined, { panorama: conMemoria ? props.panorama : undefined, voz: porVoz })
     s.onUsage((u) => setSesion((v) => ({ costeUSD: v.costeUSD + u.costeUSD, ultimaEntrada: u.entrada, memoria: memTokens })))
     s.onChunk((d) => { dicho += d; if (porVoz) props.onVivo?.(dicho, false); return setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + d }; return c }) })
     // El pensado viaja en su hilo: los que piensan antes de hablar no dejan el chat mudo.
     s.onPensamiento((d) => setTurns((t) => { const c = [...t]; const u = c[c.length - 1]; c[c.length - 1] = { ...u, pensamiento: (u.pensamiento ?? '') + d }; return c }))
     s.onDone(() => {
       setBusy(false)
-      if (porVoz) props.onVivo?.(dicho.trim() || 'El modelo respondió vacío. Prueba con otro modelo.', true)
+      if (porVoz) props.onVivo?.(dicho.trim() || 'El modelo respondió vacío. Prueba con otro modelo.', true, memoryOn && props.brain && !permiso ? { motor: current?.label ?? provider, id: provider } : undefined)
       if (porVoz && dicho.trim()) props.onHablar?.(dicho)
       // Honestidad ante modelos que responden vacío:sin texto ni pensado, la burbuja no es una pregunta es un agujero.
       setTurns((t) => {
