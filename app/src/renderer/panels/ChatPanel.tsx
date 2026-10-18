@@ -12,6 +12,7 @@ import { Compositor } from '../shell/Compositor'
 import { bridge, type ChatMsg, type ProviderView, type ResumenHilo, type TurnoHilo } from '../lib/bridge'
 import { haceCuanto, recorta } from '../paginas/diario'
 import { useMuelle } from '../tinta/movimiento'
+import { sonar } from '../tinta/sonido'
 import { explicarFallo, modeloInicial, ordenMotores } from './motor'
 
 type Turn = TurnoHilo
@@ -142,7 +143,7 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
     // El pensado viaja en su hilo: los que piensan antes de hablar no dejan el chat mudo.
     s.onPensamiento((d) => setTurns((t) => { const c = [...t]; const u = c[c.length - 1]; c[c.length - 1] = { ...u, pensamiento: (u.pensamiento ?? '') + d }; return c }))
     s.onDone(() => {
-      setBusy(false); setFase(null)
+      setBusy(false); setFase(null); void sonar(dicho.trim() ? 'respuesta' : 'error')
       if (porVoz) props.onVivo?.(dicho.trim() || 'El modelo respondió vacío. Prueba con otro modelo.', true, memoryOn && props.brain && !permiso ? { motor: current?.label ?? provider, id: provider } : undefined)
       if (porVoz && dicho.trim()) props.onHablar?.(dicho)
       // Honestidad ante modelos que responden vacío: sin texto ni pensado, la respuesta no es una respuesta.
@@ -154,7 +155,7 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
         return c
       })
     })
-    s.onError((m) => { setBusy(false); setFase(null); if (porVoz) props.onVivo?.(explicarFallo(m, current?.label ?? provider), true); setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: explicarFallo(m, current?.label ?? provider), error: true }; return c }) })
+    s.onError((m) => { setBusy(false); setFase(null); void sonar('error'); if (porVoz) props.onVivo?.(explicarFallo(m, current?.label ?? provider), true); setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: explicarFallo(m, current?.label ?? provider), error: true }; return c }) })
   }
 
   async function judge(i: number, useful: boolean) {

@@ -279,7 +279,7 @@ export function Apariencia({ tema, onTema, pieles }: { tema: Tema; onTema(t: Tem
           ))}
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-3">
-          <label className="grid gap-1.5 text-xs text-texto-2">Presencia de Esme<Segmentado etiqueta="Presencia de Esme" valor={p.presencia} onCambio={(presencia) => cambia({ presencia })} opciones={[['orbe', 'Esfera viva'], ['ninguna', 'Ninguna']]} /></label>
+          <label className="grid gap-1.5 text-xs text-texto-2">Presencia de Esme<Segmentado etiqueta="Presencia de Esme" valor={p.presencia} onCambio={(presencia) => cambia({ presencia })} opciones={[['orbe', 'Esfera de luz'], ['orbe-voz', 'Orbe de voz'], ['cara', 'Cara'], ['ninguna', 'Ninguna']]} /></label>
           <label className="grid gap-1.5 text-xs text-texto-2">Portada<Segmentado etiqueta="Portada" valor={p.portada} onCambio={(portada) => cambia({ portada })} opciones={[['mando', 'Centro de mando'], ['mente', 'Tu mente']]} /></label>
         </div>
       </Capa>

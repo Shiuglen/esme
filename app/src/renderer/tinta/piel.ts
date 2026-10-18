@@ -32,7 +32,7 @@ export type Movimiento = 'nada' | 'sutil' | 'vivo'
 export type FondoPiel = 'liso' | 'aurora' | 'papel'
 export type Navegacion = 'leyenda' | 'riel' | 'muelle'
 export type PortadaPiel = 'mando' | 'mente'
-export type Presencia = 'orbe' | 'ninguna'
+export type Presencia = 'orbe' | 'orbe-voz' | 'cara' | 'ninguna'
 export type EscenaPiel = EscenaId | 'ninguna'
 export type Caracter = 'preciso' | 'pesado' | 'magnetico' | 'elastico' | 'lanzado'
 export type Piel = {
@@ -51,7 +51,7 @@ export const PIEL_BASE: Piel = {
 const SOMBRAS: Sombra[] = ['plana', 'suave', 'honda'], DENSIDADES: Densidad[] = ['compacta', 'comoda', 'amplia']
 const MOVIMIENTOS: Movimiento[] = ['nada', 'sutil', 'vivo'], FONDOS: FondoPiel[] = ['liso', 'aurora', 'papel'], NAVEGACIONES: Navegacion[] = ['leyenda', 'riel', 'muelle']
 const PORTADAS: PortadaPiel[] = ['mando', 'mente']
-const PRESENCIAS: Presencia[] = ['orbe', 'ninguna'], ESCENAS_PIEL: EscenaPiel[] = ['ninguna', ...ESCENA_IDS]
+const PRESENCIAS: Presencia[] = ['orbe', 'orbe-voz', 'cara', 'ninguna'], ESCENAS_PIEL: EscenaPiel[] = ['ninguna', ...ESCENA_IDS]
 export const CARACTERES: Caracter[] = ['preciso', 'pesado', 'magnetico', 'elastico', 'lanzado']
 // Solo colores de verdad: hex, rgb() o hsl() con números. Nada de url(), var(), expresiones ni texto suelto.
 const COLOR = /^(#[0-9a-f]{3}|#[0-9a-f]{6}|(?:rgb|hsl)a?\(\s*[-\d.%\s,/]+\))$/i

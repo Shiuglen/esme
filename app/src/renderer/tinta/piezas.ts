@@ -8,6 +8,9 @@ export const PIEZAS = {
     { id: 'glitch', nombre: 'Interferencia' }, { id: 'fijo', nombre: 'Quieto' },
   ] },
   pulsar: { nombre: 'Al pulsar', variantes: [{ id: 'nada', nombre: 'Nada' }, { id: 'chispas', nombre: 'Chispas de luz' }] },
+  sonido: { nombre: 'Sonido', variantes: [
+    { id: 'nada', nombre: 'Silencio' }, { id: 'avisos', nombre: 'Solo lo importante' }, { id: 'completo', nombre: 'También al pulsar' },
+  ] },
   trabajo: { nombre: 'Mientras Esme trabaja', variantes: [
     { id: 'electrico', nombre: 'Borde eléctrico' }, { id: 'estrella', nombre: 'Estrella que orbita' }, { id: 'brillo', nombre: 'Brillo suave' }, { id: 'nada', nombre: 'Nada' },
   ] },
@@ -15,7 +18,7 @@ export const PIEZAS = {
 
 export type Hueco = keyof typeof PIEZAS
 export type Piezas = { [H in Hueco]: (typeof PIEZAS)[H]['variantes'][number]['id'] }
-export const PIEZAS_BASE: Piezas = { saludo: 'enfoque', pulsar: 'nada', trabajo: 'electrico' }
+export const PIEZAS_BASE: Piezas = { saludo: 'enfoque', pulsar: 'nada', sonido: 'avisos', trabajo: 'electrico' }
 
 /** Valida las piezas que trae una piel: completa lo que falta con la base y devuelve los errores de lo que no existe. */
 export function validarPiezas(x: unknown): { piezas: Piezas; errores: string[] } {

@@ -13,7 +13,10 @@ import { Compositor } from '../shell/Compositor'
 import { useMuelle } from '../tinta/movimiento'
 import AILoadingState from '../ui/ai-loading'
 import AI_Voice from '../ui/ai-voice'
-import Orb from '../ui/Orb'
+import { Presencia } from '../shell/Presencia'
+import { estadoDeEsme } from '../tinta/estado'
+import type { Presencia as TipoPresencia } from '../tinta/piel'
+import { sonar } from '../tinta/sonido'
 import { StatusIsland } from '../ui/status-island'
 import { AlDia } from './AlDia'
 import { diarioDe, type Entrada } from './diario'
@@ -27,7 +30,7 @@ const saludo = (h = new Date().getHours()) => (h < 6 ? 'Buenas noches' : h < 13 
 const acento = () => getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#5fffd0'
 
 export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, visible, conectado, recuerdos, atlas, tareas, memoria, onMemoria, onPreguntar, onOir, onIr, vivo = null, turnoVoz = 0, onCerrarVivo, onConversacion }: {
-  presencia?: 'orbe' | 'ninguna'; sitio?: { izquierda: number; abajo: number; cabecera: number }
+  presencia?: TipoPresencia; sitio?: { izquierda: number; abajo: number; cabecera: number }
   visible: boolean; conectado: boolean; recuerdos: number | null; atlas: Atlas | null; tareas: TareaTaller[]
   memoria: boolean; onMemoria(v: boolean): void; onPreguntar(q: string, voz?: boolean): void; onOir?(pcm: Float32Array): void
   vivo?: { pregunta: string; texto: string; fin: boolean; sinPermiso?: { motor: string; id: string } } | null; turnoVoz?: number; onCerrarVivo?(): void; onConversacion?(): void; onIr(ir: NonNullable<Entrada['ir']>): void
@@ -42,7 +45,7 @@ export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24,
   const enConversacion = useRef(false)
   useEffect(() => { if (turnoVoz && continua && visible && enConversacion.current) empezar().catch(() => {}) }, [turnoVoz])  // eslint-disable-line react-hooks/exhaustive-deps
   const pensandoVoz = !!vivo && !vivo.fin
-  const setEscuchando = (v: boolean | ((x: boolean) => boolean)) => { const quiere = typeof v === 'function' ? v(escuchando) : v; if (quiere) empezar().catch(() => toast.error('No puedo usar el micrófono: revisa que esté conectado y permitido.')); else parar(false) }
+  const setEscuchando = (v: boolean | ((x: boolean) => boolean)) => { const quiere = typeof v === 'function' ? v(escuchando) : v; if (quiere) { void sonar('escuchar'); empezar().catch(() => toast.error('No puedo usar el micrófono: revisa que esté conectado y permitido.')) } else { void sonar('callar'); parar(false) } }
   const [alDia, setAlDia] = useState(false)
   const [color, setColor] = useState(acento)
   useEffect(() => { const o = new MutationObserver(() => setColor(acento())); o.observe(document.documentElement, { attributes: true, attributeFilter: ['style', 'data-estilo'] }); return () => o.disconnect() }, [])
@@ -52,6 +55,7 @@ export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24,
   const isla = useMemo(() => islaDe(tareas, ahora), [tareas, ahora])
   const activos = useMemo(() => tareas.filter((t) => t.estado === 'trabajando' || t.estado === 'preparando').slice(0, 2), [tareas])
   const esperan = useMemo(() => tareas.filter((t) => t.estado === 'esperando'), [tareas])
+  const estado = estadoDeEsme({ escuchando, hablando: nivelVoz > 0, pensando: pensandoVoz, trabajando: activos.length, esperando: esperan.length })
   const listas = tareas.filter((t) => t.estado === 'lista' && !t.aplicada).length
   const diario = useMemo(() => (alDia ? diarioDe({ tareas, atlas, desde: ahora - 864e5, ahora }) : []), [alDia, tareas, atlas, ahora])
   const muelle = useMuelle({ stiffness: 300, damping: 30 })
@@ -69,8 +73,7 @@ export function Mando({ presencia = 'orbe', sitio = { izquierda: 240, abajo: 24,
       <div className="absolute top-[7%] left-1/2 grid w-[min(560px,80%)] -translate-x-1/2 justify-items-center text-center">
         <button type="button" onClick={() => { if (escuchando) { parar(false); enConversacion.current = false } else if (nivelVoz > 0 || vivo) { onCerrarVivo?.(); enConversacion.current = false } else { enConversacion.current = true; setEscuchando(true) } }} aria-pressed={escuchando} aria-label={escuchando ? 'Dejar de escuchar' : 'Hablar con Esme (manos libres)'}
           className="relative size-[300px] rounded-full outline-none focus-visible:ring-2 focus-visible:ring-acento">
-          {visible && presencia === 'orbe' && <Orb colors={[color, '#ffffff', color]} size={1} glow={escuchando ? 1.6 + nivel * 2 : nivelVoz > 0 ? 1.5 + nivelVoz * 2.5 : pensandoVoz ? 1.4 : 1} wobble={escuchando ? 0.4 + nivel : nivelVoz > 0 ? 0.35 + nivelVoz * 1.2 : 0.25}
-            speed={escuchando || nivelVoz > 0 ? 1.4 : pensandoVoz ? 2.2 : 0.6} hoverIntensity={0.35} rotateOnHover forceHoverState={escuchando || nivelVoz > 0 || pensandoVoz} backgroundColor="transparent" />}
+          {visible && <Presencia tipo={presencia} estado={estado} nivelTu={nivel} nivelElla={nivelVoz} color={color} />}
         </button>
         <p className="m-0 mt-1 text-[13px] tracking-wide text-texto-3">{fechaLarga(new Date())}</p>
         <h1 className="m-0 mt-1 text-[clamp(40px,4.6vw,60px)] leading-none font-light tracking-[-0.04em] text-texto">

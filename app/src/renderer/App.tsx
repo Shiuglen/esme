@@ -37,6 +37,7 @@ import { callar, paraDecir, reproducir } from './lib/voz'
 import { Escena } from './shell/Escena'
 import { AlPulsar } from './tinta/PiezasVivas'
 import { encenderLuz } from './shell/Luz'
+import { ponerModoSonido, sonar } from './tinta/sonido'
 import { MovimientoPiel } from './tinta/movimiento'
 import { MotionConfig } from 'motion/react'
 import { Leyenda, type NotaLugar } from './shell/Leyenda'
@@ -113,6 +114,7 @@ export function App() {
       const avisos = avisosDe(vistas.current.get(t.id), t)
       vistas.current.set(t.id, t)
       for (const a of avisos) {
+        void sonar(a.tipo === 'lista' ? 'listo' : a.tipo === 'error' ? 'error' : 'aviso')
         setEventos((v) => [{ id: ++seqEvento.current, ts: Date.now(), tipo: `taller-${a.tipo}` as const, texto: a.texto, detalle: a.detalle, onVer: () => verTarea(a.id) }, ...v].slice(0, 40))
         if (seccionRef.current !== 'taller' && a.tipo === 'permiso') toast(a.texto, { description: a.detalle, action: { label: 'Ver', onClick: () => verTarea(a.id) } })
         if (!document.hasFocus() && typeof Notification !== 'undefined') { try { new Notification('esme', { body: a.detalle ? `${a.texto}\n${a.detalle}` : a.texto, silent: a.tipo === 'lista' }) } catch { /* sin notificaciones */ } }
@@ -210,7 +212,10 @@ export function App() {
   const enfocarRecuerdo = (id: string) => { setEnfocado(id); redRef.current?.enfocar(id) }
 
   useHalos()
-  useEffect(() => encenderLuz(), [])   // los filos de cristal brillan donde está el cursor (shell/Luz.ts)
+  useEffect(() => encenderLuz(), [])
+  // el sonido de la piel: el modo, y un clic suave al pulsar cualquier botón (solo con «También al pulsar»)
+  useEffect(() => { ponerModoSonido(piel.piezas.sonido) }, [piel.piezas.sonido])
+  useEffect(() => { const f = (e: PointerEvent) => { if ((e.target as HTMLElement | null)?.closest('button, [role=radio], [role=tab], a')) void sonar('pulsar') }; addEventListener('pointerdown', f); return () => removeEventListener('pointerdown', f) }, [])   // los filos de cristal brillan donde está el cursor (shell/Luz.ts)
   const tallerOcupado = tl.tareas.some((t) => t.estado === 'trabajando' || t.estado === 'preparando')
   const resumenTaller = useMemo(() => {
     const k = (f: (t: (typeof tl.tareas)[number]) => boolean) => tl.tareas.filter(f).length

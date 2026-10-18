@@ -1,17 +1,12 @@
 // La escena de la piel (tinta/escenas.ts): un fondo vivo a pantalla completa detrás de toda la app, teñido con la piel.
 // Se carga solo cuando se elige, se atenúa con una hoja abierta y, si la tarjeta gráfica no puede con ella, desaparece
 // sin romper nada (la app sigue con su fondo de siempre).
-import { Component, lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { SinRomper } from './SinRomper'
 import { cn } from '../lib/cn'
 import { ESCENAS, type EscenaId, type PaletaEscena } from '../tinta/escenas'
 import type { EscenaPiel } from '../tinta/piel'
 
-class SinRomper extends Component<{ children: ReactNode; clave: string }, { roto: boolean }> {
-  state = { roto: false }
-  static getDerivedStateFromError() { return { roto: true } }
-  componentDidUpdate(p: { clave: string }) { if (p.clave !== this.props.clave && this.state.roto) this.setState({ roto: false }) }
-  render() { return this.state.roto ? null : this.props.children }
-}
 
 const leer = (): PaletaEscena => {
   const cs = getComputedStyle(document.documentElement), v = (k: string, d: string) => cs.getPropertyValue(k).trim() || d
