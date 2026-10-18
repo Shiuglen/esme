@@ -19,6 +19,7 @@ import { Mando } from './paginas/Mando'
 import { panoramaDe } from './paginas/panorama'
 import { notaTaller } from './paginas/portada'
 import { Proximamente } from './paginas/Proximamente'
+import { Tienda } from './paginas/Tienda'
 import { Taller } from './paginas/Taller'
 import { avisosDe } from './taller/avisos'
 import { archivable } from './taller/vista'
@@ -239,7 +240,7 @@ export function App() {
         <div className="flex h-full min-h-0 flex-col"><MemoryPanel brain={brain} focusId={enfocado} onFocus={(i) => redRef.current?.enfocar(i)} onChanged={refrescar} /></div>)
       case 'ajustes': return <Ajustes tema={tema} onTema={setTema} pieles={pieles} />
       case 'uso': return <Uso onIr={ir} />
-      case 'tienda': return <Proximamente titulo="Tienda" texto="Aquí instalarás IAs, modelos locales, MCPs, plugins y compañeros para Esme, con un clic y con permiso." />
+      case 'tienda': return <Tienda tema={tema} pieles={pieles} />
     }
   }
 

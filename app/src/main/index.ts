@@ -10,6 +10,7 @@ import { registerProveedores } from './ipc-proveedores'
 import { keys } from './keys'
 import { registerLicencia } from './licencia/ipc'
 import { registerHilos } from './hilos/ipc'
+import { registerTienda } from './tienda/ipc'
 import { listModels, PROVIDERS, type ProviderId } from './providers'
 
 const ROOT = resolve(process.env.DAIMON_ROOT ?? join(homedir(), 'Daimon'))
@@ -63,6 +64,7 @@ function startPtyHost() {
 function registerIpc() {
   registerLicencia()
   registerHilos()
+  registerTienda()
   ipcMain.handle('brain:info', () => brain.info)
   ipcMain.on('ventana:colores', (_e, c: { fondo: string; simbolos: string }) => {
     // un color impuro (mezcla cruda, variable, vacío) no puede tumbar el proceso: se suelta y se cuenta

@@ -20,7 +20,7 @@ import { PIELES_CASA } from '../tinta/pieles-casa'
 import { cargarLetra } from '../tinta/vestir'
 
 export type Pieles = { actual: Piel; puedeDeshacer: boolean; puedeRehacer: boolean; ensayar(p: Piel): void; vestir(p: Piel): void; deshacer(): void; rehacer(): void }
-type Tema = 'noche' | 'dia'
+export type Tema = 'noche' | 'dia'
 type Muestra = { fondo: string; superficie: string; texto: string; acento: string }
 
 // Los colores con los que se reconoce cada estilo de casa (los mismos del CSS)
@@ -30,7 +30,7 @@ const ESTILOS: Record<string, Record<Tema, Muestra>> = {
   lime: { noche: { fondo: '#0e0e0c', superficie: '#1a1a17', texto: '#f4f3ee', acento: '#cad649' }, dia: { fondo: '#f6f5f2', superficie: '#ffffff', texto: '#0f0f0d', acento: '#7c8700' } },
   grabado: { noche: { fondo: '#08090d', superficie: '#0f1117', texto: '#e8ebf0', acento: '#5ef0d4' }, dia: { fondo: '#f3f3ef', superficie: '#fbfbf9', texto: '#141a26', acento: '#077567' } },
 }
-function muestra(p: Piel, tema: Tema): Muestra {
+export function muestra(p: Piel, tema: Tema): Muestra {
   if (p.color.tipo === 'libre') return p.color[tema]
   if (p.color.tipo === 'gustos') { const v = paletaPropia(p.color.gustos, tema); return { fondo: v['--fondo'], superficie: v['--superficie-1'], texto: v['--texto'], acento: v['--acento'] } }
   return ESTILOS[p.color.estilo][tema]
