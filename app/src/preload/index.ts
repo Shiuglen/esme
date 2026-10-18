@@ -27,6 +27,9 @@ contextBridge.exposeInMainWorld('daimon', {
     onDone: (id: string, fn: () => void) => on(`chat:done:${id}`, () => fn()),
     onError: (id: string, fn: (m: string) => void) => on(`chat:error:${id}`, (m) => fn(m as string)),
     onUsage: (id: string, fn: (u: unknown) => void) => on(`chat:usage:${id}`, (u) => fn(u)),
+    onPaso: (id: string, fn: (p: unknown) => void) => on(`chat:paso:${id}`, (p) => fn(p)),
+    onPermiso: (id: string, fn: (p: unknown) => void) => on(`chat:permiso:${id}`, (p) => fn(p)),
+    responder: (chat: string, llamada: string, r: string) => ipcRenderer.invoke('chat:responder', chat, llamada, r),
   },
   catalogo: { proveedores: () => ipcRenderer.invoke('catalogo:proveedores'), modelos: (id: string) => ipcRenderer.invoke('catalogo:modelos', id), origen: () => ipcRenderer.invoke('catalogo:origen') },
   uso: {

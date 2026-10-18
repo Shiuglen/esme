@@ -8,6 +8,7 @@ import type { RespuestaCatalogo } from '../../main/tienda/ipc'
 import type { Producto } from '../../main/tienda/catalogo'
 import type { Tarea as TareaTaller, Veredicto as VeredictoTaller } from '../../main/taller/taller'
 import type { NuevoProgramado, Programado } from '../../main/taller/agenda'
+import type { Paso } from '../../main/herramientas/propias'
 export type AlCerrar = 'auto' | 'siempre' | 'nunca'
 export type ProgramadoVisto = Programado & { proxima: number | null }
 import type { Consumo, Presupuesto, RegistroUso } from '../../main/uso/registro'
@@ -20,7 +21,8 @@ export type ProviderView = { id: string; label: string; local: boolean; needsKey
 export type AgentView = { id: string; label: string; installed: boolean; memory: boolean; note?: string }
 export type ChatMsg = { role: 'user' | 'assistant'; content: string }
 export type ChatUso = { entrada: number; salida: number; costeUSD: number }
-export type ChatStream = { onChunk(fn: (d: string) => void): void; onPensamiento(fn: (d: string) => void): void; onDone(fn: () => void): void; onError(fn: (m: string) => void): void; onUsage(fn: (u: ChatUso) => void): void; stop(): void }
+export type PermisoPedido = { id: string; nombre: string; args: unknown }
+export type ChatStream = { onPaso(fn: (p: Paso) => void): void; onPermiso(fn: (p: PermisoPedido) => void): void; responder(llamada: string, r: 'una' | 'siempre' | 'no'): void; onChunk(fn: (d: string) => void): void; onPensamiento(fn: (d: string) => void): void; onDone(fn: () => void): void; onError(fn: (m: string) => void): void; onUsage(fn: (u: ChatUso) => void): void; stop(): void }
 export type { ModeloCatalogo, Presupuesto }
 export type ProveedorResumen = ProveedorResumenMain
 export type EstadoUso = EstadoUsoMain
@@ -42,6 +44,7 @@ type ElectronApi = {
   keys: { status(): Promise<{ secure: boolean; backend: string }>; set(id: string, v: string): Promise<unknown>; remove(id: string): Promise<unknown> }
   chat: {
     start(req: unknown): Promise<unknown>; stop(id: string): Promise<unknown>
+    onPaso(id: string, fn: (p: Paso) => void): () => void; onPermiso(id: string, fn: (p: PermisoPedido) => void): () => void; responder(chat: string, llamada: string, r: string): Promise<unknown>
     onChunk(id: string, fn: (d: string) => void): () => void; onPensamiento(id: string, fn: (d: string) => void): () => void; onDone(id: string, fn: () => void): () => void; onError(id: string, fn: (m: string) => void): () => void
     onUsage(id: string, fn: (u: ChatUso) => void): () => void
   }
@@ -125,16 +128,20 @@ export const bridge = {
     const id = newId()
     const usageFns: ((u: ChatUso) => void)[] = []
     const chunkFns: ((d: string) => void)[] = [], pensadoFns: ((d: string) => void)[] = [], doneFns: (() => void)[] = [], errFns: ((m: string) => void)[] = []
+    const pasoFns: ((p: Paso) => void)[] = [], permisoFns: ((p: PermisoPedido) => void)[] = []
     if (isElectron()) {
       const offs = [
         window.daimon!.chat.onChunk(id, (d) => chunkFns.forEach((f) => f(d))),
         window.daimon!.chat.onPensamiento!(id, (d) => pensadoFns.forEach((f) => f(d))),
+        window.daimon!.chat.onPaso(id, (p) => pasoFns.forEach((f) => f(p))),
+        window.daimon!.chat.onPermiso(id, (p) => permisoFns.forEach((f) => f(p))),
         window.daimon!.chat.onUsage(id, (u) => usageFns.forEach((f) => f(u))),
         window.daimon!.chat.onDone(id, () => { doneFns.forEach((f) => f()); offs.forEach((o) => o()) }),
         window.daimon!.chat.onError(id, (m) => { errFns.forEach((f) => f(m)); offs.forEach((o) => o()) }),
       ]
       void window.daimon!.chat.start({ id, provider, model, messages, memory, ahorrados, ...extra })
-      return { onChunk: (f) => chunkFns.push(f), onPensamiento: (f) => pensadoFns.push(f), onDone: (f) => doneFns.push(f), onError: (f) => errFns.push(f), onUsage: (f) => usageFns.push(f), stop: () => void window.daimon!.chat.stop(id) }
+      return { onPaso: (f) => pasoFns.push(f), onPermiso: (f) => permisoFns.push(f), responder: (llamada, r) => void window.daimon!.chat.responder(id, llamada, r),
+        onChunk: (f) => chunkFns.push(f), onPensamiento: (f) => pensadoFns.push(f), onDone: (f) => doneFns.push(f), onError: (f) => errFns.push(f), onUsage: (f) => usageFns.push(f), stop: () => void window.daimon!.chat.stop(id) }
     }
     // Modo web: Ollama directo (solo para ver y probar la interfaz)
     const ac = new AbortController()
@@ -159,7 +166,7 @@ export const bridge = {
         doneFns.forEach((f) => f())
       } catch (e) { if (!ac.signal.aborted) errFns.forEach((f) => f(String(e))) }
     })
-    return { onChunk: (f) => chunkFns.push(f), onPensamiento: (f) => pensadoFns.push(f), onDone: (f) => doneFns.push(f), onError: (f) => errFns.push(f), onUsage: () => {}, stop: () => ac.abort() }
+    return { onPaso: () => {}, onPermiso: () => {}, responder: () => {}, onChunk: (f) => chunkFns.push(f), onPensamiento: (f) => pensadoFns.push(f), onDone: (f) => doneFns.push(f), onError: (f) => errFns.push(f), onUsage: () => {}, stop: () => ac.abort() }
   },
 
   catalogo: {

@@ -5,7 +5,8 @@ import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-export type TurnoHilo = { role: 'user' | 'assistant'; content: string; who?: string; ids?: string[]; query?: string; abstained?: boolean; tokens?: number; error?: boolean; judged?: boolean; pensamiento?: string }
+export type TurnoHilo = { role: 'user' | 'assistant'; content: string; who?: string; ids?: string[]; query?: string; abstained?: boolean; tokens?: number; error?: boolean; judged?: boolean; pensamiento?: string
+  pasos?: { id: string; nombre: string; estado: 'pide' | 'haciendo' | 'hecho' | 'error'; args?: unknown; resumen?: string; error?: string }[] }
 export type Hilo = { id: string; titulo: string; creado: number; actualizado: number; motor: string; modelo: string; turnos: TurnoHilo[] }
 export type ResumenHilo = { id: string; titulo: string; actualizado: number; mensajes: number }
 

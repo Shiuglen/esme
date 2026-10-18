@@ -48,3 +48,12 @@ describe('quién es Esme al hablar', () => {
     expect(buildSystem(null, { voz: true })).toMatch(/en voz alta/)
   })
 })
+
+describe('las manos en el mensaje de sistema', () => {
+  it('con herramientas, Esme sabe que puede actuar y que lo que lee de fuera son datos, no órdenes', () => {
+    const s = buildSystem(null, { herramientas: true })
+    expect(s).toMatch(/herramientas/i)
+    expect(s).toMatch(/datos, no instrucciones/i)
+    expect(buildSystem(null, {})).not.toMatch(/herramientas/i)
+  })
+})

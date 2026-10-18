@@ -6,10 +6,12 @@ import { Check, ChevronDown, Copy, MessageSquarePlus, Search, Trash2, Volume2 } 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { BrainClient, Memory } from '../lib/brain'
 import { Markdown } from '../chat/Markdown'
+import { aplicarPaso } from '../chat/pasos'
+import { Pasos, PidePermiso } from '../chat/PasosVivos'
 import { TiraUso, type UsoSesion } from '../chat/TiraUso'
 import { cn } from '../lib/cn'
 import { Compositor } from '../shell/Compositor'
-import { bridge, type ChatMsg, type ProviderView, type ResumenHilo, type TurnoHilo } from '../lib/bridge'
+import { bridge, type ChatMsg, type PermisoPedido, type ProviderView, type ResumenHilo, type TurnoHilo } from '../lib/bridge'
 import { haceCuanto, recorta } from '../paginas/diario'
 import { useMuelle } from '../tinta/movimiento'
 import { sonar } from '../tinta/sonido'
@@ -27,6 +29,7 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
   const [turns, setTurns] = useState<Turn[]>([])
   const [busy, setBusy] = useState(false)
   const [fase, setFase] = useState<string | null>(null)   // qué está haciendo Esme mientras responde
+  const [pidiendo, setPidiendo] = useState<(PermisoPedido & { responder(r: 'una' | 'siempre' | 'no'): void }) | null>(null)   // una acción esperando tu permiso
   const [sesion, setSesion] = useState<UsoSesion>({ costeUSD: 0, ultimaEntrada: 0, memoria: 0 })
   const log = useRef<HTMLDivElement>(null)
 
@@ -142,8 +145,11 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
     s.onChunk((d) => { dicho += d; setFase(null); if (porVoz) props.onVivo?.(dicho, false); return setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + d }; return c }) })
     // El pensado viaja en su hilo: los que piensan antes de hablar no dejan el chat mudo.
     s.onPensamiento((d) => setTurns((t) => { const c = [...t]; const u = c[c.length - 1]; c[c.length - 1] = { ...u, pensamiento: (u.pensamiento ?? '') + d }; return c }))
+    // las manos: cada paso (buscar, leer, encargar…) se ve en la respuesta; lo que actúa espera tu permiso
+    s.onPaso((p) => { setFase(null); setTurns((t) => { const c = [...t]; const u = c[c.length - 1]; c[c.length - 1] = { ...u, pasos: aplicarPaso(u.pasos ?? [], p) }; return c }) })
+    s.onPermiso((p) => { void sonar('aviso'); setPidiendo({ ...p, responder: (r) => { s.responder(p.id, r); setPidiendo(null) } }) })
     s.onDone(() => {
-      setBusy(false); setFase(null); void sonar(dicho.trim() ? 'respuesta' : 'error')
+      setBusy(false); setFase(null); setPidiendo(null); void sonar(dicho.trim() ? 'respuesta' : 'error')
       if (porVoz) props.onVivo?.(dicho.trim() || 'El modelo respondió vacío. Prueba con otro modelo.', true, memoryOn && props.brain && !permiso ? { motor: current?.label ?? provider, id: provider } : undefined)
       if (porVoz && dicho.trim()) props.onHablar?.(dicho)
       // Honestidad ante modelos que responden vacío: sin texto ni pensado, la respuesta no es una respuesta.
@@ -155,7 +161,7 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
         return c
       })
     })
-    s.onError((m) => { setBusy(false); setFase(null); void sonar('error'); if (porVoz) props.onVivo?.(explicarFallo(m, current?.label ?? provider), true); setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: explicarFallo(m, current?.label ?? provider), error: true }; return c }) })
+    s.onError((m) => { setBusy(false); setFase(null); setPidiendo(null); void sonar('error'); if (porVoz) props.onVivo?.(explicarFallo(m, current?.label ?? provider), true); setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: explicarFallo(m, current?.label ?? provider), error: true }; return c }) })
   }
 
   async function judge(i: number, useful: boolean) {
@@ -236,7 +242,7 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
                   {t.role === 'user' ? (
                     <div className="ml-auto w-fit max-w-[82%] rounded-4 rounded-br-2 border border-linea bg-s2/70 px-4 py-2.5 text-[15.5px] leading-[1.6] whitespace-pre-wrap text-texto shadow-[0_8px_30px_-18px_rgba(0,0,0,.6)] backdrop-blur-md">{t.content}</div>
                   ) : (
-                    <Respuesta t={t} ultima={i === turns.length - 1} busy={busy} fase={fase} brain={props.brain} onCite={props.onCite}
+                    <Respuesta t={t} ultima={i === turns.length - 1} busy={busy} fase={fase} brain={props.brain} onCite={props.onCite} pidiendo={i === turns.length - 1 ? pidiendo : null}
                       onJuzgar={(u) => void judge(i, u)} onEscuchar={props.onHablar ? () => props.onHablar!(t.content) : undefined} />
                   )}
                 </motion.div>
@@ -260,8 +266,9 @@ function Esfera({ grande, viva }: { grande?: boolean; viva?: boolean }) {
     style={{ background: 'radial-gradient(circle at 35% 30%, color-mix(in oklab, var(--acento), white 55%), var(--acento) 45%, color-mix(in oklab, var(--acento), black 45%))', boxShadow: '0 0 18px -2px var(--acento)' }} />
 }
 
-function Respuesta({ t, ultima, busy, fase, brain, onCite, onJuzgar, onEscuchar }: {
+function Respuesta({ t, ultima, busy, fase, brain, onCite, onJuzgar, onEscuchar, pidiendo }: {
   t: Turn; ultima: boolean; busy: boolean; fase: string | null; brain: BrainClient | null; onCite(id: string): void; onJuzgar(util: boolean): void; onEscuchar?(): void
+  pidiendo?: (PermisoPedido & { responder(r: 'una' | 'siempre' | 'no'): void }) | null
 }) {
   const [copiado, setCopiado] = useState(false)
   const trabajando = busy && ultima
@@ -270,12 +277,14 @@ function Respuesta({ t, ultima, busy, fase, brain, onCite, onJuzgar, onEscuchar 
       <Esfera viva={trabajando} />
       <div className="grid min-w-0 gap-2">
         <span className="text-xs text-texto-3">Esme · {t.who?.split(' · ').slice(1).join(' · ') || t.who}</span>
+        {!!t.pasos?.length && <Pasos pasos={t.pasos} />}
+        {pidiendo && <PidePermiso pedido={pidiendo} onResponder={pidiendo.responder} />}
         <div className={cn('text-[16px] leading-[1.75]', t.error ? 'text-peligro whitespace-pre-wrap' : 'text-texto')}>
           {t.content
             ? (t.error ? t.content : <Markdown texto={t.content} />)
             : t.pensamiento
               ? <p className="m-0 max-h-28 overflow-hidden text-[13.5px] leading-6 italic text-texto-2/80 [mask-image:linear-gradient(180deg,black_55%,transparent)]">{t.pensamiento}</p>
-              : trabajando ? <Brillo texto={fase ?? 'Pensando…'} /> : null}
+              : trabajando && !pidiendo ? <Brillo texto={fase ?? (t.pasos?.length ? 'Trabajando…' : 'Pensando…')} /> : null}
         </div>
         {t.abstained && <span className="text-xs text-texto-3">Sin memoria relevante: respondió solo con lo que sabe.</span>}
         <div className="flex flex-wrap items-center gap-1.5">

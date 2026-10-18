@@ -140,7 +140,7 @@ function registerIpc() {
   ipcMain.on('pty:resize', (_e, id: string, cols: number, rows: number) => ptyHost?.postMessage({ type: 'resize', id, cols, rows }))
   ipcMain.on('pty:kill', (_e, id: string) => ptyHost?.postMessage({ type: 'kill', id }))
   registerProveedores()
-  registerChat()
+  registerChat({ brainInfo: () => brain.info })
   registerTaller({ brainInfo: () => brain.info })
   // lo que la agenda lanza sola se avisa fuera de la ventana si no la estás mirando
   alLanzar((p) => { if (!win?.isFocused()) avisar('Tu equipo empezó un encargo programado', p.texto.replace(/\s+/g, ' ').slice(0, 140)) })

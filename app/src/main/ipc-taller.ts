@@ -30,6 +30,33 @@ export function pendienteTaller() {
   return { programados: proximas.length, trabajando: taller?.lista().filter((x) => x.estado === 'trabajando' || x.estado === 'preparando').length ?? 0, proxima: proximas.length ? Math.min(...proximas) : null }
 }
 export const alLanzar = (fn: (p: Programado) => void) => { alLanzarProgramado = fn }
+
+// Para las manos de la conversación (main/herramientas/propias.ts): ver al equipo, encargarle y programar.
+let programarInterno: ((p: unknown) => { ok: true } | { ok: false; error: string }) | null = null
+// el agente que mejor ha trabajado: el que más tareas dejó listas; si no hay historia, el primero instalado
+async function agentePreferido(): Promise<string | null> {
+  const cuenta = new Map<string, number>()
+  for (const x of taller?.lista() ?? []) if (x.estado === 'lista') cuenta.set(x.motor, (cuenta.get(x.motor) ?? 0) + 1)
+  const mejor = [...cuenta].sort((a, b) => b[1] - a[1])[0]?.[0]
+  return mejor ?? (await motoresTaller()).find((m) => m.instalado)?.id ?? null
+}
+export const equipoParaChat = () => (taller?.lista() ?? []).slice().sort((a, b) => b.inicio - a.inicio).slice(0, 15)
+  .map((x) => ({ titulo: x.titulo, estado: x.estado, agente: x.motorNombre }))
+export async function encargarDesdeChat(encargo: string, agente?: string) {
+  if (!taller) throw new Error('El Taller aún no está listo.')
+  const id = agente ?? await agentePreferido()
+  if (!id) throw new Error('No hay ningún agente instalado en el Taller.')
+  const motor = await elegirMotor(id)
+  if ('error' in motor) throw new Error(motor.error)
+  const t = taller.crear({ motor, carpeta: null, texto: encargo })
+  return { id: t.id, titulo: t.titulo, agente: t.motorNombre }
+}
+export async function programarDesdeChat(p: { texto: string; cuando: unknown; agente?: string }) {
+  if (!programarInterno) return { ok: false as const, error: 'La agenda aún no está lista.' }
+  const motor = p.agente ?? await agentePreferido()
+  if (!motor) return { ok: false as const, error: 'No hay ningún agente instalado en el Taller.' }
+  return programarInterno({ motor, carpeta: null, texto: p.texto, cuando: p.cuando })
+}
 const vistas = new Map<string, Servidor>()
 const cerrarVista = (id: string) => { vistas.get(id)?.cerrar(); vistas.delete(id) }
 // Dónde está la web dentro de la copia: la raíz o una de las carpetas habituales.
@@ -292,13 +319,14 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
   relojAgenda = setInterval(() => { void revisarAgenda() }, 60_000)
   setTimeout(() => { void revisarAgenda() }, 15_000)   // al abrir, lo atrasado mientras el equipo estuvo apagado
   ipcMain.handle('taller:agenda', () => conProxima())
-  ipcMain.handle('taller:programar', (_e, v: unknown) => {
+  programarInterno = (v: unknown) => {
     const r = validarProgramado(v)
     if (!r.ok) return { ok: false, error: r.motivo }
     if (agenda.length >= 50) return { ok: false, error: 'Ya tienes 50 encargos programados: quita alguno.' }
     agenda.push({ id: nuevoIdProgramado(), ...r.valor, activo: true, creado: Date.now() }); guardar()
     return { ok: true }
-  })
+  }
+  ipcMain.handle('taller:programar', (_e, v: unknown) => programarInterno!(v))
   ipcMain.handle('taller:pausarProgramado', (_e, id: unknown, activo: unknown) => {
     const p = agenda.find((x) => x.id === id)
     if (!p || typeof activo !== 'boolean') return entrada
