@@ -1,0 +1,44 @@
+# Las versiones de Esme en su propio sistema (docs/superpowers/specs/2026-10-18-versiones.md): Linux, Windows y macOS.
+# Se lanza a mano (Actions → Versiones → Run workflow) o al subir una etiqueta v*. Deja los instaladores como artefactos.
+name: Versiones
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  version:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, sistema: linux-x64, objetivo: --linux --x64 }
+          - { os: windows-latest, sistema: win-x64, objetivo: --win --x64 }
+          - { os: macos-latest, sistema: mac-arm64, objetivo: --mac --arm64 }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm, cache-dependency-path: app/package-lock.json }
+      - uses: astral-sh/setup-uv@v6
+      - run: npm ci
+      - name: El cerebro de este sistema
+        run: node scripts/preparar-cerebro.mjs ${{ matrix.sistema }}
+        env: { GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
+      - run: npx electron-vite build
+      - name: Empaquetar
+        run: npx electron-builder ${{ matrix.objetivo }} --publish never
+        env: { CSC_IDENTITY_AUTO_DISCOVERY: 'false' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: esme-${{ matrix.sistema }}
+          path: |
+            app/dist/*.AppImage
+            app/dist/*.deb
+            app/dist/*.exe
+            app/dist/*.dmg
+          if-no-files-found: error
