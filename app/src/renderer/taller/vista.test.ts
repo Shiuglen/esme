@@ -117,7 +117,12 @@ describe('archivar lo viejo', () => {
     expect(archivable(t('parada', ahora - 2 * DIA), ahora)).toBe(true)
     expect(archivable(t('error', ahora - 3600_000), ahora)).toBe(false)
     expect(archivable(t('trabajando', ahora - 5 * DIA), ahora)).toBe(false)
-    expect(archivable(t('lista', ahora - 5 * DIA), ahora)).toBe(false)
+    expect(archivable(t('lista', ahora - 2 * DIA), ahora)).toBe(false)
+  })
+  it('una tarea lista de hace más de tres días también se archiva (no se borra: sigue en «archivadas»)', () => {
+    expect(archivable(t('lista', ahora - 4 * DIA), ahora)).toBe(true)
+    expect(archivable(t('lista', ahora - 4 * DIA, { aplicada: { cuando: ahora - 4 * DIA } }), ahora)).toBe(true)
+    expect(archivable(t('esperando', ahora - 9 * DIA), ahora)).toBe(false)
   })
 })
 

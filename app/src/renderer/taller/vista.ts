@@ -78,5 +78,7 @@ export function explicarError(error: string, motor: string, login: string): Expl
 
 /** Un error o una parada de hace más de un día se archiva: deja de gritar en la fila y en las cuentas, pero no se borra. */
 export const ARCHIVAR_TRAS_MS = 864e5
+export const ARCHIVAR_LISTAS_TRAS_MS = 3 * 864e5   // una tarea lista que nadie miró en tres días deja de llenar la fila
 export const archivable = (t: TareaTaller, ahora: number) =>
-  (t.estado === 'error' || t.estado === 'parada') && ahora - (t.fin ?? t.inicio) > ARCHIVAR_TRAS_MS
+  ((t.estado === 'error' || t.estado === 'parada') && ahora - (t.fin ?? t.inicio) > ARCHIVAR_TRAS_MS)
+  || (t.estado === 'lista' && ahora - (t.fin ?? t.inicio) > ARCHIVAR_LISTAS_TRAS_MS)

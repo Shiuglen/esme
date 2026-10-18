@@ -5,12 +5,14 @@ import type { TareaTaller } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { fmtTokens, fmtUSD } from '../chat/formatos'
 import { BarrasActividad } from './Micrografica'
-import { Bicho } from '../marca/Ser'
+import { AgentFace } from 'agentfaces/react'
 import { Sello } from '../marca/Sello'
 import { giroSello } from '../marca/sello'
 import { barrasDe, ESTADOS, actividadAhora, activa, duracion, explicarError, silencioMs } from './vista'
 
 const SILENCIO_AVISO = 25_000
+// la cara de cada tarea dice en qué está (agentfaces)
+const CARA = { preparando: 'starting', trabajando: 'working', esperando: 'needs-you', lista: 'done', error: 'alert', parada: 'sleeping' } as const
 
 export function PastillaEstado({ estado }: { estado: TareaTaller['estado'] }) {
   const { texto, tono } = ESTADOS[estado]
@@ -35,6 +37,8 @@ export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida
   onElegir(id: string): void; onResaltar(id: string | null): void; onReencarnar(): void; onAplicar(): void; onParar(): void
 }) {
   const enMarcha = activa(t)
+  // terminada y sin elegir: una sola línea (la fila respira); las que trabajan, esperan o fallan enseñan todo
+  const plegada = !elegida && (t.estado === 'lista' || t.estado === 'parada')
   const grande = t.estado === 'preparando' ? '—' : duracion((t.fin ?? ahora) - t.inicio)
   const silencio = silencioMs(t, ahora, inicioTurno)
   const callado = silencio !== null && silencio > SILENCIO_AVISO
@@ -65,7 +69,7 @@ export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida
     <div role="button" tabIndex={0} onClick={() => onElegir(t.id)} onPointerEnter={() => onResaltar(t.id)} onPointerLeave={() => onResaltar(null)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onElegir(t.id) } }}
       aria-pressed={elegida} aria-label={`${t.motorNombre}: ${t.titulo}. ${ESTADOS[t.estado].texto}.`}
-      className={cn('halo group/card relative w-full overflow-hidden rounded-3 border px-4 pt-3 pb-2.5 text-left outline-none transition-[transform,background-color] duration-300 ease-salida',
+      className={cn('halo group/card relative w-full overflow-hidden rounded-3 border px-4 text-left outline-none', plegada ? 'py-2' : 'pt-3 pb-2.5', ' transition-[transform,background-color] duration-300 ease-salida',
         elegida ? 'aurora-borde bg-s2/40' : resaltada && '-translate-y-px')}>
       <span aria-hidden className={cn('absolute inset-y-3 left-0 w-[2px] rounded-full',
         t.estado === 'trabajando' && '[background:var(--aurora)]', t.estado === 'esperando' && 'bg-atencion', t.estado === 'error' && 'bg-peligro',
@@ -77,20 +81,20 @@ export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida
         {enMarcha && <AccionRapida icono={Square} texto="Parar" onClick={onParar} />}
       </div>
       <div className="flex items-center gap-2">
-        <Bicho de={t.motor} tamaño={14} vivo={enMarcha} className="shrink-0 text-texto-2" />
+        <AgentFace state={CARA[t.estado]} size={plegada ? 22 : 28} color={getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || undefined} />
         <span className="shrink-0 whitespace-nowrap text-[13px] font-medium text-texto">{t.motorNombre}</span>
         {t.modelo && <span className="min-w-0 truncate font-mono text-[11px] text-texto-3">{modeloCorto(t.modelo)}</span>}
         <PastillaEstado estado={t.estado} />
         {t.aplicada && <Sello lado={16} giro={giroSello(t.id)} titulo="Aprobada por ti" />}
         {t.arena && <span className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full border border-linea px-1.5 text-[11px] text-texto-3" title="Compite en una arena"><Swords className="size-3" strokeWidth={1.75} />arena</span>}
-        <span className={cn('ml-auto font-display text-[26px] leading-none font-light tabular-nums', enMarcha ? 'text-texto' : 'text-texto-2')}>{grande}</span>
+        <span className={cn('ml-auto font-display leading-none font-light tabular-nums', plegada ? 'text-[18px]' : 'text-[26px]', enMarcha ? 'text-texto' : 'text-texto-2')}>{grande}</span>
       </div>
       <div className="mt-1.5 flex items-center gap-3">
         <p className="min-w-0 flex-1 truncate text-[13.5px] text-texto-2">{t.titulo}</p>
         <BarrasActividad valores={barrasDe(t.actividad)} viva={t.estado === 'trabajando'} />
       </div>
-      <p className={cn('mt-0.5 min-h-[18px] truncate text-xs', callado || t.estado === 'esperando' ? 'text-atencion' : t.estado === 'error' ? 'text-peligro' : 'text-texto-3')}>{linea}</p>
-      <dl className="mt-2 grid grid-cols-[repeat(auto-fit,minmax(64px,1fr))] gap-2 border-t border-linea/80 pt-2">
+      {!plegada && <p className={cn('mt-0.5 min-h-[18px] truncate text-xs', callado || t.estado === 'esperando' ? 'text-atencion' : t.estado === 'error' ? 'text-peligro' : 'text-texto-3')}>{linea}</p>}
+      {!plegada && <dl className="mt-2 grid grid-cols-[repeat(auto-fit,minmax(64px,1fr))] gap-2 border-t border-linea/80 pt-2">
         {metricas.length === 0 ? (
           <dd className="col-span-full text-[11px] text-texto-3">Sin huellas todavía.</dd>
         ) : metricas.map((m) => (
@@ -99,7 +103,7 @@ export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida
             <dd className="truncate text-[12.5px] text-texto tabular-nums">{m.valor}</dd>
           </div>
         ))}
-      </dl>
+      </dl>}
       {pct !== null && (
         <span aria-hidden className="absolute bottom-0 left-0 h-[2px] [background:var(--aurora-lineal)] opacity-80" style={{ width: `${pct}%` }} title={`Contexto: ${Math.round(pct)} %`} />
       )}
