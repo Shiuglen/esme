@@ -282,7 +282,7 @@ export function App() {
         {piel.portada === 'mando' ? (
           <Mando presencia={piel.presencia} sitio={marco.portada} visible={seccion === 'inicio'} conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} tareas={tl.tareas}
             memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar} onOir={oir} vivo={vivo} turnoVoz={turnoVoz}
-            onCerrarVivo={() => { callar(); setVivo(null) }} onConversacion={() => ir('conversacion')} onIr={(d) => (d.lugar === 'taller' ? verTarea(d.id) : ir('memoria'))} />
+            onCerrarVivo={() => { callar(); setVivo(null) }} onConversacion={() => ir('conversacion')} onSeccion={ir} onIr={(d) => (d.lugar === 'taller' ? verTarea(d.id) : ir('memoria'))} />
         ) : <Portada sitio={marco.portada} visible={seccion === 'inicio'} conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} eventos={eventos}
           memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar}
           tareas={tl.tareas} onIr={(d) => (d.lugar === 'taller' ? verTarea(d.id) : ir('memoria'))} />}

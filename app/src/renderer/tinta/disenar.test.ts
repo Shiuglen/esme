@@ -9,7 +9,7 @@ describe('Esme diseña pieles', () => {
     expect(todo).toContain('geist'); expect(todo).toContain('newsreader')   // las letras que existen
     expect(todo).toContain('4.5')                                          // el contraste es obligatorio
     expect(todo).toContain('más cálida')
-    expect(todo).toContain('"nombre":"Esmeralda"')                         // la piel de ahora
+    expect(todo).toContain('"nombre":"Tinta y Luz"')                       // la piel de ahora
   })
   it('lee el JSON aunque venga entre texto o en un bloque de código', () => {
     const j = '{"nombre":"Arena","densidad":"amplia"}'

@@ -55,12 +55,12 @@ describe('cada capa se vuelve variables en vivo', () => {
     expect(v['--spacing']).toBe('0.22rem')
     expect(v['--letra-texto']).toContain('Geist Variable')
     expect(v['--letra-titulos']).toContain('Fraunces Variable')
-    expect(variablesDePiel(PIEL_BASE, 'noche')['--forma-r2']).toBe('10px')
+    expect(variablesDePiel(PIEL_BASE, 'noche')['--forma-r2']).toBe('6px')   // Tinta y Luz: radio 0,6
   })
   it('el color libre y el propio traen su paleta; un estilo de casa la deja al CSS', () => {
     expect(variablesDePiel({ ...PIEL_BASE, color: { tipo: 'libre', noche, dia } }, 'dia')['--fondo']).toBe('#f6f7fb')
     expect(variablesDePiel({ ...PIEL_BASE, color: { tipo: 'gustos', gustos: { tono: 200, papel: 20, fuerza: 60 } } }, 'noche')['--acento']).toBeTruthy()
-    expect(variablesDePiel(PIEL_BASE, 'noche')['--fondo']).toBeUndefined()
+    expect(variablesDePiel({ ...PIEL_BASE, color: { tipo: 'estilo', estilo: 'esmeralda' } }, 'noche')['--fondo']).toBeUndefined()
   })
 })
 
@@ -84,5 +84,20 @@ describe('la navegación también es de la piel', () => {
     expect(r.ok && r.piel.navegacion).toBe('muelle')
     expect(validarPiel({ navegacion: 'riel' }).ok).toBe(true)
     expect(validarPiel({ navegacion: 'menu-hamburguesa' }).ok).toBe(false)
+  })
+})
+
+describe('la piel de la casa: Tinta y Luz (18-oct)', () => {
+  it('materia impresa: Bodoni para los títulos, Geist para el texto, superficie de papel (sin cristal)', async () => {
+    const { PIEL_BASE: p } = await import('./piel')
+    expect(p.nombre).toBe('Tinta y Luz')
+    expect(p.letra.titulos).toBe('bodoni'); expect(p.letra.texto).toBe('geist')
+    expect(p.piezas.superficie).toBe('papel')
+  })
+  it('tinta azul profunda con luz bioluminiscente, válida y legible de día y de noche', async () => {
+    const { PIEL_BASE: p, validarPiel: v, revisarContraste: c, variablesDePiel: vars } = await import('./piel')
+    expect(v(p)).toEqual({ ok: true, piel: p })
+    expect(p.color.tipo).toBe('libre')
+    for (const t of ['noche', 'dia'] as const) expect(c(vars(p, t)), t).toEqual([])
   })
 })

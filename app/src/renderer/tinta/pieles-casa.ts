@@ -7,7 +7,7 @@ const piel = (p: Partial<Piel> & Pick<Piel, 'nombre'>): Piel => ({ ...PIEL_BASE,
 
 export const PIELES_CASA: Piel[] = [
   PIEL_BASE,
-  piel({ nombre: 'Tinta y Luz', color: { tipo: 'estilo', estilo: 'grabado' }, letra: { titulos: 'bodoni', texto: 'funnel', escala: 1 },
+  piel({ nombre: 'Grabado', color: { tipo: 'estilo', estilo: 'grabado' }, letra: { titulos: 'bodoni', texto: 'funnel', escala: 1 },
     forma: { radio: 0.8, sombra: 'plana' }, fondo: 'papel' }),
   piel({ nombre: 'Cuarzo', color: { tipo: 'estilo', estilo: 'quartz' }, letra: { titulos: 'inter', texto: 'inter', escala: 1 }, forma: { radio: 1.2, sombra: 'suave' } }),
   piel({ nombre: 'Lima', color: { tipo: 'estilo', estilo: 'lime' }, letra: { titulos: 'grotesk', texto: 'grotesk', escala: 1 },

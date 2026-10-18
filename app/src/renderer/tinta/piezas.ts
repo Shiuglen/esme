@@ -22,7 +22,8 @@ export const PIEZAS = {
 
 export type Hueco = keyof typeof PIEZAS
 export type Piezas = { [H in Hueco]: (typeof PIEZAS)[H]['variantes'][number]['id'] }
-export const PIEZAS_BASE: Piezas = { superficie: 'vidrio', saludo: 'enfoque', pulsar: 'nada', sonido: 'avisos', trabajo: 'electrico' }
+// las de «Tinta y Luz»: papel en vez de cristal y un brillo sereno al trabajar (18-oct)
+export const PIEZAS_BASE: Piezas = { superficie: 'papel', saludo: 'enfoque', pulsar: 'nada', sonido: 'avisos', trabajo: 'brillo' }
 
 /** Valida las piezas que trae una piel: completa lo que falta con la base y devuelve los errores de lo que no existe. */
 export function validarPiezas(x: unknown): { piezas: Piezas; errores: string[] } {

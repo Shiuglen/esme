@@ -42,10 +42,16 @@ export type Piel = {
   densidad: Densidad; movimiento: Movimiento; caracter: Caracter; fondo: FondoPiel; navegacion: Navegacion; portada: PortadaPiel; escena: EscenaPiel; presencia: Presencia; piezas: Piezas
 }
 
+// La piel de la casa: «Tinta y Luz» (18-oct). Materia impresa en vez de cristal (la gran señal del FYP del creador): tinta
+// azul profunda, texto color papel y luz bioluminiscente que solo está en lo vivo; Bodoni para los títulos, Geist para leer.
 export const PIEL_BASE: Piel = {
-  version: 1, nombre: 'Esmeralda', color: { tipo: 'estilo', estilo: 'esmeralda' },
-  letra: { titulos: 'funnel', texto: 'funnel', escala: 1 }, forma: { radio: 1, sombra: 'suave' },
-  densidad: 'comoda', movimiento: 'sutil', caracter: 'preciso', fondo: 'aurora', navegacion: 'leyenda', portada: 'mando', escena: 'velo', presencia: 'orbe', piezas: PIEZAS_BASE,
+  version: 1, nombre: 'Tinta y Luz',
+  color: { tipo: 'libre',
+    noche: { fondo: '#0a1020', superficie: '#111a2e', texto: '#ece6d8', acento: '#4fe3c1', atencion: '#f2b45b', peligro: '#ff7a6b', exito: '#7ee0a1' },
+    dia: { fondo: '#eeebe3', superficie: '#fbfaf6', texto: '#141821', acento: '#08705e', atencion: '#9a5b00', peligro: '#b42318', exito: '#1f7a3f' } },
+  letra: { titulos: 'bodoni', texto: 'geist', escala: 1 }, forma: { radio: 0.6, sombra: 'plana' },
+  densidad: 'comoda', movimiento: 'sutil', caracter: 'preciso', fondo: 'liso', navegacion: 'leyenda', portada: 'mando', escena: 'ninguna', presencia: 'orbe',
+  piezas: PIEZAS_BASE,
 }
 
 const SOMBRAS: Sombra[] = ['plana', 'suave', 'honda'], DENSIDADES: Densidad[] = ['compacta', 'comoda', 'amplia']
