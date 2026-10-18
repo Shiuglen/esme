@@ -117,6 +117,16 @@
 - **Ideas de los guardados de X**: `docs/ideas/2026-10-17-marcadores-x.md` (qué entra, qué viene y qué no entra nunca).
 - **Pendiente**: lint (el proyecto no tiene configuración de ESLint 9); el Sueño (lecciones de las tareas del Taller → memoria); cobro con una tienda que haga de comerciante; GitHub (sin sesión iniciada en `gh`).
 
+## 3c. La hoja de ruta «todo y más» (18-oct, decidida con el creador)
+Por pasos, cada uno impecable antes del siguiente:
+1. **Rediseño completo** al nivel de «Mando»: conversación → Taller → Memoria → Ajustes (escenas, cristal, movimiento con carácter, componentes de Kokonut UI y React Bits revisados a mano).
+2. **El Sueño**: Esme proactiva — ordena la memoria, aprende de las tareas del Taller, prepara tu día y avisa de lo importante.
+3. **Esme actúa en tu PC**: usa apps y webs por ti, con permiso explícito en cada acción delicada.
+4. **Esme en todas partes**: móvil y web conectados a tu Esme, mente sincronizada y cifrada.
+5. **Esme con tu equipo**: mentes compartidas, tareas entre personas y agentes, Tienda de pieles.
+Hecho ya el 17-18 oct: «Mando» (portada centro de mando con esfera viva), 23 escenas WebGL, voz manos libres 100 % local (Whisper + Piper) con subtítulos y conversación continua, panorama de la mente para responder con sustancia, licencias e invitaciones, copia privada en GitHub (Shiuglen/esme).
+Límite que no cambia: nada de ingeniería inversa de productos ajenos para copiarlos (riesgo legal y Esme debe ser propia); las ideas sí se toman de donde sea.
+
 ## 3. Estado real (12-oct)
 **Leyenda:** ✅ hecho y verificado · 🟡 a medias · ❌ pendiente · ⚠️ roto.
 
