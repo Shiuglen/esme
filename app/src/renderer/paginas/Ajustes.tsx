@@ -157,7 +157,7 @@ function Motores() {
               <p className="m-0 text-sm text-texto-3">Empieza gratis con un modelo local o con OpenCode Zen, o usa tu suscripción de Copilot, Cursor u OpenCode desde «Tu suscripción».</p></div>
           ) : conectados.map((c) => 'label' in c
             ? <Fila key={c.id} icono={<Bicho de={c.id} tamaño={17} />} titulo={c.label} sub="por API · clave en tu llavero" derecha={<Pastilla><Check className="size-3.5" />listo</Pastilla>} />
-            : <Fila key={c.id} icono={<Bicho de={c.id} tamaño={17} />} titulo={c.nombre} sub={`tu suscripción · ${c.ruta ?? ''}`} derecha={<Pastilla><Check className="size-3.5" />listo</Pastilla>} />)}
+            : <Fila key={c.id} icono={<Bicho de={c.id} tamaño={17} />} titulo={c.nombre} sub={<span title={c.ruta ?? undefined}>con tu suscripción · en este equipo</span>} derecha={<Pastilla><Check className="size-3.5" />listo</Pastilla>} />)}
         </Caja>
       )}
 
@@ -168,7 +168,7 @@ function Motores() {
             {motores.length === 0 && <p className="m-0 p-6 text-sm text-texto-3">{bridge.mode() === 'web' ? 'Los motores por suscripción se detectan en la app de escritorio.' : 'Buscando motores…'}</p>}
             {motores.map((m) => { const s = SELLO[m.cumplimiento]; return (
               <Fila key={m.id} icono={<Bicho de={m.id} tamaño={17} />} titulo={m.nombre}
-                sub={m.instalado ? `instalado · ${m.ruta}` : `sin instalar · ${m.login}`}
+                sub={m.instalado ? <span title={m.ruta ?? undefined}>instalado en este equipo</span> : `sin instalar · ${m.login}`}
                 derecha={<>
                   <Pastilla className={s.cls}><s.Icono className="size-3.5" strokeWidth={1.5} />{s.texto}</Pastilla>
                   <Pastilla className={m.instalado ? 'text-texto' : 'text-texto-3'}>{m.instalado ? 'listo' : 'instálalo'}</Pastilla>

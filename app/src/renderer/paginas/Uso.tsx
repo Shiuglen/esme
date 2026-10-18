@@ -7,6 +7,7 @@ import { fmtTokens, fmtUSD } from '../chat/formatos'
 import { bridge, type EstadoUso, type ResumenUso, type UsoExterno } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { diasSeguidos, rejillaActividad } from '../uso/vista'
+import { historiaDeUso } from './historia-uso'
 import { Bicho } from '../marca/SerVista'
 import { useMuelle } from '../tinta/movimiento'
 
@@ -52,9 +53,14 @@ export function Uso({ onIr }: { onIr(id: 'ajustes'): void }) {
     if (externo) for (const v of Object.values(externo.ventanas)) v.porDia.forEach((d) => sumar(d.dia, d.tokens))
     return [...m.values()]
   }, [anual, externo])
-  const rejilla = useMemo(() => rejillaActividad(todos, hoy, 52), [todos])
+  // el calendario empieza en tu primera semana de uso (mínimo tres meses): nada de un año vacío
+  const semanas = useMemo(() => { const dias = todos.filter((d) => d.tokens > 0).map((d) => Date.parse(d.dia)); return dias.length ? Math.min(52, Math.max(13, Math.ceil((hoy.getTime() - Math.min(...dias)) / (7 * DIA)) + 2)) : 13 }, [todos])  // eslint-disable-line react-hooks/exhaustive-deps
+  const rejilla = useMemo(() => rejillaActividad(todos, hoy, semanas), [todos, semanas])  // eslint-disable-line react-hooks/exhaustive-deps
+  const historia = historiaDeUso({ costeUSD: resumen?.costeUSD ?? 0, tokens: resumen?.tokens ?? 0, porModelo: resumen?.porModelo ?? [] })
   const barras = useMemo(() => diasSeguidos(anual?.porDia ?? [], hoy, 30), [anual])
-  const maxBarra = Math.max(...barras.map((b) => b.costeUSD), 0.0001)
+  const conGasto = barras.some((b) => b.costeUSD > 0)
+  const valor = (b: { costeUSD: number; tokens: number }) => (conGasto ? b.costeUSD : b.tokens)
+  const maxBarra = Math.max(...barras.map(valor), 0.0001)
   const llamadas = resumen?.porModelo.reduce((s, m) => s + m.llamadas, 0) ?? 0
   const tope = estado?.presupuesto.diarioUSD
   const web = bridge.mode() === 'web'
@@ -66,9 +72,10 @@ export function Uso({ onIr }: { onIr(id: 'ajustes'): void }) {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto grid max-w-[1160px] gap-6 px-10 pt-10 pb-12">
         <motion.div {...entrada(0)} className="flex flex-wrap items-end justify-between gap-4">
-          <div className="grid gap-2">
-            <h1 className="m-0 font-display text-[32px] leading-[1.1] font-semibold tracking-[-0.03em]">Uso</h1>
-            <p className="m-0 text-[15px] text-texto-2">Cuánto gastas en IA, en qué y a qué ritmo. Todo se calcula en tu equipo.</p>
+          <div className="grid max-w-[760px] gap-3">
+            <p className="m-0 text-[13px] text-texto-3">Uso · {rango === 'hoy' ? 'hoy' : `últimos ${rango} días`} · todo se calcula en tu equipo</p>
+            <h1 className="m-0 font-display text-[clamp(34px,3.6vw,52px)] leading-[1.05] font-normal tracking-[-0.02em] text-texto italic">{historia.titular}</h1>
+            <p className="m-0 text-[16px] text-texto-2">{historia.detalle}</p>
           </div>
           <div role="tablist" className="inline-flex gap-0.5 vidrio rounded-3 border p-1">
             {([['hoy', 'Hoy'], ['7', '7 días'], ['30', '30 días']] as const).map(([id, t]) => (
@@ -93,7 +100,7 @@ export function Uso({ onIr }: { onIr(id: 'ajustes'): void }) {
         </motion.div>
 
         <motion.section {...entrada(2)} className="grid gap-3 rounded-3 vidrio halo border p-4">
-          <div className="flex items-center justify-between gap-3"><h2 className="m-0 text-[15px] font-semibold">{activos.length ? `${activos.length} ${activos.length === 1 ? 'día' : 'días'} con actividad este año` : 'Aún sin actividad'}</h2><span className="text-xs text-texto-3">{pico ? `pico: ${fmtTokens(pico.tokens)} tokens el ${pico.dia}` : 'tokens por día'}{externo?.disponible.claudeCode ? ' · incluye Claude Code' : ''}</span></div>
+          <div className="flex items-center justify-between gap-3"><h2 className="m-0 text-[15px] font-semibold">{activos.length ? `${activos.length} ${activos.length === 1 ? 'día' : 'días'} con actividad en ${semanas} semanas` : 'Aún sin actividad'}</h2><span className="text-xs text-texto-3">{pico ? `pico: ${fmtTokens(pico.tokens)} tokens el ${pico.dia}` : 'tokens por día'}{externo?.disponible.claudeCode ? ' · incluye Claude Code' : ''}</span></div>
           <div className="flex gap-2 overflow-x-auto pb-1" role="img" aria-label={`Actividad del último año: ${activos.length} días con uso${pico ? `; el día de más uso fue el ${pico.dia}, con ${fmtTokens(pico.tokens)} tokens` : ''}.`}>
             <div className="grid grid-rows-7 gap-[3px] pt-[1px] text-[10px] leading-[13px] text-texto-3">{NOMBRE_DIA.map((n, i) => <span key={i} className="h-[13px]">{n}</span>)}</div>
             <div className="flex gap-[3px]">
@@ -111,11 +118,12 @@ export function Uso({ onIr }: { onIr(id: 'ajustes'): void }) {
 
         <motion.div {...entrada(3)} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4 max-[1000px]:grid-cols-1">
           <section className="grid content-start gap-3 rounded-3 vidrio halo border p-4">
-            <div className="flex items-center justify-between gap-3"><h2 className="m-0 text-[15px] font-semibold">{diaCaro.costeUSD > 0 ? `Tu día más caro: ${diaCaro.dia.slice(5)}, ${fmtUSD(diaCaro.costeUSD)}` : 'Sin gasto en 30 días'}</h2><span className="text-xs text-texto-3">USD por día · 30 días</span></div>
-            <div className="flex h-[140px] items-end gap-[3px]" role="img" aria-label={`Gasto de los últimos 30 días; máximo ${fmtUSD(maxBarra)} en un día`}>
+            {(() => { const top = barras.reduce((a, b) => (valor(b) > valor(a) ? b : a), barras[0] ?? { dia: '', costeUSD: 0, tokens: 0 }); return (
+              <div className="flex items-center justify-between gap-3"><h2 className="m-0 text-[15px] font-semibold">{conGasto ? `Tu día más caro: ${diaCaro.dia.slice(5)}, ${fmtUSD(diaCaro.costeUSD)}` : valor(top) > 0 ? `Tu día de más trabajo: ${top.dia.slice(5)}, ${fmtTokens(top.tokens)} tokens` : 'Sin actividad en 30 días'}</h2><span className="text-xs text-texto-3">{conGasto ? 'USD por día' : 'tokens por día'} · 30 días</span></div>) })()}
+            <div className="flex h-[140px] items-end gap-[3px]" role="img" aria-label={conGasto ? `Gasto de los últimos 30 días; máximo ${fmtUSD(maxBarra)} en un día` : `Tokens de los últimos 30 días; máximo ${fmtTokens(maxBarra)} en un día`}>
               {barras.map((b) => (
-                <span key={b.dia} title={`${b.dia} · ${fmtUSD(b.costeUSD)}`} className={cn('flex-1 rounded-t-[3px] transition-colors', b.costeUSD > 0 ? 'bg-texto-2 hover:bg-texto' : 'bg-linea')}
-                  style={{ height: b.costeUSD > 0 ? `${Math.max(4, (b.costeUSD / maxBarra) * 100)}%` : '2px' }} />))}
+                <span key={b.dia} title={`${b.dia} · ${fmtTokens(b.tokens)} tokens · ${fmtUSD(b.costeUSD)}`} className={cn('flex-1 rounded-t-[3px] transition-colors', valor(b) > 0 ? 'bg-acento/70 hover:bg-acento' : 'bg-linea')}
+                  style={{ height: valor(b) > 0 ? `${Math.max(4, (valor(b) / maxBarra) * 100)}%` : '2px' }} />))}
             </div>
             <div className="flex justify-between text-[11px] text-texto-3"><span>{barras[0]?.dia.slice(5)}</span><span>hoy</span></div>
           </section>

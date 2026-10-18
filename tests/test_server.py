@@ -78,3 +78,11 @@ def test_mcp_lista_herramientas(ctx):
     r = c.post("/mcp", json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}, headers=hdr)
     names = {t["name"] for t in r.json()["result"]["tools"]}
     assert names == {"recall", "remember", "feedback"}
+
+
+def test_sin_busqueda_devuelve_lo_mas_reciente(ctx):
+    c, _, _ = ctx
+    for t in ["primero que aprendí", "segundo que aprendí", "lo último que aprendí"]:
+        c.post("/remember", json={"text": t}, headers=H)
+    res = c.get("/memories", params={"limit": 2}, headers=H).json()
+    assert [r["text"] for r in res] == ["lo último que aprendí", "segundo que aprendí"]

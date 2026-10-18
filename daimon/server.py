@@ -134,7 +134,10 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
     @mcp.custom_route("/memories", methods=["GET"])
     async def memories(req: Request):
         q, limit = req.query_params.get("q", ""), int(req.query_params.get("limit", 20))
-        hits = await locked(home.hippo.recall)(q, k=limit, hops=0) if q else []
+        if not q:   # sin búsqueda: lo último que aprendió tu mente
+            recientes = (await locked(home.hippo.events)())[::-1][:limit]
+            return JSONResponse([{**_event_dict(e), "score": 0} for e in recientes])
+        hits = await locked(home.hippo.recall)(q, k=limit, hops=0)
         return JSONResponse([{**_event_dict(h.event), "score": round(h.score, 4)} for h in hits])
 
     @mcp.custom_route("/memory/{mid}", methods=["GET"])
