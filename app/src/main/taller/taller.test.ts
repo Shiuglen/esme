@@ -104,6 +104,31 @@ describe('Taller', () => {
     expect(elegido).toBe('si')
   })
 
+  it('con «ediciones», editar en la copia se aprueba solo y queda anotado; ejecutar sigue preguntando', async () => {
+    const elegidos: string[] = []
+    const op = [{ id: 'si', nombre: 'Sí', tipo: 'allow_once' }]
+    const s = sesiones(async (o) => {
+      elegidos.push(await o.alPedirPermiso({ titulo: 'Editar a.ts', clase: 'edit', opciones: op }))
+      elegidos.push(await o.alPedirPermiso({ titulo: 'npm test', clase: 'execute', opciones: op }))
+      return 'end_turn'
+    })
+    const tarea = crear(s.abrir).crear({ motor, carpeta: null, texto: 'x', acceso: 'ediciones' })
+    await esperar(tarea.id, 'esperando')
+    expect(elegidos).toEqual(['si'])
+    expect(t!.lista()[0].permiso?.titulo).toBe('npm test')
+    t!.responder(tarea.id, 'si')
+    await esperar(tarea.id, 'lista')
+    expect((await t!.eventos(tarea.id)).some((e) => e.tipo === 'aprobado' && e.titulo === 'Editar a.ts')).toBe(true)
+  })
+
+  it('con «preguntar», hasta editar pregunta', async () => {
+    const s = sesiones(async (o) => { await o.alPedirPermiso({ titulo: 'Editar a.ts', clase: 'edit', opciones: [{ id: 'si', nombre: 'Sí', tipo: 'allow_once' }] }); return 'end_turn' })
+    const tarea = crear(s.abrir).crear({ motor, carpeta: null, texto: 'x', acceso: 'preguntar' })
+    await esperar(tarea.id, 'esperando')
+    t!.responder(tarea.id, 'si')
+    await esperar(tarea.id, 'lista')
+  })
+
   it('parar con un permiso pendiente cancela el permiso y deja la tarea parada', async () => {
     let elegido = ''
     const s = sesiones(async (o) => { elegido = await o.alPedirPermiso({ titulo: 'Borrar', opciones: [] }); return elegido === 'cancelar' ? 'cancelled' : 'end_turn' })

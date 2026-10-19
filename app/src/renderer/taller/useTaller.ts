@@ -3,7 +3,7 @@
 // Se aplican en lote, una vez por fotograma, para que una ráfaga de texto no repinte la página cien veces.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { bridge, type EventoTaller, type MotorTaller, type ResultadoTaller, type TareaTaller } from '../lib/bridge'
+import { bridge, type EventoTaller, type MotorTaller, type ResultadoTaller, type TareaTaller, type AccesoTarea } from '../lib/bridge'
 import { aplicar, plegar, type ItemLinea } from './linea'
 import { activa } from './vista'
 
@@ -96,7 +96,7 @@ export function useTaller() {
   const hecho = (r: ResultadoTaller, ok?: string) => { if (!r.ok) toast.error(r.error); else if (ok) toast(ok); return r.ok }
   return {
     motores, tareas, lineas, inicioTurno: inicioTurno.current, cargar,
-    crear: async (p: { motor: string; carpeta: string | null; texto: string; config: Record<string, string>; arena?: string }) => {
+    crear: async (p: { motor: string; carpeta: string | null; texto: string; config: Record<string, string>; arena?: string; acceso?: AccesoTarea }) => {
       const r = await bridge.taller.crear(p)
       if (!r.ok) { toast.error(r.error); return null }
       setTareas((v) => (v.some((x) => x.id === r.tarea.id) ? v : [r.tarea, ...v]))

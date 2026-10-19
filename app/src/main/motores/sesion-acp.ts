@@ -12,7 +12,7 @@ export type EventoMotor =
   | { tipo: 'plan'; pasos: { texto: string; estado: string }[] }
   | { tipo: 'contexto'; usado: number; total: number; coste?: { cantidad: number; moneda: string } }
   | { tipo: 'opciones'; opciones: OpcionConfig[] }
-  | { tipo: 'usuario'; texto: string } | { tipo: 'fin'; motivo: string; ms: number } | { tipo: 'fallo'; mensaje: string } | { tipo: 'reintento'; ms: number; motivo: string }   // solo los emite el runtime del Taller, nunca la sesión ACP
+  | { tipo: 'usuario'; texto: string } | { tipo: 'fin'; motivo: string; ms: number } | { tipo: 'fallo'; mensaje: string } | { tipo: 'reintento'; ms: number; motivo: string } | { tipo: 'aprobado'; titulo: string; clase?: string }   // solo los emite el runtime del Taller, nunca la sesión ACP
   | { tipo: 'uso'; entrada: number; salida: number; pensamiento?: number; cacheLectura?: number; cacheEscritura?: number }
 
 type Opciones = { comando: string; args: string[]; cwd: string; env?: Record<string, string>
@@ -20,7 +20,7 @@ type Opciones = { comando: string; args: string[]; cwd: string; env?: Record<str
   mcp?: { nombre: string; url: string; token: string }
   masMcp?: McpServer[]
   alEvento: (e: EventoMotor) => void
-  alPedirPermiso: (p: { titulo: string; opciones: { id: string; nombre: string; tipo: string }[] }) => Promise<string | 'cancelar'>
+  alPedirPermiso: (p: { titulo: string; opciones: { id: string; nombre: string; tipo: string }[]; clase?: string }) => Promise<string | 'cancelar'>
   entrarCon?: string   // método de inicio de sesión del agente (authMethods): se llama a authenticate antes de abrir la sesión
   lanzar?: typeof spawnReal }
 
@@ -132,7 +132,7 @@ export async function abrirSesionACP(o: Opciones): Promise<{ preguntar(texto: st
   const conn = new ClientSideConnection(() => ({
     sessionUpdate: (n) => { const e = traducir(n, o.cwd); if (e?.tipo === 'opciones') nuevasOpciones(e); else if (e) o.alEvento(e) },
     requestPermission: async (p) => {
-      const r = await o.alPedirPermiso({ titulo: p.toolCall.title ?? '', opciones: p.options.map((x) => ({ id: x.optionId, nombre: x.name, tipo: x.kind })) })
+      const r = await o.alPedirPermiso({ titulo: p.toolCall.title ?? '', opciones: p.options.map((x) => ({ id: x.optionId, nombre: x.name, tipo: x.kind })), ...(p.toolCall.kind ? { clase: p.toolCall.kind } : {}) })
       return { outcome: r === 'cancelar' ? { outcome: 'cancelled' } : { outcome: 'selected', optionId: r } }
     },
   }), stream)

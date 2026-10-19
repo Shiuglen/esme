@@ -79,3 +79,9 @@ describe('reintentos', () => {
     expect(actividadActual(l)).toBe('Esperando al proveedor: límite de peticiones')
   })
 })
+
+describe('lo que Esme aprobó sola por el modo de la tarea', () => {
+  it('queda en la línea de tiempo con su título', () => {
+    expect(plegar([{ tipo: 'aprobado', titulo: 'Editar a.ts', clase: 'edit' }])).toEqual([{ tipo: 'aprobado', clave: 'aprobado-0', titulo: 'Editar a.ts' }])
+  })
+})

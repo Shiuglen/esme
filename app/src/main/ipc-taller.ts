@@ -16,6 +16,7 @@ import { keys } from './keys'
 import { Taller, type MotorElegido } from './taller/taller'
 import { mcpParaTaller } from './herramientas/ipc'
 import { servirCopia, type Servidor } from './taller/vista-previa'
+import { accesoValido } from './taller/acceso'
 import { guardarAgenda, leerAgenda, nuevoIdProgramado, proximaVez, tocan, validarProgramado, type Programado } from './taller/agenda'
 
 export type MotorTaller = { id: string; nombre: string; instalado: boolean; cumplimiento: Cumplimiento; login: string; nota: string; via?: 'local' | 'registro'; instalacion?: string | null; credencia?: string | null }
@@ -274,12 +275,12 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
   ipcMain.handle('taller:instalarMotor', (_e, id: unknown) => instalarMotor(id))
   ipcMain.handle('taller:lista', () => t.lista())
   ipcMain.handle('taller:eventos', async (_e, id: unknown) => (idValido(id) ? t.eventos(id).catch(() => []) : []))
-  ipcMain.handle('taller:crear', async (_e, p: { motor?: unknown; carpeta?: unknown; texto?: unknown; config?: unknown; arena?: unknown } | null) => {
+  ipcMain.handle('taller:crear', async (_e, p: { motor?: unknown; carpeta?: unknown; texto?: unknown; config?: unknown; arena?: unknown; acceso?: unknown } | null) => {
     const config = p ? configValida(p.config) : undefined
     if (!p || config === null || (p.arena !== undefined && !idValido(p.arena)) || !textoValido(p.texto) || !(p.carpeta === null || (typeof p.carpeta === 'string' && p.carpeta.length > 0))) return entrada
     const motor = await elegirMotor(p.motor)
     if ('error' in motor) return { ok: false, error: motor.error }
-    try { return { ok: true, tarea: t.crear({ motor, carpeta: p.carpeta, texto: p.texto, config, ...(typeof p.arena === 'string' ? { arena: p.arena } : {}) }) } } catch (e) { return { ok: false, error: mensaje(e) } }
+    try { return { ok: true, tarea: t.crear({ motor, carpeta: p.carpeta, texto: p.texto, config, ...(typeof p.arena === 'string' ? { arena: p.arena } : {}), ...(accesoValido(p.acceso) ? { acceso: p.acceso } : {}) }) } } catch (e) { return { ok: false, error: mensaje(e) } }
   })
   ipcMain.handle('taller:seguir', (_e, id: unknown, texto: unknown) => (idValido(id) && textoValido(texto) ? accion(() => t.seguir(id, texto)) : entrada))
   ipcMain.handle('taller:parar', (_e, id: unknown) => (idValido(id) ? accion(() => t.parar(id)) : entrada))

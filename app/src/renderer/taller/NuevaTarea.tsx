@@ -2,12 +2,12 @@
 // Recuerda tu motor, tu carpeta y tus opciones por motor; si el motor trae un modelo lento o de pago, propone uno gratis.
 import { LayoutTemplate as ILayoutTemplate, Rocket as IRocket, Plus as IPlus, FlaskConical as IFlaskConical, Wrench as IWrench, ScanSearch as IScanSearch, ShieldCheck as IShieldCheck, PackageCheck as IPackageCheck, BookOpen as IBookOpen, FileText as IFileText, Shuffle as IShuffle, Languages as ILanguages, Gauge as IGauge, Accessibility as IAccessibility, Sparkles as ISparkles, type LucideIcon } from 'lucide-react'
 import { CATEGORIAS, RECETAS } from './recetas'
-import { CalendarClock, CornerDownLeft, Dices, Folder, FolderPlus, Sparkles, Swords, X } from 'lucide-react'
+import { CalendarClock, CornerDownLeft, Dices, Folder, FolderPlus, ShieldCheck, Sparkles, Swords, X } from 'lucide-react'
 import { cuandoDe, fraseCuando, type OpcionCuando } from './cuando'
 import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
-import { bridge, type MotorTaller, type OpcionMotor } from '../lib/bridge'
+import { bridge, type MotorTaller, type OpcionMotor, type AccesoTarea } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { candidatosDe, elegibles, elegir, elegirVarios, type Eleccion, type Veredicto } from './eleccion'
 import { configInicial, nombreValor, SelectorOpcion } from './Opciones'
@@ -17,7 +17,7 @@ import { useMuelle } from '../tinta/movimiento'
 const leer = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(`esme:taller:${k}`); return v === null ? d : (JSON.parse(v) as T) } catch { return d } }
 const guardar = (k: string, v: unknown) => { try { localStorage.setItem(`esme:taller:${k}`, JSON.stringify(v)) } catch { /* sin almacenamiento */ } }
 
-type Peticion = { motor: string; carpeta: string | null; texto: string; config: Record<string, string>; arena?: string }
+type Peticion = { motor: string; carpeta: string | null; texto: string; config: Record<string, string>; arena?: string; acceso?: AccesoTarea }
 const AUTO = 'auto'
 const nuevoId = () => Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('')
 const corto = (e: Eleccion) => nombreValor({ id: e.modelo, nombre: e.modeloNombre })
@@ -40,6 +40,9 @@ export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores
   const [config, setConfig] = useState<Record<string, string>>({})
   const [enviando, setEnviando] = useState(false)
   const [cuando, setCuando] = useState<OpcionCuando>({ modo: 'ahora' })
+  // cuánto puede hacer sin preguntarte; se recuerda (por defecto, ediciones: dentro de su copia aislada no rompe nada tuyo)
+  const [acceso, setAcceso] = useState<AccesoTarea>(() => { try { const v = localStorage.getItem('esme:taller:acceso'); return v === 'preguntar' || v === 'todo' ? v : 'ediciones' } catch { return 'ediciones' } })
+  useEffect(() => { try { localStorage.setItem('esme:taller:acceso', acceso) } catch { /* sin almacenamiento */ } }, [acceso])
   const regla = arena ? null : cuandoDe(cuando, Date.now())
   const auto = motor === AUTO
   const actual = auto ? undefined : instalados.find((m) => m.id === motor) ?? instalados[0]
@@ -81,15 +84,15 @@ export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores
     let peticiones: Peticion[]
     if (arena) {
       const id = nuevoId()
-      peticiones = rivales.map((r) => ({ motor: r.motor, carpeta, texto: q, config: { model: r.modelo }, arena: id }))
+      peticiones = rivales.map((r) => ({ motor: r.motor, carpeta, texto: q, config: { model: r.modelo }, arena: id, acceso }))
     } else if (auto) {
       const e = elegir(candidatos, veredictos)!
-      peticiones = [{ motor: e.motor, carpeta, texto: q, config: { model: e.modelo } }]
+      peticiones = [{ motor: e.motor, carpeta, texto: q, config: { model: e.modelo }, acceso }]
       toast(`Esme eligió ${e.motorNombre} con ${corto(e)}`, { description: e.motivo })
     } else {
       // Lo que ves es lo que se usa: se envía siempre el valor mostrado de cada selector (el motor puede cambiarlo al abrir).
       const elegida = Object.fromEntries((opciones ?? []).filter((o) => o.id === 'model' || o.id === 'mode').map((o) => [o.id, config[o.id] ?? o.actual]))
-      peticiones = [{ motor: actual!.id, carpeta, texto: q, config: { ...config, ...elegida } }]
+      peticiones = [{ motor: actual!.id, carpeta, texto: q, config: { ...config, ...elegida }, acceso }]
     }
     if (regla && peticiones[0]) {
       // programado: la agenda lo lanzará a su hora como una tarea normal
@@ -159,6 +162,16 @@ export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores
               {enviando ? 'Montando…' : !listo ? 'Leyendo los motores…' : arena ? `Empezar arena de ${rivales.length}` : regla ? 'Programar' : 'Empezar'}
               <kbd className="inline-flex items-center gap-0.5 font-sans text-[11px] opacity-70">Ctrl<CornerDownLeft className="size-3" /></kbd>
             </button>
+          </div>
+          <div role="radiogroup" aria-label="Qué puede hacer sin preguntarte" className="flex flex-wrap items-center gap-1.5 border-t border-linea px-3 py-2 text-[12.5px]">
+            <ShieldCheck className="mr-0.5 size-3.5 text-texto-3" strokeWidth={1.5} aria-hidden />
+            {([['ediciones', 'Ediciones solas'], ['preguntar', 'Preguntar todo'], ['todo', 'Todo']] as const).map(([m, nombre]) => (
+              <button key={m} type="button" role="radio" aria-checked={acceso === m} onClick={() => setAcceso(m)}
+                className={cn('h-7 rounded-full px-2.5 transition-colors', acceso === m ? 'bg-s2 text-texto' : 'text-texto-3 hover:text-texto')}>{nombre}</button>
+            ))}
+            <span className={cn('ml-auto', acceso === 'todo' ? 'text-atencion' : 'text-texto-3')}>
+              {acceso === 'ediciones' ? 'Lee y edita en su copia; pregunta antes de ejecutar o salir a la red' : acceso === 'preguntar' ? 'Te pregunta cada paso' : 'No pregunta nada: también ejecuta órdenes'}
+            </span>
           </div>
           {!arena && (
             <div role="radiogroup" aria-label="Cuándo" className="flex flex-wrap items-center gap-1.5 border-t border-linea px-3 py-2 text-[12.5px]">

@@ -211,6 +211,10 @@ function Item({ i }: { i: ItemLinea }) {
         <span className="h-px flex-1 bg-linea" />
       </div>)
     case 'fallo': return <div className="rounded-3 border border-peligro/40 bg-peligro-velo px-3.5 py-2.5 text-[13px] text-peligro">{i.mensaje}</div>
+    case 'aprobado': return (
+      <p className="flex items-center gap-2 text-[12px] text-texto-3" title="La tarea trabaja en una copia aislada: lo que no sale de ella lo apruebo yo, según su modo de acceso">
+        <ShieldCheck className="size-3.5 shrink-0" strokeWidth={1.75} />Lo aprobé yo, dentro de la copia: {i.titulo}
+      </p>)
     case 'reintento': return (
       <p className="flex items-center gap-2 text-[12.5px] text-atencion" title={i.motivo}>
         <Hourglass className="size-3.5 shrink-0" strokeWidth={1.75} />El proveedor limita las peticiones: lo reintento en {Math.round(i.ms / 1000)} s

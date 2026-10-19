@@ -20,6 +20,8 @@ export type ProgramadoVisto = Programado & { proxima: number | null }
 import type { Consumo, Presupuesto, RegistroUso } from '../../main/uso/registro'
 import type { UsoExterno as UsoExternoMain } from '../../main/uso/externo'
 import type { EstadoUso as EstadoUsoMain, ProveedorResumen as ProveedorResumenMain } from '../../main/uso/estado'
+/** Cuánto puede hacer un agente sin preguntarte (main/taller/acceso.ts). */
+export type AccesoTarea = 'preguntar' | 'ediciones' | 'todo'
 export type MetodoEntrada = { id: string; nombre: string; descripcion: string; terminal: boolean }
 
 // Puente: la misma interfaz funciona dentro de Electron (todo) y en el navegador (modo web, para verla y probarla).
@@ -76,7 +78,7 @@ type ElectronApi = {
     metodosEntrada(id: string): Promise<{ ok: true; metodos: MetodoEntrada[]; actual: string | null } | { ok: false; error: string }>
     entrar(id: string, metodo: string | null): Promise<{ ok: boolean; error?: string; terminal?: boolean }>
     instalarMotor(id: string): Promise<InstalarMotor>; onInstalacion(fn: (p: { id: string; trozo?: string; listo?: boolean }) => void): () => void
-    crear(p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }>
+    crear(p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: AccesoTarea }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }>
     seguir(id: string, texto: string): Promise<ResultadoTaller>; responder(id: string, opcion: string): Promise<ResultadoTaller>
     vistaPrevia(id: string): Promise<{ ok: true; url: string } | { ok: false; error: string }>; cerrarVista(id: string): Promise<ResultadoTaller>
     configurar(id: string, opcion: string, valor: string): Promise<ResultadoTaller>; opcionesMotor(motor: string): Promise<OpcionMotor[]>
@@ -242,7 +244,7 @@ export const bridge = {
     onInstalacion: (fn: (p: { id: string; trozo?: string; listo?: boolean }) => void): (() => void) => (isElectron() ? window.daimon!.taller.onInstalacion(fn) : () => {}),
     lista: async (): Promise<TareaTaller[]> => (isElectron() ? window.daimon!.taller.lista() : []),
     eventos: async (id: string): Promise<EventoTaller[]> => (isElectron() ? window.daimon!.taller.eventos(id) : []),
-    crear: async (p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }> =>
+    crear: async (p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: AccesoTarea }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }> =>
       (isElectron() ? window.daimon!.taller.crear(p) : SOLO_ESCRITORIO),
     seguir: async (id: string, texto: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.seguir(id, texto) : SOLO_ESCRITORIO),
     responder: async (id: string, opcion: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.responder(id, opcion) : SOLO_ESCRITORIO),

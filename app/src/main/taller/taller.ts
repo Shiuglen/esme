@@ -6,10 +6,11 @@ import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { abrirSesionACP, type EventoMotor, type OpcionConfig } from '../motores/sesion-acp'
 import { otroModeloGratis } from './gratis'
+import { autoRespuesta, type Acceso } from './acceso'
 import { aplicarParche, cambiosCopia, commitCopia, crearCopia, diffCopia, exportarCopia, parcheCopia, quitarCopia, type Cambios, type Copia } from './copias'
 
 export type EstadoTarea = 'preparando' | 'trabajando' | 'esperando' | 'lista' | 'parada' | 'error'
-export type Permiso = { titulo: string; opciones: { id: string; nombre: string; tipo: string }[] }
+export type Permiso = { titulo: string; opciones: { id: string; nombre: string; tipo: string }[]; clase?: string }   // clase: read, edit, execute, fetch… (ACP)
 export type UsoTarea = { entrada: number; salida: number; pensamiento: number; contextoUsado?: number; contextoTotal?: number; coste?: { cantidad: number; moneda: string } }
 export type Tarea = {
   id: string; titulo: string; texto: string; motor: string; motorNombre: string; carpeta: string | null
@@ -21,6 +22,7 @@ export type Tarea = {
   aplicada?: Aplicada   // adónde se llevaron los cambios: carpeta (con deshacer), rama o exportada
   actividadMs: number   // dónde acaba el último cubo: sin eventos nuevos, la interfaz desplaza la micrográfica sola
   arena?: string   // las tareas que compiten con el mismo encargo comparten este id
+  acceso?: Acceso   // cuánto puede hacer sin preguntarte (taller/acceso.ts); las antiguas, sin campo, preguntan todo
 }
 export type MotorElegido = { id: string; nombre: string; comando: string; args: string[]; env?: Record<string, string>; entrarCon?: string }
 export type SesionMotor = { preguntar(texto: string): Promise<string>; cancelar(): Promise<void>; cerrar(): void; configurar(id: string, valor: string): Promise<void> }
@@ -106,13 +108,14 @@ export class Taller {
     }
   }
 
-  crear(p: { motor: MotorElegido; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string }): Tarea {
+  crear(p: { motor: MotorElegido; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: Acceso }): Tarea {
     let id = nuevoId()
     while (this.registros.has(id)) id = nuevoId()
     const titulo = (p.texto.split('\n').find((l) => l.trim()) ?? '').trim().slice(0, 120)
     const tarea: Tarea = { id, titulo, texto: p.texto, motor: p.motor.id, motorNombre: p.motor.nombre, carpeta: p.carpeta, ...(p.arena ? { arena: p.arena } : {}),
       estado: 'preparando', copia: null, inicio: this.ahora(), turnos: 0, herramientas: 0, cambios: null,
-      uso: { entrada: 0, salida: 0, pensamiento: 0 }, permiso: null, actividad: new Array(CUBOS).fill(0), actividadMs: 0, opciones: [], modelo: null }
+      uso: { entrada: 0, salida: 0, pensamiento: 0 }, permiso: null, actividad: new Array(CUBOS).fill(0), actividadMs: 0, opciones: [], modelo: null,
+      acceso: p.acceso ?? 'ediciones' }
     tarea.actividadMs = finCubo(tarea.inicio)
     const r = this.registroNuevo(tarea, false)
     r.motor = p.motor; r.config = { ...p.config }
@@ -400,6 +403,9 @@ export class Taller {
 
   private alPedirPermiso(r: Registro, p: Permiso): Promise<string | 'cancelar'> {
     if (r.cancelado) return Promise.resolve('cancelar')
+    // lo que el modo de acceso de la tarea permite se aprueba solo, y queda anotado en su historia
+    const auto = autoRespuesta(r.tarea.acceso ?? 'preguntar', p.clase, p.opciones)
+    if (auto) { this.registrar(r, { tipo: 'aprobado', titulo: p.titulo, ...(p.clase ? { clase: p.clase } : {}) }); return Promise.resolve(auto) }
     this.responder(r.tarea.id, 'cancelar')   // si había otro pendiente, se cancela
     return new Promise((resolver) => {
       r.resolverPermiso = resolver
