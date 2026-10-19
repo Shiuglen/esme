@@ -21,6 +21,7 @@ import { AGENTES, conectar as conectarMente, desconectar as desconectarMente, es
 import { listModels, PROVIDERS, type ProviderId } from './providers'
 import { cerebrosDeAgentes, esAgente } from './router/cerebro'
 import { rutasDe } from './rutas'
+import { prepararPath } from './motores/path-login'
 
 const RUTAS = rutasDe({ empaquetada: app.isPackaged, plataforma: process.platform, home: homedir(), userData: app.getPath('userData'), resources: process.resourcesPath, env: process.env })
 let win: BrowserWindow | null = null
@@ -171,6 +172,8 @@ function registerIpc() {
   alLanzar((p) => { if (!win?.isFocused()) avisar('Tu equipo empezó un encargo programado', p.texto.replace(/\s+/g, ' ').slice(0, 140)) })
 }
 
+// el PATH de tu shell de login, cuanto antes (los agentes y el terminal lo necesitan)
+void prepararPath()
 app.whenReady().then(async () => {
   if (!UNICA) return
   registerIpc()

@@ -10,6 +10,7 @@ import { credencialesDe } from './motores/credenciales'
 import { instaladosNpm, lanzarRegistro, paqueteDe, type GlobalesNpm } from './motores/registro-lanzar'
 import { crearWhich, extsPlataforma } from './motores/which'
 import { guardarEntrada, leerEntradas } from './motores/entrada'
+import { prepararPath } from './motores/path-login'
 import { abrirSesionACP, metodosDeEntrada, type MetodoEntrada, type OpcionConfig } from './motores/sesion-acp'
 import { anotarConsumo } from './ipc-proveedores'
 import { keys } from './keys'
@@ -121,7 +122,8 @@ const mensaje = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const idValido = (v: unknown): v is string => typeof v === 'string' && ID.test(v)
 const textoValido = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0 && v.length <= MAX_TEXTO
 
-function detectar() {
+async function detectar() {
+  await prepararPath()   // abierta desde el menú, Esme aún no conoce el PATH de tu terminal (mise, nvm, ~/.local/bin…)
   const existe = (r: string) => access(r, constants.X_OK).then(() => true, () => false)
   return detectarMotores(crearWhich(process.env.PATH, existe, { exts: extsPlataforma(process.platform, process.env.PATHEXT) }))
 }
