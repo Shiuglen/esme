@@ -56,7 +56,7 @@ export function Tienda({ tema, pieles }: { tema: Tema; pieles: Pieles }) {
       <div className="mx-auto grid max-w-[1180px] gap-6 px-10 pt-10 pb-28">
         <header className="grid gap-2">
           <h1 className="m-0 text-[40px] leading-none font-light tracking-[-0.04em] text-texto">Tienda</h1>
-          <p className="m-0 max-w-[66ch] text-[15px] text-texto-2">Diseños para vestir a Esme y herramientas para que haga más cosas por ti: miles, del registro oficial de MCP. Prueba los diseños en vivo; conecta las herramientas y Esme y tu equipo las usarán, siempre con tu permiso.</p>
+          <p className="m-0 max-w-[66ch] text-[15px] text-texto-2">Pieles para cambiarme por fuera, manos nuevas para hacer más cosas y skills para que yo y tus agentes trabajemos como expertos. Pruébalo todo antes de quedártelo; nada actúa sin tu permiso.</p>
         </header>
         <div role="tablist" aria-label="Qué buscas" className="flex w-fit gap-1 rounded-full border border-linea p-1 text-[14px]">
           {([['disenos', 'Diseños'], ['herramientas', 'Herramientas'], ['skills', 'Skills']] as const).map(([id, nombre]) => (
