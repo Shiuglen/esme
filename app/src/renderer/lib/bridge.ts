@@ -22,6 +22,12 @@ import type { UsoExterno as UsoExternoMain } from '../../main/uso/externo'
 import type { EstadoUso as EstadoUsoMain, ProveedorResumen as ProveedorResumenMain } from '../../main/uso/estado'
 /** Cuánto puede hacer un agente sin preguntarte (main/taller/acceso.ts). */
 export type AccesoTarea = 'preguntar' | 'ediciones' | 'todo'
+export type SkillInstalada = { id: string; nombre: string; agentes: string[]; enlaces: { ruta: string; estado: 'ok' | 'roto' | 'falta' }[] }
+export type SkillCatalogo = { id: string; nombre: string; grupo: string; descripcionEs: string; descripcion: string; repo: string; ruta: string; commit: string
+  licencia: string; tieneScripts: boolean; ficheros: number; bytes: number; revisadoEl: string; instalada: SkillInstalada | null }
+export type AlertaSkill = { nivel: 'alto' | 'medio' | 'aviso'; motivo: string; ruta?: string }
+export type VistaSkill = { ok: true; skillMd: string; cuerpo: string | null; avisos: string[]; alertas: AlertaSkill[]; soloManual: boolean; tokens: number
+  ficheros: { ruta: string; bytes: number; script: boolean }[] } | { ok: false; error: string }
 export type MetodoEntrada = { id: string; nombre: string; descripcion: string; terminal: boolean }
 
 // Puente: la misma interfaz funciona dentro de Electron (todo) y en el navegador (modo web, para verla y probarla).
@@ -48,6 +54,11 @@ export type OrigenCatalogo = { origen: 'red' | 'cache' | 'semilla'; fecha: numbe
 type ElectronApi = {
   brain: { info(): Promise<BrainInfo | null>; onChange(fn: (i: BrainInfo | null) => void): () => void }
   mente: { agentes(): Promise<AgenteMente[]>; conectar(id: string, si: boolean): Promise<ResultadoTaller> }
+  skills: {
+    catalogo(): Promise<{ skills: SkillCatalogo[]; agentes: { id: string; nombre: string }[] }>; vistaPrevia(id: string): Promise<VistaSkill>
+    instalar(id: string, agentes: string[], conScripts: boolean): Promise<{ ok: true; conflictos: { carpeta: string; motivo: string }[]; carpetas: { carpeta: string; agentes: string[] }[]; scriptsOmitidos: boolean } | { ok: false; error: string }>
+    desinstalar(id: string): Promise<{ ok: true; quitados: string[] } | { ok: false; error: string }>
+  }
   forja: { encargar(n: string, nombre?: string, agente?: string): Promise<{ ok: true; tarea: string; herramienta: string; agente: string } | { ok: false; error: string }>; probar(id: string): Promise<{ ok: true; acciones: { nombre: string; descripcion: string }[] } | { ok: false; error: string }>; de(id: string): Promise<EncargoForja | null>; instalar(id: string): Promise<{ ok: true; herramienta: string; acciones: number } | { ok: false; error: string }> }
   herramientas: {
     buscar(q: string): Promise<{ ok: true; fichas: Ficha[] } | { ok: false; error: string }>; conectadas(): Promise<ConectadaVista[]>
@@ -110,6 +121,13 @@ export const bridge = {
   mente: {
     agentes: async (): Promise<AgenteMente[]> => (isElectron() ? window.daimon!.mente.agentes() : []),
     conectar: async (id: string, si: boolean): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.mente.conectar(id, si) : { ok: false, error: 'Solo en la app.' }),
+  },
+  // Skills: instrucciones de experto para Esme y tus agentes, desde el repositorio de su autor (main/skills)
+  skills: {
+    catalogo: async () => (isElectron() ? window.daimon!.skills.catalogo() : { skills: [], agentes: [] }),
+    vistaPrevia: async (id: string): Promise<VistaSkill> => (isElectron() ? window.daimon!.skills.vistaPrevia(id) : { ok: false, error: 'Solo en la app de escritorio.' }),
+    instalar: async (id: string, agentes: string[], conScripts: boolean) => (isElectron() ? window.daimon!.skills.instalar(id, agentes, conScripts) : { ok: false as const, error: 'Solo en la app de escritorio.' }),
+    desinstalar: async (id: string) => (isElectron() ? window.daimon!.skills.desinstalar(id) : { ok: false as const, error: 'Solo en la app de escritorio.' }),
   },
   forja: {
     de: async (id: string): Promise<EncargoForja | null> => (isElectron() ? window.daimon!.forja.de(id) : null),

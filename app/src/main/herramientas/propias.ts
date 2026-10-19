@@ -20,6 +20,7 @@ export type Manos = {
   encargar(encargo: string, agente?: string): Promise<{ id: string; titulo: string; agente: string }>
   programar(p: Pick<NuevoProgramado, 'texto' | 'cuando'> & { agente?: string }): Promise<{ ok: true } | { ok: false; error: string }> | { ok: true } | { ok: false; error: string }
   forjar(necesidad: string, o: { nombre?: string; agente?: string }): Promise<{ tarea: string; herramienta: string; agente: string; siguiente: string }>
+  usarSkill?(nombre: string, fichero?: string): { instrucciones: string; ficheros: string[] }
   buscarWeb(consulta: string): Promise<{ fuente: string; resultados: Resultado[] }>
   leerWeb(url: string): Promise<{ titulo: string; texto: string; url: string }>
   preguntar(nombre: string, args: unknown, id: string): Promise<Respuesta>
@@ -109,6 +110,11 @@ export function herramientasPropias(m: Manos): ToolSet {
       inputSchema: z.object({ necesidad: z.string().min(15).max(4000), nombre: z.string().regex(/^[a-z][a-z0-9_]{2,19}$/).optional().describe('nombre corto en minúsculas con guiones bajos, p. ej. dias_hasta'), agente: z.string().optional() }),
       execute: g('forjar_herramienta', ({ necesidad, nombre, agente }: { necesidad: string; nombre?: string; agente?: string }) => m.forjar(necesidad, { ...(nombre ? { nombre } : {}), ...(agente ? { agente } : {}) })),
     }),
+    ...(m.usarSkill ? { usar_skill: tool({
+      description: 'Carga una skill instalada por el usuario (sus instrucciones completas, o un fichero suyo) cuando la tarea encaja con su descripción. Después, síguela.',
+      inputSchema: z.object({ nombre: z.string().min(1).max(64), fichero: z.string().max(300).optional().describe('ruta de un fichero de la skill, p. ej. references/guia.md') }),
+      execute: g('usar_skill', ({ nombre, fichero }: { nombre: string; fichero?: string }) => m.usarSkill!(nombre, fichero)),
+    }) } : {}),
     programar_encargo: tool({
       description: 'Deja un encargo en la agenda del Taller para que el equipo lo haga solo más tarde o cada día.',
       inputSchema: z.object({ encargo: z.string().min(10).max(20_000), cuando: MOMENTO, agente: z.string().optional() }),

@@ -46,7 +46,7 @@ export function textoDeHtml(html: string, max = 12_000): { titulo: string; texto
   const titulo = plano(/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? '')
   const cuerpo = html.replace(/<head[\s\S]*?<\/head>/i, '').replace(/<(script|style|noscript|svg|nav|footer|iframe)[\s\S]*?<\/\1>/gi, '')
     .replace(/<\/(p|div|h[1-6]|li|tr|section|article|br)>|<br\s*\/?>/gi, '\n')
-  const texto = decodificar(cuerpo.replace(/<[^>]*>/g, '')).split('\n').map((l) => l.replace(/[ \t ]+/g, ' ').trim()).filter(Boolean).join('\n')
+  const texto = decodificar(cuerpo.replace(/<[^>]*>/g, '')).split('\n').map((l) => l.replace(/[ \t\u00A0]+/g, ' ').trim()).filter(Boolean).join('\n')
   return { titulo, texto: texto.length > max ? `${texto.slice(0, max)}…` : texto }
 }
 

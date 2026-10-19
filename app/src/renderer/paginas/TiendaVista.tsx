@@ -14,6 +14,7 @@ import { cargarLetra } from '../tinta/vestir'
 import { muestra, type Pieles, type Tema } from './Apariencia'
 import { buscarEnTienda, FAMILIAS, familiaDe, sorprendeme, type Familia, type ItemTienda } from './tienda'
 import { TiendaHerramientas } from './TiendaHerramientas'
+import { TiendaSkills } from './TiendaSkills'
 import { PuntoVista } from '../marca/PuntoVista'
 
 const PUNTO: Record<Familia, string> = { rojo: '#ef4444', naranja: '#f97316', amarillo: '#eab308', verde: '#22c55e', cian: '#06b6d4', azul: '#3b82f6', violeta: '#8b5cf6', rosa: '#ec4899', gris: '#9ca3af' }
@@ -35,7 +36,7 @@ export function Tienda({ tema, pieles }: { tema: Tema; pieles: Pieles }) {
   const todos = useMemo<ItemTienda[]>(() => [...PIELES_TIENDA.map((p) => ({ ...p, tipo: 'piel' as const, origen: 'casa' as const })), ...remotos], [remotos])
   // cada ficha se enseña con su letra: se cargan las de los diseños de la Tienda (una vez cada una)
   useEffect(() => { for (const i of todos) { void cargarLetra(i.piel.letra.titulos); void cargarLetra(i.piel.letra.texto) } }, [todos])
-  const [seccion, setSeccion] = useState<'disenos' | 'herramientas'>('disenos')
+  const [seccion, setSeccion] = useState<'disenos' | 'herramientas' | 'skills'>('disenos')
   const [texto, setTexto] = useState('')
   const [color, setColor] = useState<Familia | null>(null)
   const [vista, setVista] = useState<'todo' | 'coleccion'>('todo')
@@ -58,13 +59,13 @@ export function Tienda({ tema, pieles }: { tema: Tema; pieles: Pieles }) {
           <p className="m-0 max-w-[66ch] text-[15px] text-texto-2">Diseños para vestir a Esme y herramientas para que haga más cosas por ti: miles, del registro oficial de MCP. Prueba los diseños en vivo; conecta las herramientas y Esme y tu equipo las usarán, siempre con tu permiso.</p>
         </header>
         <div role="tablist" aria-label="Qué buscas" className="flex w-fit gap-1 rounded-full border border-linea p-1 text-[14px]">
-          {([['disenos', 'Diseños'], ['herramientas', 'Herramientas']] as const).map(([id, nombre]) => (
+          {([['disenos', 'Diseños'], ['herramientas', 'Herramientas'], ['skills', 'Skills']] as const).map(([id, nombre]) => (
             <button key={id} type="button" role="tab" aria-selected={seccion === id} onClick={() => setSeccion(id)}
               className={cn('rounded-full px-4 py-1.5', seccion === id ? 'bg-s3 text-texto' : 'text-texto-2 hover:text-texto')}>{nombre}</button>
           ))}
         </div>
 
-        {seccion === 'herramientas' ? <TiendaHerramientas /> : <>
+        {seccion === 'skills' ? <TiendaSkills /> : seccion === 'herramientas' ? <TiendaHerramientas /> : <>
         <div className="flex flex-wrap items-center gap-3">
           <input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Busca: neón, calma, editorial, verde…" aria-label="Buscar en la Tienda"
             className="h-10 w-[320px] rounded-full border border-linea bg-s1/70 px-4 text-[14px] text-texto outline-none backdrop-blur placeholder:text-texto-3 focus:border-foco" />

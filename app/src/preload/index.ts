@@ -16,6 +16,10 @@ contextBridge.exposeInMainWorld('daimon', {
     alternar: () => ipcRenderer.send('lanzador:alternar'), estado: () => ipcRenderer.invoke('lanzador:estado'),
   },
   mente: { agentes: () => ipcRenderer.invoke('mente:agentes'), conectar: (id: string, si: boolean) => ipcRenderer.invoke('mente:conectar', id, si) },
+  skills: {
+    catalogo: () => ipcRenderer.invoke('skills:catalogo'), vistaPrevia: (id: string) => ipcRenderer.invoke('skills:vistaPrevia', id),
+    instalar: (id: string, agentes: string[], conScripts: boolean) => ipcRenderer.invoke('skills:instalar', id, agentes, conScripts), desinstalar: (id: string) => ipcRenderer.invoke('skills:desinstalar', id),
+  },
   forja: { de: (id: string) => ipcRenderer.invoke('forja:de', id), instalar: (id: string) => ipcRenderer.invoke('forja:instalar', id), probar: (id: string) => ipcRenderer.invoke('forja:probar', id), encargar: (n: string, nombre?: string, agente?: string) => ipcRenderer.invoke('forja:encargar', n, nombre, agente) },
   herramientas: {
     buscar: (q: string) => ipcRenderer.invoke('herramientas:buscar', q), conectadas: () => ipcRenderer.invoke('herramientas:conectadas'),

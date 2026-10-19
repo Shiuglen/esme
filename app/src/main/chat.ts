@@ -19,6 +19,7 @@ import { conversarConAgente } from './conversacion-agente'
 import { agentesDeRespaldo, motorParaConversar } from './ipc-taller'
 import { mcpParaTaller } from './herramientas/ipc'
 import { agotado, esAgente, motorDe } from './router/cerebro'
+import { skillsParaEsme, usarSkill } from './skills/esme'
 import type { MotorElegido } from './taller/taller'
 
 const running = new Map<string, AbortController>()
@@ -60,6 +61,7 @@ function manosPara(to: WebContents, req: ChatRequest, ac: AbortController, d: De
     encargar: encargarDesdeChat,
     programar: programarDesdeChat,
     forjar: forjarDesdeChat,
+    usarSkill: (nombre, fichero) => usarSkill(app.getPath('userData'), nombre, fichero),
     // la clave de Brave vive en el llavero como la de cualquier proveedor
     buscarWeb: (q) => buscarWeb(q, { brave: keys.get('brave'), searxng: cfg.searxng }),
     leerWeb: (u) => leerPagina(u),
@@ -99,7 +101,7 @@ async function pump(to: WebContents, req: ChatRequest, ac: AbortController, d: D
       tools = { ...conectadas, ...herramientasPropias(manos) }
     }
     const result = streamText({ model: makeModel(proveedor, req.model, (id) => keys.get(id)),
-      system: buildSystem(req.memory, { panorama: req.panorama, voz: req.voz, herramientas: conManos }),
+      system: buildSystem(req.memory, { panorama: req.panorama, voz: req.voz, herramientas: conManos, skills: conManos ? skillsParaEsme(app.getPath('userData')).filter((s) => !s.soloManual) : [] }),
       messages: req.messages, abortSignal: ac.signal,
       ...(conManos ? { tools, stopWhen: stepCountIs(8) } : {}) })
     let hablo = false

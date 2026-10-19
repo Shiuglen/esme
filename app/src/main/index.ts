@@ -22,6 +22,7 @@ import { listModels, PROVIDERS, type ProviderId } from './providers'
 import { cerebrosDeAgentes, esAgente } from './router/cerebro'
 import { rutasDe } from './rutas'
 import { prepararPath } from './motores/path-login'
+import { registerSkills } from './skills/ipc'
 
 const RUTAS = rutasDe({ empaquetada: app.isPackaged, plataforma: process.platform, home: homedir(), userData: app.getPath('userData'), resources: process.resourcesPath, env: process.env })
 let win: BrowserWindow | null = null
@@ -121,6 +122,7 @@ function registerIpc() {
   registerHilos()
   registerTienda()
   registerHerramientas({ python: { python: RUTAS.python, extraPython: RUTAS.extraPython } })
+  registerSkills()
   registerForja()
   // tu mente para todas tus IAs: se registra en la configuración de cada agente que uses fuera de Esme
   ipcMain.handle('mente:agentes', () => estadosMente(homedir()))

@@ -57,3 +57,13 @@ describe('las manos en el mensaje de sistema', () => {
     expect(buildSystem(null, {})).not.toMatch(/herramientas/i)
   })
 })
+
+describe('las skills instaladas en el prompt de Esme', () => {
+  it('solo nombre y descripción, como datos, y que se usan con usar_skill', () => {
+    const t = buildSystem(null, { herramientas: true, skills: [{ nombre: 'tdd', descripcion: 'Test primero.' }] })
+    expect(t).toContain('SKILLS')
+    expect(t).toContain('- tdd: Test primero.')
+    expect(t).toContain('usar_skill')
+    expect(buildSystem(null, { herramientas: true })).not.toContain('SKILLS')
+  })
+})

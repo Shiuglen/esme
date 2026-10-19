@@ -4,7 +4,7 @@
 export type Politica = 'siempre' | 'preguntar' | 'nunca'
 export type Decision = 'permitir' | 'preguntar' | 'negar'
 
-const LIBRES = new Set(['buscar_en_internet', 'buscar_en_memoria', 'ver_equipo', 'leer_web'])
+const LIBRES = new Set(['buscar_en_internet', 'buscar_en_memoria', 'ver_equipo', 'leer_web', 'usar_skill'])
 const MAX_CONSULTA = 80
 // sitios de solo consulta donde nadie puede recibir tus datos: se leen sin preguntar
 const SEGUROS = /^([a-z-]+\.)?(m\.)?wikipedia\.org$/
