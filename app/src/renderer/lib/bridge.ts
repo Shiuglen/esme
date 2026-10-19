@@ -20,6 +20,7 @@ export type ProgramadoVisto = Programado & { proxima: number | null }
 import type { Consumo, Presupuesto, RegistroUso } from '../../main/uso/registro'
 import type { UsoExterno as UsoExternoMain } from '../../main/uso/externo'
 import type { EstadoUso as EstadoUsoMain, ProveedorResumen as ProveedorResumenMain } from '../../main/uso/estado'
+export type MetodoEntrada = { id: string; nombre: string; descripcion: string; terminal: boolean }
 
 // Puente: la misma interfaz funciona dentro de Electron (todo) y en el navegador (modo web, para verla y probarla).
 export type BrainInfo = { url: string; token: string }
@@ -72,6 +73,8 @@ type ElectronApi = {
   licencia: { estado(): Promise<EstadoPlan>; activar(c: string): Promise<{ ok: boolean; motivo?: string; estado: EstadoPlan }>; quitar(): Promise<EstadoPlan> }
   taller: {
     motores(): Promise<MotorTaller[]>; lista(): Promise<TareaTaller[]>; eventos(id: string): Promise<EventoTaller[]>
+    metodosEntrada(id: string): Promise<{ ok: true; metodos: MetodoEntrada[]; actual: string | null } | { ok: false; error: string }>
+    entrar(id: string, metodo: string | null): Promise<{ ok: boolean; error?: string; terminal?: boolean }>
     instalarMotor(id: string): Promise<InstalarMotor>; onInstalacion(fn: (p: { id: string; trozo?: string; listo?: boolean }) => void): () => void
     crear(p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }>
     seguir(id: string, texto: string): Promise<ResultadoTaller>; responder(id: string, opcion: string): Promise<ResultadoTaller>
@@ -232,6 +235,9 @@ export const bridge = {
 
   taller: {
     motores: async (): Promise<MotorTaller[]> => (isElectron() ? window.daimon!.taller.motores() : []),
+    // entrar en un agente que pide sesión (Cline con tu ChatGPT, OpenCode, Qwen…); Esme recuerda el método elegido
+    metodosEntrada: async (id: string) => (isElectron() ? window.daimon!.taller.metodosEntrada(id) : { ok: false as const, error: 'Solo en la app de escritorio.' }),
+    entrar: async (id: string, metodo: string | null) => (isElectron() ? window.daimon!.taller.entrar(id, metodo) : { ok: false, error: 'Solo en la app de escritorio.' }),
     instalarMotor: async (id: string): Promise<InstalarMotor> => (isElectron() ? window.daimon!.taller.instalarMotor(id) : SOLO_ESCRITORIO),
     onInstalacion: (fn: (p: { id: string; trozo?: string; listo?: boolean }) => void): (() => void) => (isElectron() ? window.daimon!.taller.onInstalacion(fn) : () => {}),
     lista: async (): Promise<TareaTaller[]> => (isElectron() ? window.daimon!.taller.lista() : []),

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { abrirSesionACP, ultimaPalabraDe, type EventoMotor } from './sesion-acp'
+import { abrirSesionACP, metodosDeEntrada, ultimaPalabraDe, type EventoMotor } from './sesion-acp'
 
 const FALSO = fileURLToPath(new URL('./fixtures/agente-falso.mjs', import.meta.url))
 const base = (extra: Record<string, unknown> = {}) => {
@@ -136,6 +136,23 @@ describe('abrirSesionACP', () => {
     await s.preguntar('modelo')
     s.cerrar()
     expect(eventos.filter((e) => e.tipo === 'texto').map((e) => (e as { texto: string }).texto).join('')).toBe('rapido')
+  })
+})
+
+describe('entrar en un agente que pide sesión (como Cline)', () => {
+  const env = { FALSO_LOGIN: '1' }
+  it('dice cómo se entra y cuáles son por terminal', async () => {
+    expect(await metodosDeEntrada({ comando: process.execPath, args: [FALSO], cwd: process.cwd(), env })).toEqual([
+      { id: 'falso-login', nombre: 'Entrar en Falso', descripcion: 'Con tu cuenta', terminal: false },
+      { id: 'falso-terminal', nombre: 'Por terminal', descripcion: '', terminal: true },
+    ])
+  })
+  it('sin entrar, la sesión no abre; entrando con su método, sí', async () => {
+    await expect(abrirSesionACP(base({ env }).o)).rejects.toThrow(/authenticate|Authentication/i)
+    const { eventos, o } = base({ env, entrarCon: 'falso-login' })
+    const s = await abrirSesionACP(o)
+    await s.preguntar('modelo'); s.cerrar()
+    expect(eventos.some((e) => e.tipo === 'texto')).toBe(true)
   })
 })
 

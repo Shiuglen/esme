@@ -1,18 +1,22 @@
 // Agente ACP falso para tests: usa el AgentSideConnection del SDK sobre stdio. Prompt "morir" mata el proceso; "mcp" devuelve los mcpServers recibidos; "uso" emite usage_update y devuelve usage; "modelo" responde con el modelo actual.
-import { AgentSideConnection, ndJsonStream, PROTOCOL_VERSION } from '@agentclientprotocol/sdk'
+import { AgentSideConnection, ndJsonStream, PROTOCOL_VERSION, RequestError } from '@agentclientprotocol/sdk'
 import { Readable, Writable } from 'node:stream'
 
 const stream = ndJsonStream(Writable.toWeb(process.stdout), Readable.toWeb(process.stdin))
 let mcp = []
 let cwd = ''
 let modelo = 'lento'
+let dentro = !process.env.FALSO_LOGIN   // con FALSO_LOGIN, como Cline: no abre sesión hasta que se llama a authenticate
 const configOptions = () => [{ type: 'select', id: 'model', name: 'Modelo', category: 'model', currentValue: modelo,
   options: [{ value: 'lento', name: 'Lento' }, { value: 'rapido', name: 'Rápido', description: 'Responde antes' }] }]
 new AgentSideConnection((conn) => ({
   async initialize() {
-    return { protocolVersion: PROTOCOL_VERSION, agentCapabilities: { mcpCapabilities: { http: !process.env.FALSO_SIN_HTTP } } }
+    return { protocolVersion: PROTOCOL_VERSION, agentCapabilities: { mcpCapabilities: { http: !process.env.FALSO_SIN_HTTP } },
+      authMethods: process.env.FALSO_LOGIN ? [{ id: 'falso-login', name: 'Entrar en Falso', description: 'Con tu cuenta' },
+        { id: 'falso-terminal', name: 'Por terminal', _meta: { type: 'terminal', args: ['--login'] } }] : [] }
   },
   async newSession(p) {
+    if (!dentro) throw RequestError.authRequired(undefined, 'Authentication required: Call authenticate before starting a session')
     mcp = p.mcpServers
     cwd = p.cwd
     // Como OpenCode: poco después de abrir, el motor vuelve a poner su modelo de la configuración del usuario.
@@ -20,7 +24,7 @@ new AgentSideConnection((conn) => ({
     return { sessionId: 's1', configOptions: configOptions() }
   },
   async setSessionConfigOption(p) { if (p.configId === 'model') modelo = p.value; return { configOptions: configOptions() } },
-  async authenticate() {},
+  async authenticate(p) { if (p.methodId !== 'falso-login') throw RequestError.invalidParams(undefined, 'método desconocido'); dentro = true; return {} },
   async cancel() {},
   async prompt(p) {
     const texto = p.prompt.map((b) => (b.type === 'text' ? b.text : '')).join('')

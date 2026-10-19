@@ -61,6 +61,7 @@ contextBridge.exposeInMainWorld('daimon', {
   licencia: { estado: () => ipcRenderer.invoke('licencia:estado'), activar: (c: string) => ipcRenderer.invoke('licencia:activar', c), quitar: () => ipcRenderer.invoke('licencia:quitar') },
   taller: {
     motores: () => ipcRenderer.invoke('taller:motores'), lista: () => ipcRenderer.invoke('taller:lista'),
+    metodosEntrada: (id: string) => ipcRenderer.invoke('agentes:metodos', id), entrar: (id: string, metodo: string | null) => ipcRenderer.invoke('agentes:entrar', id, metodo),
     instalarMotor: (id: string) => ipcRenderer.invoke('taller:instalarMotor', id),
     onInstalacion: (fn: (p: unknown) => void) => on('taller:instalar-progreso', (p) => fn(p)),
     eventos: (id: string) => ipcRenderer.invoke('taller:eventos', id), crear: (p: unknown) => ipcRenderer.invoke('taller:crear', p),

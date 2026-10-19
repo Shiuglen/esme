@@ -51,7 +51,7 @@ export async function conversarConAgente(o: {
   const msj = (e: unknown) => (e instanceof Error ? e.message : String(e))
   let s: Awaited<ReturnType<typeof abrirSesionACP>>
   try {
-    s = await abrirSesionACP({ comando: o.motor.comando, args: o.motor.args, cwd: o.cwd, env: o.motor.env, ...(o.mcp ? { mcp: o.mcp } : {}), masMcp: o.masMcp ?? [], ...(o.config ? { config: o.config } : {}),
+    s = await abrirSesionACP({ comando: o.motor.comando, args: o.motor.args, cwd: o.cwd, env: o.motor.env, ...(o.motor.entrarCon ? { entrarCon: o.motor.entrarCon } : {}), ...(o.mcp ? { mcp: o.mcp } : {}), masMcp: o.masMcp ?? [], ...(o.config ? { config: o.config } : {}),
       alEvento: (e) => {
         if (e.tipo === 'texto' && e.texto) { hablo = true; o.enviar('chunk', e.texto) }
         else if (e.tipo === 'pensamiento' && e.texto) o.enviar('pensamiento', e.texto)

@@ -9,7 +9,8 @@ import { cargarRegistro } from './motores/catalogo-registry'
 import { credencialesDe } from './motores/credenciales'
 import { instaladosNpm, lanzarRegistro, paqueteDe, type GlobalesNpm } from './motores/registro-lanzar'
 import { crearWhich, extsPlataforma } from './motores/which'
-import { abrirSesionACP, type OpcionConfig } from './motores/sesion-acp'
+import { guardarEntrada, leerEntradas } from './motores/entrada'
+import { abrirSesionACP, metodosDeEntrada, type MetodoEntrada, type OpcionConfig } from './motores/sesion-acp'
 import { anotarConsumo } from './ipc-proveedores'
 import { keys } from './keys'
 import { Taller, type MotorElegido } from './taller/taller'
@@ -161,6 +162,13 @@ function globalesConMemo(): Promise<GlobalesNpm> {
 }
 
 async function elegirMotor(id: unknown): Promise<MotorElegido | { error: string }> {
+  const m = await elegirMotorSinEntrada(id)
+  const entrarCon = typeof id === 'string' ? leerEntradas(ficheroEntradas())[id] : undefined
+  return 'error' in m || !entrarCon ? m : { ...m, entrarCon }
+}
+const ficheroEntradas = () => join(app.getPath('userData'), 'motores', 'entrada.json')
+
+async function elegirMotorSinEntrada(id: unknown): Promise<MotorElegido | { error: string }> {
   if (typeof id !== 'string') return { error: 'Motor no válido.' }
   const m = (await detectar()).find((x) => x.id === id)
   if (m) {
@@ -236,6 +244,33 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
   const entrada = { ok: false, error: 'Datos no válidos.' }
 
   ipcMain.handle('taller:motores', () => motoresTaller())
+  // Entrar en un agente que pide sesión (Cline, OpenCode, Qwen…): primero cómo se entra; luego Esme llama a authenticate con
+  // el método elegido (algunos abren tu navegador para que entres con tu cuenta) y, si funciona, lo recuerda para siempre.
+  ipcMain.handle('agentes:metodos', async (_e, id: unknown): Promise<{ ok: true; metodos: MetodoEntrada[]; actual: string | null } | { ok: false; error: string }> => {
+    const m = await elegirMotorSinEntrada(id)
+    if ('error' in m) return { ok: false, error: m.error }
+    try { return { ok: true, metodos: await metodosDeEntrada({ comando: m.comando, args: m.args, cwd: tmpdir(), env: m.env }), actual: leerEntradas(ficheroEntradas())[m.id] ?? null } }
+    catch (e) { return { ok: false, error: mensaje(e) } }
+  })
+  ipcMain.handle('agentes:entrar', async (_e, id: unknown, metodo: unknown) => {
+    const m = await elegirMotorSinEntrada(id)
+    if ('error' in m) return { ok: false, error: m.error }
+    if (metodo === null) { guardarEntrada(ficheroEntradas(), m.id, null); return { ok: true } }
+    if (!textoCorto(metodo)) return entrada
+    let metodos: MetodoEntrada[]
+    try { metodos = await metodosDeEntrada({ comando: m.comando, args: m.args, cwd: tmpdir(), env: m.env }) } catch (e) { return { ok: false, error: mensaje(e) } }
+    const x = metodos.find((k) => k.id === metodo)
+    if (!x) return { ok: false, error: 'Ese método no existe en este agente.' }
+    if (x.terminal) return { ok: false, terminal: true, error: `«${x.nombre}» se hace en una terminal: ábrela en el Taller y escribe «${m.comando.split('/').pop()} ${m.args.join(' ')}».` }
+    const cwd = await mkdtemp(join(tmpdir(), 'esme-entrar-'))
+    try {
+      const s = await abrirSesionACP({ comando: m.comando, args: m.args, cwd, env: m.env, entrarCon: x.id, alEvento: () => {}, alPedirPermiso: async () => 'cancelar' })
+      s.cerrar()
+      guardarEntrada(ficheroEntradas(), m.id, x.id)
+      return { ok: true }
+    } catch (e) { return { ok: false, error: mensaje(e) } }
+    finally { await rm(cwd, { recursive: true, force: true }).catch(() => {}) }
+  })
   ipcMain.handle('taller:instalarMotor', (_e, id: unknown) => instalarMotor(id))
   ipcMain.handle('taller:lista', () => t.lista())
   ipcMain.handle('taller:eventos', async (_e, id: unknown) => (idValido(id) ? t.eventos(id).catch(() => []) : []))

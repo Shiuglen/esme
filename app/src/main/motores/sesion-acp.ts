@@ -21,7 +21,28 @@ type Opciones = { comando: string; args: string[]; cwd: string; env?: Record<str
   masMcp?: McpServer[]
   alEvento: (e: EventoMotor) => void
   alPedirPermiso: (p: { titulo: string; opciones: { id: string; nombre: string; tipo: string }[] }) => Promise<string | 'cancelar'>
+  entrarCon?: string   // método de inicio de sesión del agente (authMethods): se llama a authenticate antes de abrir la sesión
   lanzar?: typeof spawnReal }
+
+export type MetodoEntrada = { id: string; nombre: string; descripcion: string; terminal: boolean }
+
+/** Cómo se entra en un agente (su `authMethods`). Los «por terminal» los resuelve el propio agente en una consola; el resto,
+ *  con `entrarCon` (algunos abren tu navegador para que inicies sesión con tu cuenta). */
+export async function metodosDeEntrada(o: Pick<Opciones, 'comando' | 'args' | 'cwd' | 'env' | 'lanzar'>): Promise<MetodoEntrada[]> {
+  const hijo = (o.lanzar ?? spawnReal)(o.comando, o.args, { cwd: o.cwd, env: { ...process.env, ...o.env }, stdio: ['pipe', 'pipe', 'ignore'] })
+  hijo.stdin?.on('error', () => {})
+  const conn = new ClientSideConnection(() => ({ sessionUpdate: async () => {}, requestPermission: async () => ({ outcome: { outcome: 'cancelled' } }) }),
+    ndJsonStream(Writable.toWeb(hijo.stdin!) as WritableStream<Uint8Array>, Readable.toWeb(hijo.stdout!) as ReadableStream<Uint8Array>))
+  try {
+    const muerto = new Promise<never>((_, rej) => { hijo.on('error', rej); hijo.on('close', () => rej(new Error('El agente se cerró sin responder.'))) })
+    const tarde = new Promise<never>((_, rej) => setTimeout(() => rej(new Error('El agente no respondió a tiempo.')), 20_000))
+    const ini = await Promise.race([conn.initialize({ protocolVersion: PROTOCOL_VERSION, clientCapabilities: {}, clientInfo: { name: 'esme', version: '0.1.0' } }), muerto, tarde])
+    return (ini.authMethods ?? []).map((m) => {
+      const meta = (m as { _meta?: { type?: string } })._meta
+      return { id: m.id, nombre: m.name, descripcion: m.description ?? '', terminal: meta?.type === 'terminal' }
+    })
+  } finally { if (hijo.exitCode === null && !hijo.killed) hijo.kill('SIGTERM') }
+}
 
 export function traducirOpciones(cfg: SessionConfigOption[]): OpcionConfig[] {
   return cfg.flatMap((c) => {
@@ -129,6 +150,7 @@ export async function abrirSesionACP(o: Opciones): Promise<{ preguntar(texto: st
       // las herramientas que conectaste en la Tienda: las locales siempre; las remotas, si el agente habla HTTP
       ...(o.masMcp ?? []).filter((x) => !('type' in x) || http),
     ]
+    if (o.entrarCon) await vivo(conn.authenticate({ methodId: o.entrarCon }))
     const nueva = await vivo(conn.newSession({ cwd: o.cwd, mcpServers }))
     const { sessionId } = nueva
     if (nueva.configOptions) nuevasOpciones({ tipo: 'opciones', opciones: traducirOpciones(nueva.configOptions) })
@@ -176,5 +198,10 @@ export async function abrirSesionACP(o: Opciones): Promise<{ preguntar(texto: st
       cancelar: async () => { if (!causa) await conn.cancel({ sessionId }) },
       cerrar,
     }
-  } catch (e) { cerrar(); throw causa ?? e }
+  } catch (e) {
+    // la causa previa (el proceso murió) manda; si no, el error que dio el propio agente, que cerrar() no debe tapar
+    const previa = causa
+    cerrar()
+    throw previa ?? (e instanceof Error ? e : new Error(typeof (e as { message?: unknown })?.message === 'string' ? (e as { message: string }).message : JSON.stringify(e)))
+  }
 }

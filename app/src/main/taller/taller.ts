@@ -22,7 +22,7 @@ export type Tarea = {
   actividadMs: number   // dónde acaba el último cubo: sin eventos nuevos, la interfaz desplaza la micrográfica sola
   arena?: string   // las tareas que compiten con el mismo encargo comparten este id
 }
-export type MotorElegido = { id: string; nombre: string; comando: string; args: string[]; env?: Record<string, string> }
+export type MotorElegido = { id: string; nombre: string; comando: string; args: string[]; env?: Record<string, string>; entrarCon?: string }
 export type SesionMotor = { preguntar(texto: string): Promise<string>; cancelar(): Promise<void>; cerrar(): void; configurar(id: string, valor: string): Promise<void> }
 export type AbrirSesion = (o: { comando: string; args: string[]; cwd: string; env?: Record<string, string>; mcp?: { nombre: string; url: string; token: string }; masMcp?: McpServer[]; config?: Record<string, string>
   alEvento(e: EventoMotor): void; alPedirPermiso(p: Permiso): Promise<string | 'cancelar'> }) => Promise<SesionMotor>
@@ -341,7 +341,7 @@ export class Taller {
       if (parada()) return
       if (!r.sesion) {
         const motor = r.motor!
-        r.sesion = await this.abrirSesion({ comando: motor.comando, args: motor.args, cwd: t.copia.ruta, env: motor.env, mcp: this.mcp() ?? undefined, masMcp: this.masMcp(), config: { ...r.config },
+        r.sesion = await this.abrirSesion({ comando: motor.comando, args: motor.args, cwd: t.copia.ruta, env: motor.env, ...(motor.entrarCon ? { entrarCon: motor.entrarCon } : {}), mcp: this.mcp() ?? undefined, masMcp: this.masMcp(), config: { ...r.config },
           alEvento: (e) => this.alEvento(r, e), alPedirPermiso: (p) => this.alPedirPermiso(r, p) })
       }
       if (r.descartada || this.cerrado || parada()) return
