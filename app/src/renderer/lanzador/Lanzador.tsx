@@ -12,6 +12,7 @@ import { BrainClient, type Memory } from '../lib/brain'
 import { cn } from '../lib/cn'
 import { haceCuanto } from '../paginas/diario'
 import { sinMarkdown } from '../lib/texto-plano'
+import { PuntoVista } from '../marca/PuntoVista'
 
 type Modo = 'preguntar' | 'encargar' | 'mente'
 const MODOS: { id: Modo; nombre: string; tecla: string; icono: typeof MessageCircle }[] = [
@@ -74,13 +75,17 @@ export function Lanzador() {
   return (
     <div className="grid h-screen place-items-start bg-transparent p-2" onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); lz()?.ocultar() } }}>
       <section className="flex max-h-[calc(100vh-16px)] w-full flex-col overflow-hidden rounded-[18px] border border-linea bg-[color-mix(in_oklab,var(--fondo)_96%,transparent)] shadow-[0_30px_80px_-20px_rgb(0_0_0/0.7)]">
+        <div className="flex items-start gap-3 pl-6">
+        {/* Esme está aquí: su Punto, que se revuelve mientras piensa */}
+        <PuntoVista px={30} tam="30px" estado={respuesta && !respuesta.fin ? 'pensando' : 'reposo'} titulo="Esme" className="mt-[26px] shrink-0 text-acento" />
         <textarea ref={campo} value={texto} rows={1} onChange={(e) => setTexto(e.target.value)} aria-label="Escribe a Esme"
-          placeholder={modo === 'mente' ? 'Busca en tu mente…' : modo === 'encargar' ? '¿Qué hace tu equipo?' : '¿Qué hacemos?'}
+          placeholder={modo === 'mente' ? 'Busca en tu mente…' : modo === 'encargar' ? '¿Qué hace tu equipo?' : 'Dime.'}
           onKeyDown={(e) => {
             if (e.key === 'Tab') { e.preventDefault(); setModo((m) => MODOS[(MODOS.findIndex((x) => x.id === m) + (e.shiftKey ? 2 : 1)) % 3].id) }
             else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(e.ctrlKey || e.metaKey ? 'encargar' : modo) }
           }}
-          className="block max-h-40 w-full resize-none bg-transparent px-6 pt-5 pb-3 font-display text-[28px] leading-[1.25] text-texto italic outline-none placeholder:text-texto-3" />
+          className="block max-h-40 w-full resize-none bg-transparent pt-5 pr-6 pb-3 font-display text-[28px] leading-[1.25] text-texto italic outline-none placeholder:text-texto-3" />
+        </div>
         <div role="tablist" aria-label="Qué hacer" className="flex flex-wrap items-center gap-1 border-b border-linea px-4 pb-3">
           {MODOS.map(({ id, nombre, tecla, icono: I }) => (
             <button key={id} type="button" role="tab" aria-selected={modo === id} onClick={() => { setModo(id); campo.current?.focus() }}
