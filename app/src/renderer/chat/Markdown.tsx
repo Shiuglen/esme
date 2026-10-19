@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm'
 import { useMemo, useState } from 'react'
 import { datosVivos, fichasDe, leerPrisma, tablasVivas, type TablaViva } from './prisma'
 import { PrismaPanel } from './PrismaVista'
+import { espaciosLegibles } from './espacios'
 
 const fmt = (n: number) => new Intl.NumberFormat('es-ES', { notation: Math.abs(n) > 999999 ? 'compact' : 'standard', maximumFractionDigits: 2 }).format(n)
 
@@ -116,7 +117,8 @@ const componentes = (texto: string): Components => {
   return c
 }
 
-export function Markdown({ texto }: { texto: string }) {
+export function Markdown({ texto: crudo }: { texto: string }) {
+  const texto = espaciosLegibles(crudo)
   const c = useMemo(() => componentes(texto), [texto])
   return <ReactMarkdown remarkPlugins={[remarkGfm]} components={c} skipHtml>{texto}</ReactMarkdown>
 }

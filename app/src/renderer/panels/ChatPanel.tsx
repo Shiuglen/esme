@@ -17,6 +17,7 @@ import { useMuelle } from '../tinta/movimiento'
 import { sonar } from '../tinta/sonido'
 import { explicarFallo, modeloInicial, ordenMotores } from './motor'
 import { PuntoVista } from '../marca/PuntoVista'
+import { nombreDeModelo } from '../lib/modelos'
 
 type Turn = TurnoHilo
 
@@ -276,7 +277,7 @@ function Respuesta({ t, ultima, busy, fase, brain, onCite, onJuzgar, onEscuchar,
     <article className="grid grid-cols-[24px_minmax(0,1fr)] gap-x-3 gap-y-2">
       <Esfera viva={trabajando} />
       <div className="grid min-w-0 gap-2">
-        <span className="text-xs text-texto-3">Esme · {t.who?.split(' · ').slice(1).join(' · ') || t.who}</span>
+        <span className="text-xs text-texto-3" title={t.who}>Esme · {nombreDeModelo(t.who?.split(' · ').slice(1).join(' · ') || t.who)}</span>
         {!!t.pasos?.length && <Pasos pasos={t.pasos} />}
         {pidiendo && <PidePermiso pedido={pidiendo} onResponder={pidiendo.responder} />}
         <div className={cn('text-[16px] leading-[1.75]', t.error ? 'text-peligro whitespace-pre-wrap' : 'text-texto')}>

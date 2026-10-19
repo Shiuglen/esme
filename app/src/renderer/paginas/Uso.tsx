@@ -10,6 +10,8 @@ import { diasSeguidos, rejillaActividad } from '../uso/vista'
 import { historiaDeUso } from './historia-uso'
 import { Bicho } from '../marca/SerVista'
 import { useMuelle } from '../tinta/movimiento'
+import { diaLegible } from '../lib/cifras'
+import { nombreDeModelo } from '../lib/modelos'
 
 type Rango = 'hoy' | '7' | '30'
 const DIA = 86_400_000
@@ -100,8 +102,8 @@ export function Uso({ onIr }: { onIr(id: 'ajustes'): void }) {
         </motion.div>
 
         <motion.section {...entrada(2)} className="grid gap-3 rounded-3 vidrio halo border p-4">
-          <div className="flex items-center justify-between gap-3"><h2 className="m-0 text-[15px] font-semibold">{activos.length ? `${activos.length} ${activos.length === 1 ? 'día' : 'días'} con actividad en ${semanas} semanas` : 'Aún sin actividad'}</h2><span className="text-xs text-texto-3">{pico ? `pico: ${fmtTokens(pico.tokens)} tokens el ${pico.dia}` : 'tokens por día'}{externo?.disponible.claudeCode ? ' · incluye Claude Code' : ''}</span></div>
-          <div className="flex gap-2 overflow-x-auto pb-1" role="img" aria-label={`Actividad del último año: ${activos.length} días con uso${pico ? `; el día de más uso fue el ${pico.dia}, con ${fmtTokens(pico.tokens)} tokens` : ''}.`}>
+          <div className="flex items-center justify-between gap-3"><h2 className="m-0 text-[15px] font-semibold">{activos.length ? `${activos.length} ${activos.length === 1 ? 'día' : 'días'} con actividad en ${semanas} semanas` : 'Aún sin actividad'}</h2><span className="text-xs text-texto-3">{pico ? `pico: ${fmtTokens(pico.tokens)} tokens el ${diaLegible(pico.dia)}` : 'tokens por día'}{externo?.disponible.claudeCode ? ' · incluye Claude Code' : ''}</span></div>
+          <div className="flex gap-2 overflow-x-auto pb-1" role="img" aria-label={`Actividad del último año: ${activos.length} días con uso${pico ? `; el día de más uso fue el ${diaLegible(pico.dia)}, con ${fmtTokens(pico.tokens)} tokens` : ''}.`}>
             <div className="grid grid-rows-7 gap-[3px] pt-[1px] text-[10px] leading-[13px] text-texto-3">{NOMBRE_DIA.map((n, i) => <span key={i} className="h-[13px]">{n}</span>)}</div>
             <div className="flex gap-[3px]">
               {rejilla.map((semana, s) => (
@@ -119,13 +121,13 @@ export function Uso({ onIr }: { onIr(id: 'ajustes'): void }) {
         <motion.div {...entrada(3)} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4 max-[1000px]:grid-cols-1">
           <section className="grid content-start gap-3 rounded-3 vidrio halo border p-4">
             {(() => { const top = barras.reduce((a, b) => (valor(b) > valor(a) ? b : a), barras[0] ?? { dia: '', costeUSD: 0, tokens: 0 }); return (
-              <div className="flex items-center justify-between gap-3"><h2 className="m-0 text-[15px] font-semibold">{conGasto ? `Tu día más caro: ${diaCaro.dia.slice(5)}, ${fmtUSD(diaCaro.costeUSD)}` : valor(top) > 0 ? `Tu día de más trabajo: ${top.dia.slice(5)}, ${fmtTokens(top.tokens)} tokens` : 'Sin actividad en 30 días'}</h2><span className="text-xs text-texto-3">{conGasto ? 'USD por día' : 'tokens por día'} · 30 días</span></div>) })()}
+              <div className="flex items-center justify-between gap-3"><h2 className="m-0 text-[15px] font-semibold">{conGasto ? `Tu día más caro: ${diaLegible(diaCaro.dia)}, ${fmtUSD(diaCaro.costeUSD)}` : valor(top) > 0 ? `Tu día de más trabajo: ${diaLegible(top.dia)}, ${fmtTokens(top.tokens)} tokens` : 'Sin actividad en 30 días'}</h2><span className="text-xs text-texto-3">{conGasto ? 'USD por día' : 'tokens por día'} · 30 días</span></div>) })()}
             <div className="flex h-[140px] items-end gap-[3px]" role="img" aria-label={conGasto ? `Gasto de los últimos 30 días; máximo ${fmtUSD(maxBarra)} en un día` : `Tokens de los últimos 30 días; máximo ${fmtTokens(maxBarra)} en un día`}>
               {barras.map((b) => (
                 <span key={b.dia} title={`${b.dia} · ${fmtTokens(b.tokens)} tokens · ${fmtUSD(b.costeUSD)}`} className={cn('flex-1 rounded-t-[3px] transition-colors', valor(b) > 0 ? 'bg-acento/70 hover:bg-acento' : 'bg-linea')}
                   style={{ height: valor(b) > 0 ? `${Math.max(4, (valor(b) / maxBarra) * 100)}%` : '2px' }} />))}
             </div>
-            <div className="flex justify-between text-[11px] text-texto-3"><span>{barras[0]?.dia.slice(5)}</span><span>hoy</span></div>
+            <div className="flex justify-between text-[11px] text-texto-3"><span>{barras[0] ? diaLegible(barras[0].dia) : ''}</span><span>hoy</span></div>
           </section>
           <section className="grid content-start gap-3 rounded-3 vidrio halo border p-4">
             <div className="flex items-center justify-between"><h2 className="m-0 text-[15px] font-semibold">Por modelo</h2><span className="text-xs text-texto-3">{rango === 'hoy' ? 'hoy' : `${rango} días`}</span></div>
@@ -133,7 +135,7 @@ export function Uso({ onIr }: { onIr(id: 'ajustes'): void }) {
               <div className="grid gap-2.5">
                 {resumen.porModelo.slice(0, 8).map((m) => { const parte = resumen.costeUSD > 0 ? m.costeUSD / resumen.costeUSD : m.tokens / Math.max(1, resumen.tokens); return (
                   <div key={`${m.proveedor}/${m.modelo}`} className="grid gap-1">
-                    <div className="flex items-center gap-2 text-[13px]"><span className="truncate">{m.modelo}</span><span className="text-xs text-texto-3">{m.proveedor}</span>
+                    <div className="flex items-center gap-2 text-[13px]"><span className="truncate" title={m.modelo}>{nombreDeModelo(m.modelo)}</span><span className="text-xs text-texto-3">{m.proveedor}</span>
                       <span className="ml-auto shrink-0 text-xs text-texto-2 tabular-nums">{m.llamadas} · {fmtTokens(m.tokens)} · {fmtUSD(m.costeUSD)}</span></div>
                     <span className="h-1 overflow-hidden rounded-full bg-s3"><span className="block h-full rounded-full" style={{ width: `${Math.max(2, parte * 100)}%`, background: 'var(--aurora-lineal)' }} /></span>
                   </div>) })}

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import type { BrainClient, Certificate, Memory } from '../lib/brain'
 import { cn } from '../lib/cn'
 import { haceCuanto } from '../paginas/diario'
+import { sinMarkdown } from '../lib/texto-plano'
 
 const origen = (s: string) => s.split('/').pop() || s
 
@@ -71,7 +72,7 @@ export function MemoryPanel(props: { brain: BrainClient | null; focusId: string 
               <button type="button" onClick={() => { setSel(m); setSeguro(false); props.onFocus(m.id) }}
                 className={cn('grid w-full gap-1 border-b border-dashed border-linea/70 px-1 py-2.5 text-left transition-colors hover:bg-s1/50', sel?.id === m.id && 'bg-s1/60')}>
                 <span className="text-[11.5px] text-texto-3">{haceCuanto(Date.parse(m.ts), ahora)} · {origen(m.source)}</span>
-                <span className="line-clamp-3 text-[13px] leading-5 text-texto-2">{m.text}</span>
+                <span className="line-clamp-3 text-[13px] leading-5 text-texto-2">{sinMarkdown(m.text)}</span>
               </button>
             </li>
           ))}

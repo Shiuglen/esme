@@ -11,6 +11,7 @@ import { bridge, type PermisoPedido } from '../lib/bridge'
 import { BrainClient, type Memory } from '../lib/brain'
 import { cn } from '../lib/cn'
 import { haceCuanto } from '../paginas/diario'
+import { sinMarkdown } from '../lib/texto-plano'
 
 type Modo = 'preguntar' | 'encargar' | 'mente'
 const MODOS: { id: Modo; nombre: string; tecla: string; icono: typeof MessageCircle }[] = [
@@ -97,7 +98,7 @@ export function Lanzador() {
                 {recuerdos.map((m) => (
                   <li key={m.id} className="border-b border-dashed border-linea/70 py-2.5 last:border-0">
                     <p className="m-0 text-[11.5px] text-texto-3">{haceCuanto(Date.parse(m.ts), Date.now())} · {m.source.split('/').pop()}</p>
-                    <p className="m-0 line-clamp-2 text-[13.5px] leading-5 text-texto-2">{m.text}</p>
+                    <p className="m-0 line-clamp-2 text-[13.5px] leading-5 text-texto-2">{sinMarkdown(m.text)}</p>
                   </li>
                 ))}
                 {!recuerdos.length && <li className="text-[13px] text-texto-3">{texto.trim() ? 'Nada con ese significado.' : 'Escribe y Esme busca por significado, no por palabras.'}</li>}

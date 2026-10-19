@@ -84,13 +84,7 @@ export function rotular(ctx: CanvasRenderingContext2D, centros: { tema: number; 
       ctx.font = `italic 400 ${px2}px ${ROTULO}`
       ctx.globalAlpha = 0.8 * opacidad; ctx.strokeText(dos, c.x, y2); ctx.globalAlpha = 0.72 * opacidad; ctx.fillText(dos, c.x, y2)
     }
-    if (nudos) {
-      ctx.fillStyle = tinta.tinta; ctx.globalAlpha = 0.5 * opacidad
-      const baseY = (dos ? y2 : y1) + px2 * 0.95
-      for (let i = 0; i < nudos; i++) {
-        ctx.beginPath(); ctx.arc(c.x + ((i % 3) - 1) * paso, baseY + Math.floor(i / 3) * paso, paso * 0.3, 0, TAU); ctx.fill()
-      }
-    }
+    // (antes una rejilla de «nudos» bajo cada rótulo: codificaba algo que la interfaz nunca explicaba; fuera)
   }
   ctx.restore()
 }

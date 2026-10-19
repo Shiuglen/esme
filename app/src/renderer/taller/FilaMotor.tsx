@@ -9,6 +9,7 @@ import { TintaVista, tintaDeTarea } from '../marca/PuntoVista'
 import { Sello } from '../marca/SelloVista'
 import { giroSello } from '../marca/sello'
 import { barrasDe, ESTADOS, actividadAhora, activa, duracion, explicarError, silencioMs } from './vista'
+import { nombreDeModelo } from '../lib/modelos'
 
 const SILENCIO_AVISO = 25_000
 // la cara de cada tarea dice en qué está (agentfaces)
@@ -27,7 +28,7 @@ export function PastillaEstado({ estado }: { estado: TareaTaller['estado'] }) {
   )
 }
 
-const modeloCorto = (m: string | null) => m?.replace(/^[^/]+\//, '').replace(/\s*free$/i, '').trim() || null
+const modeloCorto = (m: string | null) => nombreDeModelo(m) || null
 const coste = (c: TareaTaller['uso']['coste']) => (!c ? null : c.moneda === 'USD' ? fmtUSD(c.cantidad) : `${c.cantidad.toFixed(2)} ${c.moneda}`)
 const segundos = (ms?: number) => (ms === undefined ? '—' : ms < 10_000 ? `${(ms / 1000).toFixed(1).replace('.', ',')} s` : `${Math.round(ms / 1000)} s`)
 
@@ -82,7 +83,7 @@ export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida
       <div className="flex items-center gap-2">
         <TintaVista motor={t.motor} px={plegada ? 22 : 30} estado={tintaDeTarea(t.estado)} />
         <span className="shrink-0 whitespace-nowrap text-[13px] font-medium text-texto">{t.motorNombre}</span>
-        {t.modelo && <span className="min-w-0 truncate font-mono text-[11px] text-texto-3">{modeloCorto(t.modelo)}</span>}
+        {t.modelo && <span className="min-w-0 truncate text-[12px] text-texto-3" title={t.modelo}>{modeloCorto(t.modelo)}</span>}
         <PastillaEstado estado={t.estado} />
         {t.aplicada && <Sello lado={16} giro={giroSello(t.id)} titulo="Aprobada por ti" />}
         {t.arena && <span className="inline-flex h-5 shrink-0 items-center gap-1 rounded-full border border-linea px-1.5 text-[11px] text-texto-3" title="Compite en una arena"><Swords className="size-3" strokeWidth={1.75} />arena</span>}
