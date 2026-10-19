@@ -88,7 +88,7 @@ export function Mando({ onSeccion, presencia = 'orbe', sitio = { izquierda: 240,
       <div className="absolute top-4 left-1/2 z-20 -translate-x-1/2">{isla.length > 0 && <StatusIsland tasks={isla} />}</div>
 
       {/* tu mente: la imagen principal, con Esme en su centro */}
-      <div className="absolute top-0 right-0 bottom-[120px] w-[54%] text-texto-2">
+      <div className="absolute top-0 right-0 bottom-[172px] w-[54%] text-texto-2">
         {/* la máscara funde la mente con lo que haya detrás (antes una viñeta pintada del color de fondo dejaba una costura) */}
         <div className="absolute inset-0 [mask-image:radial-gradient(closest-side,black_62%,transparent)]">
           <Constelacion atlas={atlas} color={color} activa={visible} className="absolute inset-0 size-full" />
@@ -99,7 +99,7 @@ export function Mando({ onSeccion, presencia = 'orbe', sitio = { izquierda: 240,
       </div>
 
       {/* el saludo, el estado de tu mundo y la pregunta */}
-      <div className="absolute top-[11%] grid w-[min(600px,44%)] content-start gap-5" style={{ left: Math.max(sitio.izquierda, 96) + 24 }}>
+      <div className="absolute top-[20%] grid w-[min(600px,44%)] content-start gap-5" style={{ left: Math.max(sitio.izquierda, 96) + 24 }}>
         <div className="grid gap-3">
           <p className="m-0 text-[13px] tracking-[0.02em] text-texto-3">{fechaLarga(new Date())}</p>
           <h1 className="m-0 flex flex-wrap items-baseline font-display text-[clamp(52px,5.6vw,88px)] leading-[0.95] font-normal tracking-[-0.025em] text-texto italic">

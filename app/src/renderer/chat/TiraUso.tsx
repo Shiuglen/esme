@@ -32,7 +32,7 @@ export function TiraUso({ proveedor, modelo, etiqueta, sesion }: { proveedor: st
         <span className="size-1.5 shrink-0 rounded-full bg-acento" aria-hidden />
         <span className="truncate">{etiqueta}</span>
       </span>
-      {pct !== null && (
+      {pct !== null && pct > 0 && (
         <span className="flex items-center gap-1.5" title={`Contexto usado: ${fmtTokens(sesion.ultimaEntrada)} de ${fmtTokens(contexto)} tokens`}>
           <span className="relative h-1 w-12 overflow-hidden rounded-full bg-s3" aria-hidden>
             <span className={cn('absolute inset-y-0 left-0 rounded-full', pct > 85 ? 'bg-peligro' : pct > 60 ? 'bg-atencion' : 'bg-texto-2')} style={{ width: `${pct}%` }} />
@@ -40,9 +40,10 @@ export function TiraUso({ proveedor, modelo, etiqueta, sesion }: { proveedor: st
           {pct}%
         </span>
       )}
-      <span title="Coste de esta conversación">{fmtUSD(sesion.costeUSD)}</span>
+      {/* el dinero solo se dice cuando lo hay: «$0» en cada conversación era ruido */}
+      {sesion.costeUSD > 0 && <span title="Coste de esta conversación">{fmtUSD(sesion.costeUSD)}</span>}
       {sesion.memoria > 0 && <span className="text-memoria" title="Tokens de tu memoria que Esme dio a la IA en la última respuesta">{fmtTokens(sesion.memoria)} de memoria</span>}
-      {estado && (
+      {estado && (estado.hoyUSD > 0 || !!tope) && (
         <span className={cn('ml-auto', nivel === 'limite' ? 'text-peligro' : nivel === 'aviso' ? 'text-atencion' : '')}
           title={tope ? `Gasto de hoy frente a tu tope diario` : 'Gasto de hoy (sin tope diario)'}>
           hoy {fmtUSD(estado.hoyUSD)}{tope ? ` / ${fmtUSD(tope)}` : ''}

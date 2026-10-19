@@ -55,7 +55,7 @@ export const ESTADOS: Record<TareaTaller['estado'], { texto: string; tono: 'vida
   esperando: { texto: 'Te necesita', tono: 'atencion' },
   lista: { texto: 'Lista', tono: 'neutro' },
   parada: { texto: 'Parada', tono: 'apagado' },
-  error: { texto: 'Error', tono: 'peligro' },
+  error: { texto: 'No pudo', tono: 'peligro' },
 }
 
 export type Explicacion = { tipo: 'sesion' | 'modelo' | 'limite' | 'motor'; titulo: string; consejo: string }
