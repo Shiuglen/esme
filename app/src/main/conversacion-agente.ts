@@ -4,7 +4,9 @@
 import type { McpServer } from '@agentclientprotocol/sdk'
 import type { ModelMessage } from 'ai'
 import { mkdirSync } from 'node:fs'
-import { abrirSesionACP, type EventoMotor } from './motores/sesion-acp'
+import { abrirSesionACP, type EventoMotor, type OpcionConfig } from './motores/sesion-acp'
+import { limite } from './router/cerebro'
+import { otroModeloGratis } from './taller/gratis'
 import type { Paso, Respuesta } from './herramientas/propias'
 import type { MotorElegido } from './taller/taller'
 
@@ -45,20 +47,40 @@ export async function conversarConAgente(o: {
   permiso(titulo: string, opciones: { id: string; nombre: string; tipo: string }[]): Promise<Respuesta>
 }): Promise<{ error?: string; uso?: { entrada: number; salida: number } }> {
   mkdirSync(o.cwd, { recursive: true })
-  let uso: { entrada: number; salida: number } | undefined, fallo: string | undefined
-  const s = await abrirSesionACP({ comando: o.motor.comando, args: o.motor.args, cwd: o.cwd, env: o.motor.env, ...(o.mcp ? { mcp: o.mcp } : {}), masMcp: o.masMcp ?? [], ...(o.config ? { config: o.config } : {}),
-    alEvento: (e) => {
-      if (e.tipo === 'texto' && e.texto) o.enviar('chunk', e.texto)
-      else if (e.tipo === 'pensamiento' && e.texto) o.enviar('pensamiento', e.texto)
-      else if (e.tipo === 'uso') uso = { entrada: e.entrada, salida: e.salida }
-      else if (e.tipo === 'fallo') fallo = e.mensaje
-      else { const p = pasoDeEvento(e); if (p) o.enviar('paso', p) }
-    },
-    alPedirPermiso: async (p) => opcionDePermiso(await o.permiso(p.titulo, p.opciones), p.opciones),
-  })
+  let uso: { entrada: number; salida: number } | undefined, fallo: string | undefined, opciones: OpcionConfig[] = [], hablo = false
+  const msj = (e: unknown) => (e instanceof Error ? e.message : String(e))
+  let s: Awaited<ReturnType<typeof abrirSesionACP>>
+  try {
+    s = await abrirSesionACP({ comando: o.motor.comando, args: o.motor.args, cwd: o.cwd, env: o.motor.env, ...(o.mcp ? { mcp: o.mcp } : {}), masMcp: o.masMcp ?? [], ...(o.config ? { config: o.config } : {}),
+      alEvento: (e) => {
+        if (e.tipo === 'texto' && e.texto) { hablo = true; o.enviar('chunk', e.texto) }
+        else if (e.tipo === 'pensamiento' && e.texto) o.enviar('pensamiento', e.texto)
+        else if (e.tipo === 'opciones') opciones = e.opciones
+        else if (e.tipo === 'uso') uso = { entrada: e.entrada, salida: e.salida }
+        else if (e.tipo === 'fallo') fallo = e.mensaje
+        else { const p = pasoDeEvento(e); if (p) o.enviar('paso', p) }
+      },
+      alPedirPermiso: async (p) => opcionDePermiso(await o.permiso(p.titulo, p.opciones), p.opciones),
+    })
+  } catch (e) { return { error: msj(e) } }
   const cancelar = () => void s.cancelar().catch(() => {})
   o.senal.addEventListener('abort', cancelar, { once: true })
-  try { await s.preguntar(promptDeConversacion(o.sistema, o.mensajes)); return { ...(fallo ? { error: fallo } : {}), ...(uso ? { uso } : {}) } }
-  catch (e) { return { error: e instanceof Error ? e.message : String(e) } }
-  finally { o.senal.removeEventListener('abort', cancelar); s.cerrar() }
+  try {
+    // como en el Taller: si el modelo gratis llegó a su límite, se prueba otro gratis del mismo agente (nunca uno de pago)
+    const probados = new Set<string>()
+    for (let intento = 0; ; intento++) {
+      fallo = undefined
+      try { await s.preguntar(promptDeConversacion(o.sistema, o.mensajes)) } catch (e) { fallo = msj(e) }
+      if (!fallo || hablo || !limite(fallo) || intento >= 4 || o.senal.aborted) break
+      const actual = opciones.find((x) => x.id === 'model')?.actual
+      if (actual) probados.add(actual)
+      const otro = otroModeloGratis(opciones, probados)
+      if (!otro) break
+      probados.add(otro)
+      await s.configurar('model', otro).catch(() => {})
+      o.enviar('paso', { fase: 'llama', id: `modelo-${intento}`, nombre: 'cambio_de_modelo', args: { modelo: otro } })
+      o.enviar('paso', { fase: 'resultado', id: `modelo-${intento}`, nombre: 'cambio_de_modelo', resumen: otro })
+    }
+    return { ...(fallo ? { error: fallo } : {}), ...(uso ? { uso } : {}) }
+  } finally { o.senal.removeEventListener('abort', cancelar); s.cerrar() }
 }

@@ -15,11 +15,16 @@ import { forjarDesdeChat } from './forja-ipc'
 import { keys } from './keys'
 import { anotarConsumo } from './ipc-proveedores'
 import { buildSystem, makeModel, type ProviderId } from './providers'
+import { conversarConAgente } from './conversacion-agente'
+import { agentesDeRespaldo, motorParaConversar } from './ipc-taller'
+import { mcpParaTaller } from './herramientas/ipc'
+import { agotado, esAgente, motorDe } from './router/cerebro'
+import type { MotorElegido } from './taller/taller'
 
 const running = new Map<string, AbortController>()
 const esperando = new Map<string, (r: Respuesta) => void>()   // `${chat}:${llamada}` → quien espera el permiso
 
-export type ChatRequest = { id: string; provider: ProviderId; model: string; messages: ModelMessage[]; memory: { context: string; ids: string[] } | null; ahorrados?: number; panorama?: string; voz?: boolean; herramientas?: boolean }
+export type ChatRequest = { id: string; provider: ProviderId | `acp:${string}`; model: string; messages: ModelMessage[]; memory: { context: string; ids: string[] } | null; ahorrados?: number; panorama?: string; voz?: boolean; herramientas?: boolean }
 type Deps = { brainInfo: () => BrainInfo | null }
 
 export function registerChat(d: Deps) {
@@ -58,12 +63,7 @@ function manosPara(to: WebContents, req: ChatRequest, ac: AbortController, d: De
     // la clave de Brave vive en el llavero como la de cualquier proveedor
     buscarWeb: (q) => buscarWeb(q, { brave: keys.get('brave'), searxng: cfg.searxng }),
     leerWeb: (u) => leerPagina(u),
-    preguntar: (nombre, args, id) => new Promise<Respuesta>((res) => {
-      const k = `${req.id}:${id}`
-      esperando.set(k, res)
-      ac.signal.addEventListener('abort', () => { esperando.delete(k); res('no') }, { once: true })
-      to.send(`chat:permiso:${req.id}`, { id, nombre, args })
-    }),
+    preguntar: (nombre, args, id) => pedirPermiso(to, req, ac, nombre, args, id),
     politicas: cfg.politicas,
     guardarPolitica: (n, p) => { const c = leerConfig(fichero); c.politicas[n] = p; guardarConfig(fichero, c) },
     conocidas,
@@ -71,8 +71,23 @@ function manosPara(to: WebContents, req: ChatRequest, ac: AbortController, d: De
   }
 }
 
+function pedirPermiso(to: WebContents, req: ChatRequest, ac: AbortController, nombre: string, args: unknown, id: string) {
+  return new Promise<Respuesta>((res) => {
+    const k = `${req.id}:${id}`
+    esperando.set(k, res)
+    ac.signal.addEventListener('abort', () => { esperando.delete(k); res('no') }, { once: true })
+    to.send(`chat:permiso:${req.id}`, { id, nombre, args })
+  })
+}
+
 async function pump(to: WebContents, req: ChatRequest, ac: AbortController, d: Deps) {
   try {
+    if (esAgente(req.provider)) {
+      const motor = await motorParaConversar(motorDe(req.provider))
+      if ('error' in motor) { to.send(`chat:error:${req.id}`, motor.error); return }
+      return await conAgentes(to, req, ac, d, [motor])
+    }
+    const proveedor = req.provider
     const conManos = req.herramientas !== false
     let tools = {}
     if (conManos) {
@@ -83,7 +98,7 @@ async function pump(to: WebContents, req: ChatRequest, ac: AbortController, d: D
       fallos.filter((f) => !/401|unauthori[sz]ed|iniciar sesión/i.test(f)).forEach((f, i) => to.send(`chat:paso:${req.id}`, { fase: 'error', id: `mcp-${i}`, nombre: 'herramienta conectada', error: f }))
       tools = { ...conectadas, ...herramientasPropias(manos) }
     }
-    const result = streamText({ model: makeModel(req.provider, req.model, (id) => keys.get(id)),
+    const result = streamText({ model: makeModel(proveedor, req.model, (id) => keys.get(id)),
       system: buildSystem(req.memory, { panorama: req.panorama, voz: req.voz, herramientas: conManos }),
       messages: req.messages, abortSignal: ac.signal,
       ...(conManos ? { tools, stopWhen: stepCountIs(8) } : {}) })
@@ -91,12 +106,58 @@ async function pump(to: WebContents, req: ChatRequest, ac: AbortController, d: D
     const { error } = await bombear(result.fullStream, (canal, x) => { if (canal === 'chunk' && x) hablo = true; to.send(`chat:${canal}:${req.id}`, x) })
     // hay modelos que no aceptan herramientas: se repite sin ellas en vez de dejar al usuario sin respuesta
     if (error && conManos && !hablo && /tool|function call|herramient/i.test(error)) return pump(to, { ...req, herramientas: false }, ac, d)
+    // lo gratis se agotó, la cuota o la clave fallan: la conversación sigue con tu mejor agente en vez de quedarse muda
+    if (error && !hablo && agotado(error)) {
+      const respaldo = await agentesDeRespaldo()
+      if (respaldo.length) return await conAgentes(to, req, ac, d, respaldo, error)
+    }
     if (error) { to.send(`chat:error:${req.id}`, error); return }
     await anotarUso(to, req, result)
     to.send(`chat:done:${req.id}`)
   } catch (err) {
     to.send(`chat:error:${req.id}`, err instanceof Error ? err.message : String(err))
   }
+}
+
+/** La respuesta a través de uno de tus agentes: recibe tu memoria (el MCP del cerebro) y tus herramientas conectadas;
+ *  sus pasos y permisos salen en la conversación igual que los de Esme. */
+async function conAgentes(to: WebContents, req: ChatRequest, ac: AbortController, d: Deps, motores: MotorElegido[], motivo?: string) {
+  // si un agente no tiene sesión o se agotó sin decir nada, el turno pasa al siguiente; el último error es el que se dice
+  let ultimo = ''
+  const fallos: string[] = []
+  for (const [k, motor] of motores.entries()) {
+    if (motivo || k > 0) {
+      to.send(`chat:paso:${req.id}`, { fase: 'llama', id: `cerebro-${k}`, nombre: 'cambio_de_cerebro', args: { agente: motor.nombre, motivo: motivo ?? ultimo } })
+      to.send(`chat:paso:${req.id}`, { fase: 'resultado', id: `cerebro-${k}`, nombre: 'cambio_de_cerebro', resumen: motor.nombre })
+    }
+    const r = await pumpAgente(to, req, ac, d, motor)
+    if (!r.error) return
+    ultimo = r.error; fallos.push(r.error)
+    if (r.hablo || !agotado(r.error) || ac.signal.aborted) break
+  }
+  // si probó varios, se dice qué le falta a cada uno (sesión, límite…) en vez de solo el último error
+  to.send(`chat:error:${req.id}`, fallos.length > 1 ? `Ninguno de tus agentes pudo responder ahora:\n${fallos.map((f) => `- ${f}`).join('\n')}` : ultimo)
+}
+
+async function pumpAgente(to: WebContents, req: ChatRequest, ac: AbortController, d: Deps, motor: MotorElegido): Promise<{ error?: string; hablo?: boolean }> {
+  const i = d.brainInfo()
+  let n = 0, hablo = false
+  const r = await conversarConAgente({
+    motor, cwd: join(app.getPath('userData'), 'conversacion'), mensajes: req.messages, senal: ac.signal,
+    sistema: buildSystem(req.memory, { panorama: req.panorama, voz: req.voz, herramientas: false }),
+    ...(i ? { mcp: { nombre: 'esme', url: `${i.url}/mcp`, token: i.token } } : {}),
+    masMcp: (() => { try { return mcpParaTaller() } catch { return [] } })(),
+    enviar: (canal, x) => { if (canal === 'chunk') hablo = true; to.send(`chat:${canal}:${req.id}`, x) },
+    permiso: (titulo) => pedirPermiso(to, req, ac, `agente__${titulo}`, {}, `agente-permiso-${motor.id}-${++n}`),
+  })
+  if (r.error) return { error: `${motor.nombre}: ${r.error}`, hablo }
+  if (r.uso) {
+    const costeUSD = anotarConsumo({ ts: Date.now(), proveedor: `acp:${motor.id}`, modelo: motor.nombre, entrada: r.uso.entrada, salida: r.uso.salida,
+      ahorradosMemoria: req.ahorrados ?? 0, origen: 'chat' })
+    to.send(`chat:usage:${req.id}`, { entrada: r.uso.entrada, salida: r.uso.salida, costeUSD })
+  }
+  to.send(`chat:done:${req.id}`)
+  return {}
 }
 
 /** Recorre el flujo del AI SDK: el texto va por «chunk» y el pensado por «pensamiento» (los modelos que piensan no sueltan

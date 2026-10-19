@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { agentCommand, listAgents } from './agents'
 import { BrainProcess, type BrainInfo } from './brain-process'
 import { registerChat } from './chat'
-import { alLanzar, cerrar as cerrarTaller, pendienteTaller, registerTaller } from './ipc-taller'
+import { alLanzar, cerrar as cerrarTaller, pendienteTaller, registerTaller, agentesParaConversar } from './ipc-taller'
 import { alCerrarVentana, guardarPreferencia, leerPreferencia, resumenBandeja, type PreferenciaCierre } from './segundo-plano'
 import { registerProveedores } from './ipc-proveedores'
 import { keys } from './keys'
@@ -19,6 +19,7 @@ import { registrarLanzador } from './lanzador/ventana'
 import { encargarDesdeChat } from './ipc-taller'
 import { AGENTES, conectar as conectarMente, desconectar as desconectarMente, estados as estadosMente } from './mente/compartir'
 import { listModels, PROVIDERS, type ProviderId } from './providers'
+import { cerebrosDeAgentes, esAgente } from './router/cerebro'
 import { rutasDe } from './rutas'
 
 const RUTAS = rutasDe({ empaquetada: app.isPackaged, plataforma: process.platform, home: homedir(), userData: app.getPath('userData'), resources: process.resourcesPath, env: process.env })
@@ -143,8 +144,11 @@ function registerIpc() {
       console.error('[ventana] la barra no aceptó colores:', JSON.stringify(c))
     }
   })
-  ipcMain.handle('providers:list', () => PROVIDERS.map((p) => ({ ...p, hasKey: !p.needsKey || keys.has(p.id) })))
-  ipcMain.handle('models:list', async (_e, id: ProviderId) => {
+  // las IAs con clave y, detrás, tus agentes instalados (hablan por tu suscripción o tu sesión)
+  ipcMain.handle('providers:list', async () => [...PROVIDERS.map((p) => ({ ...p, hasKey: !p.needsKey || keys.has(p.id) })),
+    ...cerebrosDeAgentes(await agentesParaConversar().catch(() => []))])
+  ipcMain.handle('models:list', async (_e, id: ProviderId | `acp:${string}`) => {
+    if (esAgente(id)) return { ok: true, models: ['el de tu sesión'] }
     try { return { ok: true, models: await listModels(id, (k) => keys.get(k)) } }
     catch (err) { return { ok: false, error: err instanceof Error ? err.message : String(err) } }
   })

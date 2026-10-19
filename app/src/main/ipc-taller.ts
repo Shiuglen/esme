@@ -52,6 +52,16 @@ export async function encargarDesdeChat(encargo: string, agente?: string) {
   const t = taller.crear({ motor, carpeta: null, texto: encargo })
   return { id: t.id, titulo: t.titulo, agente: t.motorNombre }
 }
+/** Tus agentes de este equipo, para hablar con ellos en la conversación (src/main/router/cerebro.ts). */
+export const agentesParaConversar = async () => (await detectar()).map((m) => ({ id: m.id, nombre: m.nombre, instalado: m.instalado }))
+export const motorParaConversar = (id: string) => elegirMotor(id)
+/** Con quién seguir si el cerebro de la conversación se agota: primero el agente que mejor ha trabajado, luego los demás instalados. */
+export async function agentesDeRespaldo(): Promise<MotorElegido[]> {
+  const mejor = await agentePreferido()
+  const ids = [...new Set([mejor, ...(await detectar()).filter((m) => m.instalado).map((m) => m.id)].filter((x): x is string => !!x))]
+  const motores = await Promise.all(ids.map((id) => elegirMotor(id)))
+  return motores.filter((m): m is MotorElegido => !('error' in m))
+}
 /** La carpeta de trabajo (copia aislada) de una tarea, para la Forja. */
 export const copiaDeTarea = (id: string) => taller?.lista().find((x) => x.id === id)?.copia?.ruta ?? null
 export const estadoDeTarea = (id: string) => taller?.lista().find((x) => x.id === id)?.estado ?? null
