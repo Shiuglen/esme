@@ -216,6 +216,12 @@ export function App() {
   const hablar = (texto: string) => { if (brain) void brain.decir(paraDecir(texto)).then((wav) => reproducir(wav, () => setTurnoVoz((n) => n + 1))).catch(() => {}) }
   // una cita enfoca su recuerdo en tu mente sin salir de donde estás (la mente está siempre de fondo)
   const enfocarRecuerdo = (id: string) => { setEnfocado(id); redRef.current?.enfocar(id) }
+  // encargar desde la paleta: el mismo camino que el lanzador (el agente que mejor ha trabajado, en una copia aislada)
+  const encargarDesdePaleta = async (t: string) => {
+    const r = await (window as unknown as { daimon?: { lanzador?: { encargar(t: string): Promise<{ ok: boolean; error?: string; titulo?: string; agente?: string }> } } }).daimon?.lanzador?.encargar(t)
+    if (r?.ok) toast(`${r.agente} ya trabaja en «${r.titulo}»`, { action: { label: 'Ver', onClick: () => ir('taller') } })
+    else toast.error(r?.error ?? 'No se pudo encargar.')
+  }
 
   useHalos()
   useEffect(() => encenderLuz(), [])
@@ -299,7 +305,9 @@ export function App() {
         <Leyenda modo={piel.navegacion} actual={seccion} recogida={seccion !== 'inicio'} estado={estadoEsme} notas={notas} onIr={ir} />
       </main>
       <Paleta abierta={paleta} onCerrar={() => setPaleta(false)} onIr={ir} onPreguntar={preguntar}
-        onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} />
+        onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))}
+        brain={brain} tareas={tl.tareas} onTarea={verTarea} onVestir={pieles.vestir} onEncargar={(t) => void encargarDesdePaleta(t)}
+        onRecuerdo={(id) => { ir('memoria'); setTimeout(() => enfocarRecuerdo(id), 350) }} />
       <Toaster theme={tema === 'noche' ? 'dark' : 'light'} position="bottom-right" toastOptions={{ style: { background: 'var(--superficie-2)', border: '1px solid var(--linea)', color: 'var(--texto)', fontFamily: 'inherit' } }} />
       <HojasVivas tareas={tl.tareas} onVer={verTarea} />
     </div>
