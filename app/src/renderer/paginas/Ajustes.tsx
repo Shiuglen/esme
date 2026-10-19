@@ -11,6 +11,8 @@ import { cn } from '../lib/cn'
 import { Apariencia, type Pieles } from './Apariencia'
 import { TuPlan } from './TuPlan'
 import { useMuelle } from '../tinta/movimiento'
+import { EntrarAgente } from './EntrarAgente'
+import { TintaVista } from '../marca/PuntoVista'
 
 type Pestana = 'motores' | 'presupuesto' | 'apariencia' | 'plan' | 'sistema'
 type Vista = 'conectados' | 'suscripcion' | 'catalogo' | 'local'
@@ -157,7 +159,9 @@ function Motores() {
               <p className="m-0 text-sm text-texto-3">Empieza gratis con un modelo local o con OpenCode Zen, o usa tu suscripción de Copilot, Cursor u OpenCode desde «Tu suscripción».</p></div>
           ) : conectados.map((c) => 'label' in c
             ? <Fila key={c.id} icono={<Bicho de={c.id} tamaño={17} />} titulo={c.label} sub="por API · clave en tu llavero" derecha={<Pastilla><Check className="size-3.5" />listo</Pastilla>} />
-            : <Fila key={c.id} icono={<Bicho de={c.id} tamaño={17} />} titulo={c.nombre} sub={<span title={c.ruta ?? undefined}>con tu suscripción · en este equipo</span>} derecha={<Pastilla><Check className="size-3.5" />listo</Pastilla>} />)}
+            : <Fila key={c.id} icono={<TintaVista motor={c.id} px={22} estado="lista" />} titulo={c.nombre} sub={<span title={c.ruta ?? undefined}>tu agente · en este equipo</span>} derecha={<Pastilla>instalado</Pastilla>}>
+                <div className="pl-11"><EntrarAgente motor={c.id} nombre={c.nombre} /></div>
+              </Fila>)}
         </Caja>
       )}
 

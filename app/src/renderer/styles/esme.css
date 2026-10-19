@@ -428,3 +428,5 @@
 /* El Punto como punto final de una frase: sobre la línea base (el preflight pone vertical-align: middle a todo svg) y
    bajado lo que mide su margen interior (0,3 de 2,6), para que el disco toque la línea como un punto de verdad. */
 .punto-final { vertical-align: baseline; transform: translateY(11.5%) }
+/* con la superficie «tinta», tampoco el halo que seguía al cursor por los bordes de las cajas */
+[data-superficie="tinta"] .halo::after { display: none }
