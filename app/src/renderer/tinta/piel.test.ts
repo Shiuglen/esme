@@ -55,7 +55,7 @@ describe('cada capa se vuelve variables en vivo', () => {
     expect(v['--spacing']).toBe('0.22rem')
     expect(v['--letra-texto']).toContain('Geist Variable')
     expect(v['--letra-titulos']).toContain('Fraunces Variable')
-    expect(variablesDePiel(PIEL_BASE, 'noche')['--forma-r2']).toBe('6px')   // Tinta y Luz: radio 0,6
+    expect(variablesDePiel(PIEL_BASE, 'noche')['--forma-r2']).toBe('10px')   // Tinta y Luz: radio 0,6
   })
   it('el color libre y el propio traen su paleta; un estilo de casa la deja al CSS', () => {
     expect(variablesDePiel({ ...PIEL_BASE, color: { tipo: 'libre', noche, dia } }, 'dia')['--fondo']).toBe('#f6f7fb')
@@ -88,11 +88,11 @@ describe('la navegación también es de la piel', () => {
 })
 
 describe('la piel de la casa: Tinta y Luz (18-oct)', () => {
-  it('materia impresa: Bodoni para los títulos, Geist para el texto, superficie de papel (sin cristal)', async () => {
+  it('materia impresa: Bodoni para los títulos, Geist para el texto, superficie de tinta (líneas de 1 px, sin cristal)', async () => {
     const { PIEL_BASE: p } = await import('./piel')
     expect(p.nombre).toBe('Tinta y Luz')
     expect(p.letra.titulos).toBe('bodoni'); expect(p.letra.texto).toBe('geist')
-    expect(p.piezas.superficie).toBe('papel')
+    expect(p.piezas.superficie).toBe('tinta')
   })
   it('tinta azul profunda con luz bioluminiscente, válida y legible de día y de noche', async () => {
     const { PIEL_BASE: p, validarPiel: v, revisarContraste: c, variablesDePiel: vars } = await import('./piel')

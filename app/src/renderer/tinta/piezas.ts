@@ -5,6 +5,7 @@ export const PIEZAS = {
   superficie: { nombre: 'Superficies', variantes: [
     { id: 'vidrio', nombre: 'Vidrio líquido' }, { id: 'esmerilado', nombre: 'Cristal esmerilado' }, { id: 'papel', nombre: 'Papel' },
     { id: 'neon', nombre: 'Neón' }, { id: 'clay', nombre: 'Arcilla suave' }, { id: 'brutal', nombre: 'Brutal' },
+    { id: 'tinta', nombre: 'Tinta (líneas finas, aguada con grano)' },
   ] },
   saludo: { nombre: 'Cómo aparece el saludo', variantes: [
     { id: 'enfoque', nombre: 'Se enfoca letra a letra' }, { id: 'descifrar', nombre: 'Se descifra como un código' },
@@ -22,8 +23,8 @@ export const PIEZAS = {
 
 export type Hueco = keyof typeof PIEZAS
 export type Piezas = { [H in Hueco]: (typeof PIEZAS)[H]['variantes'][number]['id'] }
-// las de «Tinta y Luz»: papel en vez de cristal y un brillo sereno al trabajar (18-oct)
-export const PIEZAS_BASE: Piezas = { superficie: 'papel', saludo: 'enfoque', pulsar: 'nada', sonido: 'avisos', trabajo: 'brillo' }
+// las de la casa: tinta (líneas de 1 px, sin cristal ni halos; la luz solo en lo vivo) y un brillo sereno al trabajar (19-oct)
+export const PIEZAS_BASE: Piezas = { superficie: 'tinta', saludo: 'enfoque', pulsar: 'nada', sonido: 'avisos', trabajo: 'brillo' }
 
 /** Valida las piezas que trae una piel: completa lo que falta con la base y devuelve los errores de lo que no existe. */
 export function validarPiezas(x: unknown): { piezas: Piezas; errores: string[] } {

@@ -1,3 +1,4 @@
+import '@fontsource-variable/bodoni-moda'
 import '@fontsource-variable/funnel-display'
 import '@fontsource-variable/funnel-sans'
 import '@fontsource-variable/jetbrains-mono'

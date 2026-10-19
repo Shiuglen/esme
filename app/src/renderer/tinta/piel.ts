@@ -47,9 +47,10 @@ export type Piel = {
 export const PIEL_BASE: Piel = {
   version: 1, nombre: 'Tinta y Luz',
   color: { tipo: 'libre',
-    noche: { fondo: '#0a1020', superficie: '#111a2e', texto: '#ece6d8', acento: '#4fe3c1', atencion: '#f2b45b', peligro: '#ff7a6b', exito: '#7ee0a1' },
+    noche: { fondo: '#070b14', superficie: '#0d1424', texto: '#ece6d8', acento: '#4fe3c1', atencion: '#f2b45b', peligro: '#ff7a6b', exito: '#7ee0a1' },
     dia: { fondo: '#eeebe3', superficie: '#fbfaf6', texto: '#141821', acento: '#08705e', atencion: '#9a5b00', peligro: '#b42318', exito: '#1f7a3f' } },
-  letra: { titulos: 'bodoni', texto: 'geist', escala: 1 }, forma: { radio: 0.6, sombra: 'plana' },
+  // fondo más hondo y radios más generosos: el ADN de los productos del creador (Sakoi, plagatox-ui; vision-2026-10-18/04-github.md)
+  letra: { titulos: 'bodoni', texto: 'geist', escala: 1 }, forma: { radio: 1, sombra: 'plana' },
   densidad: 'comoda', movimiento: 'sutil', caracter: 'preciso', fondo: 'liso', navegacion: 'leyenda', portada: 'mando', escena: 'ninguna', presencia: 'orbe',
   piezas: PIEZAS_BASE,
 }

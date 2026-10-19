@@ -16,6 +16,7 @@ import { haceCuanto, recorta } from '../paginas/diario'
 import { useMuelle } from '../tinta/movimiento'
 import { sonar } from '../tinta/sonido'
 import { explicarFallo, modeloInicial, ordenMotores } from './motor'
+import { PuntoVista } from '../marca/PuntoVista'
 
 type Turn = TurnoHilo
 
@@ -231,9 +232,9 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
           <div className="mx-auto grid w-full max-w-[760px] gap-7 px-2 py-6">
             {!turns.length && (
               <div className="grid justify-items-center gap-3 pt-[12vh] text-center">
-                <Esfera grande />
-                <p className="m-0 text-[30px] leading-tight font-light tracking-[-0.03em] text-texto">¿En qué piensas?</p>
-                <p className="m-0 max-w-[46ch] text-[14.5px] text-texto-3">Esme le da a la IA solo lo que necesita de tu memoria. Verás qué recordó, podrás decirle si sirvió, y todo queda guardado aquí.</p>
+                <PuntoVista px={88} titulo="Esme" className="text-acento" />
+                <p className="m-0 mt-2 font-display text-[34px] leading-tight tracking-[-0.02em] text-texto italic">¿En qué piensas?</p>
+                <p className="m-0 max-w-[46ch] text-[14.5px] text-texto-3">Recuerdo lo que me has contado. Te enseño qué usé y tú me dices si sirvió.</p>
               </div>
             )}
             <AnimatePresence initial={false}>
@@ -260,10 +261,9 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
   )
 }
 
-// La pequeña presencia de Esme junto a lo que escribe: una esfera de luz del color de tu piel.
-function Esfera({ grande, viva }: { grande?: boolean; viva?: boolean }) {
-  return <span aria-hidden className={cn('relative block shrink-0 rounded-full', grande ? 'size-14' : 'size-6', viva && 'animate-[latido_1.6s_ease-in-out_infinite]')}
-    style={{ background: 'radial-gradient(circle at 35% 30%, color-mix(in oklab, var(--acento), white 55%), var(--acento) 45%, color-mix(in oklab, var(--acento), black 45%))', boxShadow: '0 0 18px -2px var(--acento)' }} />
+// La pequeña presencia de Esme junto a lo que escribe: su Punto; mientras responde, la tinta se revuelve.
+function Esfera({ viva }: { viva?: boolean }) {
+  return <PuntoVista px={24} tam="24px" estado={viva ? 'pensando' : 'reposo'} className="mt-0.5 text-acento" />
 }
 
 function Respuesta({ t, ultima, busy, fase, brain, onCite, onJuzgar, onEscuchar, pidiendo }: {

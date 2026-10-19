@@ -43,6 +43,7 @@ import { MovimientoPiel } from './tinta/movimiento'
 import { MotionConfig } from 'motion/react'
 import { Leyenda, type NotaLugar } from './shell/Leyenda'
 import { AJUSTES, SECCIONES, nombreDe, type SeccionId } from './shell/secciones'
+import { cifra } from './lib/cifras'
 
 const cargar = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(`esme:${k}`); return v === null ? d : (JSON.parse(v) as T) } catch { return d } }
 const guardar = (k: string, v: unknown) => { try { localStorage.setItem(`esme:${k}`, JSON.stringify(v)) } catch { /* sin almacenamiento */ } }
@@ -225,7 +226,7 @@ export function App() {
   const resumenTaller = useMemo(() => {
     const k = (f: (t: (typeof tl.tareas)[number]) => boolean) => tl.tareas.filter(f).length
     return { trabajando: k((t) => t.estado === 'trabajando' || t.estado === 'preparando'), esperando: k((t) => t.estado === 'esperando'),
-      listas: k((t) => t.estado === 'lista' && !t.aplicada), errores: k((t) => t.estado === 'error' && !archivable(t, Date.now())) }
+      listas: k((t) => t.estado === 'lista' && !t.aplicada && !archivable(t, Date.now())), errores: k((t) => t.estado === 'error' && !archivable(t, Date.now())) }
   }, [tl.tareas])
   // Solo en desarrollo: forzar el estado de la mente para revisar el diseño (window.__estadoEsme('pensando'))
   const [forzado, setForzado] = useState<'reposo' | 'pensando' | 'recordando' | null>(null)
@@ -260,8 +261,8 @@ export function App() {
   const notas: Partial<Record<SeccionId, NotaLugar>> = {
     conversacion: preguntas ? { texto: `${preguntas} ${preguntas === 1 ? 'pregunta' : 'preguntas'} en esta sesión` } : undefined,
     taller: notaTaller(resumenTaller),
-    memoria: recuerdos !== null ? { texto: `${recuerdos.toLocaleString('es-ES')} recuerdos` } : { texto: 'sin cerebro', tono: 'peligro' },
-    tienda: { texto: 'Pronto' },
+    memoria: recuerdos !== null ? { texto: `${cifra(recuerdos)} recuerdos` } : { texto: 'sin cerebro', tono: 'peligro' },
+    tienda: { texto: 'Pieles y herramientas' },
     ajustes: callados.length ? { texto: `${callados.join(', ')} no ${callados.length === 1 ? 'responde' : 'responden'}` } : undefined,
   }
 

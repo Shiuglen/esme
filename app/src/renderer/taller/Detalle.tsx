@@ -1,6 +1,6 @@
 // El detalle de una tarea: qué se pidió, qué hace el motor en vivo (plan, herramientas, texto), los permisos que pide,
 // los cambios en su copia y cómo seguir. Descartar es en dos pasos: borra la copia y su rama, y eso no se deshace.
-import { AgentFace } from 'agentfaces/react'
+import { TintaVista, tintaDeTarea } from '../marca/PuntoVista'
 import AILoadingState from '../ui/ai-loading'
 import { pasosDe } from '../paginas/mando'
 import {
@@ -29,7 +29,6 @@ const ICONO_CLASE: Record<string, LucideIcon> = {
 }
 const PERMISO: Record<string, string> = { allow_once: 'Permitir', allow_always: 'Permitir siempre', reject_once: 'Rechazar', reject_always: 'Rechazar siempre' }
 
-const CARA_DETALLE = { preparando: 'starting', trabajando: 'working', esperando: 'needs-you', lista: 'done', error: 'alert', parada: 'sleeping' } as const
 
 export type Pestana = 'vivo' | 'revision' | 'previa' | 'arena'
 export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, onDescartar, onAbrir, onConfigurar, onTerminal, revision, onPestana, arena, pedida, onReencarnar, ahora = Date.now() }: {
@@ -54,7 +53,7 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
       <header className="border-b border-linea px-5 pt-4 pb-3">
         <div className="flex items-start gap-3">
           {/* quién trabaja: la cara del agente, que dice en qué está (agentfaces) */}
-          <span className="shrink-0"><AgentFace state={CARA_DETALLE[t.estado]} size={52} color={getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || undefined} /></span>
+          <span className="shrink-0"><TintaVista motor={t.motor} px={52} estado={tintaDeTarea(t.estado)} /></span>
           <h2 className="line-clamp-2 min-w-0 flex-1 font-display text-[19px] leading-[25px] tracking-[-0.01em] text-texto">{t.titulo}</h2>
           <div className="flex shrink-0 items-center gap-1">
             {enMarcha && <Accion icono={Square} texto="Parar" onClick={onParar} />}

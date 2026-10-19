@@ -2,7 +2,8 @@
 // En reposo lista los lugares con su estado vivo (en frases cortas); con una hoja abierta se recoge en una columna de
 // iconos para no quitarle sitio. Encabeza la rosa de los vientos: la Señal, Esme viva.
 import { cn } from '../lib/cn'
-import { Senal, type EstadoSenal } from '../marca/SenalVista'
+import type { EstadoSenal } from '../marca/SenalVista'
+import { PuntoVista } from '../marca/PuntoVista'
 import { ROTULO } from '../memoria/pintar'
 import type { Navegacion } from '../tinta/piel'
 import type { Origen } from './Hoja'
@@ -29,7 +30,7 @@ export function Leyenda({ actual, recogida: recogidaPedida, estado, notas, onIr,
     <nav aria-label="Lugares de Esme" className={cn('flex h-full', muelle ? 'flex-row items-center' : 'flex-col')}>
       <button type="button" data-lugar="inicio" onClick={(e) => ir('inicio', e)} title="Tu mente (Esc)"
         className={cn('flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-s2/60', muelle ? 'border-r border-linea' : 'border-b border-linea', actual === 'inicio' && 'bg-s2/40')}>
-        <Senal tam={26} estado={estado} titulo="Esme" />
+        <PuntoVista px={26} estado={estado === 'pensando' || estado === 'recordando' ? 'pensando' : 'reposo'} titulo="Esme" className="text-acento" />
         {!recogida && <span className="truncate text-[15px] italic" style={{ fontFamily: ROTULO }}>Tu mente</span>}
       </button>
       <ul className={cn('m-0 list-none gap-0.5 p-1.5', muelle ? 'flex' : 'grid')}>

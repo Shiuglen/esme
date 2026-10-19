@@ -5,14 +5,13 @@ import type { TareaTaller } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { fmtTokens, fmtUSD } from '../chat/formatos'
 import { BarrasActividad } from './Micrografica'
-import { AgentFace } from 'agentfaces/react'
+import { TintaVista, tintaDeTarea } from '../marca/PuntoVista'
 import { Sello } from '../marca/SelloVista'
 import { giroSello } from '../marca/sello'
 import { barrasDe, ESTADOS, actividadAhora, activa, duracion, explicarError, silencioMs } from './vista'
 
 const SILENCIO_AVISO = 25_000
 // la cara de cada tarea dice en qué está (agentfaces)
-const CARA = { preparando: 'starting', trabajando: 'working', esperando: 'needs-you', lista: 'done', error: 'alert', parada: 'sleeping' } as const
 
 export function PastillaEstado({ estado }: { estado: TareaTaller['estado'] }) {
   const { texto, tono } = ESTADOS[estado]
@@ -81,7 +80,7 @@ export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida
         {enMarcha && <AccionRapida icono={Square} texto="Parar" onClick={onParar} />}
       </div>
       <div className="flex items-center gap-2">
-        <AgentFace state={CARA[t.estado]} size={plegada ? 22 : 28} color={getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || undefined} />
+        <TintaVista motor={t.motor} px={plegada ? 22 : 30} estado={tintaDeTarea(t.estado)} />
         <span className="shrink-0 whitespace-nowrap text-[13px] font-medium text-texto">{t.motorNombre}</span>
         {t.modelo && <span className="min-w-0 truncate font-mono text-[11px] text-texto-3">{modeloCorto(t.modelo)}</span>}
         <PastillaEstado estado={t.estado} />

@@ -25,7 +25,7 @@ import { archivable } from '../taller/vista'
 import { fechaLarga } from './portada'
 import { useEscucha, useNivelVoz } from '../lib/voz'
 import { Saludo } from '../tinta/PiezasVivas'
-import { Bicho } from '../marca/SerVista'
+import { TintaVista, tintaDeTarea } from '../marca/PuntoVista'
 import { useAgenda } from '../taller/Agenda'
 import { bridge } from '../lib/bridge'
 import { Constelacion } from './Constelacion'
@@ -89,12 +89,10 @@ export function Mando({ onSeccion, presencia = 'orbe', sitio = { izquierda: 240,
 
       {/* tu mente: la imagen principal, con Esme en su centro */}
       <div className="absolute top-0 right-0 bottom-[120px] w-[54%] text-texto-2">
-        <Constelacion atlas={atlas} color={color} activa={visible} className="absolute inset-0 size-full" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(closest-side,transparent_55%,var(--fondo))]" />
-        <button type="button" onClick={hablar} aria-pressed={escuchando} aria-label={escuchando ? 'Dejar de escuchar' : 'Hablar con Esme (manos libres)'}
-          className="absolute top-1/2 left-1/2 size-[132px] -translate-x-1/2 -translate-y-1/2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-acento">
-          {visible && <Presencia tipo={presencia} estado={estado} nivelTu={nivel} nivelElla={nivelVoz} color={color} />}
-        </button>
+        {/* la máscara funde la mente con lo que haya detrás (antes una viñeta pintada del color de fondo dejaba una costura) */}
+        <div className="absolute inset-0 [mask-image:radial-gradient(closest-side,black_62%,transparent)]">
+          <Constelacion atlas={atlas} color={color} activa={visible} className="absolute inset-0 size-full" />
+        </div>
         <button type="button" onClick={() => onIr({ lugar: 'memoria' })} className="absolute right-8 bottom-2 text-[12.5px] text-texto-3 hover:text-texto">
           {(recuerdos ?? 0).toLocaleString('es-ES', { useGrouping: 'always' } as Intl.NumberFormatOptions)} recuerdos · {temas} temas · abrir tu mente
         </button>
@@ -104,8 +102,14 @@ export function Mando({ onSeccion, presencia = 'orbe', sitio = { izquierda: 240,
       <div className="absolute top-[11%] grid w-[min(600px,44%)] content-start gap-5" style={{ left: Math.max(sitio.izquierda, 96) + 24 }}>
         <div className="grid gap-3">
           <p className="m-0 text-[13px] tracking-[0.02em] text-texto-3">{fechaLarga(new Date())}</p>
-          <h1 className="m-0 font-display text-[clamp(52px,5.6vw,88px)] leading-[0.95] font-normal tracking-[-0.025em] text-texto italic">
-            <Saludo texto={`${saludo()}.`} pieza={piezas.saludo} />
+          <h1 className="m-0 flex flex-wrap items-baseline font-display text-[clamp(52px,5.6vw,88px)] leading-[0.95] font-normal tracking-[-0.025em] text-texto italic">
+            <Saludo texto={saludo()} pieza={piezas.saludo} />
+            {presencia === 'ninguna' ? '.' : (
+              <button type="button" onClick={hablar} aria-pressed={escuchando} aria-label={escuchando ? 'Dejar de escuchar' : 'Hablar con Esme (manos libres)'}
+                className="ml-[0.05em] rounded-full not-italic outline-none focus-visible:ring-2 focus-visible:ring-acento">
+                {visible && <Presencia tipo={presencia} estado={estado} nivelTu={nivel} nivelElla={nivelVoz} px={30} tam="0.34em" className="punto-final text-acento" />}
+              </button>
+            )}
           </h1>
           {!vivo && !escuchando && (
             <div className="mt-2 grid gap-1.5" aria-live="polite">
@@ -173,10 +177,10 @@ export function Mando({ onSeccion, presencia = 'orbe', sitio = { izquierda: 240,
             {equipo.length === 0 && <span className="text-[13px] text-texto-3">Aún nadie ha trabajado: pide algo al Taller.</span>}
             {equipo.map((t) => (
               <button key={t.motor} type="button" onClick={() => onIr({ lugar: 'taller', id: t.id })} title={t.titulo} className="flex items-center gap-2 text-left">
-                <Bicho de={t.motor} tamaño={22} vivo={t.estado === 'trabajando' || t.estado === 'preparando'} />
+                <TintaVista motor={t.motor} px={30} estado={tintaDeTarea(t.estado)} />
                 <span className="grid leading-tight"><span className="text-[13px] text-texto">{t.motorNombre}</span>
-                  <span className={cn('text-[11.5px]', t.estado === 'trabajando' ? 'text-acento' : t.estado === 'esperando' ? 'text-atencion' : t.estado === 'error' ? 'text-peligro' : 'text-texto-3')}>
-                    {t.estado === 'trabajando' || t.estado === 'preparando' ? 'trabajando' : t.estado === 'esperando' ? 'te espera' : t.estado === 'error' ? 'falló' : t.estado === 'lista' ? 'terminó' : 'parado'}</span></span>
+                  <span className={cn('text-[11.5px]', t.estado === 'trabajando' ? 'text-acento' : t.estado === 'esperando' ? 'text-atencion' : 'text-texto-3')}>
+                    {t.estado === 'trabajando' || t.estado === 'preparando' ? 'trabajando' : t.estado === 'esperando' ? 'te espera' : t.estado === 'error' ? 'no pudo' : t.estado === 'lista' ? 'terminó' : 'parado'}</span></span>
               </button>
             ))}
           </div>

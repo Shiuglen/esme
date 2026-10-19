@@ -17,7 +17,7 @@ const texto = () => getComputedStyle(document.documentElement).getPropertyValue(
 /** El saludo de la portada (y cualquier titular que quiera presentarse con la pieza elegida). */
 export function Saludo({ texto: t, pieza }: { texto: string; pieza: Piezas['saludo'] }) {
   switch (pieza) {
-    case 'enfoque': return <BlurText key={t} text={t} animateBy="letters" delay={45} direction="bottom" className="justify-center" />
+    case 'enfoque': return <BlurText key={t} text={t} animateBy="letters" delay={45} direction="bottom" className="justify-start" />
     case 'descifrar': return <DecryptedText key={t} text={t} animateOn="view" sequential speed={40} revealDirection="start" encryptedClassName="text-acento" />
     case 'brillo': return <ShinyText text={t} color={texto()} shineColor={acento()} speed={3} />
     case 'degradado': return <GradientText colors={[acento(), texto(), acento()]} animationSpeed={6}>{t}</GradientText>

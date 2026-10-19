@@ -8,7 +8,7 @@ import type { SeccionId } from '../shell/secciones'
 import type { TareaTaller } from '../lib/bridge'
 import { Detalle, type Pestana } from '../taller/Detalle'
 import { FilaMotor } from '../taller/FilaMotor'
-import { AgentFace } from 'agentfaces/react'
+import { TintaVista, tintaDeTarea } from '../marca/PuntoVista'
 import { actividadActual } from '../taller/linea'
 import { NuevaTarea } from '../taller/NuevaTarea'
 import { Terminales } from '../taller/Terminales'
@@ -30,7 +30,6 @@ function useAhora(cada: number) {
   return ahora
 }
 
-const CARA_SALA = { preparando: 'starting', trabajando: 'working', esperando: 'needs-you', lista: 'done', error: 'alert', parada: 'sleeping' } as const
 
 export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<typeof useTaller>; foco: { id: string; n: number } | null; onIr(id: SeccionId): void }) {
   const muelle = useMuelle({ stiffness: 420, damping: 38 })
@@ -128,7 +127,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
               <button type="button" onClick={() => setMotorVisto((v) => (v === m.motor ? null : m.motor))} aria-pressed={motorVisto === m.motor} title={`${m.nombre}: ${m.total} ${m.total === 1 ? 'tarea' : 'tareas'}`}
                 className={cn('grid w-[96px] justify-items-center gap-1 rounded-4 px-1.5 pt-2 pb-1.5 transition-all hover:bg-s2/60', motorVisto === m.motor && 'bg-s2/80 ring-1 ring-acento/50')}>
                 <span className="relative">
-                  <AgentFace state={CARA_SALA[m.estado]} size={m.estado === 'trabajando' || m.estado === 'esperando' ? 48 : 40} color={acento} />
+                  <TintaVista motor={m.motor} px={m.estado === 'trabajando' || m.estado === 'esperando' ? 48 : 40} estado={tintaDeTarea(m.estado)} />
                   <span className="absolute -right-1.5 -bottom-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-s3 px-1 text-[10.5px] font-medium tabular-nums text-texto">{m.total}</span>
                 </span>
                 <span className="w-full truncate text-center text-[11.5px] font-medium text-texto">{m.nombre}</span>
@@ -140,7 +139,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
             <li key={m.id}>
               <button type="button" onClick={() => { setSeleccion(null); setMotorPedido((v) => ({ id: m.id, n: (v?.n ?? 0) + 1 })) }} title={`${m.nombre}: libre. Pulsa para darle un encargo`}
                 className="grid w-[96px] justify-items-center gap-1 rounded-4 px-1.5 pt-2 pb-1.5 opacity-70 transition-all hover:bg-s2/60 hover:opacity-100">
-                <AgentFace state="idle" size={36} color={acento} />
+                <TintaVista motor={m.id} px={36} estado="quieto" />
                 <span className="w-full truncate text-center text-[11.5px] font-medium text-texto">{m.nombre}</span>
                 <span className="w-full truncate text-center text-[10.5px] text-texto-3">Libre</span>
               </button>

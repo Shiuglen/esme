@@ -1,9 +1,10 @@
-// Barra superior: la palabra esme, dónde estás, la búsqueda (Ctrl K) y el estado de la mente.
+// Barra superior: la firma «Esme.», dónde estás, la búsqueda (Ctrl K) y el estado de la mente.
 import { Moon, Search, Sun } from 'lucide-react'
 import { motion } from 'motion/react'
 import { cn } from '../lib/cn'
 import { Vidrio } from './Vidrio'
-import { Senal } from '../marca/SenalVista'
+import { Firma } from '../marca/PuntoVista'
+import { cifra } from '../lib/cifras'
 import { Bicho, SerCasa } from '../marca/SerVista'
 import { MUELLE } from './Paleta'
 import { useMuelle } from '../tinta/movimiento'
@@ -17,7 +18,7 @@ export function BarraSuperior({ seccion, estado, tema, onTema, onBuscar, paletaA
     <header className="barra-ventana flex h-12 shrink-0 items-center gap-2.5 px-3 pt-1">
       {/* piezas de vidrio líquido flotando sobre la escena, no una franja: la barra es parte de la capa de navegación */}
       <Vidrio radio={18} className="flex h-9 items-center gap-2.5 pr-4 pl-2.5">
-      <span className="flex items-center gap-2"><Senal tam={22} estado={estado.pensando ? 'pensando' : 'reposo'} tapa="var(--superficie-1)" /><span className="font-display text-[21px] leading-none font-[650] tracking-[-0.045em]">esme</span></span>
+      <Firma px={22} estado={estado.pensando ? 'pensando' : 'reposo'} />
       <span className="text-texto-3">/</span>
       <span className="font-medium text-texto-2">{seccion}</span>
       </Vidrio>
@@ -43,7 +44,7 @@ export function BarraSuperior({ seccion, estado, tema, onTema, onBuscar, paletaA
         estado.conectado ? 'bg-acento-velo text-acento' : 'border border-linea bg-s2 text-texto-3')}
         title={estado.conectado ? 'El cerebro está en marcha' : 'No encuentro el cerebro'}>
         {estado.conectado && <SerCasa tamaño={13} vivo={estado.pensando} className="shrink-0 -ml-0.5" />}
-        {estado.conectado ? (estado.pensando ? 'pensando' : `${(estado.recuerdos ?? 0).toLocaleString('es-ES')} recuerdos`) : 'sin cerebro'}
+        {estado.conectado ? (estado.pensando ? 'pensando' : `${cifra(estado.recuerdos ?? 0)} recuerdos`) : 'sin cerebro'}
       </span>
       <button type="button" onClick={onTema} aria-label={tema === 'noche' ? 'Pasar al tema de día' : 'Pasar al tema de noche'}
         className="grid size-8 place-items-center rounded-2 text-texto-2 transition-colors hover:bg-s2 hover:text-texto">

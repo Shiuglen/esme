@@ -25,9 +25,9 @@ describe('compartir pieles: tu diseño entero en un código', () => {
 })
 
 describe('la superficie es una pieza más (el vidrio es solo una opción)', () => {
-  it('hay al menos seis superficies y la de por defecto es papel (materia impresa, sin cristal)', async () => {
+  it('hay al menos siete superficies y la de por defecto es tinta (líneas de 1 px, sin cristal ni halos)', async () => {
     const { PIEZAS, PIEZAS_BASE } = await import('./piezas')
-    expect(PIEZAS.superficie.variantes.map((v) => v.id)).toEqual(['vidrio', 'esmerilado', 'papel', 'neon', 'clay', 'brutal'])
-    expect(PIEZAS_BASE.superficie).toBe('papel')
+    expect(PIEZAS.superficie.variantes.map((v) => v.id)).toEqual(['vidrio', 'esmerilado', 'papel', 'neon', 'clay', 'brutal', 'tinta'])
+    expect(PIEZAS_BASE.superficie).toBe('tinta')
   })
 })

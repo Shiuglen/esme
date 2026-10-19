@@ -14,6 +14,7 @@ import { cargarLetra } from '../tinta/vestir'
 import { muestra, type Pieles, type Tema } from './Apariencia'
 import { buscarEnTienda, FAMILIAS, familiaDe, sorprendeme, type Familia, type ItemTienda } from './tienda'
 import { TiendaHerramientas } from './TiendaHerramientas'
+import { PuntoVista } from '../marca/PuntoVista'
 
 const PUNTO: Record<Familia, string> = { rojo: '#ef4444', naranja: '#f97316', amarillo: '#eab308', verde: '#22c55e', cian: '#06b6d4', azul: '#3b82f6', violeta: '#8b5cf6', rosa: '#ec4899', gris: '#9ca3af' }
 const leerColeccion = (): string[] => { try { return JSON.parse(localStorage.getItem('esme:coleccion') ?? '[]') } catch { return [] } }
@@ -122,7 +123,8 @@ function Ficha({ i, tema, probando, puesta, guardada, onProbar, onVestir, onGuar
         <span aria-hidden className="absolute inset-0 opacity-60" style={{ background: `radial-gradient(70% 60% at 50% 35%, ${m.acento}55, transparent 70%)` }} />
         <span aria-hidden className="absolute top-2.5 left-2.5 h-4 w-16" style={{ background: m.superficie, border: borde, borderRadius: r(10), boxShadow: sombra }} />
         <span aria-hidden className="absolute top-2.5 right-2.5 h-4 w-10" style={{ background: m.superficie, border: borde, borderRadius: r(10), boxShadow: sombra }} />
-        {p.presencia !== 'ninguna' && <span aria-hidden className="absolute top-7 left-1/2 size-11 -translate-x-1/2 rounded-full" style={{ background: `radial-gradient(circle at 35% 30%, #fff, ${m.acento} 55%, transparent 72%)`, boxShadow: `0 0 26px ${m.acento}` }} />}
+        {/* la piel viste a Esme por fuera; por dentro sigue siendo ella: el mismo Punto, con el color de esta piel */}
+        {p.presencia !== 'ninguna' && <span aria-hidden className="absolute top-6 left-1/2 -translate-x-1/2" style={{ color: m.acento }}><PuntoVista px={48} /></span>}
         <span className="absolute top-[86px] right-0 left-0 text-center text-[19px] leading-none" style={{ color: m.texto, fontFamily: t.titulos }}>Buenas noches.</span>
         <span aria-hidden className="absolute right-5 bottom-3 left-5 flex h-8 items-center justify-between px-3" style={{ background: m.superficie, border: borde, borderRadius: r(12), boxShadow: sombra }}>
           <span className="h-1.5 w-1/2 rounded-full opacity-50" style={{ background: m.texto }} />
