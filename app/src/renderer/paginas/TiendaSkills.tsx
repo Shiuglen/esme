@@ -5,13 +5,14 @@ import { AlertTriangle, Check, FileCode2, FileText, Search, ShieldCheck, Trash2,
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { Markdown } from '../chat/Markdown'
-import { bridge, type SkillCatalogo, type VistaSkill } from '../lib/bridge'
+import { bridge, type EstadoVeredicto, type SkillCatalogo, type VistaSkill } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { coincide } from '../shell/paleta-buscar'
 import type { VeredictoSkill } from '../../main/skills/veredicto'
 
 const NIVEL = { alto: 'text-peligro', medio: 'text-atencion', aviso: 'text-texto-3' } as const
 const SELLO = { ok: { texto: 'juzgada ✓', clase: 'text-acento' }, aviso: { texto: 'juzgada ⚠', clase: 'text-atencion' }, fuera: { texto: 'fuera ✗', clase: 'text-peligro' } } as const
+const ORIGEN = { red: 'de la red', copia: 'de la copia local', empaquetado: 'el que viaja con la app', ninguno: 'ninguno' } as const
 const kb = (n: number) => (n < 1024 ? `${n} B` : `${(n / 1024).toLocaleString('es-ES', { maximumFractionDigits: 1 })} KB`)
 const autor = (repo: string) => repo.split('/')[0]
 
@@ -23,7 +24,7 @@ function SelloVeredicto({ v }: { v: VeredictoSkill | null }) {
 }
 
 export function TiendaSkills() {
-  const [datos, setDatos] = useState<{ skills: SkillCatalogo[]; agentes: { id: string; nombre: string }[] } | null>(null)
+  const [datos, setDatos] = useState<{ skills: SkillCatalogo[]; agentes: { id: string; nombre: string }[]; veredicto: EstadoVeredicto } | null>(null)
   const [grupo, setGrupo] = useState('Todas')
   const [q, setQ] = useState('')
   const [abierta, setAbierta] = useState<SkillCatalogo | null>(null)
@@ -51,6 +52,16 @@ export function TiendaSkills() {
       <p className="m-0 text-[12.5px] text-texto-3">
         {datos ? `${datos.skills.length} skills revisadas${instaladas ? ` · ${instaladas} instaladas` : ''} · cada una viene del repositorio de su autor, fijada a la versión revisada` : 'Cargando el catálogo…'}
       </p>
+      {datos && (
+        <p className="m-0 text-[12.5px] text-texto-3">
+          {datos.veredicto.aplica
+            ? `Juzgadas y firmadas por el juez (${ORIGEN[datos.veredicto.origen]}).`
+            : datos.veredicto.origen === 'ninguno'
+              ? 'Sin veredicto del juez: se ofrece lo que hay, sin juicio.'
+              : 'El veredicto del juez es de otro catálogo: aquí no aplica.'}
+          {datos.veredicto.aviso ? ` ${datos.veredicto.aviso}` : ''}
+        </p>
+      )}
 
       <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-px overflow-hidden rounded-3 border border-linea bg-linea p-0">
         {visibles.map((s) => (

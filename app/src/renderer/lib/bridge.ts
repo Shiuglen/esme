@@ -31,6 +31,8 @@ export type SkillCatalogo = { id: string; nombre: string; grupo: string; descrip
 export type AlertaSkill = { nivel: 'alto' | 'medio' | 'aviso'; motivo: string; ruta?: string }
 export type VistaSkill = { ok: true; skillMd: string; cuerpo: string | null; avisos: string[]; alertas: AlertaSkill[]; soloManual: boolean; tokens: number
   ficheros: { ruta: string; bytes: number; script: boolean }[] } | { ok: false; error: string }
+/** De dónde vino el veredicto del juez y si aplica a nuestro catálogo. */
+export type EstadoVeredicto = { origen: 'red' | 'copia' | 'empaquetado' | 'ninguno'; aplica: boolean; aviso: string | null }
 export type VersionAgente = { id: string; instalada: string | null; ultima: string | null; hayNueva: boolean
   orden: { tipo: 'auto'; comando: string; args: string[] } | { tipo: 'manual'; orden: string } | null }
 export type MetodoEntrada = { id: string; nombre: string; descripcion: string; terminal: boolean }
@@ -60,7 +62,7 @@ type ElectronApi = {
   brain: { info(): Promise<BrainInfo | null>; onChange(fn: (i: BrainInfo | null) => void): () => void }
   mente: { agentes(): Promise<AgenteMente[]>; conectar(id: string, si: boolean): Promise<ResultadoTaller> }
   skills: {
-    catalogo(): Promise<{ skills: SkillCatalogo[]; agentes: { id: string; nombre: string }[] }>; vistaPrevia(id: string): Promise<VistaSkill>
+    catalogo(): Promise<{ skills: SkillCatalogo[]; agentes: { id: string; nombre: string }[]; veredicto: EstadoVeredicto }>; vistaPrevia(id: string): Promise<VistaSkill>
     instalar(id: string, agentes: string[], conScripts: boolean): Promise<{ ok: true; conflictos: { carpeta: string; motivo: string }[]; carpetas: { carpeta: string; agentes: string[] }[]; scriptsOmitidos: boolean } | { ok: false; error: string }>
     desinstalar(id: string): Promise<{ ok: true; quitados: string[] } | { ok: false; error: string }>
   }
@@ -130,7 +132,7 @@ export const bridge = {
   },
   // Skills: instrucciones de experto para Esme y tus agentes, desde el repositorio de su autor (main/skills)
   skills: {
-    catalogo: async () => (isElectron() ? window.daimon!.skills.catalogo() : { skills: [], agentes: [] }),
+    catalogo: async () => (isElectron() ? window.daimon!.skills.catalogo() : { skills: [], agentes: [], veredicto: { origen: 'ninguno' as const, aplica: false, aviso: null } }),
     vistaPrevia: async (id: string): Promise<VistaSkill> => (isElectron() ? window.daimon!.skills.vistaPrevia(id) : { ok: false, error: 'Solo en la app de escritorio.' }),
     instalar: async (id: string, agentes: string[], conScripts: boolean) => (isElectron() ? window.daimon!.skills.instalar(id, agentes, conScripts) : { ok: false as const, error: 'Solo en la app de escritorio.' }),
     desinstalar: async (id: string) => (isElectron() ? window.daimon!.skills.desinstalar(id) : { ok: false as const, error: 'Solo en la app de escritorio.' }),
