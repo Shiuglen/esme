@@ -156,6 +156,16 @@ evaluación, es un número que sube o baja cada noche.
   contenedores con ClickHouse) y Opik (9 con MySQL+ZooKeeper) **no caben** en 6 GB.
 **Se mide.** La curva de aciertos por tarea del Taller, guardada cada noche.
 **Riesgo.** El juez debe ser el mismo modelo que la respuesta o se mide con el sesgo del juez.
+**Hecho (20-oct), la parte que no necesita juez: la curva.** Esme ya **mide a sus propios agentes**
+sin gastar un token: la etiqueta es del creador (aplicar = sí, descartar = no) y las medidas las
+dejó la app. Vive en **Uso › La curva del Taller**, con script para la terminal y pieza en el
+laboratorio. Al mirarla de verdad: **16 de 46 tareas con error (35 %)** — «Internal error» del
+proveedor (7), «Authentication required» (3), «Rate limit» (2), «getaddrinfo ETIMEOUT» (2), modelo
+retirado (1) y «la sesión del motor está cerrada» (3) — y **0 de 11 veredictos positivos**. Con ese
+número a la vista, **lo temporal se reintenta solo** (red, saturación, «Internal error» una vez, y
+la sesión muerta se abre otra); lo que necesita al creador **no** se reintenta.
+**Queda:** el juez de calidad (DeepEval) y la traza abierta (OpenLLMetry). El juez **no se puede
+hacer hoy**: el Ollama de esta máquina está roto y un juez de pago rompe la regla de no consumir.
 
 ### Palanca 6 — Esme aprende de sí misma: **REA**
 **Idea.** REA (*Reverse Engineer Anything*, MCP + CLI, **MIT**, `rea-agents` v6.7.0, publicado el

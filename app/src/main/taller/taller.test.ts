@@ -357,7 +357,7 @@ describe('Taller: hallazgos de la revisión', () => {
       expect(await readFile(join(dir, `${tarea.id}.aplicado.patch`), 'utf8')).toBe('PARCHE')
       expect(t!.lista()[0].aplicada).toEqual({ cuando: reloj, modo: 'carpeta', ficheros: 1 })
       expect(emisiones.filter((e) => e.canal === 'cambio').at(-1)!.dato.aplicada?.modo).toBe('carpeta')
-      expect(await t!.veredictos()).toEqual([{ ts: reloj, motor: 'falso', modelo: null, exito: true }])
+      expect(await t!.veredictos()).toEqual([{ ts: reloj, motor: 'falso', modelo: null, exito: true, tarea: tarea.id }])
       expect(await t!.aplicar(tarea.id)).toEqual({ ok: false, error: 'Ya está aplicada.' })
     })
 
@@ -402,7 +402,7 @@ describe('Taller: hallazgos de la revisión', () => {
     it('descartar sin aplicar anota un veredicto negativo', async () => {
       const a = await lista()
       await t!.descartar(a.tarea.id)
-      expect(await t!.veredictos()).toEqual([{ ts: reloj, motor: 'falso', modelo: null, exito: false }])
+      expect(await t!.veredictos()).toEqual([{ ts: reloj, motor: 'falso', modelo: null, exito: false, tarea: a.tarea.id }])
       const b = await lista()
       await t!.aplicar(b.tarea.id)
       await t!.descartar(b.tarea.id)
@@ -481,6 +481,39 @@ describe('Taller: límites de peticiones', () => {
     const tarea = crear(s.abrir, undefined, { esperasReintento: [5, 5] }).crear({ motor, carpeta: null, texto: 'x' })
     await esperar(tarea.id, 'error')
     expect(intentos).toBe(1)
+  })
+  it('lo que necesita tu sesión no se reintenta: reintentar no entra por ti', async () => {
+    let intentos = 0
+    const s = sesiones(async () => { intentos++; throw new Error('Authentication required: provider authentication required') })
+    const tarea = crear(s.abrir, undefined, { esperasReintento: [5, 5] }).crear({ motor, carpeta: null, texto: 'x' })
+    await esperar(tarea.id, 'error')
+    expect(intentos).toBe(1)
+  })
+  it('un fallo de red se reintenta solo y la tarea termina bien', async () => {
+    let intentos = 0
+    const s = sesiones(async () => { if (++intentos < 3) throw new Error('getaddrinfo ETIMEOUT opencode.ai'); return 'end_turn' })
+    const tarea = crear(s.abrir, undefined, { esperasReintento: [5, 5, 5] }).crear({ motor, carpeta: null, texto: 'x' })
+    await esperar(tarea.id, 'lista')
+    expect(intentos).toBe(3)
+    const ev = await t!.eventos(tarea.id)
+    expect(ev.filter((e) => e.tipo === 'reintento')).toHaveLength(2)
+    expect(ev.some((e) => e.tipo === 'fallo')).toBe(false)
+  })
+  it('el «Internal error» del proveedor se reintenta una vez, no más', async () => {
+    let intentos = 0
+    const s = sesiones(async () => { intentos++; throw new Error('Internal error') })
+    const tarea = crear(s.abrir, undefined, { esperasReintento: [5, 5, 5] }).crear({ motor, carpeta: null, texto: 'x' })
+    await esperar(tarea.id, 'error')
+    expect(intentos).toBe(2)
+  })
+  it('si la sesión del motor se cierra, se abre otra y se sigue', async () => {
+    let intentos = 0
+    const s = sesiones(async () => { if (++intentos === 1) throw new Error('La sesión del motor está cerrada.'); return 'end_turn' })
+    const tarea = crear(s.abrir, undefined, { esperasReintento: [5] }).crear({ motor, carpeta: null, texto: 'x' })
+    await esperar(tarea.id, 'lista')
+    expect(s.abrir).toHaveBeenCalledTimes(2)
+    const ev = await t!.eventos(tarea.id)
+    expect(ev.find((e) => e.tipo === 'reintento')).toMatchObject({ motivo: expect.stringMatching(/sesión nueva/) })
   })
 })
 

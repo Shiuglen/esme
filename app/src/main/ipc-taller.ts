@@ -321,6 +321,7 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
     return t.exportar(id, r.filePath)
   })
   ipcMain.handle('taller:veredictos', () => t.veredictos())
+  ipcMain.handle('taller:curva', () => t.curva())
   ipcMain.handle('taller:responder', (_e, id: unknown, opcion: unknown) => {
     if (!idValido(id) || typeof opcion !== 'string' || opcion.length === 0 || opcion.length > 200) return entrada
     t.responder(id, opcion)

@@ -7,6 +7,8 @@ import type { Hilo, ResumenHilo, TurnoHilo } from '../../main/hilos/hilos'
 import type { RespuestaCatalogo } from '../../main/tienda/ipc'
 import type { Producto } from '../../main/tienda/catalogo'
 import type { Tarea as TareaTaller, Veredicto as VeredictoTaller } from '../../main/taller/taller'
+import { CURVA_VACIA, type Curva } from '../../main/taller/curva'
+export type { Curva }
 import type { NuevoProgramado, Programado } from '../../main/taller/agenda'
 import type { Paso } from '../../main/herramientas/propias'
 import type { Ficha } from '../../main/herramientas/registro-mcp'
@@ -96,6 +98,7 @@ type ElectronApi = {
     aplicar(id: string): Promise<{ ok: true; ficheros: number } | { ok: false; error: string; ficheros?: string[] }>; deshacer(id: string): Promise<ResultadoTaller>
     guardarRama(id: string, mensaje?: string): Promise<{ ok: true; commit: string } | { ok: false; error: string }>; exportar(id: string): Promise<ResultadoTaller>
     veredictos(): Promise<VeredictoTaller[]>
+    curva(): Promise<Curva>
     parar(id: string): Promise<ResultadoTaller>; descartar(id: string): Promise<ResultadoTaller>
     diff(id: string): Promise<{ texto: string; truncado: boolean }>; carpeta(): Promise<string | null>; abrir(id: string): Promise<ResultadoTaller>
     onCambio(fn: (t: TareaTaller) => void): () => void; onEvento(fn: (e: { id: string; n: number; evento: EventoTaller }) => void): () => void; onQuitada(fn: (id: string) => void): () => void
@@ -275,6 +278,7 @@ export const bridge = {
     guardarRama: async (id: string, mensaje?: string): Promise<{ ok: true; commit: string } | { ok: false; error: string }> => (isElectron() ? window.daimon!.taller.guardarRama(id, mensaje) : SOLO_ESCRITORIO),
     exportar: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.exportar(id) : SOLO_ESCRITORIO),
     veredictos: async (): Promise<VeredictoTaller[]> => (isElectron() ? window.daimon!.taller.veredictos() : []),
+    curva: async (): Promise<Curva> => (isElectron() ? window.daimon!.taller.curva() : CURVA_VACIA),
     parar: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.parar(id) : SOLO_ESCRITORIO),
     descartar: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.descartar(id) : SOLO_ESCRITORIO),
     diff: async (id: string): Promise<{ texto: string; truncado: boolean }> => (isElectron() ? window.daimon!.taller.diff(id) : { texto: '', truncado: false }),

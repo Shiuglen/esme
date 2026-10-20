@@ -6,6 +6,9 @@ import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { abrirSesionACP, type EventoMotor, type OpcionConfig } from '../motores/sesion-acp'
 import { bloqueHerencia, heredar, type Mente } from './herencia'
+import { leeCurva } from './curva-io'
+import type { Curva } from './curva'
+import { errorDelProveedor, esTemporal, sesionMuerta } from './fallos'
 import { otroModeloGratis } from './gratis'
 import { autoRespuesta, type Acceso } from './acceso'
 import { aplicarParche, cambiosCopia, commitCopia, crearCopia, diffCopia, exportarCopia, parcheCopia, quitarCopia, type Cambios, type Copia } from './copias'
@@ -32,7 +35,7 @@ export type AbrirSesion = (o: { comando: string; args: string[]; cwd: string; en
 export type OperacionesCopia = { crear: typeof crearCopia; cambios: typeof cambiosCopia; diff: typeof diffCopia; quitar: typeof quitarCopia
   parche: typeof parcheCopia; aplicar: typeof aplicarParche; commit: typeof commitCopia; exportar: typeof exportarCopia }
 export type Aplicada = { cuando: number; modo: 'carpeta' | 'rama' | 'exportada'; ficheros: number; destino?: string; commit?: string }
-export type Veredicto = { ts: number; motor: string; modelo: string | null; exito: boolean }
+export type Veredicto = { ts: number; motor: string; modelo: string | null; exito: boolean; tarea?: string }
 // El delta de uso real de un turno, para el Uso de la app: cada tarea levanta su historia.
 export type Anoto = { motorId: string; motorNombre: string; modelo: string | null; origen: 'taller' | 'arena'; tareaId: string; titulo: string
   delta: { entrada: number; salida: number; pensamiento: number }; coste?: { cantidad: number; moneda: string } }
@@ -257,6 +260,11 @@ export class Taller {
     return texto.split('\n').filter(Boolean).flatMap((l) => { try { return [JSON.parse(l) as Veredicto] } catch { return [] } })
   }
 
+  /** La curva: qué rindieron las tareas de verdad (aciertos por día, por motor y los fallos). */
+  async curva(): Promise<Curva> {
+    return leeCurva(this.dir)
+  }
+
   lista(): Tarea[] {
     return [...this.registros.values()].map((r) => instantanea(r.tarea)).sort((a, b) => b.inicio - a.inicio)
   }
@@ -308,7 +316,8 @@ export class Taller {
   }
 
   private veredicto(r: Registro, exito: boolean): void {
-    const v: Veredicto = { ts: this.ahora(), motor: r.tarea.motor, modelo: r.tarea.modelo, exito }
+    // `tarea` es el id de la tarea: sin él, la curva del Taller sólo sabe el motor, no quién deliveró.
+    const v: Veredicto = { ts: this.ahora(), motor: r.tarea.motor, modelo: r.tarea.modelo, exito, tarea: r.tarea.id }
     try { mkdirSync(this.dir, { recursive: true }); appendFileSync(join(this.dir, 'veredictos.jsonl'), JSON.stringify(v) + '\n') } catch { /* no debe romper la operación */ }
   }
 
@@ -348,8 +357,7 @@ export class Taller {
       if (parada()) return
       if (!r.sesion) {
         const motor = r.motor!
-        r.sesion = await this.abrirSesion({ comando: motor.comando, args: motor.args, cwd: t.copia.ruta, env: motor.env, ...(motor.entrarCon ? { entrarCon: motor.entrarCon } : {}), mcp: this.mcp() ?? undefined, masMcp: this.masMcp(), config: { ...r.config },
-          alEvento: (e) => this.alEvento(r, e), alPedirPermiso: (p) => this.alPedirPermiso(r, p) })
+        r.sesion = await this.abrirSesionDe(r)
       }
       if (r.descartada || this.cerrado || parada()) return
       t.estado = 'trabajando'; this.cambio(r, true)
@@ -385,13 +393,17 @@ export class Taller {
   }
 
   // Los proveedores gratis limitan las peticiones a la vez: ante un límite, primero se pasa a otro modelo gratis del mismo
-  // motor (sin esperar); si no quedan, se reintenta con espera creciente. Todo se cuenta en la línea de tiempo.
+  // motor (sin esperar); si no quedan, se reintenta con espera creciente. Lo mismo con lo temporal (la red o el
+  // proveedor se caen un rato) y con la sesión del motor que se cierra: se reintenta, y si la sesión está muerta se abre otra.
+  // Todo se cuenta en la línea de tiempo. Lo que necesita al creador (entrar en su cuenta) no se reintenta: no se arregla.
   private async preguntar(r: Registro, texto: string): Promise<string> {
     const probados = new Set<string>()
     for (let intento = 0; ; ) {
       try { return await r.sesion!.preguntar(texto) } catch (e) {
         const motivo = e instanceof Error ? e.message : String(e)
         const limite = /rate limit|too many requests|\b429\b|quota exceeded/i.test(motivo)
+        const muerta = sesionMuerta(motivo)
+        const temporal = esTemporal(motivo) || (errorDelProveedor(motivo) && intento < 1)
         if (limite && !r.cancelado && !r.descartada && !this.cerrado) {
           const actual = r.tarea.opciones?.find((o) => o.id === 'model')?.actual
           if (actual) probados.add(actual)
@@ -404,15 +416,28 @@ export class Taller {
             continue
           }
         }
-        if (!limite || intento >= this.esperas.length || r.cancelado || r.descartada || this.cerrado) throw e
+        if ((!limite && !temporal && !muerta) || intento >= this.esperas.length || r.cancelado || r.descartada || this.cerrado) throw e
         const ms = this.esperas[intento++]
-        this.registrar(r, { tipo: 'reintento', ms, motivo })
+        this.registrar(r, { tipo: 'reintento', ms, motivo: muerta ? `${motivo} · abro sesión nueva` : motivo })
         this.cambio(r, true)
         const fin = Date.now() + ms
         while (Date.now() < fin && !r.cancelado && !r.descartada && !this.cerrado) await new Promise((ok) => setTimeout(ok, Math.min(250, fin - Date.now())))
         if (r.cancelado) return 'cancelled'
+        if (muerta) {
+          // la sesión está cerrada: se abre otra y se sigue por donde iba
+          r.sesion?.cerrar(); r.sesion = undefined
+          r.sesion = await this.abrirSesionDe(r)
+        }
       }
     }
+  }
+
+  /** Abre la sesión del motor de una tarea (la primera vez y cuando la anterior se muere). */
+  private async abrirSesionDe(r: Registro): Promise<SesionMotor> {
+    const t = r.tarea
+    const motor = r.motor!
+    return this.abrirSesion({ comando: motor.comando, args: motor.args, cwd: t.copia!.ruta, env: motor.env, ...(motor.entrarCon ? { entrarCon: motor.entrarCon } : {}), mcp: this.mcp() ?? undefined, masMcp: this.masMcp(), config: { ...r.config },
+      alEvento: (e) => this.alEvento(r, e), alPedirPermiso: (p) => this.alPedirPermiso(r, p) })
   }
 
   private alPedirPermiso(r: Registro, p: Permiso): Promise<string | 'cancelar'> {

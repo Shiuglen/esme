@@ -8,11 +8,12 @@ import '@fontsource-variable/jetbrains-mono'
 import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Atlas } from '../lib/brain'
-import type { TareaTaller } from '../lib/bridge'
+import type { Curva, TareaTaller } from '../lib/bridge'
 import { Chispa } from '../marca/ChispaVista'
 import { FirmaMente, Sello } from '../marca/SelloVista'
 import { firmaDe, giroSello } from '../marca/sello'
 import { Escena } from '../taller/Escena'
+import { CurvaTaller } from '../paginas/CurvaTaller'
 import { RedNeuronal, type RedHandle } from '../memoria/RedNeuronal'
 import { FondoVivo } from '../shell/FondoVivo'
 import '../styles/esme.css'
@@ -42,8 +43,39 @@ function tareasDeMuestra(): TareaTaller[] {
     t('d4444', 'lista', { aplicada: { cuando: ahora, modo: 'rama', ficheros: 2 } }), t('e55555', 'error'), t('f666666', 'preparando'), t('g7777777', 'parada')]
 }
 
-function Taller({ atlas, tema }: { atlas: Atlas; tema: string }) {
-  const [tareas] = useState(tareasDeMuestra)
+// La curva del Taller, con los números reales del 20-oct: para verla sin abrir la app.
+function PiezaCurva() {
+  const curva: Curva = {
+    tareas: 46,
+    estados: { error: 16, lista: 19, parada: 9, trabajando: 2 },
+    veredictos: { total: 11, positivos: 7, negativos: 4 },
+    porDia: [
+      { dia: '2026-10-12', positivos: 1, negativos: 1, aciertos: 0.5 },
+      { dia: '2026-10-16', positivos: 0, negativos: 2, aciertos: 0 },
+      { dia: '2026-10-17', positivos: 2, negativos: 1, aciertos: 0.667 },
+      { dia: '2026-10-18', positivos: 3, negativos: 1, aciertos: 0.75 },
+      { dia: '2026-10-20', positivos: 1, negativos: 1, aciertos: 0.5 },
+    ],
+    porMotor: [
+      { motor: 'opencode', tareas: 21, terminadas: 10, error: 3, parada: 8, trabajando: 0, herramientas: 1884, tokens: 2512986, coste: 0, ficheros: 210, veredictos: 8, aciertos: 5, aciertosPorTarea: 0.238, herramientasPorTarea: 89.7, tokensPorTarea: 119666, costePorTarea: 0 },
+      { motor: 'qwen-code', tareas: 22, terminadas: 11, error: 10, parada: 1, trabajando: 0, herramientas: 9, tokens: 0, coste: 0, ficheros: 3, veredictos: 3, aciertos: 2, aciertosPorTarea: 0.091, herramientasPorTarea: 0.4, tokensPorTarea: 0, costePorTarea: 0 },
+    ],
+    fallos: [
+      { mensaje: 'Internal error', veces: 7 },
+      { mensaje: 'Authentication required: provider authentication required', veces: 3 },
+      { mensaje: 'Internal error: Rate limit exceeded. Please try again later.', veces: 2 },
+      { mensaje: 'Internal error: getaddrinfo ETIMEOUT opencode.ai', veces: 2 },
+    ],
+    costeDelAcierto: { tareas: 7, tokens: 1820000, coste: 0 },
+  }
+  return (
+    <div className="h-full overflow-y-auto p-10">
+      <div className="mx-auto grid max-w-[720px] gap-6"><CurvaTaller curva={curva} /></div>
+    </div>
+  )
+}
+
+function Taller({ atlas, tema }: { atlas: Atlas; tema: string }) {  const [tareas] = useState(tareasDeMuestra)
   return (
     <FirmaMente.Provider value={firmaDe(atlas)}>
       <div className="grid h-full grid-rows-[1fr_auto] gap-4 p-6">
@@ -83,7 +115,7 @@ function Lab() {
   return (
     <div className="h-screen w-screen overflow-hidden bg-papel text-texto">
       <FondoVivo tema={tema} estado="reposo" />
-      <div className="relative z-10 h-full">{pieza === 'chispa' ? <PiezaChispa atlas={atlas} /> : pieza === 'taller' ? <Taller atlas={atlas} tema={tema} /> : <RedNeuronal ref={red} atlas={atlas} tema={tema} recordados={[]} onPick={() => {}} />}</div>
+      <div className="relative z-10 h-full">{pieza === 'chispa' ? <PiezaChispa atlas={atlas} /> : pieza === 'curva' ? <PiezaCurva /> : pieza === 'taller' ? <Taller atlas={atlas} tema={tema} /> : <RedNeuronal ref={red} atlas={atlas} tema={tema} recordados={[]} onPick={() => {}} />}</div>
     </div>
   )
 }
