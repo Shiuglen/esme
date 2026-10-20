@@ -28,6 +28,8 @@ export type SkillCatalogo = { id: string; nombre: string; grupo: string; descrip
 export type AlertaSkill = { nivel: 'alto' | 'medio' | 'aviso'; motivo: string; ruta?: string }
 export type VistaSkill = { ok: true; skillMd: string; cuerpo: string | null; avisos: string[]; alertas: AlertaSkill[]; soloManual: boolean; tokens: number
   ficheros: { ruta: string; bytes: number; script: boolean }[] } | { ok: false; error: string }
+export type VersionAgente = { id: string; instalada: string | null; ultima: string | null; hayNueva: boolean
+  orden: { tipo: 'auto'; comando: string; args: string[] } | { tipo: 'manual'; orden: string } | null }
 export type MetodoEntrada = { id: string; nombre: string; descripcion: string; terminal: boolean }
 
 // Puente: la misma interfaz funciona dentro de Electron (todo) y en el navegador (modo web, para verla y probarla).
@@ -86,6 +88,7 @@ type ElectronApi = {
   licencia: { estado(): Promise<EstadoPlan>; activar(c: string): Promise<{ ok: boolean; motivo?: string; estado: EstadoPlan }>; quitar(): Promise<EstadoPlan> }
   taller: {
     motores(): Promise<MotorTaller[]>; lista(): Promise<TareaTaller[]>; eventos(id: string): Promise<EventoTaller[]>
+    versiones(): Promise<VersionAgente[]>; actualizar(id: string): Promise<{ ok: boolean; antes: string | null; despues: string | null; detalle: string }>
     metodosEntrada(id: string): Promise<{ ok: true; metodos: MetodoEntrada[]; actual: string | null } | { ok: false; error: string }>
     entrar(id: string, metodo: string | null): Promise<{ ok: boolean; error?: string; terminal?: boolean }>
     instalarMotor(id: string): Promise<InstalarMotor>; onInstalacion(fn: (p: { id: string; trozo?: string; listo?: boolean }) => void): () => void
@@ -255,6 +258,9 @@ export const bridge = {
 
   taller: {
     motores: async (): Promise<MotorTaller[]> => (isElectron() ? window.daimon!.taller.motores() : []),
+    // tus agentes al día (main/motores/actualizar.ts)
+    versiones: async (): Promise<VersionAgente[]> => (isElectron() ? window.daimon!.taller.versiones() : []),
+    actualizar: async (id: string) => (isElectron() ? window.daimon!.taller.actualizar(id) : { ok: false, antes: null, despues: null, detalle: 'Solo en la app de escritorio.' }),
     // entrar en un agente que pide sesión (Cline con tu ChatGPT, OpenCode, Qwen…); Esme recuerda el método elegido
     metodosEntrada: async (id: string) => (isElectron() ? window.daimon!.taller.metodosEntrada(id) : { ok: false as const, error: 'Solo en la app de escritorio.' }),
     entrar: async (id: string, metodo: string | null) => (isElectron() ? window.daimon!.taller.entrar(id, metodo) : { ok: false, error: 'Solo en la app de escritorio.' }),

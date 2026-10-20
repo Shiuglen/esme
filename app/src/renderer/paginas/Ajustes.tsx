@@ -13,6 +13,7 @@ import { TuPlan } from './TuPlan'
 import { useMuelle } from '../tinta/movimiento'
 import { EntrarAgente } from './EntrarAgente'
 import { TintaVista } from '../marca/PuntoVista'
+import { useVersiones, VersionDeAgente } from './VersionAgente'
 
 type Pestana = 'motores' | 'presupuesto' | 'apariencia' | 'plan' | 'sistema'
 type Vista = 'conectados' | 'suscripcion' | 'catalogo' | 'local'
@@ -133,6 +134,7 @@ function Motores() {
   const [abierto, setAbierto] = useState<string | null>(null)
   const [modelos, setModelos] = useState<Record<string, ModeloCatalogo[]>>({})
   const [llavero, setLlavero] = useState<{ secure: boolean; backend: string } | null>(null)
+  const { versiones, recargar: recargarVersiones } = useVersiones()
   const refrescar = () => void bridge.providers().then(setProveedores)
   useEffect(() => {
     refrescar(); void bridge.motores.detectar().then(setMotores); void bridge.catalogo.proveedores().then(setCatalogo)
@@ -160,7 +162,7 @@ function Motores() {
           ) : conectados.map((c) => 'label' in c
             ? <Fila key={c.id} icono={<Bicho de={c.id} tamaño={17} />} titulo={c.label} sub="por API · clave en tu llavero" derecha={<Pastilla><Check className="size-3.5" />listo</Pastilla>} />
             : <Fila key={c.id} icono={<TintaVista motor={c.id} px={22} estado="lista" />} titulo={c.nombre} sub={<span title={c.ruta ?? undefined}>tu agente · en este equipo</span>} derecha={<Pastilla>instalado</Pastilla>}>
-                <div className="pl-11"><EntrarAgente motor={c.id} nombre={c.nombre} /></div>
+                <div className="pl-11"><EntrarAgente motor={c.id} nombre={c.nombre} /><VersionDeAgente id={c.id} nombre={c.nombre} v={versiones[c.id]} onCambio={recargarVersiones} /></div>
               </Fila>)}
         </Caja>
       )}

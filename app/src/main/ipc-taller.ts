@@ -11,6 +11,7 @@ import { instaladosNpm, lanzarRegistro, paqueteDe, type GlobalesNpm } from './mo
 import { crearWhich, extsPlataforma } from './motores/which'
 import { guardarEntrada, leerEntradas } from './motores/entrada'
 import { prepararPath } from './motores/path-login'
+import { actualizar, versionDe } from './motores/actualizar'
 import { abrirSesionACP, metodosDeEntrada, type MetodoEntrada, type OpcionConfig } from './motores/sesion-acp'
 import { anotarConsumo } from './ipc-proveedores'
 import { keys } from './keys'
@@ -249,6 +250,16 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
   ipcMain.handle('taller:motores', () => motoresTaller())
   // Entrar en un agente que pide sesión (Cline, OpenCode, Qwen…): primero cómo se entra; luego Esme llama a authenticate con
   // el método elegido (algunos abren tu navegador para que entres con tu cuenta) y, si funciona, lo recuerda para siempre.
+  // tus agentes al día: qué versión tienes, si hay otra y actualizar (main/motores/actualizar.ts; idea de MonoCode y Deska)
+  ipcMain.handle('agentes:versiones', async () => {
+    const motores = (await detectar()).filter((m) => m.instalado && m.ruta)
+    return Promise.all(motores.map((m) => versionDe({ id: m.id, comando: m.ruta! }).catch(() => ({ id: m.id, instalada: null, ultima: null, hayNueva: false, orden: null }))))
+  })
+  ipcMain.handle('agentes:actualizar', async (_e, id: unknown) => {
+    const m = (await detectar()).find((x) => x.id === id && x.instalado && x.ruta)
+    if (!m) return { ok: false, antes: null, despues: null, detalle: 'Ese agente no está instalado en este equipo.' }
+    return actualizar({ id: m.id, comando: m.ruta! })
+  })
   ipcMain.handle('agentes:metodos', async (_e, id: unknown): Promise<{ ok: true; metodos: MetodoEntrada[]; actual: string | null } | { ok: false; error: string }> => {
     const m = await elegirMotorSinEntrada(id)
     if ('error' in m) return { ok: false, error: m.error }
