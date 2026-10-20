@@ -30,6 +30,7 @@ export const CURVA_VACIA: Curva = {
 
 /** El día en el calendario del creador (no en UTC: su medianoche es la suya). */
 export function diaDe(ts: number): string {
+  if (!Number.isFinite(ts)) return '1970-01-01'
   const d = new Date(ts)
   const mes = String(d.getMonth() + 1).padStart(2, '0')
   const dia = String(d.getDate()).padStart(2, '0')
@@ -110,13 +111,15 @@ export function curvaDe(datos: { tareas: Tarea[]; veredictos: Veredicto[]; fallo
   if (aplicadas.length) {
     let tokens = 0
     let coste = 0
+    let tareas = 0
     for (const v of aplicadas) {
       const t = tareaDelVeredicto(v)
       if (!t) continue
+      tareas++
       tokens += (t.uso?.entrada || 0) + (t.uso?.salida || 0)
       coste += t.uso?.coste?.cantidad || 0
     }
-    costeDelAcierto = { tareas: aplicadas.length, tokens, coste: redondea(coste, 6) }
+    costeDelAcierto = { tareas, tokens, coste: redondea(coste, 6) }
   }
 
   // 4. Los fallos: los mensajes repetidos, que son el trabajo pendiente de verdad.

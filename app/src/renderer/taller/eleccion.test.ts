@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { candidatosDe, elegibles, elegir, elegirVarios, semillado, type Candidato, noListos } from './eleccion'
+import { candidatosDe, elegibles, elegir, elegirVarios, fallosDe, historial, semillado, type Candidato, noListos } from './eleccion'
 
 const opcionModelo = (ids: string[], actual = ids[0]) => ({ id: 'model', nombre: 'Model', actual, valores: ids.map((id) => ({ id, nombre: `opencode/${id.split('/')[1]} Nombre` })) })
 const motores = [{ id: 'opencode', nombre: 'OpenCode', instalado: true }, { id: 'cline', nombre: 'Cline', instalado: true }, { id: 'gemini', nombre: 'Gemini CLI', instalado: false }]
@@ -25,7 +25,7 @@ describe('elegir', () => {
   })
   it('explica por qué: con historial lo cuenta; sin historial, dice que lo prueba', () => {
     const vs = [{ motor: 'opencode', modelo: 'a', exito: true }, { motor: 'opencode', modelo: 'a', exito: false }]
-    expect(elegir([c('a')], vs, { azar: semillado(1) })).toMatchObject({ aciertos: 1, total: 2, motivo: '1 de 2 tareas aplicadas con este modelo' })
+    expect(elegir([c('a')], vs, { azar: semillado(1) })).toMatchObject({ aciertos: 1, total: 2, motivo: 'Acertó 1 de 2 veces' })
     expect(elegir([c('nuevo')], [], { azar: semillado(1) })).toMatchObject({ total: 0, motivo: 'Aún sin historial: Esme lo prueba' })
   })
   it('a igualdad, prefiere lo gratis', () => {
@@ -69,5 +69,44 @@ describe('qué motores no están listos (aprendido de lo que pasó)', () => {
     expect(r.get('mudo')).toBe('Se quedó mudo la última vez')
     expect(r.has('opencode')).toBe(false) // volvió a funcionar
     expect(r.has('cline')).toBe(false)    // un límite es pasajero, no es «no listo»
+  })
+})
+
+describe('el router aprende de los fallos que ya sabemos', () => {
+  const tarea = (parcial: Partial<Parameters<typeof fallosDe>[0][number]>) => ({
+    id: 't1', motor: 'opencode', modelo: 'opencode/Exo Free', estado: 'error', error: 'Internal error', inicio: 1, ...parcial,
+  }) as Parameters<typeof fallosDe>[0][number]
+
+  it('cada tarea que acabó en error es un fallo de su modelo, aunque nadie lo etiquete', () => {
+    const f = fallosDe([tarea({}), tarea({ id: 't2', modelo: 'opencode/Buen Free', estado: 'lista' })])
+    expect(f).toHaveLength(1)
+    expect(f[0]).toMatchObject({ motor: 'opencode', modelo: 'opencode/Exo Free', exito: false, error: 'Internal error', tarea: 't1' })
+  })
+
+  it('los fallos que no dicen qué modelo falló son del motor, no del modelo', () => {
+    expect(fallosDe([tarea({ modelo: null })])).toEqual([])
+  })
+
+  it('el modelo que falla se elige menos: el router lo relega', () => {
+    const candidatos = [c('roto'), c('sano')]
+    const fallos = fallosDe([...Array(4)].map((_, i) => tarea({ id: `t${i}`, modelo: 'roto N', error: 'Internal error', inicio: i })))
+    const azar = semillado(11)
+    let sanas = 0
+    for (let i = 0; i < 300; i++) if (elegir(candidatos, historial([], fallos), { azar })!.modelo === 'sano') sanas++
+    expect(sanas).toBeGreaterThan(235)
+  })
+
+  it('lo dice con palabras: por qué no lo elige', () => {
+    const fallos = fallosDe([tarea({ id: 't1', modelo: 'roto N', error: 'Internal error: Model exo-free has been deprecated.' })])
+    const e = elegir([c('roto')], historial([], fallos), { azar: semillado(1) })!
+    expect(e.fallos).toBe(1)
+    expect(e.motivo).toBe('Acertó 0 de 1 veces · 1 acabó en error: Internal error: Model exo-free has been deprecated.')
+  })
+
+  it('una tarea fallida que además descartaste cuenta una vez, no dos', () => {
+    const f = fallosDe([tarea({ id: 't1', modelo: 'roto N' })])
+    const v = [{ motor: 'opencode', modelo: 'roto N', exito: false, tarea: 't1' }]
+    expect(historial(v, f)).toHaveLength(1)
+    expect(historial([{ motor: 'opencode', modelo: 'roto N', exito: false }], f)).toHaveLength(2)
   })
 })

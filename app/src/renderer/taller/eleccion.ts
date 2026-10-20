@@ -1,13 +1,14 @@
 // El router del Taller: Esme elige motor y modelo aprendiendo de lo que tú aplicas o descartas.
 // Muestreo de Thompson sobre una Beta(2 + aciertos, 2 + fallos) por modelo: explota lo que funciona y, de vez en cuando,
 // prueba lo que aún no conoce. A igualdad, lo gratis gana. Siempre explica por qué eligió.
+// Y aprende también de lo que falló: una tarea que acabó en error ya es un fallo de ese modelo, aunque tú no la etiquetes.
 import type { TareaTaller } from '../lib/bridge'
 import { explicarError } from './vista'
 import type { MotorTaller, OpcionMotor } from '../lib/bridge'
 
 export type Candidato = { motor: string; motorNombre: string; modelo: string; modeloNombre: string; gratis: boolean }
-export type Veredicto = { motor: string; modelo: string | null; exito: boolean }
-export type Eleccion = Candidato & { aciertos: number; total: number; motivo: string }
+export type Veredicto = { motor: string; modelo: string | null; exito: boolean; error?: string; tarea?: string }
+export type Eleccion = Candidato & { aciertos: number; total: number; fallos: number; motivo: string }
 type Opciones = { azar?: () => number; preferirGratis?: boolean }
 
 /** Generador con semilla (mulberry32): el mismo azar cada vez, para probar y para repetir decisiones. */
@@ -30,11 +31,35 @@ export function candidatosDe(motores: Pick<MotorTaller, 'id' | 'nombre' | 'insta
   })
 }
 
+/** Los fallos que ya sabemos sin que el creador etiquete nada: cada tarea que acabó en error es un fallo de su motor y su modelo.
+ *  Sólo cuentan los que dicen qué modelo falló: los que mueren antes de elegir modelo (la sesión se cae) son culpa del motor,
+ *  y de ésos se ocupa `noListos`. */
+export function fallosDe(tareas: Pick<TareaTaller, 'id' | 'motor' | 'modelo' | 'estado' | 'error' | 'inicio'>[]): Veredicto[] {
+  return tareas
+    .filter((t) => t.estado === 'error' && !!t.motor && !!t.modelo)
+    .sort((a, b) => b.inicio - a.inicio)
+    .map((t) => ({ motor: t.motor, modelo: t.modelo, exito: false, error: t.error, tarea: t.id }))
+}
+
+/** Todo lo que se sabe del pasado, sin contar dos veces lo mismo: lo que el creador aplicó o descartó, más los fallos ya sabidos.
+ *  Una tarea que acabó en error y que además descartaste cuenta una vez, no dos. */
+export function historial(veredictos: Veredicto[], fallos: Veredicto[]): Veredicto[] {
+  const yaContados = new Set(fallos.map((f) => f.tarea).filter(Boolean) as string[])
+  return [...veredictos.filter((v) => !v.tarea || !yaContados.has(v.tarea)), ...fallos]
+}
+
+const corta = (s: string, n = 60) => (s.length > n ? s.slice(0, n - 1) + '…' : s)
+
 // Los veredictos guardan el nombre visible del modelo; los candidatos, su id. Valen los dos.
 function cuenta(c: Candidato, vs: Veredicto[]) {
-  let aciertos = 0, total = 0
-  for (const v of vs) if (v.motor === c.motor && (v.modelo === c.modelo || v.modelo === c.modeloNombre)) { total++; if (v.exito) aciertos++ }
-  return { aciertos, total }
+  let aciertos = 0, total = 0, fallos = 0, ultimo = ''
+  for (const v of vs) {
+    if (v.motor !== c.motor || !(v.modelo === c.modelo || v.modelo === c.modeloNombre)) continue
+    total++
+    if (v.exito) aciertos++
+    else if (v.error) { fallos++; if (!ultimo) ultimo = v.error }   // el primero es el más reciente: los fallos van ordenados
+  }
+  return { aciertos, total, fallos, ultimo }
 }
 
 /** Una muestra de Beta(a, b) con a y b enteros: el a-ésimo menor de a + b − 1 uniformes (con mucho historial, aproximación normal). */
@@ -50,9 +75,14 @@ function beta(a: number, b: number, azar: () => number): number {
 
 function puntuar(cs: Candidato[], vs: Veredicto[], { azar = Math.random, preferirGratis = true }: Opciones) {
   return cs.map((c) => {
-    const { aciertos, total } = cuenta(c, vs)
+    const { aciertos, total, fallos, ultimo } = cuenta(c, vs)
     const s = beta(aciertos + 2, total - aciertos + 2, azar) * (preferirGratis && !c.gratis ? 0.85 : 1)
-    return { ...c, aciertos, total, s, motivo: total ? `${aciertos} de ${total} tareas aplicadas con este modelo` : 'Aún sin historial: Esme lo prueba' }
+    const motivo = !total
+      ? 'Aún sin historial: Esme lo prueba'
+      : !fallos
+        ? `Acertó ${aciertos} de ${total} veces`
+        : `Acertó ${aciertos} de ${total} veces · ${fallos} ${fallos === 1 ? 'acabó' : 'acabaron'} en error${ultimo ? `: ${corta(ultimo)}` : ''}`
+    return { ...c, aciertos, total, fallos, s, motivo }
   }).sort((x, y) => y.s - x.s)
 }
 

@@ -1,0 +1,5 @@
+{"ts": 1778317200000, "motor": "opencode", "modelo": "qwen3.5-9b", "exito": false}
+{"ts": 1778400000000, "motor": "opencode", "modelo": "qwen3.5-9b", "exito": true}
+{"ts": 1778403620000, "motor": "opencode", "modelo": "qwen3.5-9b", "exito": true, "tarea": "t1"}
+{"ts": 1778403720000, "motor": "opencode", "modelo": "qwen3.5-9b", "exito": false, "tarea": "t2"}
+{"ts": 1778403820000, "motor": "qwen-code", "modelo": "qwen3.5-9b", "exito": true, "tarea": "t3"}
