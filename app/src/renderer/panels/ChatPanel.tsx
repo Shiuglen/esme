@@ -246,7 +246,7 @@ export function ChatPanel(props: { brain: BrainClient | null; onAjustes?(): void
               {turns.map((t, i) => (
                 <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={muelle}>
                   {t.role === 'user' ? (
-                    <div className="ml-auto w-fit max-w-[82%] rounded-4 rounded-br-2 border border-linea bg-s2/70 px-4 py-2.5 text-[15.5px] leading-[1.6] whitespace-pre-wrap text-texto shadow-[0_8px_30px_-18px_rgba(0,0,0,.6)] backdrop-blur-md">{t.content}</div>
+                    <div className="ml-auto w-fit max-w-[82%] rounded-4 rounded-br-2 border border-linea bg-s2/70 px-4 py-2.5 text-[15.5px] leading-[1.6] whitespace-pre-wrap text-texto shadow-flotante backdrop-blur-md">{t.content}</div>
                   ) : (
                     <Respuesta t={t} ultima={i === turns.length - 1} busy={busy} fase={fase} brain={props.brain} onCite={props.onCite} pidiendo={i === turns.length - 1 ? pidiendo : null}
                       onJuzgar={(u) => void judge(i, u)} onEscuchar={props.onHablar ? () => props.onHablar!(t.content) : undefined} />

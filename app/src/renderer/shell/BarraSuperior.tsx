@@ -25,7 +25,7 @@ export function BarraSuperior({ seccion, estado, tema, onTema, onBuscar, paletaA
       {/* el buscador y la paleta son el mismo objeto: al abrirla, este botón se estira hasta convertirse en ella */}
       {paletaAbierta ? <span className="ml-auto h-9 w-[320px]" aria-hidden /> : (
         <motion.button layoutId="buscador" transition={muelle} type="button" onClick={onBuscar} style={{ borderRadius: 18 }}
-          className="ml-auto flex h-9 w-[320px] items-center gap-2 border border-[color-mix(in_oklab,var(--texto)_10%,transparent)] bg-[color-mix(in_oklab,var(--superficie-1)_50%,transparent)] px-3 text-[13px] text-texto-3 shadow-[inset_0_1px_0_rgb(255_255_255/0.07)] backdrop-blur-xl transition-colors hover:text-texto-2">
+          className="ml-auto flex h-9 w-[320px] items-center gap-2 border border-linea bg-s1/50 px-3 text-[13px] text-texto-3 shadow-flotante backdrop-blur-xl transition-colors hover:text-texto-2">
           <Search className="size-4" strokeWidth={1.5} aria-hidden />Busca o pregunta
           <kbd className="ml-auto rounded-[5px] border border-linea bg-s1 px-1.5 py-0.5 font-sans text-[11px] text-texto-3">Ctrl K</kbd>
         </motion.button>

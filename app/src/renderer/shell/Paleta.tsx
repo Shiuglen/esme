@@ -53,7 +53,7 @@ export function Paleta({ abierta, onCerrar, onIr, onPreguntar, onTema, brain = n
     <AnimatePresence>
       {abierta && (
         <>
-          <motion.div key="velo" className="fixed inset-0 z-40 bg-black/45" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          <motion.div key="velo" className="fixed inset-0 z-40 bg-velo" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }} onClick={onCerrar} aria-hidden />
           <motion.div key="paleta" layoutId="buscador" transition={muelle} role="dialog" aria-modal="true" aria-label="Paleta de comandos"
             className="vidrio fixed top-[14vh] z-50 w-[640px] max-w-[calc(100vw-32px)] overflow-hidden border shadow-flotante"

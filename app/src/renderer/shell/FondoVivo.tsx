@@ -20,12 +20,11 @@ export function FondoVivo({ tema, estado, fondo = 'aurora', clave = '' }: { tema
   const [quieto] = useState(() => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches)
   const [sol, setSol] = useState(() => anguloSol(new Date()))
   // los colores reales de la piel (se leen un fotograma después de vestirla)
-  const [c, setC] = useState({ fondo: '#05080f', hoja: '#0a0f1a', sombra: '#020306', luz: '#5ef0d4' })
+  // los colores reales de la piel, leídos de una vez: antes se inventaban y el fondo parpadeaba con el color equivocado
+  const leer = () => { const css = getComputedStyle(document.documentElement), v = (k: string) => css.getPropertyValue(k).trim(); return { fondo: v('--fondo'), hoja: v('--superficie-1'), sombra: v('--linea'), luz: v('--luz') } }
+  const [c, setC] = useState(leer)
   useEffect(() => {
-    const id = requestAnimationFrame(() => {
-      const css = getComputedStyle(document.documentElement), v = (k: string, d: string) => css.getPropertyValue(k).trim() || d
-      setC({ fondo: v('--fondo', '#05080f'), hoja: v('--superficie-1', '#0a0f1a'), sombra: v('--linea', '#020306'), luz: v('--luz', '#5ef0d4') })
-    })
+    const id = requestAnimationFrame(() => setC(leer()))
     return () => cancelAnimationFrame(id)
   }, [tema, clave])
   useEffect(() => {

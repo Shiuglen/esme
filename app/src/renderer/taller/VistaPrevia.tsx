@@ -86,7 +86,7 @@ export function VistaPrevia({ t, linea, onPedir }: { t: TareaTaller; linea: Item
         {url ? (
           <iframe key={version} ref={marco} src={url} title={`Vista previa de «${t.titulo}»`} onLoad={() => setCargando(false)}
             sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
-            className="mx-auto block h-full rounded-3 border border-linea bg-white shadow-flotante transition-[width] duration-500 ease-salida"
+            className="mx-auto block h-full rounded-3 border border-linea bg-s1 shadow-flotante transition-[width] duration-500 ease-salida"
             style={{ width: ANCHOS[ancho] ? `${ANCHOS[ancho]}px` : '100%', maxWidth: '100%' }} />
         ) : <p className="flex items-center gap-2 text-sm text-texto-3"><LoaderCircle className="size-4 animate-spin" />Montando la vista previa…</p>}
         <AnimatePresence>

@@ -15,7 +15,7 @@ export function AlDia({ entradas, onIr, onPreguntar, onCerrar }: {
   const muelle = useMuelle({ stiffness: 380, damping: 32 })
   return (
     <motion.section aria-label="Al día" initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.98 }}
-      transition={muelle} className="hoja mb-3 grid gap-1 rounded-4 border border-linea p-4 shadow-[var(--sombra-2,0_10px_30px_rgba(0,0,0,.25))]">
+      transition={muelle} className="hoja mb-3 grid gap-1 rounded-4 border border-linea p-4 shadow-flotante">
       <header className="mb-1 flex items-baseline justify-between gap-3">
         <h2 className="m-0 text-[19px] italic font-medium text-texto" style={{ fontFamily: ROTULO }}>Al día</h2>
         <span className="text-xs text-texto-3">últimas 24 horas</span>

@@ -23,7 +23,7 @@ export function Leyenda({ actual, recogida: recogidaPedida, estado, notas, onIr,
   const ir = (id: SeccionId, e: React.MouseEvent<HTMLElement>) => { const r = e.currentTarget.getBoundingClientRect(); onIr(id, { x: r.left + r.width / 2, y: r.top + r.height / 2 }) }
   return (
     // la navegación es capa de navegación: vidrio líquido (shell/Vidrio.tsx), no una hoja de contenido
-    <Vidrio radio={18} className={cn('!absolute z-30 overflow-hidden border border-[color-mix(in_oklab,var(--texto)_10%,transparent)] bg-[color-mix(in_oklab,var(--superficie-1)_35%,transparent)] shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_24px_60px_-24px_rgb(0_0_0/0.7)] transition-[width] duration-500 ease-salida',
+    <Vidrio radio={18} className={cn('!absolute z-30 overflow-hidden border border-linea bg-s1/35 shadow-flotante transition-[width] duration-500 ease-salida',
         modo === 'leyenda' && cn('bottom-4 left-4', recogida ? 'w-[52px]' : 'w-[232px]'),
         modo === 'riel' && 'top-3 bottom-3 left-3 w-[52px]',
         muelle && 'bottom-3 left-1/2 -translate-x-1/2')}>

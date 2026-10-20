@@ -21,7 +21,7 @@ function Grafito({ serie, col, suma }: { serie: number[]; col: string; suma: num
       <svg width={ancho} height={alto} viewBox={`0 0 ${ancho} ${alto}`} aria-hidden className="shrink-0">
         {serie.map((v, i) => {
           const h = Math.max(3, (Math.abs(v) / tope) * (alto - 5))
-          return <rect key={i} x={i * paso + (paso - w) / 2} y={alto - h} width={w} height={h} rx={2} style={{ fill: v < 0 ? 'var(--peligro, #e5484d)' : 'var(--luz)' }} opacity={0.85} />
+          return <rect key={i} x={i * paso + (paso - w) / 2} y={alto - h} width={w} height={h} rx={2} style={{ fill: v < 0 ? 'var(--peligro)' : 'var(--luz)' }} opacity={0.85} />
         })}
       </svg>
       <div className="min-w-0 leading-tight">

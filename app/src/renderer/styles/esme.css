@@ -1,7 +1,5 @@
 /* esme — sistema de diseño. Estilo por defecto «Esmeralda» (marino y luz esmeralda); «Grabado» (Tinta y Luz) queda como tema.
    Los componentes solo usan roles (--fondo, --texto, --acento…): cambiar de estilo o de tema cambia toda la app a la vez. */
-@layer legado;
-@import "./app.css" layer(legado);
 @import "tailwindcss";
 
 @theme inline {
@@ -23,6 +21,9 @@
   --color-atencion: var(--atencion);
   --color-atencion-velo: var(--atencion-velo);
   --color-peligro: var(--peligro);
+  --color-sobre-peligro: var(--sobre-peligro);
+  --color-velo: var(--velo);
+  --color-sobre-velo: var(--sobre-velo);
   --color-peligro-velo: var(--peligro-velo);
   --color-info: var(--info);
   --color-exito: var(--exito);
@@ -69,7 +70,7 @@
   --texto: #e9eef7; --texto-2: #a2aec6; --texto-3: #76839c;
   --acento: #23d9b0; --sobre-acento: #04110d; --acento-velo: #0c2a26; --foco: #5eead0;
   --memoria: #8af7e1; --memoria-velo: #0b2420; --atencion: #f5b556; --atencion-velo: #2a1f0e;
-  --peligro: #f2687e; --peligro-velo: #2b1119; --info: #7db4ff; --exito: #2fd39a; --exito-velo: #0c251c;
+  --peligro: #f2687e; --peligro-velo: #2b1119; --sobre-peligro: #1b0409; --info: #7db4ff; --exito: #2fd39a; --exito-velo: #0c251c;
   --actividad-0: #0e1626; --actividad-1: #0e3b35; --actividad-2: #12695b; --actividad-3: #1fa585; --actividad-4: #5eead0;
   --cristal: rgba(10, 15, 26, 0.72);
   --sombra-flotante: 0 24px 60px rgba(0, 0, 0, 0.55), 0 2px 10px rgba(0, 0, 0, 0.4);
@@ -85,7 +86,7 @@
   --texto: #0a1222; --texto-2: #46536b; --texto-3: #5f6b82;
   --acento: #087f69; --sobre-acento: #ffffff; --acento-velo: #e3f6f1; --foco: #0b9e82;
   --memoria: #087f69; --memoria-velo: #e6f6f2; --atencion: #9a5b00; --atencion-velo: #fbf1dd;
-  --peligro: #c02648; --peligro-velo: #fce8ec; --info: #2f5fb3; --exito: #0b8a5c; --exito-velo: #e2f5ec;
+  --peligro: #c02648; --peligro-velo: #fce8ec; --sobre-peligro: #ffffff; --info: #2f5fb3; --exito: #0b8a5c; --exito-velo: #e2f5ec;
   --actividad-0: #eef1f6; --actividad-1: #bfe9df; --actividad-2: #6fcfb8; --actividad-3: #1fa585; --actividad-4: #0b6f5d;
   --cristal: rgba(255, 255, 255, 0.8);
   --sombra-flotante: 0 24px 60px rgba(15, 25, 45, 0.12), 0 2px 8px rgba(15, 25, 45, 0.06);
@@ -189,6 +190,7 @@
    heredan, cada fotograma recalculaba el estilo de todo el documento (≈25 % de CPU en reposo y la memoria del motor creciendo
    26 MB/s con la ventana tapada). La vida se anima con opacidad o transform, que van en el compositor y no tocan el estilo. */
 :root {
+  --velo: rgb(0 0 0 / 0.45); --sobre-velo: #ffffff;
   --aurora: conic-gradient(from 210deg, var(--luz), var(--luz-2), var(--luz-3), var(--luz-2), var(--luz));
   --aurora-lineal: linear-gradient(100deg, var(--luz), var(--luz-2) 55%, var(--luz-3));
 }

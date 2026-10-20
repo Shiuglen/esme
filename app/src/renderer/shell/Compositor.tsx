@@ -17,7 +17,7 @@ export function Compositor({ onEnviar, memoria, onMemoria, contexto, autoFocus, 
   const enviar = () => { const q = texto.trim(); if (!q) return; onEnviar(q); setTexto('') }
   const caja = (
     <form onSubmit={(e) => { e.preventDefault(); enviar() }}
-      className="aurora-foco flex items-end gap-3 rounded-[24px] border border-[color-mix(in_oklab,var(--texto)_12%,transparent)] bg-[color-mix(in_oklab,var(--superficie-1)_45%,transparent)] px-5 py-3.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_24px_60px_-24px_rgb(0_0_0/0.7)] transition-colors focus-within:border-transparent">
+      className="aurora-foco flex items-end gap-3 rounded-[24px] border border-linea bg-s1/45 px-5 py-3.5 shadow-flotante transition-colors focus-within:border-transparent">
       <div className="grid min-w-0 flex-1 gap-2">
         <textarea ref={area} rows={1} value={texto} autoFocus={autoFocus} onChange={(e) => setTexto(e.target.value)} aria-label="Mensaje para Esme"
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar() } }}

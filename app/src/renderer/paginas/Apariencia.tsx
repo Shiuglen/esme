@@ -23,17 +23,35 @@ export type Pieles = { actual: Piel; puedeDeshacer: boolean; puedeRehacer: boole
 export type Tema = 'noche' | 'dia'
 type Muestra = { fondo: string; superficie: string; texto: string; acento: string }
 
-// Los colores con los que se reconoce cada estilo de casa (los mismos del CSS)
-const ESTILOS: Record<string, Record<Tema, Muestra>> = {
-  esmeralda: { noche: { fondo: '#05080f', superficie: '#0a0f1a', texto: '#e9eef7', acento: '#23d9b0' }, dia: { fondo: '#f4f6fa', superficie: '#ffffff', texto: '#0a1222', acento: '#087f69' } },
-  quartz: { noche: { fondo: 'oklch(15% 0.014 262)', superficie: 'oklch(18.5% 0.016 262)', texto: 'oklch(96.5% 0.006 250)', acento: 'oklch(80% 0.110 195)' }, dia: { fondo: 'oklch(99.1% 0.002 250)', superficie: 'oklch(99.7% 0.001 250)', texto: 'oklch(20% 0.024 262)', acento: 'oklch(52% 0.090 195)' } },
-  lime: { noche: { fondo: '#0e0e0c', superficie: '#1a1a17', texto: '#f4f3ee', acento: '#cad649' }, dia: { fondo: '#f6f5f2', superficie: '#ffffff', texto: '#0f0f0d', acento: '#7c8700' } },
-  grabado: { noche: { fondo: '#08090d', superficie: '#0f1117', texto: '#e8ebf0', acento: '#5ef0d4' }, dia: { fondo: '#f3f3ef', superficie: '#fbfbf9', texto: '#141a26', acento: '#077567' } },
+// Los colores con los que se reconoce cada estilo de casa: se MEDEN del CSS (una muestra de prueba con su
+// data-estilo), no se copian a mano. Antes eran una tercera copia de la paleta: si el CSS cambiaba, la vista previa
+// seguía enseñando el color viejo. Ahora la vista previa no puede mentir.
+const MEDIDAS = new Map<string, Muestra>()
+const deEstilo = (estilo: string, tema: Tema): Muestra => {
+  const clave = `${estilo}:${tema}`
+  const guardado = MEDIDAS.get(clave)
+  if (guardado) return guardado
+  const m: Muestra = { fondo: '', superficie: '', texto: '', acento: '' }
+  if (typeof document !== 'undefined') {
+    const probe = document.createElement('div')
+    probe.setAttribute('data-estilo', estilo)
+    probe.setAttribute('data-theme', tema)
+    probe.style.cssText = 'position:fixed;opacity:0;pointer-events:none;width:0;height:0'
+    document.body.appendChild(probe)
+    const css = getComputedStyle(probe)
+    m.fondo = css.getPropertyValue('--fondo').trim()
+    m.superficie = css.getPropertyValue('--superficie-1').trim()
+    m.texto = css.getPropertyValue('--texto').trim()
+    m.acento = css.getPropertyValue('--acento').trim()
+    probe.remove()
+  }
+  MEDIDAS.set(clave, m)
+  return m
 }
 export function muestra(p: Piel, tema: Tema): Muestra {
   if (p.color.tipo === 'libre') return p.color[tema]
   if (p.color.tipo === 'gustos') { const v = paletaPropia(p.color.gustos, tema); return { fondo: v['--fondo'], superficie: v['--superficie-1'], texto: v['--texto'], acento: v['--acento'] } }
-  return ESTILOS[p.color.estilo][tema]
+  return deEstilo(p.color.estilo, tema)
 }
 const igual = (a: Piel, b: Piel) => JSON.stringify(a) === JSON.stringify(b)
 const radio = (p: Piel, base: number) => `${Math.round(base * p.forma.radio)}px`
@@ -303,7 +321,7 @@ export function Apariencia({ tema, onTema, pieles }: { tema: Tema; onTema(t: Tem
             <button key={id} type="button" role="radio" aria-checked={p.escena === id} onClick={() => cambia({ escena: id })}
               className={cn('group relative h-16 overflow-hidden rounded-3 border text-left transition-all', p.escena === id ? 'border-acento ring-2 ring-acento/40' : 'border-linea hover:border-linea-fuerte')}>
               <span aria-hidden className="absolute inset-0 opacity-80 transition-opacity group-hover:opacity-100" style={{ background: muestraDe(id) }} />
-              <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 px-2 pt-4 pb-1.5 text-[12px] font-medium text-white">{id === 'ninguna' ? 'Sin escena' : ESCENAS[id].nombre}</span>
+              <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-velo/70 px-2 pt-4 pb-1.5 text-[12px] font-medium text-sobre-velo">{id === 'ninguna' ? 'Sin escena' : ESCENAS[id].nombre}</span>
             </button>
           ))}
         </div>

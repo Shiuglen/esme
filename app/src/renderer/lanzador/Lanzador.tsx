@@ -83,7 +83,7 @@ export function Lanzador() {
 
   return (
     <div className="grid h-screen place-items-start bg-transparent p-2" onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); lz()?.ocultar() } }}>
-      <section className="flex max-h-[calc(100vh-16px)] w-full flex-col overflow-hidden rounded-[18px] border border-linea bg-[color-mix(in_oklab,var(--fondo)_96%,transparent)] shadow-[0_30px_80px_-20px_rgb(0_0_0/0.7)]">
+      <section className="flex max-h-[calc(100vh-16px)] w-full flex-col overflow-hidden rounded-[18px] border border-linea bg-fondo/95 shadow-flotante">
         <div className="flex items-start gap-3 pl-6">
         {/* Esme está aquí: su Punto, que se revuelve mientras piensa */}
         <PuntoVista px={30} tam="30px" estado={respuesta && !respuesta.fin ? 'pensando' : 'reposo'} titulo="Esme" className="mt-[26px] shrink-0 text-acento" />

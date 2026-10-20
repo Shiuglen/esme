@@ -136,7 +136,7 @@ function Ficha({ skill: s, agentes, onCerrar, onCambio }: { skill: SkillCatalogo
   }
 
   return (
-    <motion.div className="fixed inset-0 z-40 grid place-items-center bg-black/45 p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onCerrar}>
+    <motion.div className="fixed inset-0 z-40 grid place-items-center bg-velo p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onCerrar}>
       <motion.section role="dialog" aria-modal="true" aria-label={`Skill ${s.nombre}`} onClick={(e) => e.stopPropagation()}
         initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 8, opacity: 0 }}
         className="grid max-h-[86vh] w-[min(880px,100%)] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden rounded-4 border border-linea bg-[var(--hoja)]">
@@ -216,7 +216,7 @@ function Ficha({ skill: s, agentes, onCerrar, onCambio }: { skill: SkillCatalogo
             {estado.texto && <p className={cn('m-0 text-[12.5px]', estado.ok ? 'text-texto-2' : 'text-peligro')}>{estado.texto}</p>}
             {s.instalada && (
               <button type="button" onClick={() => void desinstalar()} onBlur={() => setSeguro(false)}
-                className={cn('inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px]', seguro ? 'bg-peligro text-white' : 'text-texto-3 hover:text-peligro')}>
+                className={cn('inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[13px]', seguro ? 'bg-peligro text-sobre-peligro' : 'text-texto-3 hover:text-peligro')}>
                 <Trash2 className="size-3.5" />{seguro ? 'Desinstalar de todas partes' : 'Desinstalar'}
               </button>
             )}

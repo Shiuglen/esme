@@ -36,7 +36,7 @@ export function HojasVivas({ tareas, onVer }: { tareas: TareaTaller[]; onVer: (i
             <motion.div key={h.id} initial={quieto ? { opacity: 0 } : { opacity: 0, y: 26, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.95 }}
               transition={quieto ? { duration: 0.15 } : muelle}
-              className="pointer-events-auto rounded-3 border border-linea bg-hoja/90 p-3 vidrio-fino shadow-[0_18px_50px_-20px_rgba(0,0,0,0.65)]">
+              className="pointer-events-auto rounded-3 border border-linea bg-hoja/90 p-3 vidrio-fino shadow-flotante">
               <div className="flex items-start gap-2.5">
                 <span className={h.motivo === 'error' ? 'text-peligro' : 'text-esmeralda'}>
                   <Bicho de={h.tarea.motor} tamaño={22} vivo={h.motivo === 'lista'} className="shrink-0" />
