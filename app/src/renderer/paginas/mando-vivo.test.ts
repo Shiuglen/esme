@@ -23,6 +23,10 @@ describe('lo que cuenta la portada de tu mundo', () => {
     expect(estadoDelDia({ ...base, recuerdos: 0, temas: 0, mente: 'apagado' })).toEqual(['Tu mente está apagada: enciéndela y vuelve a acordarse de ti.'])
     expect(estadoDelDia({ ...base, recuerdos: 0, temas: 0, mente: 'conectando' })).toEqual(['Despertando tu mente…'])
   })
+  it('el rumbo va primero: para qué trabaja es más verdad que cuántos recuerdos tiene', () => {
+    const f = estadoDelDia({ ...base, objetivos: ['Que la memoria sea un lugar de trabajo'] })
+    expect(f[0]).toBe('Vas por «Que la memoria sea un lugar de trabajo».')
+  })
   it('con la mente en blanco dice que está en blanco (y no que guarda cero)', () => {
     expect(estadoDelDia({ ...base, recuerdos: 0, temas: 0, mente: 'viva' })).toEqual(['Tu mente está en blanco: todavía no recuerda nada de ti. Cuéntale algo y guárdalo.'])
   })

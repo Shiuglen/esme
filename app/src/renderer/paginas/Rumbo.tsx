@@ -32,15 +32,36 @@ export function useRumbo() {
 }
 
 const activos = (o: Objetivo[]) => o.filter((x) => x.estado === 'activo')
+
+/**
+ * ¿Se está trabajando en este objetivo? Lo pregunta a la mente por significado: la Lente busca lo que se parece, no
+ * lo que coincide con palabras. Si no hay recuerdos parecidos, el objetivo está parado (y hay que decirlo).
+ */
+export function useMovimiento(objetivos: Objetivo[]): Record<string, number> {
+  const [movimiento, setMovimiento] = useState<Record<string, number>>({})
+  useEffect(() => {
+    let vivo = true
+    const vivos = objetivos.filter((o) => o.estado === 'activo').slice(0, 6)
+    if (!vivos.length) { setMovimiento({}); return }
+    void (async () => {
+      const cuentas: Record<string, number> = {}
+      for (const o of vivos) {
+        try { const r = await bridge.mente.recuerdos(o.texto, 5); if (vivo) cuentas[o.id] = r.length } catch { /* la mente no está */ }
+      }
+      if (vivo) setMovimiento(cuentas)
+    })()
+    return () => { vivo = false }
+  }, [objetivos.map((o) => o.id).join(',')])
+  return movimiento
+}
 const textoDePilar = (o: Objetivo, pilares: Pilar[]) => {
   if (!o.pilar) return ''
   return pilares.find((p) => p.id === o.pilar)?.texto ?? ''
 }
 
 /** Lo que ves en el Mando: hacia dónde vas, y lo que está en marcha. */
-export function RumboResumen({ onEditar }: { onEditar?(): void }) {
-  const { rumbo, listo } = useRumbo()
-  if (!listo) return null
+export function RumboResumen({ rumbo, onEditar }: { rumbo: Rumbo; onEditar?(): void }) {
+  if (!rumbo) return null
   const enMarcha = activos(rumbo.objetivos)
   if (!rumbo.pilares.length && !enMarcha.length) {
     return (
@@ -84,9 +105,9 @@ export function RumboResumen({ onEditar }: { onEditar?(): void }) {
 }
 
 /** El editor: los pilares y los objetivos, y lo que hacen con ellos. */
-export function RumboEditor({ onCerrar }: { onCerrar(): void }) {
-  const { rumbo, mover } = useRumbo()
+export function RumboEditor({ rumbo, mover, onCerrar }: { rumbo: Rumbo; mover(accion: string, datos?: Record<string, unknown>): Promise<boolean>; onCerrar(): void }) {
   const [pilar, setPilar] = useState('')
+  const movimiento = useMovimiento(rumbo.objetivos)
   const [objetivo, setObjetivo] = useState('')
   const [bajo, setBajo] = useState<string>('')
 
@@ -159,6 +180,11 @@ export function RumboEditor({ onCerrar }: { onCerrar(): void }) {
                 </button>
                 <span className={cn('min-w-0 flex-1 truncate text-[14px]', o.estado === 'hecho' ? 'text-texto-3 line-through' : 'text-texto')}>{o.texto}</span>
                 {textoDePilar(o, rumbo.pilares) && <span className="shrink-0 text-[12px] text-texto-3">· {textoDePilar(o, rumbo.pilares)}</span>}
+                {o.estado === 'activo' && (
+                  <span className={cn('shrink-0 text-[11.5px]', (movimiento[o.id] ?? 0) > 0 ? 'text-acento' : 'text-texto-3')}>
+                    {movimiento[o.id] === undefined ? '…' : movimiento[o.id]! > 0 ? `${movimiento[o.id]} recuerdos` : 'sin movimiento'}
+                  </span>
+                )}
                 <button type="button" onClick={() => void mover('cambiar_objetivo', { id: o.id, estado: o.estado === 'pausado' ? 'activo' : 'pausado' })}
                   aria-label={o.estado === 'pausado' ? 'Reanudar' : 'Pausar'} title={o.estado === 'pausado' ? 'Reanudar' : 'Pausar'}
                   className={cn('grid size-7 place-items-center rounded-full transition-colors hover:bg-s2', o.estado === 'pausado' ? 'text-atencion' : 'text-texto-3')}>
@@ -203,12 +229,13 @@ export function RumboEditor({ onCerrar }: { onCerrar(): void }) {
 
 /** El editor y su resumen, con el overlay que se abre y se cierra. */
 export function Rumbo({ className }: { className?: string }) {
+  const { rumbo, mover } = useRumbo()
   const [editando, setEditando] = useState(false)
   return (
     <>
-      <RumboResumen onEditar={() => setEditando(true)} />
+      <RumboResumen rumbo={rumbo} onEditar={() => setEditando(true)} />
       <AnimatePresence>
-        {editando && <RumboEditor onCerrar={() => setEditando(false)} />}
+        {editando && <RumboEditor rumbo={rumbo} mover={mover} onCerrar={() => setEditando(false)} />}
       </AnimatePresence>
     </>
   )

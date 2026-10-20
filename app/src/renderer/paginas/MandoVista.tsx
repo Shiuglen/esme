@@ -29,7 +29,7 @@ import { TintaVista, tintaDeTarea } from '../marca/PuntoVista'
 import { useAgenda } from '../taller/Agenda'
 import { bridge } from '../lib/bridge'
 import { Constelacion } from './Constelacion'
-import { Rumbo } from './Rumbo'
+import { RumboEditor, RumboResumen, useRumbo } from './Rumbo'
 import type { SeccionId } from '../shell/secciones'
 import type { EstadoMente } from '../lib/bridge'
 import { estadoDelDia } from './mando-vivo'
@@ -80,7 +80,10 @@ export function Mando({ onSeccion, presencia = 'orbe', sitio = { izquierda: 240,
   }, [tareas])
   const muelle = useMuelle({ stiffness: 300, damping: 30 })
   const temas = atlas?.clusters.length ?? 0
-  const frases = estadoDelDia({ listas, trabajando: activos.length, esperan: esperan.length, programados: agenda.filter((p) => p.activo).map((p) => ({ texto: p.texto, proxima: p.proxima })), temas, recuerdos: recuerdos ?? 0, ahora, mente: estadoMente })
+  const { rumbo, mover } = useRumbo()
+  const objetivosActivos = (rumbo?.objetivos ?? []).filter((o) => o.estado === 'activo').map((o) => o.texto)
+  const frases = estadoDelDia({ listas, trabajando: activos.length, esperan: esperan.length, programados: agenda.filter((p) => p.activo).map((p) => ({ texto: p.texto, proxima: p.proxima })), temas, recuerdos: recuerdos ?? 0, ahora, mente: estadoMente, objetivos: objetivosActivos })
+  const [editandoRumbo, setEditandoRumbo] = useState(false)
   const pausado = useRef(false); pausado.current = !visible
 
   const hablar = () => { if (escuchando) { parar(false); enConversacion.current = false } else if (nivelVoz > 0 || vivo) { onCerrarVivo?.(); enConversacion.current = false } else { enConversacion.current = true; setEscuchando(true) } }
@@ -138,7 +141,7 @@ export function Mando({ onSeccion, presencia = 'orbe', sitio = { izquierda: 240,
               ))}
             </div>
           )}
-          {!vivo && !escuchando && <Rumbo />}
+          {!vivo && !escuchando && <RumboResumen rumbo={rumbo} onEditar={() => setEditandoRumbo(true)} />}
         </div>
 
         <AnimatePresence>
