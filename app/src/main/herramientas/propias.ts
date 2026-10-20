@@ -23,6 +23,10 @@ export type Manos = {
   usarSkill?(nombre: string, fichero?: string): { instrucciones: string; ficheros: string[] }
   buscarWeb(consulta: string): Promise<{ fuente: string; resultados: Resultado[] }>
   leerWeb(url: string): Promise<{ titulo: string; texto: string; url: string }>
+  /** El navegador: una web de verdad (con JavaScript y formularios), no sólo texto plano. */
+  navegar?(url: string): Promise<{ url: string; titulo: string; texto: string; acciones: string[] }>
+  clicEnPagina?(objetivo: string): Promise<{ ok: boolean; donde: string; url: string; titulo: string; texto: string; acciones: string[] }>
+  escribirEnPagina?(objetivo: string, valor: string): Promise<{ ok: boolean; donde: string; url: string; titulo: string; texto: string; acciones: string[] }>
   preguntar(nombre: string, args: unknown, id: string): Promise<Respuesta>
   politicas: Record<string, Politica>
   guardarPolitica(nombre: string, p: Politica): void
@@ -89,6 +93,33 @@ export function herramientasPropias(m: Manos): ToolSet {
       description: 'Lee el texto de una página web (http/https). Úsala con direcciones que te dio el usuario o que salieron en una búsqueda.',
       inputSchema: z.object({ url: z.string().url() }),
       execute: g('leer_web', ({ url }: { url: string }) => m.leerWeb(url)),
+    }),
+    navegar: tool({
+      description: 'Abre una página en un navegador de verdad (con JavaScript, formularios y paginación) y te devuelve lo que hay: '
+        + 'el texto, los botones, los campos y las acciones posibles. Úsala cuando una página necesita JavaScript o cuando tengas '
+        + 'que rellenar un formulario o pulsar algo. Si no hay navegador, usa leer_web.',
+      inputSchema: z.object({ url: z.string().url() }),
+      execute: g('navegar', async ({ url }: { url: string }) => {
+        if (!m.navegar) return 'No hay navegador disponible en este momento.'
+        const e = await m.navegar(url)
+        return e
+      }),
+    }),
+    clic_en_la_pagina: tool({
+      description: 'Pulsa un botón o enlace de la página que tienes abierta en el navegador de Esme (por su texto).',
+      inputSchema: z.object({ objetivo: z.string().min(1).max(120) }),
+      execute: g('clic_en_la_pagina', async ({ objetivo }: { objetivo: string }) => {
+        if (!m.clicEnPagina) return 'No hay navegador disponible en este momento.'
+        return m.clicEnPagina(objetivo)
+      }),
+    }),
+    escribir_en_la_pagina: tool({
+      description: 'Rellena un campo de la página que tienes abierta en el navegador de Esme (por su nombre o su marcador).',
+      inputSchema: z.object({ objetivo: z.string().min(1).max(120), valor: z.string().max(2000) }),
+      execute: g('escribir_en_la_pagina', async ({ objetivo, valor }: { objetivo: string; valor: string }) => {
+        if (!m.escribirEnPagina) return 'No hay navegador disponible en este momento.'
+        return m.escribirEnPagina(objetivo, valor)
+      }),
     }),
     buscar_en_memoria: tool({
       description: 'Busca en la memoria del usuario (lo que Esme recuerda de sus proyectos, gustos y decisiones).',
