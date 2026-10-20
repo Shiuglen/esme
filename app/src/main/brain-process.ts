@@ -18,7 +18,8 @@ export class BrainProcess {
   private puertoLibre = false
   info: BrainInfo | null = null
 
-  constructor(private readonly cerebro: Cerebro, private readonly home: string, private readonly onChange: (i: BrainInfo | null) => void) {}
+  constructor(private readonly cerebro: Cerebro, private readonly home: string, private readonly onChange: (i: BrainInfo | null) => void,
+    private readonly extraEnv: Record<string, string> = {}) {}
 
   /** En qué está la mente: despertando (el proceso de Python aún no ha anunciado), viva o apagada (no hay proceso). */
   get estado(): 'conectando' | 'viva' | 'apagado' {
@@ -30,7 +31,8 @@ export class BrainProcess {
     return new Promise((resolve, reject) => {
       const { python, extraPython } = this.cerebro
       // instalada, sus paquetes van aparte (PYTHONPATH) y nunca se mezclan con los del usuario
-      const env = { ...process.env, DAIMON_PARENT_PID: String(process.pid), ...(extraPython ? { PYTHONPATH: extraPython, PYTHONNOUSERSITE: '1' } : {}) }
+      const env = { ...process.env, DAIMON_PARENT_PID: String(process.pid), ...(this.extraEnv ?? {}),
+        ...(extraPython ? { PYTHONPATH: extraPython, PYTHONNOUSERSITE: '1' } : {}) }
       const arranque: SpawnOptions = { stdio: ['ignore', 'pipe', 'pipe'], env }
       const token = typeof this.cerebro.token === 'function' ? this.cerebro.token() : this.cerebro.token
       const fijo = this.cerebro.puerto !== undefined ? [String(this.puertoLibre ? 0 : this.cerebro.puerto), ...(token ? [token] : [])] : []

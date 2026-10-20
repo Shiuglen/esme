@@ -77,7 +77,9 @@ def test_servidor_expone_herramientas(tmp_path):
     import asyncio
     srv = build_server(_home(tmp_path))
     names = {t.name for t in asyncio.run(srv.list_tools())}
-    assert names == {"recall", "remember", "feedback"}
+    # La memoria (recall/remember/feedback) y el navegador: la web de verdad, para cualquier agente.
+    assert {"recall", "remember", "feedback"} <= names
+    assert {"navegar", "clic_en_la_pagina", "escribir_en_la_pagina"} <= names
 
 
 def test_home_lee_config(tmp_path):
