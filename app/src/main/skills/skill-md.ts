@@ -53,15 +53,17 @@ export function leerSkillMd(texto: string, carpeta: string): LecturaSkill {
   if (!campos.name) return { ok: false, error: 'Falta el campo obligatorio «name».' }
   if (!campos.description) return { ok: false, error: 'Falta el campo obligatorio «description».' }
   const avisos: string[] = []
-  if (campos.name !== carpeta) avisos.push(`El nombre «${campos.name}» no coincide con la carpeta «${carpeta}».`)
+  if (carpeta && campos.name !== carpeta) avisos.push(`El nombre «${campos.name}» no coincide con la carpeta «${carpeta}».`)
   if (campos.name.length > 64) avisos.push('El nombre pasa de 64 caracteres (el estándar no lo permite).')
   if (campos.description.length > 1024) avisos.push('La descripción pasa de 1024 caracteres (el estándar no lo permite).')
+  const cuerpo = m[2].replace(/\s+$/, '')
+  if (!cuerpo.trim()) avisos.push('El cuerpo está vacío: no hay instrucciones que leer.')
   return {
     ok: true, avisos,
     skill: {
       nombre: campos.name, descripcion: campos.description, soloManual: campos['disable-model-invocation'] === 'true', campos,
       ...(campos.license ? { licencia: campos.license } : {}), ...(campos['allowed-tools'] ? { herramientasPermitidas: campos['allowed-tools'] } : {}),
-      cuerpo: m[2].replace(/\s+$/, ''),
+      cuerpo,
     },
   }
 }

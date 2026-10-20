@@ -35,3 +35,7 @@ describe('leer un SKILL.md (estándar abierto agentskills.io)', () => {
     expect(largo.ok && largo.avisos.some((a) => /64/.test(a))).toBe(true)
   })
 })
+  it('avisa si el cuerpo está vacío (no hay instrucciones que leer)', () => {
+    const s = leerSkillMd('---\nname: x\ndescription: d\n---\n\n   \n', 'x')
+    expect(s.ok && s.avisos).toContain('El cuerpo está vacío: no hay instrucciones que leer.')
+  })
