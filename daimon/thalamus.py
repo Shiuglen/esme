@@ -57,7 +57,7 @@ class Thalamus:
     def __init__(self, hippo: Hippocampus, bm25: BM25, w: np.ndarray | None = None,
                  mmr_lambda: float = 0.7, k: int = 120, eps: float = 0.05, max_drop: float | None = None,
                  min_dense: float | None = None, max_items: int | None = None,
-                 recencia_dias: float = 3650.0):
+                 recencia_dias: float = 3650.0, hops: int = 3):
         self.hippo, self.bm25 = hippo, bm25
         self.w = (W0.copy() if w is None else np.asarray(w, dtype=np.float64))
         self.mmr_lambda, self.k, self.eps = mmr_lambda, k, eps
@@ -69,6 +69,8 @@ class Thalamus:
         self.max_items = max_items
         # vida media de la recencia: los recuerdos viejos se atenúan, pero no se vuelven invisibles
         self.recencia_dias = recencia_dias
+        # saltos en el grafo de la memoria: a cuántos vecinos se llega al recuperar
+        self.hops = hops
         self._last: dict[str, dict[str, np.ndarray]] = {}
         self._rng = np.random.default_rng(0)
         # memoria por motor: cada IA tiene su forma de querer el contexto
@@ -97,7 +99,7 @@ class Thalamus:
         now = datetime.now(timezone.utc)
         q = self.hippo.lens.encode([query], role="query")[0]
         found: dict[str, tuple[Event, float, int]] = {}
-        for h in self.hippo.recall(query, k=k // 2, hops=3):
+        for h in self.hippo.recall(query, k=k // 2, hops=self.hops):
             found[h.event.id] = (h.event, float(self.hippo.vector(h.event.id) @ q), h.hop)
         lex = self.bm25.search(query, k)
         top = max((s for _, s in lex), default=1.0) or 1.0

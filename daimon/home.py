@@ -51,6 +51,7 @@ class Home:
                                  max_drop=self.config.get("max_drop"), min_dense=self.config.get("min_dense"),
                                  k=int(self.config.get("k", 120)),
                                  max_items=self.config.get("max_items"),
+                                 hops=int(self.config.get("hops", 3)),
                                  recencia_dias=float(self.config.get("recencia_dias", 3650.0)))
         pesos = self.path / "pesos.npz"
         if pesos.exists():

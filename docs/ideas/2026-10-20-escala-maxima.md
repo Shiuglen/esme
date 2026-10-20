@@ -81,7 +81,18 @@ agente que *ve* la pantalla. Con Jev como motor pequeño, Esme puede tener esa l
 en local.
 **Primer paso.** Un módulo `daimon/navegador/` con: `acciones(step)` (lo que se puede hacer ahora),
 `estado()` (DOM legible) y `resolver()` (Jev propone la acción). CDP ya funciona en esta máquina.
-**Se mide.** Tareas de navegación real: segundos y coste por tarea, contra el mismo trabajo manual.
+**El diseño, copiado de `jev-kit`:** *Jev elige qué hacer clic; el modelo grande sólo escribe el
+texto de los campos; un planificador ayuda cuando el paso no es obvio*. Y **modo sombra**:
+primero registrar lo que se haría y comparar, antes de gastar de verdad.
+**Verificado (20-oct) — la pila del navegador:**
+| Pieza | Licencia | Qué aporta | Aviso |
+|---|---|---|---|
+| **`browserbase/stagehand`** | MIT · 25.744★ | API tipo Playwright, localizadores profundos hasta iframes y Shadow DOM cerrado, WebMCP | Corre contra Chrome local, pero **su servidor MCP es sólo de Browserbase** y su pasarela de modelos no funciona con navegador local → hay que llevar el modelo |
+| **`jo-inc/camofox-browser`** | MIT · 11.729★ | Firefox parcheado con suplantación de huella a nivel C++; **sin proxy stealth de pago** | Es un **servidor REST aparte** (puerto 9377), no un endpoint CDP: no encaja tal cual dentro de Electron |
+| **`ChromeDevTools/chrome-devtools-mcp`** | Apache-2.0 · 53.873★ | El MCP oficial de DevTools: consola, red, rendimiento | Recoge estadísticas de uso por defecto (**hay que apagarlas**) y puede enviar trazas a la API de CrUX |
+| `browser-use/browser-use` | MIT · 118.566★ | Agente de navegador en Python | Por defecto usa `ChatOpenAI`: pide clave |
+| `e2b-dev/E2B` | Apache-2.0 | Aislamiento de ejecución (microVM) | **Autoalojarlo pide KVM/Firecracker**: inviable en esta máquina. Es lo que ya hace el Taller con sus copias |
+**Se mide.** Segundos y coste por tarea, contra el mismo trabajo manual.
 **Riesgo.** Alto si se mezcla con la cortafuegos de datos privados: el DOM puede llevar secretos.
 
 ### Palanca 2 — Publicar `esme` en el Registro oficial de MCP
@@ -114,11 +125,28 @@ contexto del proyecto y lo inyecte en el primer mensaje.
 **Se mide.** Aciertos del examen con y sin herencia.
 
 ### Palanca 5 — El banco de examen de la memoria
-**Idea.** Mem0 (+66K★) y Hindsight son la referencia de la industria. **No se copian: se miden.**
+**Idea.** Mem0 (+67K★) y Hindsight son la referencia de la industria. **No se copian: se miden.**
 **Por qué multiplica.** Sin banco de comparación, «la memoria de Esme es mejor» es una frase.
 **Primer paso.** `daimon/bench/` añade un rung con las tareas reales del creador contra
 `rag_denso_eg` (el rival actual, que ya gana en el veredicto) **y** contra Mem0/Hindsight.
 **Se mide.** Acierto y tokens por tarea. Sólo entra lo que mejora el número.
+
+### Palanca 5-bis — Evaluación y trazas: el hueco que nadie vio hasta ahora
+**Idea.** Las tres listas de X (@Lummox_eth, @ridark_eth) terminan igual: **Langfuse, Opik,
+DeepEval y OpenLLMetry**. Es decir: *trazas + evaluaciones*. Es la última mitad de la
+arquitectura que everyone propone — *modelo → contexto → planificador → memoria → herramientas →
+ejecución → **evaluación** → reintento* — y **Esme no la tiene**: no mide sus propios agentes.
+**Por qué multiplica.** Sin evaluación, «Esme es mejor que el rival» es una creencia. Con
+evaluación, es un número que sube o baja cada noche.
+**Primer paso (y es barato, en 6 GB):**
+- **Evaluaciones:** `confident-ai/deepeval` (Apache-2.0, 19K★) — **no pide clave de API** y
+  **funciona con Ollama como juez local** (`deepeval/models/llms/ollama_model.py`). Es el único
+  de la lista que cabe en una máquina de 6 GB.
+- **Trazas (la vía mínima):** `traceloop/openllmetry` (Apache-2.0) → colector OpenTelemetry →
+  exportador JSONL. Sin interfaz, sin servicios: el visualizador se construye. Langfuse (6
+  contenedores con ClickHouse) y Opik (9 con MySQL+ZooKeeper) **no caben** en 6 GB.
+**Se mide.** La curva de aciertos por tarea del Taller, guardada cada noche.
+**Riesgo.** El juez debe ser el mismo modelo que la respuesta o se mide con el sesgo del juez.
 
 ### Palanca 6 — Esme aprende de sí misma: **REA**
 **Idea.** REA (*Reverse Engineer Anything*, MCP + CLI, **MIT**, `rea-agents` v6.7.0, publicado el
@@ -132,6 +160,14 @@ usuario**, abre la puerta a la Forja: replicar una función, no una app.
 **Primer paso.** `npm i -g rea-agents` en la máquina; registrarlo como MCP de Esme; una receta de
 Ejemplo sobre el propio `.asar` de Esme.
 **Se mide.** Tiempo para entender un módulo propio; usefulness de lasPatch generadas.
+**Verificado (20-oct):** `rea-agents` v6.7.0, MIT, 338.166★, activo el 20-oct — pero con tres
+salvedades que hay que conocer: **1.279 issues abiertas y 6 versiones mayores en 3 meses** → hay
+que **fijar la versión**; **arrastra binarios externos** (Ghidra/Hopper/IDA, JADX+JDK, Apktool,
+adb, tshark, WABT, pwntools, binwalk, sigrok-cli) → no sirve «al vuelo», hay que decidir qué
+backends se instalan; y **no pide root**. Sus herramientas MCP son exactamente las que sirven:
+`investigate_feature`, `compare_application_versions`, `verify_reconstruction`, `trace_crash`,
+`audit_residual_unknowns`, `analyze_javascript_application`, `inspect_artifact`,
+`inspect_binary_layout`, `open_binary`, `list_documents`, `list_procedures`.
 **Límite (decidido el 17-oct, se mantiene).** Nada de ingeniería inversa sobre **apps de terceros**
 para copiarlas: riesgo legal y contradice que Esme sea original. REA se usa sobre lo propio, sobre
 lo del usuario con permiso, y para forense del propio equipo. Nada de OSINT de terceros, ni claves
@@ -148,13 +184,16 @@ con ficheros, scripts y permiso: se comparte, se vende, se improve.
 **Se mide.** Tokens ahorrados y tareas cerradas sin IA.
 
 ### Palanca 8 — El catálogo como economía
-**Idea.** `mcpmarket.com` indexa **50.000+ servidores MCP y skills**; el Registro MCP de GitHub ya
-tiene draw.io renderizando diagramas vivos en el chat.
+**Idea.** `mcpmarket.com` indexa ~50.000 **páginas de herramientas** (no servidores) y skills; el
+Registro MCP de GitHub ya tiene draw.io renderizando diagramas vivos en el chat.
 **Por qué multiplica.** Esme no sólo distribuye: **indexa**. Un índice verificado (licencia leída,
 riesgo calculado, huella del árbol) es un producto que otros no pueden copiar sin hacer el
 trabajo de verificación.
-**Primer paso.** El script `app/scripts/catalogo-skills.mjs` (ya existe) pasa de 30 skills
-curadas a **indexación continua** con el mismo control de licencias.
+**Primer paso.** **HECHO (20-oct):** el catálogo de la Tienda pasa de 30 a **55 skills** con las 25
+de `addyosmani/agent-skills` (MIT, 108.668★), cada una fijada a un commit y con su huella de árbol
+y su licencia leída de su carpeta — el mismo mecanismo de siempre, pero con la mayor colección
+abierta que existe. Copia la carpeta entera, así que sus `references/` viajan con ella (el fallo
+#361 de `npx skills add` no aplica).
 
 ### Palanca 9 — Roles en YAML para el Taller
 **Idea.** OpenRig: equipos de agentes permanentes con roles en YAML y traza de qué llamada falló.
@@ -164,14 +203,20 @@ muestra en la interfaz.
 **Se mide.** Tiempo de montar un equipo nuevo de agentes.
 
 ### Palanca 10 — La voz local como infraestructura de los demás
-**Idea.** SKI da voz full-dúplex on-device a Claude Code, Cursor, Codex y Gemini CLI. `tyger-s2s`
-(Apache-2.0) hace ASR con una cabeza de decisión de **14 M**; `qwen-audio-agent` es runtime
-full-dúplex.
+**Idea.** SKI da voz full-dúplex on-device a Claude Code, Cursor, Codex y Gemini CLI (pero es de
+**código cerrado y sin licencia**: no se puede incorporar, sólo copiar la idea).
 **Por qué multiplica.** Esme deja de ser «una app con voz» y pasa a ser **la voz de los agentes que
 ya usas**.
-**Primer paso.** El ASR de 14M entra de sobra en la GPU de 6 GB; medir latencia y empaquetar el
-servicio de voz para que lo usen los CLI.
-**Se mide.** Latencia de ida y vuelta en conversación real.
+**Primer paso — qué cabe de verdad en esta máquina (RTX 4050, 6 GB), verificado el 20-oct:**
+| Pieza | Licencia | Tamaño | Veredicto |
+|---|---|---|---|
+| **`openai/whisper` en `small`** | MIT | ~2 GB de VRAM | **El ASR local pragmático.** `medium` (~5 GB) también, pero `large` (~10 GB) y `turbo` (~6 GB) **no**. Mejor con `faster-whisper` |
+| **`QwenAudio/qwen-audio-agent`** | Apache-2.0 | 65 MB de repo | Runtime de voz en tiempo real con **2 fronts locales** (Hugging Face Speech-to-Speech y MiniCPM-o 4.5) frente a 7 de nube. Trae MCP y ACP a OpenCode/Claude Code/Codex/Qwen Code |
+| **`studio-dots-ai/dots.tts`** | Apache-2.0 | ~5,16 GB de pesos | TTS de 2B con flujo continuo. En 6 GB **sólo `dots.tts-mf` con audios de menos de 20 s** (5,47 GB) y **si no hay nada más en la GPU** |
+| `nineninesix-ai/tyger-s2s` | Apache-2.0 (código) | ~25 GB de modelos | **Descartado**: pide ~28 GB de VRAM |
+| `inworld-ai/open-tts-eval` | MIT | 2 MB | El núcleo de evaluación de TTS (WER/CER, umbrales, informe offline) es **local y portable**; sus tres proveedores de muestra son de pago → hay que escribir un `TTSProvider` propio |
+| `egma-ai/egma` | MIT (núcleo) | 35 MB | Pruebas de simulación para agentes de voz. El núcleo es libre; `ee/` no |
+**Se mide.** Latencia de ida y vuelta en conversación real, y el error de dictado (WER).
 
 ### Palanca 11 — El informe de equivalencia económica
 **Idea.** «En GitHub hay una cantidad absurda de proyectos gratis que ya hacen lo mismo que la
@@ -227,6 +272,19 @@ mismo MCP.
   limitaciones: son la garantía.
 - **Copiar lo que se vio en X**: se absorbe y se supera. Si algo se usa, se usa la idea y se
   implementa mejor, con su licencia leída.
+- **Licencias que muerden (verificadas el 20-oct):**
+  - `volcengine/OpenViking` → **AGPL-3.0**: imposible en un producto comercial cerrado.
+  - `Arize-ai/phoenix` → **Elastic-2.0**: prohíbe ofrecerlo como servicio y lleva cláusula de
+    licencia; no se puede incrustar en un producto comercial.
+  - `langfuse` y `opik` autoalojados → 6–10 contenedores (ClickHouse, MySQL, ZooKeeper, MinIO…):
+    no caben en 6 GB, ni de memoria ni de usefulness.
+  - `plastic-labs/honcho` → **AGPL-3.0**.
+  - `vectorize-io/agent-memory-benchmark` → **sin licencia**: todos los derechos reservados. Se
+    **portan las ideas** (ingesta → recupera → genera → juzga; el contrato `MemoryProvider`; la
+    terna acierto + velocidad + coste de tokens), **no el código**.
+  - `mem0ai/openmemory` → no es lo que dice: es una CLI para **portar sesiones** entre agentes.
+  - `e2b-dev/E2B` autoalojado → exige KVM y virtualización anidada: inviable aquí.
+  - `QwenLM/Qwen3-Omni` → 70 GB de pesos: nunca en una 4050.
 
 ## 6. Cómo se mide cada cosa
 
