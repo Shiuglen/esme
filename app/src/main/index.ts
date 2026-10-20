@@ -8,7 +8,7 @@ import { BrainProcess, type BrainInfo } from './brain-process'
 import { configMcp } from './mente/cliente'
 import { registerChat } from './chat'
 import { registerMente } from './mente/ipc'
-import { alLanzar, cerrar as cerrarTaller, pendienteTaller, registerTaller, agentesParaConversar } from './ipc-taller'
+import { alLanzar, aprenderEquipo, cerrar as cerrarTaller, pendienteTaller, registerTaller, agentesParaConversar } from './ipc-taller'
 import { alCerrarVentana, guardarPreferencia, leerPreferencia, resumenBandeja, type PreferenciaCierre } from './segundo-plano'
 import { registerProveedores } from './ipc-proveedores'
 import { keys } from './keys'
@@ -40,7 +40,11 @@ const ICONO = join(__dirname, '../../resources/esme.png')
 // tu mente siempre en el mismo sitio (127.0.0.1:47321) y con su token fijo en el llavero: así tus otras IAs la encuentran
 const MENTE_PUERTO = 47321
 const tokenMente = () => { let t = keys.get('mente'); if (!t) { t = randomBytes(32).toString('hex'); keys.set('mente', t) } return t }
-const brain = new BrainProcess({ python: RUTAS.python, extraPython: RUTAS.extraPython, puerto: MENTE_PUERTO, token: tokenMente }, RUTAS.mente, (_info: BrainInfo | null) => win?.webContents.send('brain:changed', { url: brain.info?.url ?? null, estado: brain.estado }))
+const brain = new BrainProcess({ python: RUTAS.python, extraPython: RUTAS.extraPython, puerto: MENTE_PUERTO, token: tokenMente }, RUTAS.mente, (info: BrainInfo | null) => {
+  win?.webContents.send('brain:changed', { url: brain.info?.url ?? null, estado: brain.estado })
+  // La mente despierta: es cuando puede aprender del equipo (qué motor acierta contigo y qué se rompe).
+  if (info) void aprenderEquipo().catch(() => {})
+})
 
 const MAC = process.platform === 'darwin'
 // Una sola Esme: si ya está abierta (por ejemplo, al pulsar otra vez el icono del escritorio), la abierta se trae al frente

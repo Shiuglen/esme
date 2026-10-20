@@ -389,10 +389,12 @@ export class Taller {
     const mente = this.mente()
     if (!mente) return
     try {
+      // Sólo lo que la mente necesita para destilar la lección: la tarea entera pesa y no aporta.
+      const tareas = this.lista().map((t) => ({ id: t.id, motor: t.motor, modelo: t.modelo, estado: t.estado, error: t.error }))
       await fetch(`${mente.url}/equipo`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mente.token}` },
-        body: JSON.stringify({ veredictos: await this.veredictos(), tareas: this.lista() }),
+        body: JSON.stringify({ veredictos: await this.veredictos(), tareas }),
         signal: AbortSignal.timeout(10_000),
       })
     } catch { /* la mente no está o no contesta: la tarea sigue igual */ }
@@ -467,6 +469,8 @@ export class Taller {
       t.estado = 'error'; t.error = e instanceof Error ? e.message : String(e); t.fin = this.ahora()
       this.registrar(r, { tipo: 'fallo', mensaje: t.error })
       this.anotarTurno(r)
+      // Lo que se rompe también es una lección: la mente se lo apunta para el siguiente encargo.
+      void this.aprenderEquipo()
       r.sesion?.cerrar(); r.sesion = undefined
     }
     r.resolverPermiso = undefined; t.permiso = null

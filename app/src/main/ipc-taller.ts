@@ -231,8 +231,14 @@ export async function instalarMotor(id: unknown, lanzar: typeof spawn = spawn): 
   } finally { instancias.delete(id) }
 }
 
-export function registerTaller(o: { brainInfo: () => { url: string; token: string } | null }) {
-  const t = new Taller({
+/** La mente se entera de cómo va el equipo (qué te quedas, qué descartas, qué se rompe). Se llama al
+ *  despertar la mente y cuando algo se rompe: si no, la lección se queda sin escribir hasta que
+ *  aplicas o descartas algo, y entonces no sirve de nada. */
+export function aprenderEquipo() {
+  return taller?.aprenderEquipo() ?? Promise.resolve()
+}
+
+export function registerTaller(o: { brainInfo: () => { url: string; token: string } | null }) {  const t = new Taller({
     dir: join(app.getPath('userData'), 'taller'),
     emitir: (canal, dato) => emitir(`taller:${canal}`, dato),
     mcp: () => mcpDeEsme(o.brainInfo()),
