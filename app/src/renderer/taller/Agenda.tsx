@@ -1,4 +1,4 @@
-// La agenda en la fila de producción: lo que tu equipo hará solo y cuándo. Cada encargo se pausa, se reanuda o se quita.
+// La agenda: lo que tu equipo hará solo y cuándo. Cada encargo se pausa, se reanuda o se quita.
 import { CalendarClock, Pause, Play, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'

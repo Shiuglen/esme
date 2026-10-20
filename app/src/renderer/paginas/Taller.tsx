@@ -86,7 +86,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
   // lo que ya falló sin que el creador etiquete nada: el router lo tiene en cuenta al elegir
   const fallos = useMemo(() => fallosDe(tl.tareas), [tl.tareas])
   const cuenta = (e: string) => ordenadas.filter((x) => x.estado === e).length
-  // el tablero de operaciones: cada banda es una etapa de la fila de producción; nada se esconde
+  // el tablero: cada banda es una etapa del trabajo; nada se esconde
   const bandas = [
     { id: 'te-necesita', titulo: 'Te necesita', punto: 'bg-atencion', items: ordenadas.filter((x) => x.estado === 'esperando') },
     { id: 'trabajando', titulo: 'Trabajando', punto: '[background:var(--aurora)]', items: ordenadas.filter((x) => x.estado === 'preparando' || x.estado === 'trabajando') },
@@ -160,7 +160,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
         <section aria-label="Tareas" className="flex min-h-0 flex-col">
           <div className="flex h-9 items-center justify-between">
             <h2 className="flex items-center gap-3 text-[13px] font-medium text-texto-2">
-              <span>La fila de producción{ordenadas.length > 0 && <span className="ml-1.5 tabular-nums text-texto-3">{ordenadas.length}</span>}</span>
+              <span>Lo que trabaja ahora{ordenadas.length > 0 && <span className="ml-1.5 tabular-nums text-texto-3">{ordenadas.length}</span>}</span>
               {archivadas.length > 0 && (
                 <button type="button" onClick={() => setVerArchivadas((v) => !v)} aria-pressed={verArchivadas}
                   className="rounded-full px-2 py-0.5 text-[12px] font-normal text-texto-3 underline decoration-linea-fuerte underline-offset-2 hover:text-texto">

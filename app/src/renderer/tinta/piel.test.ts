@@ -52,10 +52,18 @@ describe('cada capa se vuelve variables en vivo', () => {
   it('forma, densidad y letra', () => {
     const v = variablesDePiel({ ...PIEL_BASE, forma: { radio: 0, sombra: 'plana' }, densidad: 'compacta', letra: { titulos: 'fraunces', texto: 'geist', escala: 1 } }, 'noche')
     expect(v['--forma-r2']).toBe('0px')
-    expect(v['--spacing']).toBe('0.22rem')
+    expect(v['--espaciado']).toBe('0.21rem')
     expect(v['--letra-texto']).toContain('Geist Variable')
     expect(v['--letra-titulos']).toContain('Fraunces Variable')
     expect(variablesDePiel(PIEL_BASE, 'noche')['--forma-r2']).toBe('10px')   // Tinta y Luz: radio 0,6
+  })
+
+  it('la densidad cambia el espaciado de verdad (antes no cambiaba nada)', () => {
+    const d = (densidad: 'compacta' | 'comoda' | 'amplia') =>
+      variablesDePiel({ ...PIEL_BASE, densidad }, 'noche')['--espaciado']
+    expect(d('compacta')).not.toBe(d('comoda'))
+    expect(d('comoda')).not.toBe(d('amplia'))
+    expect(parseFloat(d('amplia'))).toBeGreaterThan(parseFloat(d('compacta')))
   })
   it('el color libre y el propio traen su paleta; un estilo de casa la deja al CSS', () => {
     expect(variablesDePiel({ ...PIEL_BASE, color: { tipo: 'libre', noche, dia } }, 'dia')['--fondo']).toBe('#f6f7fb')

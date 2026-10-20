@@ -59,7 +59,7 @@ export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida
   ].filter((m) => m.valor !== null)
   const AccionRapida = ({ icono: Icono, texto, onClick, tono = 'normal' }: { icono: LucideIcon; texto: string; onClick(): void; tono?: 'normal' | 'vx' }) => (
     <button type="button" onClick={(e) => { e.stopPropagation(); onClick() }}
-      className={cn('inline-flex h-6.5 items-center gap-1 rounded-full border px-2 text-[11.5px] font-medium opacity-0 transition-all duration-200 group-hover/card:opacity-100 group-focus-within/card:opacity-100',
+      className={cn('inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-medium opacity-0 transition-all duration-200 group-hover/card:opacity-100 group-focus-within/card:opacity-100',
         tono === 'vx' ? 'border-exito/40 bg-exito-velo/60 text-exito hover:bg-exito-velo' : 'border-linea-fuerte/70 bg-s2/90 text-texto hover:bg-s3')}
       aria-label={texto}>
       <Icono className="size-3" strokeWidth={1.75} />{texto}
@@ -84,8 +84,8 @@ export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida
       <div className="flex items-center gap-2">
         <TintaVista motor={t.motor} px={plegada ? 22 : 30} estado={tintaDeTarea(t.estado)} />
         <span className="shrink-0 whitespace-nowrap text-[13px] font-medium text-texto">{t.motorNombre}</span>
-        {t.rol && <span title="Su oficio en la arena" className="shrink-0 whitespace-nowrap rounded-full border border-linea-fuerte/60 px-1.5 py-px text-[11px] text-texto-3">{t.rol}</span>}
-        {t.objetivo && objetivo && <span title="El objetivo de tu rumbo al que sirve" className="inline-flex h-5 max-w-[180px] shrink-0 items-center gap-1 rounded-full border border-acento/40 px-1.5 text-[11px] text-acento">
+        {t.rol && <span title="Su oficio en la arena" className="shrink-0 whitespace-nowrap rounded-full border border-linea-fuerte/60 px-1.5 py-px text-[12px] text-texto-3">{t.rol}</span>}
+        {t.objetivo && objetivo && <span title="El objetivo de tu rumbo al que sirve" className="inline-flex h-5 max-w-[180px] shrink-0 items-center gap-1 rounded-full border border-acento/40 px-1.5 text-[12px] text-acento">
           <Target className="size-3 shrink-0" strokeWidth={1.75} /><span className="truncate">{objetivo}</span>
         </span>}
         {t.modelo && <span className="min-w-0 truncate text-[12px] text-texto-3" title={t.modelo}>{modeloCorto(t.modelo)}</span>}
@@ -99,13 +99,13 @@ export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida
         <BarrasActividad valores={barrasDe(t.actividad)} viva={t.estado === 'trabajando'} />
       </div>
       {!plegada && <p className={cn('mt-0.5 min-h-[18px] truncate text-xs', callado || t.estado === 'esperando' ? 'text-atencion' : t.estado === 'error' ? 'text-peligro' : 'text-texto-3')}>{linea}</p>}
-      {!plegada && <dl className="mt-2 grid grid-cols-[repeat(auto-fit,minmax(64px,1fr))] gap-2 border-t border-linea/80 pt-2">
+      {!plegada && <dl className="mt-2.5 grid grid-cols-[repeat(auto-fit,minmax(72px,1fr))] gap-x-3 gap-y-2 border-t border-linea/80 pt-2.5">
         {metricas.length === 0 ? (
-          <dd className="col-span-full text-[11px] text-texto-3">Sin huellas todavía.</dd>
+          <dd className="col-span-full text-[12px] text-texto-3">Sin huellas todavía.</dd>
         ) : metricas.map((m) => (
           <div key={m.nombre} className="min-w-0">
-            <dt className="truncate text-[10.5px] text-texto-3">{m.nombre}</dt>
-            <dd className="truncate text-[12.5px] text-texto tabular-nums">{m.valor}</dd>
+            <dt className="truncate text-[11.5px] text-texto-3">{m.nombre}</dt>
+            <dd className="truncate text-[13px] text-texto tabular-nums">{m.valor}</dd>
           </div>
         ))}
       </dl>}

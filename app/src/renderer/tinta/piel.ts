@@ -184,7 +184,10 @@ const SOMBRA: Record<Sombra, [string, string] | null> = {
 export function variablesDePiel(p: Piel, tema: 'noche' | 'dia'): Record<string, string> {
   const v: Record<string, string> = {}
   RADIOS.forEach((r, i) => { v[`--forma-r${i + 1}`] = `${Math.round(r * p.forma.radio)}px` })
-  v['--spacing'] = { compacta: '0.22rem', comoda: '0.25rem', amplia: '0.28rem' }[p.densidad]
+  // La densidad manda sobre el espaciado de verdad: en Tailwind, `--spacing` es la unidad de
+  // la que salen todos los `gap` y `padding` numéricos. Antes esta variable no la usaba nadie
+  // y la piel decidía tres cosas, no cuatro: cambiar la densidad no cambiaba nada.
+  v['--espaciado'] = { compacta: '0.21rem', comoda: '0.26rem', amplia: '0.32rem' }[p.densidad]
   const letra = (id: LetraId, rol: 'titulos' | 'texto') => `${LETRAS[id][rol]}, ${RESPALDO[LETRAS[id].tipo]}`
   v['--letra-titulos'] = letra(p.letra.titulos, 'titulos'); v['--letra-texto'] = letra(p.letra.texto, 'texto')
   const s = SOMBRA[p.forma.sombra]; if (s) v['--sombra-flotante'] = tema === 'noche' ? s[0] : s[1]
