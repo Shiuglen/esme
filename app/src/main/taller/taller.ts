@@ -64,6 +64,13 @@ const mensajeDe = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const nuevoId = () => Array.from(randomBytes(8), (b) => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('')
 const instantanea = (t: Tarea): Tarea => ({ ...t, uso: { ...t.uso }, actividad: [...t.actividad] })
 
+// El vigilante: cada cuánto se mira si algún motor se ha muerto en silencio, y cuánto se le
+// concede antes de darlo por muerto. Medido en las tareas reales (20-oct): una tarea se quedó
+// «trabajando» tres días con el motor muerto, sin un solo error; su trabajo, al menos, quedó a
+// salvo en la copia. Treinta minutos sin una señal es un motor muerto, no uno que piensa.
+const MS_VIGILIA = 30_000
+const MS_SILENCIO = 30 * 60_000
+
 export class Taller {
   private readonly registros = new Map<string, Registro>()
   private readonly dir: string
@@ -78,13 +85,17 @@ export class Taller {
   private readonly alAnotar?: (a: Anoto) => void
   private readonly ahora: () => number
   private readonly esperas: number[]
+  private readonly intervaloVigila: number
+  private readonly silencioMaximo: number
   private guardado?: NodeJS.Timeout
+  private vigilante?: NodeJS.Timeout
   private cerrado = false
 
   constructor(o: { dir: string; emitir(canal: 'cambio' | 'evento' | 'quitada', dato: unknown): void
     abrirSesion?: AbrirSesion; copias?: OperacionesCopia; mcp?: () => Mcp | null; masMcp?: () => McpServer[]
     mente?: () => Mente | null
-    resolverMotor?: (id: string) => Promise<MotorElegido | null>; alAnotar?: (a: Anoto) => void; ahora?: () => number; esperasReintento?: number[] }) {
+    resolverMotor?: (id: string) => Promise<MotorElegido | null>; alAnotar?: (a: Anoto) => void; ahora?: () => number; esperasReintento?: number[]
+    vigilarMs?: number; silencioMs?: number }) {
     this.dir = o.dir
     this.dirCopias = join(o.dir, 'copias')
     this.emitir = o.emitir
@@ -97,6 +108,44 @@ export class Taller {
     this.alAnotar = o.alAnotar
     this.ahora = o.ahora ?? Date.now
     this.esperas = o.esperasReintento ?? [8000, 20_000, 45_000]
+    this.intervaloVigila = o.vigilarMs ?? MS_VIGILIA
+    this.silencioMaximo = o.silencioMs ?? MS_SILENCIO
+  }
+
+  /** El vigilante: una tarea cuyo motor no da señales desde hace media hora tiene el motor muerto.
+   *
+   * No se mata a la ligera: se marca como error con un mensaje claro (para que la reencarnación
+   * sea una mano) y su trabajo sigue a salvo en la copia. Sólo se mira mientras hay tareas en
+   * marcha: en reposo no se hace nada.
+   */
+  private mirarSilencios(): void {
+    const ahora = this.ahora()
+    for (const r of this.registros.values()) {
+      const t = r.tarea
+      if (t.estado !== 'trabajando' || !t.actividadMs) continue
+      const silencio = ahora - t.actividadMs
+      if (silencio < this.silencioMaximo) continue
+      const minutos = Math.round(silencio / 60000)
+      t.estado = 'error'
+      t.error = `El motor dejó de responder (${minutos} min sin señales).`
+      t.fin = ahora
+      this.registrar(r, { tipo: 'fallo', mensaje: t.error })
+      r.sesion?.cerrar(); r.sesion = undefined
+      this.cambio(r, true)
+    }
+  }
+
+  private arrancarVigilante(): void {
+    if (this.vigilante || this.cerrado) return
+    this.vigilante = setInterval(() => {
+      if (![...this.registros.values()].some((r) => ACTIVAS.includes(r.tarea.estado))) { this.pararVigilante(); return }
+      this.mirarSilencios()
+    }, this.intervaloVigila)
+    this.vigilante.unref?.()
+  }
+
+  private pararVigilante(): void {
+    if (this.vigilante) { clearInterval(this.vigilante); this.vigilante = undefined }
   }
 
   async cargar(): Promise<void> {
@@ -285,6 +334,7 @@ export class Taller {
   cerrarTodo(): void {
     this.cerrado = true
     if (this.guardado) clearTimeout(this.guardado)
+    this.pararVigilante()
     for (const r of this.registros.values()) {
       if (r.temporizador) clearTimeout(r.temporizador)
       r.sesion?.cerrar()
@@ -361,6 +411,7 @@ export class Taller {
       }
       if (r.descartada || this.cerrado || parada()) return
       t.estado = 'trabajando'; this.cambio(r, true)
+      this.arrancarVigilante()
       r.inicioTurno = this.ahora()
       this.registrar(r, { tipo: 'usuario', texto })
       // La herencia: el primer turno de la tarea empieza con lo que la mente ya sabe del encargo.

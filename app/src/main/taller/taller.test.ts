@@ -448,6 +448,29 @@ describe('Taller: arena', () => {
   })
 })
 
+describe('Taller: el vigilante', () => {
+  it('una tarea cuyo motor no da señales se marca como error, no se queda colgada', async () => {
+    // el motor contesta una vez y luego se muere en silencio (así se quedó una tarea tres días)
+    // el motor se muere en silencio: la pregunta nunca vuelve (así se quedó una tarea tres días)
+    const s = sesiones(async () => await new Promise<string>(() => {}))
+    const tarea = crear(s.abrir, undefined, { vigilarMs: 5, silencioMs: 60_000 }).crear({ motor, carpeta: null, texto: 'x' })
+    await vi.waitFor(() => expect(t!.lista()[0].estado).toBe('trabajando'), { timeout: 3000 })
+    reloj += 40 * 60_000   // cuarenta minutos sin una sola señal
+    await vi.waitFor(() => expect(t!.lista()[0].estado).toBe('error'), { timeout: 3000 })
+    expect(t!.lista()[0].error).toContain('dejó de responder')
+  })
+
+  it('una tarea que está esperando a su creator no se toca: eso es 정상', async () => {
+    // el motor pide permiso y se queda esperando a que su creador conteste: eso no es un motor muerto
+    const s = sesiones(async (o) => { await o.alPedirPermiso({ titulo: 'editar un fichero', opciones: [{ id: 'si', nombre: 'Sí', tipo: 'opción' }] }); return 'end_turn' })
+    const tarea = crear(s.abrir, undefined, { vigilarMs: 5, silencioMs: 60_000 }).crear({ motor, carpeta: null, texto: 'x' })
+    await vi.waitFor(() => expect(t!.lista()[0].estado).toBe('esperando'), { timeout: 3000 })
+    reloj += 40 * 60_000
+    await new Promise((r) => setTimeout(r, 120))
+    expect(t!.lista()[0].estado).toBe('esperando')
+  })
+})
+
 describe('Taller: límites de peticiones', () => {
   it('ante un límite del proveedor reintenta con espera, lo cuenta en la línea de tiempo y termina bien', async () => {
     let intentos = 0
