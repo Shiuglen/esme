@@ -79,7 +79,12 @@ export const RUTAS = {
 const MS = 10_000
 
 export class ClienteCerebro {
-  constructor(private readonly info: BrainInfo, private readonly http: typeof fetch = fetch) {}
+  /** El `fetch` va atado a su casa: en el navegador exige que el receptor sea la ventana
+   *  («Illegal invocation» si no), y esta misma puerta se usa desde la web. */
+  private readonly http: typeof fetch
+  constructor(private readonly info: BrainInfo, http: typeof fetch = fetch) {
+    this.http = http.bind(globalThis)
+  }
 
   /** La llamada: siempre con el token, siempre con reloj, siempre con el mismo error. */
   private async llamar<T>(ruta: string, init: RequestInit = {}, ms = MS): Promise<T> {

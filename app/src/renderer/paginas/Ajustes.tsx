@@ -14,6 +14,8 @@ import { useMuelle } from '../tinta/movimiento'
 import { EntrarAgente } from './EntrarAgente'
 import { TintaVista } from '../marca/PuntoVista'
 import { useVersiones, VersionDeAgente } from './VersionAgente'
+import { ClienteCerebro } from '../../main/mente/cliente'
+import { conexionGuardada, guardarConexion, olvidarConexion } from '../lib/mente-web'
 
 type Pestana = 'motores' | 'presupuesto' | 'apariencia' | 'plan' | 'sistema'
 type Vista = 'conectados' | 'suscripcion' | 'catalogo' | 'local'
@@ -344,6 +346,80 @@ function MenteCompartida() {
   )
 }
 
+/**
+ * La mente desde el navegador: dónde está y con qué palabra se abre.
+ *
+ * Sólo aparece en la versión web (en la de escritorio la mente ya está en casa y la lleva el
+ * proceso principal). El token es la palabra de la memoria: se queda en este navegador y
+ * no se enseña en ninguna URL.
+ */
+function MenteDesdeElNavegador() {
+  const guardada = conexionGuardada()
+  const [url, setUrl] = useState(guardada?.url ?? 'http://127.0.0.1:47321')
+  const [token, setToken] = useState(guardada?.token ?? '')
+  const [estado, setEstado] = useState<'idle' | 'mira' | 'viva' | 'error'>('idle')
+  const [motivo, setMotivo] = useState('')
+  const [recuerdos, setRecuerdos] = useState<number | null>(null)
+
+  const mirar = async (): Promise<boolean> => {
+    setEstado('mira'); setMotivo('')
+    const c = new ClienteCerebro({ url: url.replace(/\/+$/, ''), token: token.trim() })
+    try {
+      const h = await c.salud()
+      setRecuerdos(h.memories); setEstado('viva')
+      return true
+    } catch (e) {
+      setEstado('error'); setMotivo(e instanceof Error ? e.message : String(e)); setRecuerdos(null)
+      return false
+    }
+  }
+  const conectar = async () => {
+    if (!await mirar()) return
+    guardarConexion({ url, token: token.trim() })
+    toast.success('Conectado con tu mente', { description: 'Esme ya recuerda y sueña desde aquí.' })
+  }
+  const olvidar = () => {
+    olvidarConexion(); setToken(''); setEstado('idle'); setRecuerdos(null)
+    toast('Se te olvidó la mente en este navegador', { description: 'Ya no guarda nada de ella aquí.' })
+  }
+
+  return (
+    <section className="vidrio grid gap-3 rounded-4 border p-5">
+      <h3 className="m-0 text-sm font-semibold">Tu mente, desde el navegador</h3>
+      <p className="m-0 max-w-[640px] text-[13px] leading-5 text-texto-2">
+        Esta copia de Esme habla con tu mente por su propia puerta: donde esté (este equipo o tu servidor) y con la palabra que abre.
+        La palabra se queda en este navegador y no viaja en ninguna URL.
+      </p>
+      <div className="grid gap-2">
+        <label className="grid gap-1">
+          <span className="text-[12px] text-texto-2">Dónde está</span>
+          <input value={url} onChange={(e) => setUrl(e.target.value)} spellCheck={false}
+            className="rounded-2 border border-linea bg-s2 px-2.5 py-1.5 text-[13px] text-texto outline-none focus:border-linea-fuerte" />
+        </label>
+        <label className="grid gap-1">
+          <span className="text-[12px] text-texto-2">Su palabra (el token)</span>
+          <input type="password" value={token} onChange={(e) => setToken(e.target.value)} spellCheck={false}
+            className="rounded-2 border border-linea bg-s2 px-2.5 py-1.5 text-[13px] text-texto outline-none focus:border-linea-fuerte" />
+        </label>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => void conectar()} disabled={!url.trim() || !token.trim() || estado === 'mira'}
+          className="rounded-full border border-linea px-3 py-1.5 text-[12.5px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto disabled:opacity-40">
+          {estado === 'mira' ? 'Mirando…' : 'Conectar'}
+        </button>
+        {guardada && (
+          <button type="button" onClick={olvidar}
+            className="rounded-full border border-linea px-3 py-1.5 text-[12.5px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">
+            Olvidar la mente aquí
+          </button>
+        )}
+        {estado === 'viva' && <span className="text-[12.5px] text-texto-2">Mente viva: {recuerdos?.toLocaleString('es')} recuerdos.</span>}
+        {estado === 'error' && <span className="text-[12.5px] text-peligro">No pude entrar: {motivo}</span>}
+      </div>
+    </section>
+  )
+}
+
 export function Ajustes({ tema, onTema, pieles }: { tema: 'noche' | 'dia'; onTema(t: 'noche' | 'dia'): void; pieles: Pieles }) {
   const [pestana, setPestana] = useState<Pestana>('motores')
   return (
@@ -359,6 +435,7 @@ export function Ajustes({ tema, onTema, pieles }: { tema: 'noche' | 'dia'; onTem
         {pestana === 'apariencia' && <Apariencia tema={tema} onTema={onTema} pieles={pieles} />}
         {pestana === 'plan' && <TuPlan />}
         {pestana === 'sistema' && <Sistema />}
+        {pestana === 'sistema' && bridge.mode() === 'web' && <MenteDesdeElNavegador />}
         {(pestana === 'motores' || pestana === 'presupuesto') && <p className="m-0 flex items-center gap-2 text-xs text-texto-3"><Wallet className="size-3.5" strokeWidth={1.5} />Los precios vienen de models.dev y se actualizan solos cada día.</p>}
       </div>
     </div>

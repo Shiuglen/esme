@@ -179,6 +179,12 @@ export function App() {
     const off = bridge.onBrainChange(conectar)
     return off
   }, [conectar])
+  // en la web, la mente se conecta a mano (Ajustes › Sistema): al conectarla, se pregunta de nuevo
+  useEffect(() => {
+    const alConectar = () => { void bridge.brainInfo().then(conectar) }
+    addEventListener('esme:mente', alConectar)
+    return () => removeEventListener('esme:mente', alConectar)
+  }, [conectar])
   const refrescar = useCallback(() => {
     if (!brain) return
     void brain.health().then((h) => setRecuerdos(h.memories)).catch(() => setRecuerdos(null))

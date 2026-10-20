@@ -178,6 +178,7 @@ type ElectronApi = {
 declare global { interface Window { daimon?: ElectronApi } }
 
 export const isElectron = () => typeof window !== 'undefined' && !!window.daimon
+import { clienteMente, conexionGuardada, datoWeb, eventosWeb, pararEventosWeb } from './mente-web'
 const SOLO_ESCRITORIO = { ok: false as const, error: 'Solo en la app de escritorio' }
 /** La mente, desde la ventana: o trae el dato o trae el motivo. */
 const solo = <T>(): Promise<ResultadoMente<T>> => Promise.resolve({ ok: false, error: 'Solo en la app de escritorio' })
@@ -186,27 +187,30 @@ let seq = 0
 const newId = () => `${Date.now().toString(36)}-${(seq++).toString(36)}`
 
 export const bridge = {
+  // La mente: en la app, por el proceso principal (que lleva el token); en el navegador, por su
+  // propia puerta con el token que el creador-connectó. La misma mente, la misma forma de
+  // respuesta: o el dato, o el motivo.
   mente: {
     agentes: async (): Promise<AgenteMente[]> => (isElectron() ? window.daimon!.mente.agentes() : []),
     conectar: async (id: string, si: boolean): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.mente.conectar(id, si) : { ok: false, error: 'Solo en la app.' }),
-    salud: async () => dato(isElectron() ? window.daimon!.mente.salud() : solo<{ ok: boolean; memories: number }>()),
-    rumbo: async () => dato(isElectron() ? window.daimon!.mente.rumbo() : solo<Rumbo>()),
-    rumboMover: async (accion: string, datos?: unknown) => dato(isElectron() ? window.daimon!.mente.rumboMover(accion, datos) : solo<Rumbo>()),
-    recuerdos: async (q: string, limit: number) => dato(isElectron() ? window.daimon!.mente.recuerdos(q, limit) : solo<Memoria[]>()),
-    recordar: async (query: string, o: unknown) => dato(isElectron() ? window.daimon!.mente.recordar(query, o) : solo<{ context: string; tokens: number; ids: string[]; abstained: boolean }>()),
-    escribir: async (texto: string, kind: string) => dato(isElectron() ? window.daimon!.mente.escribir(texto, kind) : solo<{ id: string }>()),
-    feedback: async (ids: string[], useful: boolean, query: string) => dato(isElectron() ? window.daimon!.mente.feedback(ids, useful, query) : solo<{ result: string }>()),
-    olvidar: async (id: string) => dato(isElectron() ? window.daimon!.mente.olvidar(id) : solo<{ forgotten: string[] }>()),
-    ingerir: async (paths: string[]) => dato(isElectron() ? window.daimon!.mente.ingerir(paths) : solo<{ added: number; memories: number }>()),
-    atlas: async () => dato(isElectron() ? window.daimon!.mente.atlas() : solo<{ points: unknown[]; clusters: unknown[] }>()),
-    repeticiones: async () => dato(isElectron() ? window.daimon!.mente.repeticiones() : solo<{ repeticiones: Repeticion[]; total: number; informe: string }>()),
-    necesidad: async () => dato(isElectron() ? window.daimon!.mente.necesidad() : solo<{ necesidades: Necesidad[]; total: number; informe: string }>()),
-    memoria: async (id: string) => dato(isElectron() ? window.daimon!.mente.memoria(id) : solo<Memoria>()),
-    oir: async (pcm: ArrayBuffer, idioma: string) => dato(isElectron() ? window.daimon!.mente.oir(pcm, idioma) : solo<{ texto: string }>()),
-    decir: async (texto: string) => dato(isElectron() ? window.daimon!.mente.decir(texto) : solo<ArrayBuffer>()),
-    eventos: async () => (isElectron() ? window.daimon!.mente.eventos() : { ok: false, error: 'Solo en la app de escritorio' }),
-    eventosParar: async () => (isElectron() ? window.daimon!.mente.eventosParar() : { ok: false, error: 'Solo en la app de escritorio' }),
-    onEvento: (fn: (e: unknown) => void) => (isElectron() ? window.daimon!.mente.onEvento(fn) : () => {}),
+    salud: async () => dato(isElectron() ? window.daimon!.mente.salud() : datoWeb((c) => c.salud())),
+    rumbo: async () => dato(isElectron() ? window.daimon!.mente.rumbo() : datoWeb((c) => c.rumbo())),
+    rumboMover: async (accion: string, datos?: unknown) => dato(isElectron() ? window.daimon!.mente.rumboMover(accion, datos) : datoWeb((c) => c.moverRumbo(accion, (datos ?? {}) as Record<string, unknown>))),
+    recuerdos: async (q: string, limit: number) => dato(isElectron() ? window.daimon!.mente.recuerdos(q, limit) : datoWeb((c) => c.recuerdos(q, limit))),
+    recordar: async (query: string, o: unknown) => dato(isElectron() ? window.daimon!.mente.recordar(query, o) : datoWeb((c) => c.recordar(query, (o ?? {}) as { motor?: string; budget?: number; who?: string }))),
+    escribir: async (texto: string, kind: string) => dato(isElectron() ? window.daimon!.mente.escribir(texto, kind) : datoWeb((c) => c.escribir(texto, kind))),
+    feedback: async (ids: string[], useful: boolean, query: string) => dato(isElectron() ? window.daimon!.mente.feedback(ids, useful, query) : datoWeb((c) => c.feedback(ids, useful, query))),
+    olvidar: async (id: string) => dato(isElectron() ? window.daimon!.mente.olvidar(id) : datoWeb((c) => c.olvidar(id))),
+    ingerir: async (paths: string[]) => dato(isElectron() ? window.daimon!.mente.ingerir(paths) : datoWeb((c) => c.ingerir(paths))),
+    atlas: async () => dato(isElectron() ? window.daimon!.mente.atlas() : datoWeb((c) => c.atlas() as Promise<{ points: unknown[]; clusters: unknown[] }>)),
+    repeticiones: async () => dato(isElectron() ? window.daimon!.mente.repeticiones() : datoWeb((c) => c.repeticiones())),
+    necesidad: async () => dato(isElectron() ? window.daimon!.mente.necesidad() : datoWeb((c) => c.necesidad())),
+    memoria: async (id: string) => dato(isElectron() ? window.daimon!.mente.memoria(id) : datoWeb((c) => c.memoria(id))),
+    oir: async (pcm: ArrayBuffer, idioma: string) => dato(isElectron() ? window.daimon!.mente.oir(pcm, idioma) : datoWeb((c) => c.oir(pcm, idioma))),
+    decir: async (texto: string) => dato(isElectron() ? window.daimon!.mente.decir(texto) : datoWeb((c) => c.decir(texto))),
+    eventos: async () => (isElectron() ? window.daimon!.mente.eventos() : (clienteMente() ? { ok: true } : { ok: false, error: 'No hay conexión con la mente.' })),
+    eventosParar: async () => (isElectron() ? window.daimon!.mente.eventosParar() : (pararEventosWeb(), { ok: true })),
+    onEvento: (fn: (e: unknown) => void) => (isElectron() ? window.daimon!.mente.onEvento(fn) : eventosWeb(fn)),
   },
   // Skills: instrucciones de experto para Esme y tus agentes, desde el repositorio de su autor (main/skills)
   skills: {
@@ -242,8 +246,11 @@ export const bridge = {
 
   async brainInfo(): Promise<BrainInfo> {
     if (isElectron()) return window.daimon!.brain.info()
-    const url = import.meta.env.VITE_BRAIN_URL as string | undefined
-    return url ? { url, estado: 'viva' } : { url: null, estado: 'apagado' }
+    // En la web, la mente es la que conectó el creador (Ajustes › Sistema) o la que da el
+    // servidor en su página. La palabra **nunca** viene de una variable de entorno: un token
+    // dentro del bundle es un token publicado (y el portón de la frontera lo impide).
+    const c = conexionGuardada()
+    return c ? { url: c.url, estado: 'viva' } : { url: null, estado: 'apagado' }
   },
   onBrainChange(fn: (i: BrainInfo) => void): () => void {
     return isElectron() ? window.daimon!.brain.onChange(fn) : () => {}
