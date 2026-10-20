@@ -37,6 +37,7 @@ export function Tienda({ tema, pieles }: { tema: Tema; pieles: Pieles }) {
   }, [])
   // lo que llega del catálogo firmado manda sobre lo que viaja en la app: si una piel de la red tiene el mismo id que la
   // de casa, la de la red la sustituye (viene firmada; la de casa es la copia de reserva, la que queda sin conexión)
+  const deCasa = useMemo(() => new Set(PIELES_TIENDA.map((p) => p.id)), [])
   const todos = useMemo<ItemTienda[]>(() => {
     const deLaRed = new Set(remotos.map((r) => r.id))
     return [...PIELES_TIENDA.filter((p) => !deLaRed.has(p.id)).map((p) => ({ ...p, tipo: 'piel' as const, origen: 'casa' as const })), ...remotos]
@@ -115,7 +116,7 @@ export function Tienda({ tema, pieles }: { tema: Tema; pieles: Pieles }) {
         ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-5">
           {filtrados.map((i) => (
-            <Ficha key={i.id} i={i} tema={tema} probando={probando?.item.id === i.id} puesta={JSON.stringify(pieles.actual) === JSON.stringify(i.piel) && !probando}
+            <Ficha key={i.id} i={i} tema={tema} probando={probando?.item.id === i.id} puesta={JSON.stringify(pieles.actual) === JSON.stringify(i.piel) && !probando} nueva={i.origen === 'tienda' && !deCasa.has(i.id)}
               guardada={coleccion.includes(i.id)} onProbar={() => probar(i)} onVestir={() => { pieles.vestir(i.piel); setProbando(null); toast.success(`Llevas «${i.piel.nombre}»`) }}
               onGuardar={() => setColeccion((c) => (c.includes(i.id) ? c.filter((x) => x !== i.id) : [...c, i.id]))} />
           ))}
@@ -149,8 +150,8 @@ export function Tienda({ tema, pieles }: { tema: Tema; pieles: Pieles }) {
 
 // La ficha de un diseño: una Esme en miniatura vestida con él (fondo, cápsulas, presencia, texto y botón con sus colores,
 // su letra, su forma y su superficie), y lo que trae.
-function Ficha({ i, tema, probando, puesta, guardada, onProbar, onVestir, onGuardar }: {
-  i: ItemTienda; tema: Tema; probando: boolean; puesta: boolean; guardada: boolean; onProbar(): void; onVestir(): void; onGuardar(): void
+function Ficha({ i, tema, probando, puesta, guardada, nueva, onProbar, onVestir, onGuardar }: {
+  i: ItemTienda; tema: Tema; probando: boolean; puesta: boolean; guardada: boolean; nueva: boolean; onProbar(): void; onVestir(): void; onGuardar(): void
 }) {
   const p = i.piel, m = muestra(p, tema), t = LETRAS[p.letra.titulos], x = LETRAS[p.letra.texto]
   const r = (b: number) => `${Math.round(b * p.forma.radio)}px`
@@ -176,7 +177,7 @@ function Ficha({ i, tema, probando, puesta, guardada, onProbar, onVestir, onGuar
         <div className="flex items-center gap-2">
           <h3 className="m-0 truncate text-[15px] font-semibold text-texto">{p.nombre}</h3>
           {puesta && <span className="shrink-0 rounded-full bg-acento-velo px-2 py-0.5 text-[11px] whitespace-nowrap text-acento">la llevas</span>}
-          {i.origen === 'tienda' && <span title="Viene del catálogo firmado de la red" className="shrink-0 rounded-full border border-linea px-2 py-0.5 text-[10.5px] whitespace-nowrap text-texto-3">de la red</span>}
+          {nueva && <span title="Llega del catálogo firmado: no venía en tu app" className="shrink-0 rounded-full border border-linea px-2 py-0.5 text-[10.5px] whitespace-nowrap text-texto-3">de la red</span>}
           <button type="button" onClick={onGuardar} aria-pressed={guardada} aria-label={guardada ? 'Quitar de mi colección' : 'Guardar en mi colección'}
             className="ml-auto grid size-7 shrink-0 place-items-center rounded-full text-texto-3 transition-colors hover:bg-s2 hover:text-texto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foco">
             <Heart className={cn('size-4', guardada && 'fill-current text-acento')} strokeWidth={1.75} />
