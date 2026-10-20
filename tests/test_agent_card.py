@@ -31,3 +31,21 @@ def test_todo_lo_prometido_es_local():
 
 def test_la_url_base_no_puede_dejar_barra_doble():
     assert agent_card("http://127.0.0.1:47321/")["url"] == "http://127.0.0.1:47321/"
+
+
+def test_la_tarjeta_anuncia_el_navegador_que_existe(tmp_path):
+    """Lo que la tarjeta promete tiene que existir: si el navegador se cae, la tarjeta miente."""
+    import asyncio
+
+    from daimon.gate import build_server
+    from daimon.home import Home
+
+    card = agent_card("http://127.0.0.1:1234")
+    habilidades = {s["id"]: s for s in card["skills"]}
+    assert "navegador" in habilidades
+    herramientas = habilidades["navegador"]["x-esme"]["herramientas"]
+    assert herramientas == ["navegar", "clic_en_la_pagina", "escribir_en_la_pagina"]
+    # y el servidor MCP las expone de verdad
+    srv = build_server(Home(tmp_path))
+    nombres = {t.name for t in asyncio.run(srv.list_tools())}
+    assert set(herramientas) <= nombres
