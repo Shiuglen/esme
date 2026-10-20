@@ -88,7 +88,17 @@ Para subirlo a PyPI hace falta tu cuenta:
        python3 scripts/publicar.py --pypi
 """)
         return 1
-    r = subprocess.run([sys.executable, "-m", "twine", "upload", "dist/*"], cwd=RAIZ, capture_output=True, text=True)
+    # twine es la herramienta de subida. Se busca en el Python actual y en el PATH (por si
+    # la instaló con pipx): no se instala nada dentro del proyecto sin que lo pidas.
+    tiene_twine = subprocess.run([sys.executable, "-c", "import twine"], capture_output=True).returncode == 0
+    en_path = subprocess.run(["which", "twine"], capture_output=True).returncode == 0
+    if not (tiene_twine or en_path):
+        print("Falta twine (la herramienta de subida). Sin tocar el proyecto:")
+        print("   pipx install twine     # o: python3 -m pip install --user twine")
+        print("y vuelve a ejecutar: python3 scripts/publicar.py --pypi")
+        return 1
+    comando = [sys.executable, "-m", "twine"] if tiene_twine else ["twine"]
+    r = subprocess.run(comando + ["upload", "dist/*"], cwd=RAIZ, capture_output=True, text=True)
     print(r.stdout[-2000:] or r.stderr[-2000:])
     if r.returncode == 0:
         print(f"✅ {nombre()} {version()} está en PyPI.")
