@@ -8,10 +8,19 @@ import { Markdown } from '../chat/Markdown'
 import { bridge, type SkillCatalogo, type VistaSkill } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { coincide } from '../shell/paleta-buscar'
+import type { VeredictoSkill } from '../../main/skills/veredicto'
 
 const NIVEL = { alto: 'text-peligro', medio: 'text-atencion', aviso: 'text-texto-3' } as const
+const SELLO = { ok: { texto: 'juzgada ✓', clase: 'text-acento' }, aviso: { texto: 'juzgada ⚠', clase: 'text-atencion' }, fuera: { texto: 'fuera ✗', clase: 'text-peligro' } } as const
 const kb = (n: number) => (n < 1024 ? `${n} B` : `${(n / 1024).toLocaleString('es-ES', { maximumFractionDigits: 1 })} KB`)
 const autor = (repo: string) => repo.split('/')[0]
+
+/** El sello del juez: lo que firmó, con su motivo a un hover. Sin veredicto: sin medir. */
+function SelloVeredicto({ v }: { v: VeredictoSkill | null }) {
+  if (!v) return <span className="shrink-0 text-texto-3">sin medir</span>
+  const s = SELLO[v.nivel]
+  return <span title={v.causa} className={cn('shrink-0', s.clase)}>{s.texto}</span>
+}
 
 export function TiendaSkills() {
   const [datos, setDatos] = useState<{ skills: SkillCatalogo[]; agentes: { id: string; nombre: string }[] } | null>(null)
@@ -52,7 +61,10 @@ export function TiendaSkills() {
                 {s.instalada && <span className="ml-auto inline-flex items-center gap-1 text-[11.5px] text-acento"><Check className="size-3" />instalada</span>}
               </span>
               <span className="line-clamp-2 text-[13px] leading-5 text-texto-2">{s.descripcionEs}</span>
-              <span className="text-[11.5px] text-texto-3">{autor(s.repo)} · {s.licencia} · {s.grupo}{s.tieneScripts ? ' · trae scripts' : ''}</span>
+              <span className="flex items-center gap-2 text-[11.5px] text-texto-3">
+                <span className="truncate">{autor(s.repo)} · {s.licencia} · {s.grupo}{s.tieneScripts ? ' · trae scripts' : ''}</span>
+                <SelloVeredicto v={s.veredicto} />
+              </span>
             </button>
           </li>
         ))}
@@ -103,6 +115,11 @@ function Ficha({ skill: s, agentes, onCerrar, onCambio }: { skill: SkillCatalogo
           <p className="m-0 text-[14.5px] text-texto-2">{s.descripcionEs}</p>
           <p className="m-0 text-[12px] text-texto-3" title="Esto es lo que lee el modelo para decidir cuándo usarla">«{s.descripcion}»</p>
           <p className="m-0 text-[11.5px] text-texto-3">{s.repo}/{s.ruta} · versión {s.commit.slice(0, 7)} revisada el {s.revisadoEl} · {s.licencia} · {s.ficheros} ficheros, {kb(s.bytes)}</p>
+          <p className="m-0 text-[11.5px] text-texto-3">
+            {s.veredicto
+              ? <>Juzgada y firmada por el juez: {s.veredicto.causa}.</>
+              : <>Sin medir: el juez todavía no dictó sobre esta skill.</>}
+          </p>
         </header>
 
         <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_260px] gap-0 overflow-hidden">

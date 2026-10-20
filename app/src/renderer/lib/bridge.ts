@@ -10,6 +10,7 @@ import type { Tarea as TareaTaller, Veredicto as VeredictoTaller } from '../../m
 import type { NuevoProgramado, Programado } from '../../main/taller/agenda'
 import type { Paso } from '../../main/herramientas/propias'
 import type { Ficha } from '../../main/herramientas/registro-mcp'
+import type { VeredictoSkill } from '../../main/skills/veredicto'
 export type { Ficha }
 export type AgenteMente = { id: string; nombre: string; fichero: string; instalado: boolean; conectado: boolean }
 export type EncargoForja = { slug: string; necesidad: string; instalada?: boolean; listo: boolean; avisos: string[] }
@@ -24,7 +25,9 @@ import type { EstadoUso as EstadoUsoMain, ProveedorResumen as ProveedorResumenMa
 export type AccesoTarea = 'preguntar' | 'ediciones' | 'todo'
 export type SkillInstalada = { id: string; nombre: string; agentes: string[]; enlaces: { ruta: string; estado: 'ok' | 'roto' | 'falta' }[] }
 export type SkillCatalogo = { id: string; nombre: string; grupo: string; descripcionEs: string; descripcion: string; repo: string; ruta: string; commit: string
-  licencia: string; tieneScripts: boolean; ficheros: number; bytes: number; revisadoEl: string; instalada: SkillInstalada | null }
+  licencia: string; tieneScripts: boolean; ficheros: number; bytes: number; revisadoEl: string; instalada: SkillInstalada | null
+  /** El veredicto firmado del juez: qué approves, con qué riesgo y por qué. Null = sin medir. */
+  veredicto: VeredictoSkill | null }
 export type AlertaSkill = { nivel: 'alto' | 'medio' | 'aviso'; motivo: string; ruta?: string }
 export type VistaSkill = { ok: true; skillMd: string; cuerpo: string | null; avisos: string[]; alertas: AlertaSkill[]; soloManual: boolean; tokens: number
   ficheros: { ruta: string; bytes: number; script: boolean }[] } | { ok: false; error: string }

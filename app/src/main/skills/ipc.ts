@@ -9,15 +9,21 @@ import catalogo from './catalogo.json'
 import { arbolSha256, descargarSkill, esTexto, type ArchivoSkill } from './descargar'
 import { AGENTES_CON_SKILLS, desinstalarSkill, esScript, instalarSkill, skillsInstaladas } from './instalar'
 import { leerSkillMd } from './skill-md'
+import { veredictosSkills } from './veredicto'
 
 type EntradaCatalogo = (typeof catalogo)[number]
 const vistas = new Map<string, ArchivoSkill[]>()   // lo que viste en la vista previa es lo que se instala
 const datos = () => app.getPath('userData')
 const mensaje = (e: unknown) => (e instanceof Error ? e.message : String(e))
+const veredictos = veredictosSkills()              // el juez dictó y firmó: se comprueba una vez
 
 async function bajarVerificada(c: EntradaCatalogo): Promise<ArchivoSkill[]> {
   const archivos = await descargarSkill({ repo: c.repo, ruta: c.ruta, commit: c.commit })
   if (arbolSha256(archivos) !== c.arbolSha256) throw new Error('Lo que hay en el repositorio no coincide con lo que Esme revisó: no se instala (posible manipulación).')
+  // y el juez: si juzgó esta skill, lo que hay tiene que ser lo que él miró
+  const v = veredictos.ok ? veredictos.porId.get(c.id) : undefined
+  if (v && !v.entra) throw new Error(`El juez no aprobó esta skill: ${v.causa}`)
+  if (v && v.medidas.arbolSha256 !== c.arbolSha256) throw new Error('El veredicto firmado juzgó otra huella del árbol: el catálogo cambió después del juicio. No se instala.')
   return archivos
 }
 
@@ -25,7 +31,7 @@ export function registerSkills() {
   ipcMain.handle('skills:catalogo', async () => {
     const instaladas = skillsInstaladas(datos())
     const agentes = (await agentesParaConversar().catch(() => [])).filter((a) => a.instalado && AGENTES_CON_SKILLS.includes(a.id)).map((a) => ({ id: a.id, nombre: a.nombre }))
-    return { skills: catalogo.map((c) => ({ ...c, instalada: instaladas.find((i) => i.id === c.id) ?? null })), agentes }
+    return { skills: catalogo.map((c) => ({ ...c, instalada: instaladas.find((i) => i.id === c.id) ?? null, veredicto: veredictos.ok ? (veredictos.porId.get(c.id) ?? null) : null })), agentes }
   })
   ipcMain.handle('skills:vistaPrevia', async (_e, id: unknown) => {
     const c = catalogo.find((x) => x.id === id)
