@@ -35,7 +35,7 @@ export function Lanzador() {
   const flujo = useRef<{ stop(): void } | null>(null)
 
   useEffect(() => {
-    void bridge.brainInfo().then((i) => { if (i) cerebro.current = new BrainClient(i.url, i.token) })
+    void bridge.brainInfo().then((i) => { if (i) cerebro.current = new BrainClient() })
     const reiniciar = () => { setTimeout(() => campo.current?.focus(), 30); setAviso('') }
     reiniciar()
     return lz()?.onAbierto(reiniciar)

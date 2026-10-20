@@ -5,6 +5,7 @@ import { stepCountIs, streamText, type LanguageModelUsage, type ModelMessage } f
 import { app, ipcMain, type WebContents } from 'electron'
 import { join } from 'node:path'
 import type { BrainInfo } from './brain-process'
+import { ClienteCerebro, mcpDeEsme } from './mente/cliente'
 import { leerConfig, guardarConfig } from './herramientas/config'
 import { Conocidas } from './herramientas/permisos'
 import { herramientasPropias, type Manos, type Respuesta } from './herramientas/propias'
@@ -53,9 +54,8 @@ function manosPara(to: WebContents, req: ChatRequest, ac: AbortController, d: De
     buscarMemoria: async (q) => {
       const i = d.brainInfo()
       if (!i) throw new Error('La memoria no está disponible ahora mismo.')
-      const r = await fetch(`${i.url}/memories?q=${encodeURIComponent(q)}&limit=8`, { headers: { Authorization: `Bearer ${i.token}` }, signal: AbortSignal.timeout(10_000) })
-      if (!r.ok) throw new Error(`la memoria respondió ${r.status}`)
-      return ((await r.json()) as { text: string; source: string }[]).map((x) => ({ texto: x.text.slice(0, 600), tema: x.source }))
+      const r = await new ClienteCerebro(i).recuerdos(q, 8)
+      return r.map((x) => ({ texto: x.text.slice(0, 600), tema: x.source }))
     },
     verEquipo: equipoParaChat,
     encargar: encargarDesdeChat,
@@ -147,7 +147,7 @@ async function pumpAgente(to: WebContents, req: ChatRequest, ac: AbortController
   const r = await conversarConAgente({
     motor, cwd: join(app.getPath('userData'), 'conversacion'), mensajes: req.messages, senal: ac.signal,
     sistema: buildSystem(req.memory, { panorama: req.panorama, voz: req.voz, herramientas: false }),
-    ...(i ? { mcp: { nombre: 'esme', url: `${i.url}/mcp`, token: i.token } } : {}),
+    ...(i ? { mcp: mcpDeEsme(i)! } : {}),
     masMcp: (() => { try { return mcpParaTaller() } catch { return [] } })(),
     enviar: (canal, x) => { if (canal === 'chunk') hablo = true; to.send(`chat:${canal}:${req.id}`, x) },
     permiso: (titulo) => pedirPermiso(to, req, ac, `agente__${titulo}`, {}, `agente-permiso-${motor.id}-${++n}`),

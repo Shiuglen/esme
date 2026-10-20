@@ -1,5 +1,6 @@
 // Canales IPC del Taller: motores detectados, tareas, permisos, diff y eventos en vivo hacia las ventanas.
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { mcpDeEsme } from './mente/cliente'
 import { spawn } from 'node:child_process'
 import { access, constants, mkdtemp, rm } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
@@ -231,7 +232,7 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
   const t = new Taller({
     dir: join(app.getPath('userData'), 'taller'),
     emitir: (canal, dato) => emitir(`taller:${canal}`, dato),
-    mcp: () => { const i = o.brainInfo(); return i ? { nombre: 'esme', url: `${i.url}/mcp`, token: i.token } : null },
+    mcp: () => mcpDeEsme(o.brainInfo()),
     masMcp: () => { try { return mcpParaTaller() } catch { return [] } },
     resolverMotor: async (id) => { const m = await elegirMotor(id); return 'error' in m ? null : m },
     // Cada turno que termina alimenta el Uso de la app: la historia del gasto real por tarea.

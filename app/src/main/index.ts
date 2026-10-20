@@ -5,7 +5,9 @@ import { randomBytes } from 'node:crypto'
 import { join } from 'node:path'
 import { agentCommand, listAgents } from './agents'
 import { BrainProcess, type BrainInfo } from './brain-process'
+import { configMcp } from './mente/cliente'
 import { registerChat } from './chat'
+import { registerMente } from './mente/ipc'
 import { alLanzar, cerrar as cerrarTaller, pendienteTaller, registerTaller, agentesParaConversar } from './ipc-taller'
 import { alCerrarVentana, guardarPreferencia, leerPreferencia, resumenBandeja, type PreferenciaCierre } from './segundo-plano'
 import { registerProveedores } from './ipc-proveedores'
@@ -37,7 +39,7 @@ const ICONO = join(__dirname, '../../resources/esme.png')
 // tu mente siempre en el mismo sitio (127.0.0.1:47321) y con su token fijo en el llavero: así tus otras IAs la encuentran
 const MENTE_PUERTO = 47321
 const tokenMente = () => { let t = keys.get('mente'); if (!t) { t = randomBytes(32).toString('hex'); keys.set('mente', t) } return t }
-const brain = new BrainProcess({ python: RUTAS.python, extraPython: RUTAS.extraPython, puerto: MENTE_PUERTO, token: tokenMente }, RUTAS.mente, (info: BrainInfo | null) => win?.webContents.send('brain:changed', info))
+const brain = new BrainProcess({ python: RUTAS.python, extraPython: RUTAS.extraPython, puerto: MENTE_PUERTO, token: tokenMente }, RUTAS.mente, (info: BrainInfo | null) => win?.webContents.send('brain:changed', info ? { url: info.url } : null))
 
 const MAC = process.platform === 'darwin'
 // Una sola Esme: si ya está abierta (por ejemplo, al pulsar otra vez el icono del escritorio), la abierta se trae al frente
@@ -130,10 +132,11 @@ function registerIpc() {
     const a = AGENTES.find((x) => x.id === id)
     if (!a || typeof conectada !== 'boolean') return { ok: false, error: 'Datos no válidos.' }
     if (conectada && !brain.info) return { ok: false, error: 'Tu mente aún no está despierta: espera unos segundos.' }
-    try { if (conectada) conectarMente(a, homedir(), `${brain.info!.url}/mcp`, tokenMente()); else desconectarMente(a, homedir()); return { ok: true } }
+    try { if (conectada) conectarMente(a, homedir(), configMcp(brain.info!).url, tokenMente()); else desconectarMente(a, homedir()); return { ok: true } }
     catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) } }
   })
-  ipcMain.handle('brain:info', () => brain.info)
+  // el renderer recibe que la mente está viva, no su llave: la llave se queda en este proceso
+  ipcMain.handle('brain:info', () => (brain.info ? { url: brain.info.url } : null))
   ipcMain.handle('ajustes:alCerrar', () => leerPreferencia(ficheroAjustes()))
   ipcMain.handle('ajustes:ponerAlCerrar', (_e, v: unknown) => {
     if (v !== 'auto' && v !== 'siempre' && v !== 'nunca') return { ok: false, error: 'Valor no válido.' }
@@ -169,6 +172,8 @@ function registerIpc() {
   ipcMain.on('pty:kill', (_e, id: string) => ptyHost?.postMessage({ type: 'kill', id }))
   registerProveedores()
   registerChat({ brainInfo: () => brain.info })
+  // la puerta de la mente: el renderer pide por IPC y el proceso principal habla con el cerebro (Python)
+  registerMente({ brainInfo: () => brain.info, emitir: (evento) => win?.webContents.send('mente:evento', evento) })
   registerTaller({ brainInfo: () => brain.info })
   // lo que la agenda lanza sola se avisa fuera de la ventana si no la estás mirando
   alLanzar((p) => { if (!win?.isFocused()) avisar('Tu equipo empezó un encargo programado', p.texto.replace(/\s+/g, ' ').slice(0, 140)) })

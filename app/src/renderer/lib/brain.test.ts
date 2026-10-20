@@ -1,33 +1,52 @@
 import { describe, expect, it, vi } from 'vitest'
 import { BrainClient, BrainError } from './brain'
 
-function fakeFetch(status: number, body: unknown) {
-  return vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }))
-}
+// La ventana ya no habla con el cerebro (Python): pide al proceso principal. Aquí se comprueba que pide lo que debe,
+// con la forma que espera, y que los fallos llegan como BrainError (lo que la ventana sabe enseñar).
+const puente = vi.hoisted(() => ({ datos: {} as Record<string, unknown>, error: null as string | null }))
 
-describe('BrainClient', () => {
-  it('envía el token y devuelve el recall', async () => {
-    const f = fakeFetch(200, { context: 'ctx', tokens: 10, ids: ['a'], abstained: false })
-    const b = new BrainClient('http://127.0.0.1:9', 'tok', f as unknown as typeof fetch)
+vi.mock('./bridge', () => {
+  const Maybe = <T>(dato: T) => async () => { if (puente.error) throw new Error(puente.error); return dato }
+  return {
+    bridge: {
+      mente: {
+        salud: Maybe({ ok: true, memories: 7 }),
+        recuerdos: async (q: string, limit: number) => { if (puente.error) throw new Error(puente.error); puente.datos = { q, limit }; return [] },
+        recordar: async (query: string, o: unknown) => { if (puente.error) throw new Error(puente.error); puente.datos = { query, o }; return { context: 'ctx', tokens: 10, ids: ['a'], abstained: false } },
+        escribir: async (texto: string, kind: string) => { if (puente.error) throw new Error(puente.error); puente.datos = { texto, kind }; return { id: 'm1' } },
+        feedback: async () => ({ result: 'ok' }),
+        olvidar: async () => ({ forgotten: ['m1'] }),
+        ingerir: async () => ({ added: 2, memories: 9 }),
+        atlas: async () => ({ points: [], clusters: [] }),
+        memoria: async () => ({ id: 'm1' }),
+        oir: async () => ({ texto: 'hola' }),
+        decir: async () => new ArrayBuffer(4),
+        eventos: async () => ({ ok: true }),
+        eventosParar: async () => ({ ok: true }),
+        onEvento: () => () => {},
+      },
+    },
+  }
+})
+
+describe('el cliente de la mente en la ventana', () => {
+  it('pide al proceso principal, no al cerebro', async () => {
+    const b = new BrainClient()
     const r = await b.recall('hola', 500, 'chat')
     expect(r.ids).toEqual(['a'])
-    const [url, init] = f.mock.calls[0]
-    expect(url).toBe('http://127.0.0.1:9/recall')
-    expect((init!.headers as Record<string, string>).Authorization).toBe('Bearer tok')
-    expect(JSON.parse(init!.body as string)).toEqual({ query: 'hola', budget: 500, who: 'chat' })
+    expect(puente.datos).toEqual({ query: 'hola', o: { budget: 500, who: 'chat' } })
   })
 
-  it('lanza BrainError con el mensaje del cerebro', async () => {
-    const b = new BrainClient('http://x', 't', fakeFetch(400, { error: 'rechazado: contenido excluido' }) as unknown as typeof fetch)
+  it('la búsqueda lleva su palabra y su límite', async () => {
+    await new BrainClient().search('qué tal', 5)
+    expect(puente.datos).toEqual({ q: 'qué tal', limit: 5 })
+  })
+
+  it('un fallo llega como BrainError, con su mensaje', async () => {
+    puente.error = 'rechazado: contenido excluido'
+    const b = new BrainClient()
     await expect(b.remember('FirmeDigital')).rejects.toThrow(BrainError)
     await expect(b.remember('FirmeDigital')).rejects.toThrow('rechazado')
-  })
-
-  it('codifica la búsqueda y la URL de eventos lleva el token', async () => {
-    const f = fakeFetch(200, [])
-    const b = new BrainClient('http://h:1', 'tk', f as unknown as typeof fetch)
-    await b.search('qué tal', 5)
-    expect(f.mock.calls[0][0]).toBe('http://h:1/memories?q=qu%C3%A9%20tal&limit=5')
-    expect(b.eventsUrl()).toBe('http://h:1/events?token=tk')
+    puente.error = null
   })
 })

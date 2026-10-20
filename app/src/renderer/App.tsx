@@ -170,7 +170,7 @@ export function App() {
 
   // el cerebro: conexión, reconexión y lo que hace en vivo
   useEffect(() => {
-    const conectar = (i: { url: string; token: string } | null) => setBrain(i ? new BrainClient(i.url, i.token) : null)
+    const conectar = (i: { url: string } | null) => setBrain(i ? new BrainClient() : null)
     void bridge.brainInfo().then(conectar)
     const off = bridge.onBrainChange(conectar)
     return off

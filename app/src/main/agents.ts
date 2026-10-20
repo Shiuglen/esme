@@ -3,6 +3,7 @@ import { accessSync, constants, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import type { BrainInfo } from './brain-process'
+import { configMcp } from './mente/cliente'
 
 export type AgentPreset = { id: string; label: string; bin: string; installed: boolean; memory: boolean; note?: string }
 
@@ -31,7 +32,7 @@ export function agentCommand(id: string, brain: BrainInfo | null): { cmd: string
   const def = DEFS.find((d) => d.id === id)
   if (!def) throw new Error(`agente desconocido: ${id}`)
   const cmd = which(def.bin) ?? def.bin
-  const mcp = brain ? { url: `${brain.url}/mcp`, headers: { Authorization: `Bearer ${brain.token}` } } : null
+  const mcp = brain ? configMcp(brain) : null
   if (id === 'claude' && mcp) {
     return { cmd, args: ['--mcp-config', JSON.stringify({ mcpServers: { daimon: { type: 'http', ...mcp } } })], env: {} }
   }

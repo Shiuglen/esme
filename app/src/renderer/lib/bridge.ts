@@ -38,7 +38,8 @@ export type VersionAgente = { id: string; instalada: string | null; ultima: stri
 export type MetodoEntrada = { id: string; nombre: string; descripcion: string; terminal: boolean }
 
 // Puente: la misma interfaz funciona dentro de Electron (todo) y en el navegador (modo web, para verla y probarla).
-export type BrainInfo = { url: string; token: string }
+// La mente está o no está: la ventana no necesita su url ni su token (eso vive en el proceso principal).
+export type BrainInfo = { url: string }
 export type ProviderView = { id: string; label: string; local: boolean; needsKey: boolean; hasKey: boolean; retainsData: boolean | 'depends'; defaultModel?: string }
 export type AgentView = { id: string; label: string; installed: boolean; memory: boolean; note?: string }
 export type ChatMsg = { role: 'user' | 'assistant'; content: string }
@@ -55,12 +56,29 @@ export type ResumenUso = ReturnType<RegistroUso['resumen']>
 export type { EstadoPlan, Hilo, ResumenHilo, TurnoHilo, Producto, RespuestaCatalogo }
 export type { VeredictoTaller, EventoTaller, OpcionMotor, MotorTaller, TareaTaller }
 export type ResultadoTaller = { ok: true } | { ok: false; error: string; ficheros?: string[] }
+export type ResultadoMente<T> = { ok: true; dato: T } | { ok: false; error: string }
+export type Memoria = { id: string; text: string; source: string; kind: string; ts: string; trust: number; compartment: string; score?: number }
 export type InstalarMotor = { ok: true; nombre: string } | { ok: false; error: string }
 export type OrigenCatalogo = { origen: 'red' | 'cache' | 'semilla'; fecha: number }
 
 type ElectronApi = {
   brain: { info(): Promise<BrainInfo | null>; onChange(fn: (i: BrainInfo | null) => void): () => void }
-  mente: { agentes(): Promise<AgenteMente[]>; conectar(id: string, si: boolean): Promise<ResultadoTaller> }
+  mente: {
+    agentes(): Promise<AgenteMente[]>; conectar(id: string, si: boolean): Promise<ResultadoTaller>
+    salud(): Promise<ResultadoMente<{ ok: boolean; memories: number }>>
+    recuerdos(q: string, limit: number): Promise<ResultadoMente<Memoria[]>>
+    recordar(query: string, o: unknown): Promise<ResultadoMente<{ context: string; tokens: number; ids: string[]; abstained: boolean }>>
+    escribir(texto: string, kind: string): Promise<ResultadoMente<{ id: string }>>
+    feedback(ids: string[], useful: boolean, query: string): Promise<ResultadoMente<{ result: string }>>
+    olvidar(id: string): Promise<ResultadoMente<{ forgotten: string[] }>>
+    ingerir(paths: string[]): Promise<ResultadoMente<{ added: number; memories: number }>>
+    atlas(): Promise<ResultadoMente<{ points: unknown[]; clusters: unknown[] }>>
+    memoria(id: string): Promise<ResultadoMente<Memoria>>
+    oir(pcm: ArrayBuffer, idioma: string): Promise<ResultadoMente<{ texto: string }>>
+    decir(texto: string): Promise<ResultadoMente<ArrayBuffer>>
+    eventos(): Promise<ResultadoTaller>; eventosParar(): Promise<ResultadoTaller>
+    onEvento(fn: (e: unknown) => void): () => void
+  }
   skills: {
     catalogo(): Promise<{ skills: SkillCatalogo[]; agentes: { id: string; nombre: string }[]; veredicto: EstadoVeredicto }>; vistaPrevia(id: string): Promise<VistaSkill>
     instalar(id: string, agentes: string[], conScripts: boolean): Promise<{ ok: true; conflictos: { carpeta: string; motivo: string }[]; carpetas: { carpeta: string; agentes: string[] }[]; scriptsOmitidos: boolean } | { ok: false; error: string }>
@@ -122,6 +140,9 @@ declare global { interface Window { daimon?: ElectronApi } }
 
 export const isElectron = () => typeof window !== 'undefined' && !!window.daimon
 const SOLO_ESCRITORIO = { ok: false as const, error: 'Solo en la app de escritorio' }
+/** La mente, desde la ventana: o trae el dato o trae el motivo. */
+const solo = <T>(): Promise<ResultadoMente<T>> => Promise.resolve({ ok: false, error: 'Solo en la app de escritorio' })
+const dato = async <T>(r: Promise<ResultadoMente<T>>): Promise<T> => { const x = await r; if (!x.ok) throw new Error(x.error); return x.dato }
 let seq = 0
 const newId = () => `${Date.now().toString(36)}-${(seq++).toString(36)}`
 
@@ -129,6 +150,20 @@ export const bridge = {
   mente: {
     agentes: async (): Promise<AgenteMente[]> => (isElectron() ? window.daimon!.mente.agentes() : []),
     conectar: async (id: string, si: boolean): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.mente.conectar(id, si) : { ok: false, error: 'Solo en la app.' }),
+    salud: async () => dato(isElectron() ? window.daimon!.mente.salud() : solo<{ ok: boolean; memories: number }>()),
+    recuerdos: async (q: string, limit: number) => dato(isElectron() ? window.daimon!.mente.recuerdos(q, limit) : solo<Memoria[]>()),
+    recordar: async (query: string, o: unknown) => dato(isElectron() ? window.daimon!.mente.recordar(query, o) : solo<{ context: string; tokens: number; ids: string[]; abstained: boolean }>()),
+    escribir: async (texto: string, kind: string) => dato(isElectron() ? window.daimon!.mente.escribir(texto, kind) : solo<{ id: string }>()),
+    feedback: async (ids: string[], useful: boolean, query: string) => dato(isElectron() ? window.daimon!.mente.feedback(ids, useful, query) : solo<{ result: string }>()),
+    olvidar: async (id: string) => dato(isElectron() ? window.daimon!.mente.olvidar(id) : solo<{ forgotten: string[] }>()),
+    ingerir: async (paths: string[]) => dato(isElectron() ? window.daimon!.mente.ingerir(paths) : solo<{ added: number; memories: number }>()),
+    atlas: async () => dato(isElectron() ? window.daimon!.mente.atlas() : solo<{ points: unknown[]; clusters: unknown[] }>()),
+    memoria: async (id: string) => dato(isElectron() ? window.daimon!.mente.memoria(id) : solo<Memoria>()),
+    oir: async (pcm: ArrayBuffer, idioma: string) => dato(isElectron() ? window.daimon!.mente.oir(pcm, idioma) : solo<{ texto: string }>()),
+    decir: async (texto: string) => dato(isElectron() ? window.daimon!.mente.decir(texto) : solo<ArrayBuffer>()),
+    eventos: async () => (isElectron() ? window.daimon!.mente.eventos() : { ok: false, error: 'Solo en la app de escritorio' }),
+    eventosParar: async () => (isElectron() ? window.daimon!.mente.eventosParar() : { ok: false, error: 'Solo en la app de escritorio' }),
+    onEvento: (fn: (e: unknown) => void) => (isElectron() ? window.daimon!.mente.onEvento(fn) : () => {}),
   },
   // Skills: instrucciones de experto para Esme y tus agentes, desde el repositorio de su autor (main/skills)
   skills: {
@@ -161,8 +196,8 @@ export const bridge = {
 
   async brainInfo(): Promise<BrainInfo | null> {
     if (isElectron()) return window.daimon!.brain.info()
-    const url = import.meta.env.VITE_BRAIN_URL as string | undefined, token = import.meta.env.VITE_BRAIN_TOKEN as string | undefined
-    return url && token ? { url, token } : null
+    const url = import.meta.env.VITE_BRAIN_URL as string | undefined
+    return url ? { url } : null
   },
   onBrainChange(fn: (i: BrainInfo | null) => void): () => void {
     return isElectron() ? window.daimon!.brain.onChange(fn) : () => {}
