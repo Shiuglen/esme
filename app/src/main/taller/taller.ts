@@ -390,8 +390,10 @@ export class Taller {
     const mente = this.mente()
     if (!mente) return
     try {
-      // Sólo lo que la mente necesita para destilar la lección: la tarea entera pesa y no aporta.
-      const tareas = this.lista().map((t) => ({ id: t.id, motor: t.motor, modelo: t.modelo, estado: t.estado, error: t.error }))
+      // Sólo lo que la mente necesita para destilar la lección. El encargo va recortado: la mente
+      // no necesita el texto entero, sí necesita saber QUÉ se le pidió, porque una tarea repetida
+      // es la que se puede convertir en skill. Sin el texto, la mente sólo sabe que hubo una tarea.
+      const tareas = this.lista().map((t) => ({ id: t.id, motor: t.motor, modelo: t.modelo, estado: t.estado, error: t.error, encargo: t.titulo }))
       // por la puerta: el token y el reloj son de la puerta, no de aquí
       await new ClienteCerebro(mente).equipo({ veredictos: await this.veredictos(), tareas })
     } catch { /* la mente no está o no contesta: la tarea sigue igual */ }

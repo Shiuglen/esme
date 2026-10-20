@@ -225,6 +225,15 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
         bus.publish({"type": "sueño", **informe})
         return JSONResponse(informe)
 
+    @mcp.custom_route("/repeticiones", methods=["GET"])
+    async def repeticiones(_: Request):
+        """Las tareas que el creador repite: candidatas a convertirse en skill.
+
+        No crea nada: sólo dice qué se repite y cuántas veces, para que el usuario decida.
+        """
+        from .repeticion import propuesta
+        return JSONResponse(await locked(propuesta)(home))
+
     @mcp.custom_route("/equipo", methods=["POST"])
     async def equipo(req: Request):
         """Lo que la mente aprende del equipo: cada veredicto del creador es una lección."""

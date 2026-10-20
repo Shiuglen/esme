@@ -77,6 +77,28 @@ def lecciones(datos: dict) -> list[str]:
     return salida
 
 
+def _encargos(datos: dict) -> list[tuple[str, str]]:
+    """Los encargos que el creador le hizo al Taller: (id de tarea, encargo).
+
+    La app manda el título de cada tarea. Aquí sólo interesan las que **cerraron bien**:
+    un encargo que se rompió tres veces es un problema, no un hábito.
+
+    El id de la tarea va con el encargo: tres tareas distintas con el mismo texto son tres
+    repeticiones, y la misma tarea mandada dos veces es una sola.
+    """
+    tareas = datos.get("tareas") or []
+    out = []
+    for t in tareas:
+        if not isinstance(t, dict):
+            continue
+        if t.get("estado") not in (None, "lista"):
+            continue
+        encargo = str(t.get("encargo") or "").strip()
+        if len(encargo) >= 20:
+            out.append((str(t.get("id") or ""), encargo))
+    return out
+
+
 def aprender(home, datos: dict) -> dict:
     """La mente guarda las lecciones del equipo. Devuelve el informe de lo aprendido."""
     texto = lecciones(datos)
@@ -86,4 +108,23 @@ def aprender(home, datos: dict) -> dict:
         ev = Event(eid, t, "equipo", "decision", datetime.now(timezone.utc).isoformat(), TRUST["user"])
         home.add([ev])
         guardadas.append(eid)
-    return {"lecciones": len(texto), "ids": guardadas, "texto": texto}
+    encargos = _encargos(datos)
+    if encargos:
+        # Cada encargo se guarda como recuerdo del creador (kind=user_msg): así el sueño puede
+        # ver qué tarea se repite y proponer una skill. El id lleva el de la tarea, así que
+        # tres tareas con el mismo texto cuentan tres y la misma tarea no cuenta dos.
+        from .repeticion import _id as _id_encargo, _normaliza
+        vistos: set[str] = set()
+        nuevos = []
+        for tarea_id, encargo in encargos:
+            texto_encargo = _normaliza(encargo)
+            eid = _id_encargo(f"{tarea_id}:{texto_encargo}")
+            if eid in vistos:
+                continue
+            vistos.add(eid)
+            nuevos.append(Event(eid, texto_encargo, "encargo", "user_msg",
+                                 datetime.now(timezone.utc).isoformat(), TRUST["user"]))
+        if nuevos:
+            home.add(nuevos)
+    return {"lecciones": len(texto), "ids": guardadas, "texto": texto,
+            "encargos": len(encargos)}

@@ -60,4 +60,12 @@ describe('la puerta al cerebro', () => {
     expect(mcpDeEsme(info)).toEqual({ nombre: 'esme', url: 'http://127.0.0.1:47321/mcp', token: 'secreto' })
     expect(mcpDeEsme(null)).toBeNull()
   })
+
+  it('pregunta las tareas repetidas por su ruta', async () => {
+    let vista: string | null = null
+    const http = (async (url: string) => { vista = url.replace('http://127.0.0.1:47321', ''); return respuesta({ repeticiones: [], total: 0, informe: '' }) }) as unknown as typeof fetch
+    const r = await new ClienteCerebro(info, http).repeticiones()
+    expect(vista).toBe('/repeticiones')
+    expect(r.total).toBe(0)
+  })
 })

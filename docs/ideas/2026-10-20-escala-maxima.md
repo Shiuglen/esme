@@ -203,6 +203,23 @@ con ficheros, scripts y permiso: se comparte, se vende, se improve.
 **propone** una skill al usuario (nunca por la espalda).
 **Se mide.** Tokens ahorrados y tareas cerradas sin IA.
 
+**Hecho (20-oct), el primer paso: el sueño ve lo que repites.** `daimon/repeticion.py` agrupa los
+encargos que el creador vuelve a hacer y, cuando una tarea llega a **tres veces**, deja la propuesta
+como recuerdo y la app la enseña junto a las Recetas («Lo que repites»: cuántas veces, desde cuándo y
+el encargo de ejemplo, con un botón para usarlo). **Nunca crea nada solo**: la skill la escribes tú.
+
+Tres decisiones quecostaron sangre, y que están en los tests para que no se pierdan:
+- **Sólo cuentan los encargos del Taller** (fuente «encargo»). Los `.jsonl` de las sesiones guardan
+  mensajes sueltos («sigue en donde estabas», «dale full»): 138 de ellos parecían 23 repeticiones de la
+  misma tarea y no eran ninguna.
+- **Un encargo roto no es un hábito**: sólo cuentan las tareas que cerraron bien. Tres fallos son un
+  problema, no una costumbre.
+- **El fallo de raíz era de la app, no del sueño**: el Taller mandaba a la mente el `id`, el motor y el
+  estado, pero **nunca el texto del encargo**. Sin el texto, la mente no puede saber *qué* se repite.
+  Ahora lo manda (recortado) y el sueño ve lo que ve.
+**Queda.** Que la propuesta llegue a ser una skill de verdad (fichero `SKILL.md`, permiso, catálogo) y no
+sólo un encargo; y medir los tokens que ahorra.
+
 ### Palanca 8 — El catálogo como economía
 **Idea.** `mcpmarket.com` indexa ~50.000 **páginas de herramientas** (no servidores) y skills; el
 Registro MCP de GitHub ya tiene draw.io renderizando diagramas vivos en el chat.

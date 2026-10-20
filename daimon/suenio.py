@@ -147,4 +147,8 @@ def dormir(home, tope: int = 50000) -> dict:
     informe = _informe(nacidas, antes, len(home.hippo))
     informe["ts"] = max(e.ts for e in eventos)
     informe["sha256"] = hashlib.sha256("".join(t.id for t, _ in nacidas).encode()).hexdigest()
+    # Y lo que se repite: las tareas que el creador vuelve a encargar y que pueden
+    # convertirse en una skill. Esto propone; la skill la escribe el usuario.
+    from .repeticion import proponer
+    informe["repeticiones"] = proponer(home)
     return informe

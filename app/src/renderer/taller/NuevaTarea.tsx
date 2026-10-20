@@ -14,6 +14,7 @@ import { candidatosDe, elegibles, elegir, elegirVarios, historial, type Eleccion
 import { configInicial, nombreValor, SelectorOpcion } from './Opciones'
 import { Bicho } from '../marca/SerVista'
 import { Oficios } from './Oficios'
+import { TarjetaRepeticion, useRepeticiones } from './Repeticion'
 import { useMuelle } from '../tinta/movimiento'
 
 const leer = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(`esme:taller:${k}`); return v === null ? d : (JSON.parse(v) as T) } catch { return d } }
@@ -38,6 +39,8 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
   const [roles, setRoles] = useState<Rol[]>([])
   const [oficios, setOficios] = useState<string[]>(() => leer<string[]>('oficios', []))
   const [todas, setTodas] = useState<Record<string, OpcionMotor[]> | null>(null)
+  // lo que el creador repite: la mente lo ve y lo propone (no se crea nada solo)
+  const repetidas = useRepeticiones()
   const [veredictos, setVeredictos] = useState<Veredicto[]>([])
   const [carpeta, setCarpeta] = useState<string | null>(() => leer<string | null>('carpeta', null))
   const [texto, setTexto] = useState('')
@@ -249,6 +252,17 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
       )}
 
       {instalados.length > 0 && !texto && <Recetas onElegir={setTexto} />}
+      {instalados.length > 0 && !texto && repetidas.length > 0 && (
+        <section aria-label="Tareas repetidas" className="mt-5 grid gap-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-[13px] font-medium text-texto">Lo que repites</span>
+            <span className="text-[12px] text-texto-3">La mente lo ha visto. Si quieres, úsalo como receta.</span>
+          </div>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2.5">
+            {repetidas.map((r) => <TarjetaRepeticion key={`${r.titulo}-${r.desde}`} r={r} onElegir={setTexto} />)}
+          </div>
+        </section>
+      )}
       {motores.some((m) => !m.instalado) && (
         <p className="mt-auto pt-6 text-xs text-texto-3">
           {motores.filter((m) => !m.instalado).length} motores más disponibles.{' '}

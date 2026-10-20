@@ -20,6 +20,21 @@ export type Pilar = { id: string; texto: string; creado: number }
 export type Objetivo = { id: string; texto: string; estado: 'activo' | 'hecho' | 'pausado'; creado: number; cerrado: number | null; pilar: string | null }
 export type Rumbo = { version: 1; pilares: Pilar[]; objetivos: Objetivo[] }
 
+/** Una tarea que el creador repite: la candidata a convertirse en skill. */
+export type Repeticion = {
+  titulo: string
+  veces: number
+  terminos: string[]
+  ejemplo: string
+  desde: string
+  hasta: string
+  motores: string[]
+  encargos: string[]
+}
+
+/** Las tareas repetidas: la mente propone, el usuario decide. */
+export type Repeticiones = { repeticiones: Repeticion[]; total: number; informe: string }
+
 /** Un fallo del cerebro, siempre con la misma forma (nunca una excepción suelta de fetch). */
 export type FalloCerebro = { ok: false; error: string }
 
@@ -44,6 +59,7 @@ export const RUTAS = {
   eventos: '/events',
   ingestX: '/ingest-x',
   equipo: '/equipo',
+  repeticiones: '/repeticiones',
 } as const
 
 const MS = 10_000
@@ -97,6 +113,11 @@ export class ClienteCerebro {
   /** Lo que la mente aprende del equipo: cada veredicto del creador es una lección. */
   async equipo(datos: Record<string, unknown>): Promise<Record<string, unknown>> {
     return this.llamar<Record<string, unknown>>(RUTAS.equipo, { method: 'POST', body: JSON.stringify(datos) })
+  }
+
+  /** Las tareas que el creador repite: candidatas a convertirse en skill. */
+  async repeticiones(): Promise<Repeticiones> {
+    return this.llamar<Repeticiones>(RUTAS.repeticiones)
   }
 
   /** El Tálamo compone el contexto con presupuesto: lo que entra en el prompt. */

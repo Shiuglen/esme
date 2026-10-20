@@ -46,6 +46,8 @@ export type MetodoEntrada = { id: string; nombre: string; descripcion: string; t
 // - viva: la mente responde
 // - apagado: no hay cerebro; esto sí es un fallo y hay que decirlo
 export type EstadoMente = 'conectando' | 'viva' | 'apagado'
+/** Una tarea que el creador repite: la candidata a convertirse en skill. */
+export type Repeticion = { titulo: string; veces: number; terminos: string[]; ejemplo: string; desde: string; hasta: string; motores: string[]; encargos: string[] }
 export type BrainInfo = { url: string | null; estado: EstadoMente }
 export type ProviderView = { id: string; label: string; local: boolean; needsKey: boolean; hasKey: boolean; retainsData: boolean | 'depends'; defaultModel?: string }
 export type AgentView = { id: string; label: string; installed: boolean; memory: boolean; note?: string }
@@ -88,6 +90,7 @@ type ElectronApi = {
     olvidar(id: string): Promise<ResultadoMente<{ forgotten: string[] }>>
     ingerir(paths: string[]): Promise<ResultadoMente<{ added: number; memories: number }>>
     atlas(): Promise<ResultadoMente<{ points: unknown[]; clusters: unknown[] }>>
+    repeticiones(): Promise<ResultadoMente<{ repeticiones: Repeticion[]; total: number; informe: string }>>
     memoria(id: string): Promise<ResultadoMente<Memoria>>
     oir(pcm: ArrayBuffer, idioma: string): Promise<ResultadoMente<{ texto: string }>>
     decir(texto: string): Promise<ResultadoMente<ArrayBuffer>>
@@ -190,6 +193,7 @@ export const bridge = {
     olvidar: async (id: string) => dato(isElectron() ? window.daimon!.mente.olvidar(id) : solo<{ forgotten: string[] }>()),
     ingerir: async (paths: string[]) => dato(isElectron() ? window.daimon!.mente.ingerir(paths) : solo<{ added: number; memories: number }>()),
     atlas: async () => dato(isElectron() ? window.daimon!.mente.atlas() : solo<{ points: unknown[]; clusters: unknown[] }>()),
+    repeticiones: async () => dato(isElectron() ? window.daimon!.mente.repeticiones() : solo<{ repeticiones: Repeticion[]; total: number; informe: string }>()),
     memoria: async (id: string) => dato(isElectron() ? window.daimon!.mente.memoria(id) : solo<Memoria>()),
     oir: async (pcm: ArrayBuffer, idioma: string) => dato(isElectron() ? window.daimon!.mente.oir(pcm, idioma) : solo<{ texto: string }>()),
     decir: async (texto: string) => dato(isElectron() ? window.daimon!.mente.decir(texto) : solo<ArrayBuffer>()),
