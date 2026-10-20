@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import json
 import threading
+import time
 from collections import deque
 from pathlib import Path
 
@@ -17,6 +18,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 
+from . import rumbo as rumbo_mod
 from .atlas import atlas_for
 from .gate import build_server, feedback_tool, remember_tool
 from .home import Home
@@ -190,6 +192,30 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
         added = await locked(lambda: home.ingest(eventos))()
         bus.publish({"type": "ingest-x", "added": added})
         return JSONResponse({"added": added, "memories": len(home.hippo)})
+
+    @mcp.custom_route("/rumbo", methods=["GET"])
+    async def rumbo(_: Request):
+        """Para qué trabaja esta mente: los pilares y los objetivos."""
+        return JSONResponse(rumbo_mod.lee(home.path))
+
+    @mcp.custom_route("/rumbo", methods=["POST"])
+    async def rumbo_post(req: Request):
+        b = await req.json()
+        accion = str(b.get("accion", ""))
+        ahora = int(time.time() * 1000)
+        if accion == "anadir_pilar":
+            r = rumbo_mod.anade_pilar(home.path, str(b.get("texto", "")), ahora)
+        elif accion == "anadir_objetivo":
+            r = rumbo_mod.anade_objetivo(home.path, str(b.get("texto", "")), ahora, b.get("pilar"))
+        elif accion == "cambiar_objetivo":
+            r = rumbo_mod.cambia_objetivo(home.path, str(b.get("id", "")), str(b.get("estado", "activo")), ahora)
+        elif accion == "quitar_pilar":
+            r = rumbo_mod.quita_pilar(home.path, str(b.get("id", "")))
+        elif accion == "quitar_objetivo":
+            r = rumbo_mod.quita_objetivo(home.path, str(b.get("id", "")))
+        else:
+            return JSONResponse({"error": "no sé qué hacer con eso"}, 400)
+        return JSONResponse(r)
 
     @mcp.custom_route("/sueño", methods=["POST"])
     async def sueno(req: Request):
