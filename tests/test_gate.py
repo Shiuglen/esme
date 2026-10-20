@@ -67,7 +67,10 @@ def test_feedback_ok(tmp_path):
     w0 = h.thalamus.w.copy()
     assert feedback_tool(h, [rid], True, "Arc USDC") == "ok"
     assert (h.thalamus.w != w0).any() and (tmp_path / "pesos.npz").exists()
-    assert feedback_tool(h, [rid], True, "consulta nunca vista").startswith("sin efecto")
+    # Con otra consulta, la señal sigue valiendo: los ids son la verdad, no la frase.
+    assert feedback_tool(h, [rid], True, "consulta nunca vista") == "ok"
+    # Sin ningún id que se haya compuesto, no hay nada que aprender: eso sí es «sin efecto».
+    assert feedback_tool(h, ["id-que-nunca-existio"], True, "consulta nunca vista").startswith("sin efecto")
 
 
 def test_servidor_expone_herramientas(tmp_path):

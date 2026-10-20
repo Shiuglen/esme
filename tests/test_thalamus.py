@@ -120,6 +120,16 @@ def test_el_feedback_sobrevive_al_reinicio(tmp_path):
     assert otro.feedback(ids[:1], 1.0, "tema1 detalle") is True
 
 
+def test_el_feedback_aguanta_un_query_distinto(tmp_path):
+    """Si el aviso llega con otra consulta, el aprendizaje no se pierde: se busca entre las
+    composiciones recientes la que traiga esos recuerdos."""
+    th = _setup(tmp_path, _corpus())
+    _, _, ids = th.compose("tema1 detalle", 300)
+    w0 = th.w.copy()
+    assert th.feedback(ids[:1], 1.0, "otra consulta que no es") is True
+    assert (th.w != w0).any()
+
+
 def test_feedback_negativo_no_destruye(tmp_path):
     th = _setup(tmp_path, _corpus())
     for _ in range(6):

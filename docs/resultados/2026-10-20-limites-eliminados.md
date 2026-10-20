@@ -36,12 +36,13 @@ Eso se aplicó con una regla operativa, para no confundir «limitación» con «
 | 14 | **Pocas memorias por página** | `/memories` devolvía 20 | **200** | `tests/test_server.py` |
 | 15 | **La voz se cortaba** | texto de voz a 4000 caracteres; audio > 3 min → 413 | **20 000 caracteres**; audio hasta **15 minutos** (la guarda sigue viva: a 16 min, 413) | `tests/test_server.py`, `tests/test_voz.py` |
 | 16 | **Se olvidaban los eventos en vivo** | historial SSE de 200 | **2000** | `tests/test_server.py` |
+| 17 | **El aviso se perdía si la frase no era exacta** | `feedback` exigía la **misma cadena** de consulta que el `recall`: un espacio de diferencia y el aprendizaje se iba | los **ids son la verdad**: si la consulta no coincide, se busca entre las composiciones recientes la que traiga esos recuerdos | `tests/test_thalamus.py::test_el_feedback_aguanta_un_query_distinto` |
 
 ## 2. Lo que se ha quitado (el cableado, `app/`)
 
 | # | Limitación | Antes | Ahora | Prueba |
 |---|---|---|---|---|
-| 17 | **La memoria no llegaba a OpenCode por su configuración** | Esme escribía `mcp.esme`: la forma **plana**, que el esquema de OpenCode marca como *deprecada* (`additionalProperties` con `"deprecated": true`) | se escribe en **`mcp.servers.esme`** (la forma moderna del esquema) y, al conectar, se **retira** la plana que hubiera quedado de antes | `app/src/main/mente/compartir.test.ts` (9 pruebas) |
+| 18 | **La memoria no llegaba a OpenCode por su configuración** | Esme escribía `mcp.esme`: la forma **plana**, que el esquema de OpenCode marca como *deprecada* (`additionalProperties` con `"deprecated": true`) | se escribe en **`mcp.servers.esme`** (la forma moderna del esquema) y, al conectar, se **retira** la plana que hubiera quedado de antes | `app/src/main/mente/compartir.test.ts` (9 pruebas) |
 
 > **Por qué esto es el más caro de todos:** sin esto, la memoria de Esme llega a las sesiones que
 > abre la app (por ACP, `sesion-acp.ts`) pero **no** a un OpenCode que abras tú a mano. Y cuando

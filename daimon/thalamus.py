@@ -191,6 +191,21 @@ class Thalamus:
             propio = self.pesos_motor.setdefault(motor, self.w.copy())
             propio += paso
 
+    def _rasgos_de(self, query: str, ids: list[str]) -> dict[str, np.ndarray] | None:
+        """Los rasgos de la última composición que trae estos ids.
+
+        Antes la señal se perdía si el `query` del feedback no era exactamente el del recall (un
+        espacio de diferencia y el aprendizaje se iba). Ahora, si la consulta no coincide, se busca
+        entre las composiciones recientes la que traiga esos recuerdos: el aviso manda la verdad."""
+        feats = self._last.get(query)
+        if feats is not None and any(i in feats for i in ids):
+            return feats
+        marcados = set(ids)
+        for _, otras in reversed(list(self._last.items())):
+            if marcados & set(otras):
+                return otras
+        return feats
+
     def feedback(self, ids: list[str], reward: float, query: str, lr: float = 0.05, k_alt: int = 10,
                  motor: str | None = None) -> bool:
         """Bandido por pares: lo útil sube frente a las alternativas; lo inútil baja frente a ellas.
@@ -199,8 +214,8 @@ class Thalamus:
         o se penaliza el rasgo del recuerdo marcado: así la señal nunca se pierde.
         Con motor, cada IA aprende su propia forma de querer el contexto: los pesos del motor
         nacen de los globales y se separan a partir de ahí. Devuelve False (sin efecto) si esa
-        consulta no se compuso en esta sesión."""
-        feats = self._last.get(query)
+        consulta no se compuso nunca con esos ids."""
+        feats = self._rasgos_de(query, ids)
         marked = [i for i in ids if feats and i in feats]
         if not marked:
             return False
