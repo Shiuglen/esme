@@ -4,11 +4,26 @@
 import { writeFileSync } from 'node:fs'
 import { buscarEnRegistro, DESTACADAS } from '../src/main/herramientas/registro-mcp.ts'
 
+/** Por qué buscar cada una: primero el identificador exacto (el registro lo acepta), luego el nombre
+ *  corto y por último la empresa. Con sólo la empresa, REA (io.github.morluto/rea) se perdía: su
+ *  «empresa» es github, y ahí no está. */
+const terminos = (id) => {
+  const [dominio = '', nombre = ''] = id.split('/')
+  const empresa = dominio.split('.').find((p) => !['com', 'ai', 'app', 'co', 'mcp', 'io', 'dev', 'org', 'net', 'sh'].includes(p))
+  return [...new Set([id, nombre, empresa].filter(Boolean))]
+}
+
 const encontradas = new Map()
 for (const id of DESTACADAS) {
-  const empresa = id.split('/')[0].split('.').find((p) => !['com', 'ai', 'app', 'co', 'mcp', 'io'].includes(p)) ?? id
-  for (let i = 0; i < 4 && !encontradas.has(id); i++) {
-    try { for (const f of await buscarEnRegistro(empresa)) if (DESTACADAS.includes(f.id)) encontradas.set(f.id, f) } catch { await new Promise((r) => setTimeout(r, 1500)) }
+  for (const t of terminos(id)) {
+    if (encontradas.has(id)) break
+    // El registro responde a veces con un 500 o se calla: se reintenta el mismo término antes de
+    // pasar al siguiente (una búsqueda puede fallar sin que la herramienta no exista).
+    for (let intento = 0; intento < 3 && !encontradas.has(id); intento++) {
+      try {
+        for (const f of await buscarEnRegistro(t)) if (DESTACADAS.includes(f.id)) encontradas.set(f.id, f)
+      } catch { await new Promise((r) => setTimeout(r, 2000 * (intento + 1))) }
+    }
   }
   console.log(encontradas.has(id) ? '✓' : '✗', id)
 }

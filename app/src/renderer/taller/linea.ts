@@ -14,6 +14,7 @@ export type ItemLinea =
   | { tipo: 'fallo'; clave: string; mensaje: string }
   | { tipo: 'reintento'; clave: string; ms: number; motivo: string }
   | { tipo: 'aprobado'; clave: string; titulo: string }
+  | { tipo: 'herencia'; clave: string; tokens: number; recuerdos: number }
 
 const cambiar = (l: ItemLinea[], i: number, nuevo: ItemLinea) => { const c = l.slice(); c[i] = nuevo; return c }
 
@@ -43,6 +44,7 @@ export function aplicar(l: ItemLinea[], e: Evento): ItemLinea[] {
     case 'fallo': return [...l, { tipo: 'fallo', clave: `fallo-${l.length}`, mensaje: e.mensaje }]
     case 'reintento': return [...l, { tipo: 'reintento', clave: `reintento-${l.length}`, ms: e.ms, motivo: e.motivo }]
     case 'aprobado': return [...l, { tipo: 'aprobado', clave: `aprobado-${l.length}`, titulo: e.titulo }]
+    case 'herencia': return [...l, { tipo: 'herencia', clave: `herencia-${l.length}`, tokens: e.tokens, recuerdos: e.recuerdos }]
     default: return l
   }
 }
@@ -56,6 +58,7 @@ export function actividadActual(l: ItemLinea[]): string | null {
   if (u.tipo === 'pensamiento') return 'Pensando…'
   if (u.tipo === 'reintento') return 'Esperando al proveedor: límite de peticiones'
   if (u.tipo === 'aprobado') return `Aprobado dentro de la copia: ${u.titulo}`
+  if (u.tipo === 'herencia') return `Le heredé tu memoria: ${u.recuerdos} recuerdos`
   if (u.tipo === 'texto') return u.texto.trim().split('\n').filter(Boolean).pop() ?? null
   if (u.tipo === 'plan') return u.pasos.find((p) => p.estado === 'in_progress')?.texto ?? 'Planeando'
   const enCurso = l.findLast((x) => x.tipo === 'herramienta' && (x.estado === 'in_progress' || x.estado === 'pending'))

@@ -155,7 +155,7 @@
   "slug": "apify",
   "titulo": "Apify",
   "descripcion": "Extract data from any website with thousands of scrapers, crawlers, and automations on Apify Store ⚡",
-  "version": "0.18.4",
+  "version": "0.19.0",
   "conexion": {
    "tipo": "remoto",
    "url": "https://mcp.apify.com/"

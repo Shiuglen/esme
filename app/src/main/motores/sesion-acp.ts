@@ -14,6 +14,7 @@ export type EventoMotor =
   | { tipo: 'opciones'; opciones: OpcionConfig[] }
   | { tipo: 'usuario'; texto: string } | { tipo: 'fin'; motivo: string; ms: number } | { tipo: 'fallo'; mensaje: string } | { tipo: 'reintento'; ms: number; motivo: string } | { tipo: 'aprobado'; titulo: string; clase?: string }   // solo los emite el runtime del Taller, nunca la sesión ACP
   | { tipo: 'uso'; entrada: number; salida: number; pensamiento?: number; cacheLectura?: number; cacheEscritura?: number }
+  | { tipo: 'herencia'; tokens: number; recuerdos: number }   // lo que la mente le pasó al motor antes de su primera pregunta
 
 type Opciones = { comando: string; args: string[]; cwd: string; env?: Record<string, string>
   config?: Record<string, string>   // id de opción → valor deseado; se aplica antes de cada pregunta

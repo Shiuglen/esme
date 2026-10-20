@@ -71,6 +71,34 @@ describe('Taller', () => {
     expect(emisiones.filter((e) => e.canal === 'evento').every((e) => e.dato.id === tarea.id)).toBe(true)
   })
 
+  it('el primer turno hereda lo que la mente sabe del encargo; los siguientes ya lo tienen', async () => {
+    const vistos: string[] = []
+    const s = sesiones(async (_o, texto) => { vistos.push(texto); return 'end_turn' })
+    const f = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ context: 'el proyecto usa vitest', tokens: 812, ids: ['a', 'b'] }) }) as Response)
+    vi.stubGlobal('fetch', f)
+    try {
+      const tarea = crear(s.abrir, copiasFalsas().ops, { mente: () => ({ url: 'http://mente', token: 'tok' }) })
+        .crear({ motor, carpeta: '/proyecto', texto: 'Arregla el examen' })
+      await esperar(tarea.id, 'lista')
+      expect(vistos[0]).toContain('el proyecto usa vitest')
+      expect(vistos[0]).toContain('Arregla el examen')
+      const ev = await t!.eventos(tarea.id)
+      expect(ev.find((e) => e.tipo === 'herencia')).toEqual({ tipo: 'herencia', tokens: 812, recuerdos: 2 })
+      await t!.seguir(tarea.id, 'otra cosa')
+      await esperar(tarea.id, 'lista')
+      expect(vistos[1]).toBe('otra cosa')   // el segundo turno no repite la herencia
+    } finally { vi.unstubAllGlobals() }
+  })
+
+  it('sin mente (o con la mente caída) la tarea arranca igual', async () => {
+    const vistos: string[] = []
+    const s = sesiones(async (_o, texto) => { vistos.push(texto); return 'end_turn' })
+    const tarea = crear(s.abrir, copiasFalsas().ops).crear({ motor, carpeta: '/proyecto', texto: 'Arregla el examen' })
+    await esperar(tarea.id, 'lista')
+    expect(vistos[0]).toBe('Arregla el examen')
+    expect((await t!.eventos(tarea.id)).some((e) => e.tipo === 'herencia')).toBe(false)
+  })
+
   it('cuenta herramientas distintas, primera respuesta y uso acumulado', async () => {
     const s = sesiones(async (o) => {
       reloj = 1250

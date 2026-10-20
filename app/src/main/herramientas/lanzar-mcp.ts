@@ -21,8 +21,8 @@ export function lanzamientoDe(f: Ficha, valores: Record<string, string>, py?: Py
     return { tipo: 'stdio', comando: py.python, args: [c.fichero], env: py.extraPython ? { PYTHONPATH: py.extraPython, PYTHONNOUSERSITE: '1' } : {} }
   }
   if (c.tipo === 'remoto') return { tipo: 'http', url: c.url, headers: conValor(f, valores, 'cabecera') }
-  if (c.tipo === 'npm') return { tipo: 'stdio', comando: 'npx', args: ['-y', c.version ? `${c.paquete}@${c.version}` : c.paquete], env: conValor(f, valores, 'env') }
-  return { tipo: 'stdio', comando: 'uvx', args: [c.version ? `${c.paquete}==${c.version}` : c.paquete], env: conValor(f, valores, 'env') }
+  if (c.tipo === 'npm') return { tipo: 'stdio', comando: 'npx', args: ['-y', c.version ? `${c.paquete}@${c.version}` : c.paquete, ...(c.args ?? [])], env: conValor(f, valores, 'env') }
+  return { tipo: 'stdio', comando: 'uvx', args: [c.version ? `${c.paquete}==${c.version}` : c.paquete, ...(c.args ?? [])], env: conValor(f, valores, 'env') }
 }
 
 export const faltan = (f: Ficha, valores: Record<string, string>) => f.variables.filter((v) => v.requerida && !valores[v.nombre]).map((v) => v.nombre)

@@ -231,6 +231,8 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
     dir: join(app.getPath('userData'), 'taller'),
     emitir: (canal, dato) => emitir(`taller:${canal}`, dato),
     mcp: () => { const i = o.brainInfo(); return i ? { nombre: 'esme', url: `${i.url}/mcp`, token: i.token } : null },
+    // La herencia: la mente a la que el Taller le pregunta qué sabe del encargo antes de la primera pregunta.
+    mente: () => o.brainInfo(),
     masMcp: () => { try { return mcpParaTaller() } catch { return [] } },
     resolverMotor: async (id) => { const m = await elegirMotor(id); return 'error' in m ? null : m },
     // Cada turno que termina alimenta el Uso de la app: la historia del gasto real por tarea.

@@ -31,6 +31,18 @@ describe('la ficha de una herramienta del registro', () => {
     expect(fichaDe(null)).toBeNull()
     expect(fichaDe({ name: 'x/y', remotes: [{ type: 'streamable-http', url: 'javascript:alert(1)' }] })).toBeNull()
   })
+  it('los argumentos del paquete no se pierden: sin ellos el servidor arranca en modo CLI y no habla MCP', () => {
+    // La ficha real de REA en el registro oficial (io.github.morluto/rea, npm rea-agents).
+    const rea = { name: 'io.github.morluto/rea', title: 'REA', description: 'Ingeniería inversa', version: '6.7.0',
+      packages: [{ registryType: 'npm', identifier: 'rea-agents', version: '6.7.0', runtimeHint: 'npx', transport: { type: 'stdio' },
+        packageArguments: [{ value: 'mcp', type: 'positional' }] }] }
+    expect(fichaDe(rea)!.conexion).toEqual({ tipo: 'npm', paquete: 'rea-agents', version: '6.7.0', args: ['mcp'] })
+  })
+  it('un argumento con nombre se pasa con su bandera, y los que traen plantilla se dejan fuera', () => {
+    const f = fichaDe({ name: 'x/y', packages: [{ registryType: 'npm', identifier: 'p', packageArguments: [
+      { value: 'serve', type: 'positional' }, { value: '--port', name: '--port', type: 'named' }, { value: '${PUERTO}', name: '--puerto', type: 'named' }] }] })!
+    expect(f.conexion).toMatchObject({ args: ['serve', '--port'] })
+  })
 })
 
 describe('el nombre corto de cada herramienta (prefijo de sus acciones)', () => {

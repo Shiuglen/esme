@@ -5,6 +5,7 @@ import { appendFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } fr
 import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { abrirSesionACP, type EventoMotor, type OpcionConfig } from '../motores/sesion-acp'
+import { bloqueHerencia, heredar, type Mente } from './herencia'
 import { otroModeloGratis } from './gratis'
 import { autoRespuesta, type Acceso } from './acceso'
 import { aplicarParche, cambiosCopia, commitCopia, crearCopia, diffCopia, exportarCopia, parcheCopia, quitarCopia, type Cambios, type Copia } from './copias'
@@ -69,6 +70,7 @@ export class Taller {
   private readonly copias: OperacionesCopia
   private readonly mcp: () => Mcp | null
   private readonly masMcp: () => McpServer[]
+  private readonly mente: () => Mente | null
   private readonly resolverMotor?: (id: string) => Promise<MotorElegido | null>
   private readonly alAnotar?: (a: Anoto) => void
   private readonly ahora: () => number
@@ -78,6 +80,7 @@ export class Taller {
 
   constructor(o: { dir: string; emitir(canal: 'cambio' | 'evento' | 'quitada', dato: unknown): void
     abrirSesion?: AbrirSesion; copias?: OperacionesCopia; mcp?: () => Mcp | null; masMcp?: () => McpServer[]
+    mente?: () => Mente | null
     resolverMotor?: (id: string) => Promise<MotorElegido | null>; alAnotar?: (a: Anoto) => void; ahora?: () => number; esperasReintento?: number[] }) {
     this.dir = o.dir
     this.dirCopias = join(o.dir, 'copias')
@@ -86,6 +89,7 @@ export class Taller {
     this.copias = o.copias ?? { crear: crearCopia, cambios: cambiosCopia, diff: diffCopia, quitar: quitarCopia, parche: parcheCopia, aplicar: aplicarParche, commit: commitCopia, exportar: exportarCopia }
     this.mcp = o.mcp ?? (() => null)
     this.masMcp = o.masMcp ?? (() => [])
+    this.mente = o.mente ?? (() => null)
     this.resolverMotor = o.resolverMotor
     this.alAnotar = o.alAnotar
     this.ahora = o.ahora ?? Date.now
@@ -351,7 +355,17 @@ export class Taller {
       t.estado = 'trabajando'; this.cambio(r, true)
       r.inicioTurno = this.ahora()
       this.registrar(r, { tipo: 'usuario', texto })
-      const motivo = await this.preguntar(r, texto)
+      // La herencia: el primer turno de la tarea empieza con lo que la mente ya sabe del encargo.
+      // Solo el primero: en los turnos siguientes el motor ya lo tiene en su conversación.
+      let mensaje = texto
+      if (t.turnos === 0) {
+        const h = await heredar(this.mente(), texto)
+        if (h) {
+          this.registrar(r, { tipo: 'herencia', tokens: h.tokens, recuerdos: h.ids.length })
+          mensaje = bloqueHerencia(h) + texto
+        }
+      }
+      const motivo = await this.preguntar(r, mensaje)
       if (r.descartada || this.cerrado) return
       this.registrar(r, { tipo: 'fin', motivo, ms: this.ahora() - r.inicioTurno })
       const cambios = await this.copias.cambios(t.copia).catch(() => null)
