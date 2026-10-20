@@ -37,6 +37,8 @@ export function registerMente(o: Opciones) {
   ipcMain.handle('mente:atlas', () => conMente((c) => c.atlas()))
   // Las tareas que el creador repite: la mente propone la skill, el usuario la decide.
   ipcMain.handle('mente:repeticiones', () => conMente((c) => c.repeticiones()))
+  // Las herramientas que el equipo echa de menos: lo que falló y se repitió.
+  ipcMain.handle('mente:necesidad', () => conMente((c) => c.necesidad()))
   ipcMain.handle('mente:memoria', (_e, id: unknown) => conMente((c) => c.memoria(String(id ?? ''))))
   ipcMain.handle('mente:oir', (_e, pcm: unknown, idioma: unknown) => conMente((c) => c.oir(pcm as ArrayBuffer, String(idioma ?? 'es'))))
   ipcMain.handle('mente:decir', (_e, texto: unknown) => conMente((c) => c.decir(String(texto ?? ''))))

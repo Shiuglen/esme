@@ -35,6 +35,19 @@ export type Repeticion = {
 /** Las tareas repetidas: la mente propone, el usuario decide. */
 export type Repeticiones = { repeticiones: Repeticion[]; total: number; informe: string }
 
+/** Una herramienta que el equipo echa de menos: la Forja puede fabricarla. */
+export type Necesidad = {
+  titulo: string
+  fallo: string
+  veces: number
+  motores: string[]
+  herramienta: string
+  encargos: string[]
+}
+
+/** Las herramientas que faltan: la mente lo deduce de los fallos. */
+export type Necesidades = { necesidades: Necesidad[]; total: number; informe: string }
+
 /** Un fallo del cerebro, siempre con la misma forma (nunca una excepción suelta de fetch). */
 export type FalloCerebro = { ok: false; error: string }
 
@@ -60,6 +73,7 @@ export const RUTAS = {
   ingestX: '/ingest-x',
   equipo: '/equipo',
   repeticiones: '/repeticiones',
+  necesidad: '/necesidad',
 } as const
 
 const MS = 10_000
@@ -118,6 +132,11 @@ export class ClienteCerebro {
   /** Las tareas que el creador repite: candidatas a convertirse en skill. */
   async repeticiones(): Promise<Repeticiones> {
     return this.llamar<Repeticiones>(RUTAS.repeticiones)
+  }
+
+  /** Las herramientas que el equipo echa de menos, deducidas de los fallos. */
+  async necesidad(): Promise<Necesidades> {
+    return this.llamar<Necesidades>(RUTAS.necesidad)
   }
 
   /** El Tálamo compone el contexto con presupuesto: lo que entra en el prompt. */

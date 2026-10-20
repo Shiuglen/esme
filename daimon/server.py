@@ -234,6 +234,15 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
         from .repeticion import propuesta
         return JSONResponse(await locked(propuesta)(home))
 
+    @mcp.custom_route("/necesidad", methods=["GET"])
+    async def necesidad(_: Request):
+        """Las herramientas que el equipo echa de menos: lo que falló y se repitió.
+
+        No fabrica nada: sólo dice qué falta, para que la Forja se lance con tu permiso.
+        """
+        from .necesidad import necesidad_de
+        return JSONResponse(await locked(necesidad_de)(home))
+
     @mcp.custom_route("/equipo", methods=["POST"])
     async def equipo(req: Request):
         """Lo que la mente aprende del equipo: cada veredicto del creador es una lección."""

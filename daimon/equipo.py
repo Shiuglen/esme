@@ -99,6 +99,26 @@ def _encargos(datos: dict) -> list[tuple[str, str]]:
     return out
 
 
+def _fallos(datos: dict) -> list[tuple[str, str, str]]:
+    """Los fallos crudos de las tareas: (id de tarea, motor, error).
+
+    Con esto la mente puede ver *qué* se rompió y no sólo cuántas veces. La lección
+    agregada («se rompió 2 veces con X») no basta para saber qué herramienta falta.
+    """
+    tareas = datos.get("tareas") or []
+    out = []
+    for t in tareas:
+        if not isinstance(t, dict):
+            continue
+        if t.get("estado") != "error":
+            continue
+        error = str(t.get("error") or "").strip()
+        if not error:
+            continue
+        out.append((str(t.get("id") or ""), str(t.get("motor") or "desconocido"), error))
+    return out
+
+
 def aprender(home, datos: dict) -> dict:
     """La mente guarda las lecciones del equipo. Devuelve el informe de lo aprendido."""
     texto = lecciones(datos)
@@ -123,6 +143,25 @@ def aprender(home, datos: dict) -> dict:
                 continue
             vistos.add(eid)
             nuevos.append(Event(eid, texto_encargo, "encargo", "user_msg",
+                                 datetime.now(timezone.utc).isoformat(), TRUST["user"]))
+        if nuevos:
+            home.add(nuevos)
+    fallos = _fallos(datos)
+    if fallos:
+        # El fallo crudo también se guarda: la lección dice «se rompió 2 veces con X», pero
+        # para saber qué herramienta falta hace falta el fallo entero, con su texto.
+        from .necesidad import _limpia
+        vistos: set[str] = set()
+        nuevos = []
+        for tarea_id, motor, error in fallos:
+            limpio = _limpia(error)
+            if not limpio:
+                continue
+            eid = _id(f"fallo:{tarea_id}:{limpio}")
+            if eid in vistos:
+                continue
+            vistos.add(eid)
+            nuevos.append(Event(eid, f"fallo: {motor} | {limpio}", "equipo", "decision",
                                  datetime.now(timezone.utc).isoformat(), TRUST["user"]))
         if nuevos:
             home.add(nuevos)

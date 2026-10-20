@@ -14,7 +14,7 @@ import { candidatosDe, elegibles, elegir, elegirVarios, historial, type Eleccion
 import { configInicial, nombreValor, SelectorOpcion } from './Opciones'
 import { Bicho } from '../marca/SerVista'
 import { Oficios } from './Oficios'
-import { TarjetaRepeticion, useRepeticiones } from './Repeticion'
+import { TarjetaNecesidad, TarjetaRepeticion, useNecesidades, useRepeticiones } from './Repeticion'
 import { useMuelle } from '../tinta/movimiento'
 
 const leer = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(`esme:taller:${k}`); return v === null ? d : (JSON.parse(v) as T) } catch { return d } }
@@ -41,6 +41,14 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
   const [todas, setTodas] = useState<Record<string, OpcionMotor[]> | null>(null)
   // lo que el creador repite: la mente lo ve y lo propone (no se crea nada solo)
   const repetidas = useRepeticiones()
+  // lo que falta: herramientas que el equipo echa de menos (el fallo se repitió)
+  const necesidades = useNecesidades()
+  // Fabricar una herramienta que falta: la Forja la escribe y tú la apruebas.
+  const fabricar = async (encargo: string) => {
+    const r = await bridge.forja.encargar(encargo)
+    if (r.ok) toast.success(`Fabricando «${r.herramienta}». La revisas en el Taller cuando esté lista.`)
+    else toast.error(r.error)
+  }
   const [veredictos, setVeredictos] = useState<Veredicto[]>([])
   const [carpeta, setCarpeta] = useState<string | null>(() => leer<string | null>('carpeta', null))
   const [texto, setTexto] = useState('')
@@ -260,6 +268,17 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
           </div>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2.5">
             {repetidas.map((r) => <TarjetaRepeticion key={`${r.titulo}-${r.desde}`} r={r} onElegir={setTexto} />)}
+          </div>
+        </section>
+      )}
+      {instalados.length > 0 && !texto && necesidades.length > 0 && (
+        <section aria-label="Herramientas que faltan" className="mt-5 grid gap-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-[13px] font-medium text-texto">Lo que falta</span>
+            <span className="text-[12px] text-texto-3">Se rompió lo mismo más de una vez. Puedo fabricarlo.</span>
+          </div>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2.5">
+            {necesidades.map((n) => <TarjetaNecesidad key={`${n.titulo}-${n.fallo}`} n={n} onFabricar={fabricar} />)}
           </div>
         </section>
       )}
