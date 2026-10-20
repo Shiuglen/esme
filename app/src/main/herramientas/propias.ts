@@ -27,6 +27,8 @@ export type Manos = {
   navegar?(url: string): Promise<{ url: string; titulo: string; texto: string; acciones: string[] }>
   clicEnPagina?(objetivo: string): Promise<{ ok: boolean; donde: string; url: string; titulo: string; texto: string; acciones: string[] }>
   escribirEnPagina?(objetivo: string, valor: string): Promise<{ ok: boolean; donde: string; url: string; titulo: string; texto: string; acciones: string[] }>
+  /** El Ojo: una mirada a la pantalla de ahora (y lo que aún se recuerda de ella). */
+  verPantalla?(): Promise<{ imagen: { base64: string; mime: string }; ts: number; olvida: string }>
   preguntar(nombre: string, args: unknown, id: string): Promise<Respuesta>
   politicas: Record<string, Politica>
   guardarPolitica(nombre: string, p: Politica): void
@@ -93,6 +95,16 @@ export function herramientasPropias(m: Manos): ToolSet {
       description: 'Lee el texto de una página web (http/https). Úsala con direcciones que te dio el usuario o que salieron en una búsqueda.',
       inputSchema: z.object({ url: z.string().url() }),
       execute: g('leer_web', ({ url }: { url: string }) => m.leerWeb(url)),
+    }),
+    ver_la_pantalla: tool({
+      description: 'Mira la pantalla del usuario ahora mismo (una foto) y te la devuelve para que veas lo que ve. '
+        + 'Úsala sólo cuando la respuesta dependa de lo que hay en pantalla; no la pidas por curiosidad.',
+      inputSchema: z.object({}),
+      execute: g('ver_la_pantalla', async () => {
+        if (!m.verPantalla) return 'El Ojo no está disponible ahora mismo.'
+        const o = await m.verPantalla()
+        return { type: 'image', data: o.imagen.base64, mimeType: o.imagen.mime, text: `Pantalla mirada ahora. ${o.olvida}` } as never
+      }),
     }),
     navegar: tool({
       description: 'Abre una página en un navegador de verdad (con JavaScript, formularios y paginación) y te devuelve lo que hay: '

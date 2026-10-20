@@ -13,6 +13,7 @@ import { herramientasConectadas } from './herramientas/ipc'
 import { buscarWeb, leerPagina } from './herramientas/web'
 import { accionesDe } from './navegador/estado'
 import { navegador } from './navegador/ventana'
+import { ojo } from './ojo/ojo'
 import { encargarDesdeChat, equipoParaChat, programarDesdeChat } from './ipc-taller'
 import { forjarDesdeChat } from './forja-ipc'
 import { keys } from './keys'
@@ -70,6 +71,11 @@ function manosPara(to: WebContents, req: ChatRequest, ac: AbortController, d: De
     // la clave de Brave vive en el llavero como la de cualquier proveedor
     buscarWeb: (q) => buscarWeb(q, { brave: keys.get('brave'), searxng: cfg.searxng }),
     leerWeb: (u) => leerPagina(u),
+    // El Ojo: una mirada a la pantalla de ahora (el agente pregunta antes: lo pone el guardián).
+    verPantalla: async () => {
+      const o = await ojo.ver()
+      return { imagen: { base64: o.ahora.base64, mime: o.ahora.mime }, ts: o.ahora.ts, olvida: `Se olvidará sola en ${Math.round((30 * 60_000) / 60_000)} minutos.` }
+    },
     // El navegador: una web de verdad, no sólo texto plano. La ventana se abre al usarla y se
     // cierra sola si pasa un rato sin usarla (en reposo Esme no tiene ningún navegador abierto).
     navegar: async (u) => { const e = await navegador.abrir(u); return { url: e.url, titulo: e.titulo, texto: e.texto, acciones: accionesDe(e) } },
