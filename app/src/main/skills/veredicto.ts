@@ -7,7 +7,7 @@
 import { createHash, createPublicKey, verify } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { CLAVES_JUEZ } from './clave-juez'
+import { CLAVES_TIENDA } from '../claves'
 import catalogo from './catalogo.json'
 import veredictos from './veredictos-skills.json'
 
@@ -103,7 +103,7 @@ export type Veredictos = {
 } | { ok: false; motivo: string; origen: OrigenVeredicto; aviso?: string }
 
 /** El veredicto que viaja con la app (el empaquetado): siempre está, aunque no haya red. */
-export function veredictosEmpaquetados(claves: string | string[] = CLAVES_JUEZ): Verificacion {
+export function veredictosEmpaquetados(claves: string | string[] = CLAVES_TIENDA): Verificacion {
   return verificaVeredictos(JSON.stringify(veredictos), claves)
 }
 
@@ -122,7 +122,7 @@ export type Buscar = (url: string) => Promise<{ ok: boolean; text(): Promise<str
  */
 export async function veredictosRemotos(o: { datos: string; url?: string; buscar?: Buscar; claves?: string | string[] }): Promise<Veredictos> {
   const url = o.url ?? URL_VERDICTOS
-  const claves = o.claves ?? CLAVES_JUEZ
+  const claves = o.claves ?? CLAVES_TIENDA
   const buscar = o.buscar ?? ((u: string) => fetch(u, { signal: AbortSignal.timeout(8000) }))
   const copia = join(o.datos, 'skills-veredictos.json')
   let aviso: string | undefined

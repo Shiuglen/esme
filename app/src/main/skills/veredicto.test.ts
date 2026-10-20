@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { CLAVES_JUEZ } from './clave-juez'
+import { CLAVES_TIENDA } from '../claves'
 import catalogo from './catalogo.json'
 import {
   aplicaAlCatalogo,
@@ -63,7 +63,7 @@ describe('el veredicto va atado al catálogo que juzgó', () => {
     expect(catalogoSha256([{ id: 'x', b: 1, a: 2 }])).toBe(catalogoSha256([{ a: 2, b: 1, id: 'x' }]))
   })
   it('el veredicto que viene con la app juzgó NUESTRO catálogo', () => {
-    const v = veredictosEmpaquetados(CLAVES_JUEZ)
+    const v = veredictosEmpaquetados(CLAVES_TIENDA)
     expect(v.ok).toBe(true)
     if (v.ok) expect(aplicaAlCatalogo(v, catalogo)).toBe(true)
   })
@@ -83,7 +83,7 @@ describe('el veredicto se busca: la red, la copia y el que viaja con la app', ()
   })
   it('lo que la red trae sin firma no se usa ni se guarda', async () => {
     const dir = datos()
-    const v = await veredictosRemotos({ datos: dir, buscar: async () => ok('{"skills":[]}'), claves: [publica, ...CLAVES_JUEZ] })
+    const v = await veredictosRemotos({ datos: dir, buscar: async () => ok('{"skills":[]}'), claves: [publica, ...CLAVES_TIENDA] })
     expect(v.ok).toBe(true)
     if (v.ok) expect(v.origen).toBe('empaquetado')
     expect(() => readFileSync(join(dir, 'skills-veredictos.json'))).toThrow()
@@ -96,7 +96,7 @@ describe('el veredicto se busca: la red, la copia y el que viaja con la app', ()
     expect(v.ok && v.origen).toBe('copia')
   })
   it('sin red y sin copia, el que viaja con la app', async () => {
-    const v = await veredictosRemotos({ datos: datos(), buscar: async () => { throw new Error('sin red') }, claves: CLAVES_JUEZ })
+    const v = await veredictosRemotos({ datos: datos(), buscar: async () => { throw new Error('sin red') }, claves: CLAVES_TIENDA })
     expect(v.ok && v.origen).toBe('empaquetado')
   })
 })

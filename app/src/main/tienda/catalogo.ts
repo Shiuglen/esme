@@ -24,13 +24,17 @@ const esProducto = (p: unknown): p is Producto => {
     && !!x.contenido && typeof x.contenido === 'object' && !Array.isArray(x.contenido)
 }
 
-export function verificarCatalogo(texto: string, clavePublicaPem: string): { ok: true; productos: Producto[]; emitido: number } | { ok: false; motivo: string } {
+export function verificarCatalogo(texto: string, clavePublicaPem: string | string[]): { ok: true; productos: Producto[]; emitido: number } | { ok: false; motivo: string } {
   let c: Partial<Firmado>
   try { c = JSON.parse(texto) } catch { return { ok: false, motivo: 'El catálogo no se puede leer.' } }
   if (!c || typeof c !== 'object' || !Array.isArray(c.productos) || typeof c.firma !== 'string' || typeof c.emitido !== 'number') return { ok: false, motivo: 'El catálogo no tiene la forma esperada.' }
+  const claves = Array.isArray(clavePublicaPem) ? clavePublicaPem : [clavePublicaPem]
   let valida = false
-  try { valida = verify(null, cuerpo(c.emitido, c.productos), createPublicKey(clavePublicaPem), Buffer.from(c.firma, 'base64url')) } catch { valida = false }
+  for (const k of claves) {
+    try { if (verify(null, cuerpo(c.emitido, c.productos), createPublicKey(k), Buffer.from(c.firma, 'base64url'))) { valida = true; break } } catch { /* esa clave no vale */ }
+  }
   if (!valida) return { ok: false, motivo: 'El catálogo no trae una firma válida de Esme.' }
   if (!c.productos.every(esProducto)) return { ok: false, motivo: 'El catálogo trae productos sin la forma esperada.' }
+  if (new Set(c.productos.map((p) => p.id)).size !== c.productos.length) return { ok: false, motivo: 'El catálogo trae dos productos con el mismo id.' }
   return { ok: true, productos: c.productos, emitido: c.emitido }
 }
