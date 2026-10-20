@@ -99,4 +99,27 @@ def build_server(home: Home, lock: threading.Lock | None = None, on_event=None):
         with lock:
             return feedback_tool(home, ids, useful, query, motor=motor)
 
+    # ── El navegador: la web de verdad, del lado de la app ──────────────────────────────────
+    # La app es quien tiene el Chromium (el navegador de Esme). La mente le habla por una puerta
+    # diminuta en 127.0.0.1 con token, así que estas herramientas funcionan para cualquier agente
+    # que hable con Daimon: los del Taller, el de la conversación y los de fuera de la máquina.
+    from .navegador import ClienteNavegador, en_palabras
+
+    @mcp.tool()
+    def navegar(url: str) -> str:
+        """Abre una página en el navegador de Esme y devuelve lo que hay: el texto, los botones, los
+        campos y las acciones posibles. Úsala cuando la página necesita JavaScript, o cuando tengas
+        que rellenar un formulario o pulsar algo. Sólo direcciones http o https."""
+        return en_palabras(ClienteNavegador().abrir(url))
+
+    @mcp.tool()
+    def clic_en_la_pagina(objetivo: str) -> str:
+        """Pulsa un botón o enlace de la página que tienes abierta en el navegador de Esme (por su texto)."""
+        return en_palabras(ClienteNavegador().clic(objetivo))
+
+    @mcp.tool()
+    def escribir_en_la_pagina(objetivo: str, valor: str) -> str:
+        """Rellena un campo de la página abierta en el navegador de Esme (por su nombre o su marcador)."""
+        return en_palabras(ClienteNavegador().escribir(objetivo, valor))
+
     return mcp

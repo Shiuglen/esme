@@ -8,6 +8,8 @@ import { BrainProcess, type BrainInfo } from './brain-process'
 import { configMcp } from './mente/cliente'
 import { registerChat } from './chat'
 import { registerMente } from './mente/ipc'
+import { navegador } from './navegador/ventana'
+import { servirNavegador } from './navegador/servidor'
 import { alLanzar, aprenderEquipo, cerrar as cerrarTaller, pendienteTaller, registerTaller, agentesParaConversar } from './ipc-taller'
 import { alCerrarVentana, guardarPreferencia, leerPreferencia, resumenBandeja, type PreferenciaCierre } from './segundo-plano'
 import { registerProveedores } from './ipc-proveedores'
@@ -40,11 +42,12 @@ const ICONO = join(__dirname, '../../resources/esme.png')
 // tu mente siempre en el mismo sitio (127.0.0.1:47321) y con su token fijo en el llavero: así tus otras IAs la encuentran
 const MENTE_PUERTO = 47321
 const tokenMente = () => { let t = keys.get('mente'); if (!t) { t = randomBytes(32).toString('hex'); keys.set('mente', t) } return t }
+const extraCerebro: Record<string, string> = {}
 const brain = new BrainProcess({ python: RUTAS.python, extraPython: RUTAS.extraPython, puerto: MENTE_PUERTO, token: tokenMente }, RUTAS.mente, (info: BrainInfo | null) => {
   win?.webContents.send('brain:changed', { url: brain.info?.url ?? null, estado: brain.estado })
   // La mente despierta: es cuando puede aprender del equipo (qué motor acierta contigo y qué se rompe).
   if (info) void aprenderEquipo().catch(() => {})
-})
+}, extraCerebro)
 
 const MAC = process.platform === 'darwin'
 // Una sola Esme: si ya está abierta (por ejemplo, al pulsar otra vez el icono del escritorio), la abierta se trae al frente
@@ -195,6 +198,16 @@ app.whenReady().then(async () => {
   // el lanzador: Esme desde cualquier app con Ctrl+Mayús+Espacio
   lanzador = registrarLanzador({ preload: join(__dirname, '../preload/index.mjs'), encargar: (t) => encargarDesdeChat(t),
     abrirEsme: (x) => { mostrar(); win?.webContents.send('lanzador:ir', x) } })
+  // La puerta del navegador: el cerebro la usa para sus herramientas MCP (navegar, clic, escribir).
+  // Mismo token que la mente: quien puede leer tu memoria puede abrir tu navegador.
+  const puerta = await servirNavegador(navegador, tokenMente()).catch((e) => {
+    console.error('[navegador] no arrancó su puerta:', e instanceof Error ? e.message : e)
+    return null
+  })
+  if (puerta) {
+    extraCerebro.ESME_NAVEGADOR_URL = puerta.url
+    extraCerebro.ESME_NAVEGADOR_TOKEN = puerta.token
+  }
   brain.start().catch((err) => console.error('[cerebro] no arrancó:', err))
 })
 

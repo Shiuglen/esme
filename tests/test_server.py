@@ -109,7 +109,8 @@ def test_mcp_lista_herramientas(ctx):
     assert r.status_code == 200
     r = c.post("/mcp", json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}, headers=hdr)
     names = {t["name"] for t in r.json()["result"]["tools"]}
-    assert names == {"recall", "remember", "feedback"}
+    assert {"recall", "remember", "feedback"} <= names
+    assert {"navegar", "clic_en_la_pagina", "escribir_en_la_pagina"} <= names
 
 
 def test_sin_busqueda_devuelve_lo_mas_reciente(ctx):
