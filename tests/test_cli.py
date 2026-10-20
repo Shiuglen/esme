@@ -147,3 +147,25 @@ def test_dos_cerebros_no_comparten_mente(tmp_path):
         p1.terminate()
         try: p1.wait(10)
         except Exception: p1.kill()
+
+
+# ---- La primera vez de una mente nueva ----
+
+def test_init_crea_la_mente_y_no_toca_nada_que_existiera(tmp_path, capsys):
+    """`daimon init` deja una mente usable y, si ya había una, no la pisa."""
+    import json
+
+    from daimon.cli import init_cmd
+    home = tmp_path / "mente"
+    init_cmd(home, sin_modelo=True)
+    cfg = json.loads((home / "config.json").read_text(encoding="utf-8"))
+    # la Lente buena (la ONNX local), que es la que mide mejor y no depende de Ollama
+    assert cfg["encoder"] == "onnx:embeddinggemma-300m"
+    salida = capsys.readouterr().out
+    assert "Mente creada" in salida
+    assert "daimon serve-mcp" in salida      # dice cómo se usa
+    # y si ya existe, no la toca
+    antes = (home / "config.json").read_text(encoding="utf-8")
+    init_cmd(home, sin_modelo=True)
+    assert (home / "config.json").read_text(encoding="utf-8") == antes
+    assert "Ya hay una mente" in capsys.readouterr().out

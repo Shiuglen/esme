@@ -1,0 +1,38 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.shiuglen/esme-remoto",
+  "title": "Esme (mente en marcha)",
+  "description": "La memoria viva de Esme, en una mente que ya está en marcha: la dirección y la palabra.",
+  "version": "0.1.0",
+  "repository": {
+    "url": "https://github.com/Shiuglen/esme",
+    "source": "github"
+  },
+  "websiteUrl": "https://github.com/Shiuglen/esme",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://{esme_host}/mcp",
+      "variables": {
+        "esme_host": {
+          "description": "La dirección de tu mente: la que corre en tu equipo, en tu servidor o en tu nube. El registro no aloja nada: la mente es tuya.",
+          "format": "string",
+          "isRequired": true
+        }
+      },
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {esme_token}",
+          "variables": {
+            "esme_token": {
+              "description": "La palabra de tu mente (el token del arranque). Se queda en tu equipo.",
+              "isSecret": true,
+              "isRequired": true
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

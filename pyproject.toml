@@ -1,12 +1,50 @@
 [project]
-name = "daimon"
+# El nombre de distribución es «daimon-esme» (no «daimon»): en PyPI ya hay un «daimon»
+# que no es nuestro, y la entrada del Registro oficial de MCP apunta a este nombre.
+name = "daimon-esme"
 version = "0.1.0"
-description = "Sistema cognitivo con red neuronal propia que envuelve a cualquier IA"
+description = "Esme: la memoria viva de un sistema cognitivo local. Cualquier IA puede acordarse de lo que sabes."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
-dependencies = ["numpy", "model2vec", "mcp", "onnxruntime>=1.20", "tokenizers>=0.20", "huggingface_hub>=0.30"]
+# Lo mínimo para que la mente funcione: el servidor, la puerta MCP y la Lente (ONNX).
+# «uvicorn» y «starlette» se usan y estaban llegando sólo por casualidad: declarados.
+dependencies = [
+  "numpy",
+  "mcp",
+  "uvicorn>=0.30",
+  "starlette>=0.37",
+  "onnxruntime>=1.20",
+  "tokenizers>=0.20",
+  "huggingface_hub>=0.30",
+]
+
+[project.optional-dependencies]
+# El codificador ligero (el de por defecto es la Lente ONNX, que mide mejor). No hace falta
+# para usar Esme: sólo cambia el modelo con el que se codifica.
+model2vec = ["model2vec"]
+# La voz: el oído (faster-whisper) y la voz (piper). Pesan, así que van aparte.
+voz = ["faster-whisper", "piper-tts"]
+
+[project.urls]
+Homepage = "https://github.com/Shiuglen/esme"
+Documentation = "https://github.com/Shiuglen/esme#readme"
+Repository = "https://github.com/Shiuglen/esme"
+Issues = "https://github.com/Shiuglen/esme/issues"
 
 [project.scripts]
 daimon = "daimon.cli:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["daimon"]
+
+[tool.setuptools.package-data]
+daimon = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -47,7 +47,8 @@ def agent_card(url_base: str, version: str = VERSION) -> dict:
                     "¿Qué decidimos sobre las pieles de la Tienda?",
                     "Guarda esta decisión: primero lo esencial impecable.",
                 ],
-                "x-esme": {"herramientas": ["recall", "remember", "feedback"], "http": ["/recall", "/remember", "/feedback", "/memories"]},
+                "x-esme": {"herramientas": ["recall", "remember", "feedback"],
+                           "http": ["/recall", "/remember", "/feedback", "/memories", "/memory/{id}", "/forget", "/ingest", "/ingest-x", "/rumbo", "/health", "/events"]},
             },
             {
                 "id": "navegador",
@@ -70,7 +71,7 @@ def agent_card(url_base: str, version: str = VERSION) -> dict:
                                 "con lo que importa."),
                 "tags": ["memoria", "proactividad"],
                 "examples": ["Ordena lo que sabes y avísame de lo importante."],
-                "x-esme": {"http": ["/sueno", "/orquesta", "/atlas"]},
+                "x-esme": {"http": ["/sueno", "/orquesta", "/atlas", "/repeticiones", "/necesidad", "/equipo"]},
             },
             {
                 "id": "voz",

@@ -6,6 +6,8 @@
 Este servidor expone **la memoria de Esme** por MCP. La memoria es una red neuronal local: no es una
 búsqueda de texto, es un tálamo que aprende qué contexto darle a cada IA y cuánto.
 
+<!-- mcp-name: io.github.shiuglen/esme -->
+
 ## Qué hay dentro
 
 | Herramienta | Qué hace |
@@ -20,7 +22,8 @@ El servidor habla por **stdio** y escribe todo en la carpeta que le indiques (tu
 
 ```bash
 pipx install daimon-esme            # o: pip install daimon-esme
-daimon serve-mcp --home ~/.config/daimon-app/data/mente_v2
+daimon init                         # te crea la mente y baja la lente (una vez, 316 MB)
+daimon serve-mcp --home ~/.esme/mente
 ```
 
 En un cliente MCP, la entrada es:
@@ -37,22 +40,23 @@ En un cliente MCP, la entrada es:
 ```
 
 En la app de Esme, esto ya está hecho: Ajustes › Tu memoria conecta la mente a Claude Code, Gemini,
-Qwen, Cursor y OpenCode, y el Taller le pasa la mente a los motores que abre.
+Codex, OpenCode y Cline, con su configuración anterior guardada por si hay que volver atrás.
 
-## La privacidad, que no es un extra
+## La entrada en el Registro oficial de MCP
 
-- **Todo en tu equipo.** El servidor no manda nada a ningún sitio: la memoria es una carpeta y una red
-  neuronal local.
-- **Con token, si lo pones detrás de HTTP.** `daimon serve` expone además una API y MCP por HTTP
-  (`/recall`, `/remember`, `/feedback`, `/memories`…) con cabecera `Authorization: Bearer <token>`;
-  por defecto sólo escucha en `127.0.0.1`.
-- **Lo que se recuerda se puede olvidar.** Hay un forget de verdad, no un «oculto»: el recuerdo
-  desaparece de la red y queda el hueco anotado.
+`server.json` es la entrada del **Registro oficial de MCP** (`registry.modelcontextprotocol.io`).
 
-## Publicar o actualizar esta entrada
+Hay **dos** entradas, y no son la misma cosa:
 
-`server.json` es la entrada del **Registro oficial de MCP** (`registry.modelcontextprotocol.io`). Para
-cambiarla:
+| Entrada | Qué es | Para quién |
+|---|---|---|
+| `server.json` (paquete) | El **conector**: se instala y arranca en tu equipo | quien quiere su propia mente en su equipo |
+| `server-remoto.json` (remoto) | La **dirección** de una mente que ya está en marcha, con la variable que la señala | quien ya tiene una mente (en su servidor, en el mío, en su nube) |
+
+La segunda sigue el patrón de `app.ownmemory/ownmemory` (publicada el 17-oct-2026): el registro publica
+el *protocolo*, no los *datos*. La memoria es privada por diseño y el registro no aloja nada privado.
+
+Para cambiarlas:
 
 ```bash
 node mcp/publicar.mjs              # valida contra el registro y dice qué falta
@@ -66,10 +70,11 @@ paquete no existe, quien instale desde el registro se queda sin servidor.
 ## Lo que este servidor NO es
 
 - No es una nube: no hay cuentas ni precios aquí. Publicar la memoria en un registro es **descubrirla**,
-  no alojarla. Quien quiera usarla en serio, la aloja en su servidor (eso es lo que hace `cloud/`).
+  no alojarla. Quien quiera usarla en serio, la aloja en su servidor (el mío, el suyo o su nube).
 - No es una base de datos de texto: el mismo recuerdo se cuenta de otra forma según la IA que lo pida.
 
 ## Licencia
 
-El código de Esme está en la licencia que el repositorio declare; la entrada del registro no cambia
-nada de eso. La memoria es tuya y se va contigo.
+El código de Esme está en MIT (el fichero `LICENSE` del repositorio). La **Lente** (el modelo que
+codifica el texto) es de Google y tiene su propia licencia: se baja al instalar, no va en el paquete.
+La memoria es tuya y se va contigo.

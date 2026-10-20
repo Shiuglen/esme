@@ -7,7 +7,10 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 const REGISTRO = 'https://registry.modelcontextprotocol.io'
-const fichero = new URL('./server.json', import.meta.url)
+// Hay dos entradas y son cosas distintas: el conector (paquete) y la mente en marcha (remoto).
+// Se pueden validar y publicar por separado: `node mcp/publicar.mjs remoto --publicar`.
+const cual = process.argv[2] === 'remoto' ? 'server-remoto.json' : 'server.json'
+const fichero = new URL(`./${cual}`, import.meta.url)
 const entrada = JSON.parse(readFileSync(fichero, 'utf8'))
 const publicar = process.argv.includes('--publicar')
 const token = process.env.REGISTRY_TOKEN
@@ -20,6 +23,7 @@ const post = async (ruta, cuerpo, cabeceras = {}) => {
   return { ok: r.ok, status: r.status, json, texto }
 }
 
+console.log(`Entrada: ${cual} (${entrada.name})`)
 const v = await post('/v0/validate', entrada)
 if (v.ok) {
   console.log('✅ la entrada es válida según el registro oficial.')

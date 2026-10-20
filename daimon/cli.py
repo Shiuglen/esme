@@ -32,6 +32,58 @@ def remember_cmd(home_path: Path, text: str, kind: str = "note") -> str:
     return remember_tool(Home(home_path), text, kind)
 
 
+def init_cmd(home_path: Path, sin_modelo: bool = False) -> None:
+    """Prepara una mente nueva: la carpeta, la lente y las primeras palabras.
+
+    Es la primera vez de alguien que no es el creador: tiene que salir bien a la primera y
+    decir la verdad (lo que baja, lo que pesa, lo que no hace).
+    """
+    import json
+
+    from .modelos import DEFAULT, bajar_modelo, esta_instalado, ruta_modelo, tamano_instalado
+
+    home_path = Path(home_path).expanduser()
+    home_path.mkdir(parents=True, exist_ok=True)
+    config = home_path / "config.json"
+    if config.exists():
+        print(f"Ya hay una mente en {home_path} (no se toca nada).")
+    else:
+        # La Lente buena es la ONNX local: no depende de Ollama (que en algunos equipos está
+        # roto) y es la que mide mejor (la del banco de la memoria: 0,929 de acierto).
+        config.write_text(json.dumps({
+            "encoder": f"onnx:{DEFAULT}",
+            "query_prefix": "task: search result | query: ",
+            "doc_prefix": "title: none | text: ",
+            "mmr_lambda": 1.0,
+            "min_dense": 0.32,
+            "max_drop": 2.0,
+        }, indent=1), encoding="utf-8")
+        print(f"Mente creada en {home_path}")
+
+    if not sin_modelo and not esta_instalado(DEFAULT):
+        try:
+            bajar_modelo(DEFAULT, progreso=lambda m: print("·", m))
+        except Exception as e:      # sin red o sin permiso: se dice, no se muere
+            print(f"No pude bajar la lente: {e}")
+            print(f"Puedes copiarla a mano a {ruta_modelo(DEFAULT)} y volver a intentarlo.")
+    elif esta_instalado(DEFAULT):
+        print(f"· Lente lista ({tamano_instalado(DEFAULT) / (1024 * 1024):.0f} MB)")
+
+    print("""
+Tu mente está lista. Esto es lo que puedes hacer ahora:
+
+  daimon remember "lo que quieres que recuerde"      # guarda un recuerdo
+  daimon recall "¿qué sabes de esto?"                  # te pregunta lo que sabe
+  daimon serve-mcp --home %s                # la puerta para tus IAs
+
+Para conectarla a Claude Code, Codex, OpenCode, Cline o cualquier cliente MCP, la entrada es:
+
+  {"mcpServers": {"esme": {"command": "daimon", "args": ["serve-mcp", "--home", "%s"]}}}
+
+La memoria es tuya y se queda en tu equipo: nadie más la ve.
+""" % (home_path, home_path))
+
+
 def serve(home_path: Path, port: int = 0, token: str | None = None) -> None:
     """Arranca el cerebro y anuncia por stdout una línea JSON {port, token} para quien lo lanzó (la app)."""
     import fcntl
@@ -109,9 +161,24 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("ingest-x", help="absorbe tu X: una cosecha json de FYP, bookmarks o búsquedas")
     p.add_argument("--home", default="data/mente_v2")
     p.add_argument("cosecha")
+    p = sub.add_parser("init", help="prepara una mente nueva: la crea, baja la lente y te dice cómo usarla")
+    p.add_argument("--home", default=str(Path.home() / ".esme" / "mente"))
+    p.add_argument("--sin-modelo", action="store_true", help="no baja la lente (si ya la tienes en otro sitio)")
+    p = sub.add_parser("modelos", help="baja o comprueba la lente (el modelo que codifica el texto)")
+    p.add_argument("--nombre", default="embeddinggemma-300m")
     a = ap.parse_args(argv)
 
-    if a.cmd == "ingest":
+    if a.cmd == "init":
+        init_cmd(Path(a.home), sin_modelo=a.sin_modelo)
+    elif a.cmd == "modelos":
+        from .modelos import DEFAULT, bajar_modelo, esta_instalado, tamano_instalado
+        if esta_instalado(a.nombre):
+            mb = tamano_instalado(a.nombre) / (1024 * 1024)
+            print(f"la lente «{a.nombre}» ya está ({mb:.0f} MB)")
+        else:
+            print(f"bajando la lente «{a.nombre}»…")
+            bajar_modelo(a.nombre, progreso=lambda m: print("·", m))
+    elif a.cmd == "ingest":
         print(f"recuerdos nuevos: {ingest_cmd(Path(a.home), a.sources)}")
     elif a.cmd == "serve-mcp":
         from .gate import build_server
