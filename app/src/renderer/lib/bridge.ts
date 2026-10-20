@@ -5,6 +5,9 @@ import type { EventoMotor as EventoTaller, OpcionConfig as OpcionMotor } from '.
 import type { EstadoPlan } from '../../main/licencia/licencia'
 import type { Hilo, ResumenHilo, TurnoHilo } from '../../main/hilos/hilos'
 import type { RespuestaCatalogo } from '../../main/tienda/ipc'
+import type { VistaModulo } from '../../main/modulos/ipc'
+import type { ModuloPublicado } from '../../main/modulos/tienda'
+export type { VistaModulo, ModuloPublicado }
 import type { Producto } from '../../main/tienda/catalogo'
 import type { Tarea as TareaTaller, Veredicto as VeredictoTaller } from '../../main/taller/taller'
 import { CURVA_VACIA, type Curva } from '../../main/taller/curva'
@@ -143,6 +146,15 @@ type ElectronApi = {
     paletas(): Promise<Record<string, { colores: string[]; titulo: string }>>
     mirar(urls: string[]): Promise<{ ok: true; vistas: number } | { ok: false; error: string }>
     onPaleta(fn: (p: { url: string; colores: string[]; titulo: string }) => void): () => void
+  }
+  modulos: {
+    disponibles(): Promise<{ ok: true; modulos: ModuloPublicado[]; via: 'directa' | 'cadena' } | { ok: false; error: string }>
+    lista(): Promise<{ ok: true; modulos: VistaModulo[] } | { ok: false; error: string }>
+    instala(id: string): Promise<{ ok: true; modulo: VistaModulo } | { ok: false; error: string }>
+    concede(id: string, capacidades: string[]): Promise<{ ok: true; modulos: VistaModulo[] } | { ok: false; error: string }>
+    revoca(id: string, capacidades: string[]): Promise<{ ok: true; modulos: VistaModulo[] } | { ok: false; error: string }>
+    activa(id: string): Promise<{ ok: true; modulos: VistaModulo[] } | { ok: false; error: string }>
+    desactiva(id: string): Promise<{ ok: true; modulos: VistaModulo[] } | { ok: false; error: string }>
   }
   hilos: { lista(): Promise<ResumenHilo[]>; leer(id: string): Promise<Hilo | null>; guardar(h: Hilo): Promise<boolean>; borrar(id: string): Promise<boolean>; buscar(q: string): Promise<(ResumenHilo & { trozo: string })[]>; nuevoId(): Promise<string> }
   licencia: { estado(): Promise<EstadoPlan>; activar(c: string): Promise<{ ok: boolean; motivo?: string; estado: EstadoPlan }>; quitar(): Promise<EstadoPlan> }
@@ -349,6 +361,15 @@ export const bridge = {
     paletas: async (): Promise<Record<string, { colores: string[]; titulo: string }>> => (isElectron() ? window.daimon!.tienda.paletas() : {}),
     mirar: async (urls: string[]): Promise<{ ok: true; vistas: number } | { ok: false; error: string }> => (isElectron() ? window.daimon!.tienda.mirar(urls) : { ok: false, error: 'Solo en la app de escritorio' }),
     onPaleta: (fn: (p: { url: string; colores: string[]; titulo: string }) => void) => (isElectron() ? window.daimon!.tienda.onPaleta(fn) : () => {}),
+  },
+  modulos: {
+    disponibles: async (): Promise<{ ok: true; modulos: ModuloPublicado[]; via: 'directa' | 'cadena' } | { ok: false; error: string }> => (isElectron() ? window.daimon!.modulos.disponibles() : { ok: false, error: 'Solo en la app de escritorio' }),
+    lista: async (): Promise<{ ok: true; modulos: VistaModulo[] } | { ok: false; error: string }> => (isElectron() ? window.daimon!.modulos.lista() : { ok: false, error: 'Solo en la app de escritorio' }),
+    instala: async (id: string): Promise<{ ok: true; modulo: VistaModulo } | { ok: false; error: string }> => (isElectron() ? window.daimon!.modulos.instala(id) : { ok: false, error: 'Solo en la app de escritorio' }),
+    concede: async (id: string, capacidades: string[]): Promise<{ ok: true; modulos: VistaModulo[] } | { ok: false; error: string }> => (isElectron() ? window.daimon!.modulos.concede(id, capacidades) : { ok: false, error: 'Solo en la app de escritorio' }),
+    revoca: async (id: string, capacidades: string[]): Promise<{ ok: true; modulos: VistaModulo[] } | { ok: false; error: string }> => (isElectron() ? window.daimon!.modulos.revoca(id, capacidades) : { ok: false, error: 'Solo en la app de escritorio' }),
+    activa: async (id: string): Promise<{ ok: true; modulos: VistaModulo[] } | { ok: false; error: string }> => (isElectron() ? window.daimon!.modulos.activa(id) : { ok: false, error: 'Solo en la app de escritorio' }),
+    desactiva: async (id: string): Promise<{ ok: true; modulos: VistaModulo[] } | { ok: false; error: string }> => (isElectron() ? window.daimon!.modulos.desactiva(id) : { ok: false, error: 'Solo en la app de escritorio' }),
   },
   hilos: {
     lista: async (): Promise<ResumenHilo[]> => (isElectron() ? window.daimon!.hilos.lista() : []),

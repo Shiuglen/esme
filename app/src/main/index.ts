@@ -28,6 +28,8 @@ import { cerebrosDeAgentes, esAgente } from './router/cerebro'
 import { rutasDe } from './rutas'
 import { prepararPath } from './motores/path-login'
 import { registerSkills } from './skills/ipc'
+import { registerModulos } from './modulos/ipc'
+import { cierraModulos } from './modulos/runtime'
 
 const RUTAS = rutasDe({ empaquetada: app.isPackaged, plataforma: process.platform, home: homedir(), userData: app.getPath('userData'), resources: process.resourcesPath, env: process.env })
 let win: BrowserWindow | null = null
@@ -131,6 +133,7 @@ function registerIpc() {
   registerLicencia()
   registerHilos()
   registerTienda({ brainInfo: () => brain.info })
+  registerModulos({ brainInfo: () => brain.info })
   registerPieles()
   registerHerramientas({ python: { python: RUTAS.python, extraPython: RUTAS.extraPython } })
   registerSkills()
@@ -212,4 +215,4 @@ app.whenReady().then(async () => {
 })
 
 app.on('will-quit', () => lanzador?.cerrar())
-app.on('window-all-closed', () => { void cerrarHerramientas(); cerrarTaller(); brain.stop(); ptyHost?.kill(); app.quit() })
+app.on('window-all-closed', () => { void cerrarHerramientas(); void cierraModulos(); cerrarTaller(); brain.stop(); ptyHost?.kill(); app.quit() })

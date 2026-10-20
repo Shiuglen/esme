@@ -96,6 +96,16 @@ contextBridge.exposeInMainWorld('daimon', {
     paletas: () => ipcRenderer.invoke('tienda:paletas'),
     mirar: (urls: string[]) => ipcRenderer.invoke('tienda:mirar', urls),
     onPaleta: (fn: (p: { url: string; colores: string[]; titulo: string }) => void) => on('tienda:paleta', (e) => fn(e as { url: string; colores: string[]; titulo: string })), catalogo: () => ipcRenderer.invoke('tienda:catalogo') },
+  // La puerta de los módulos: instalar, consentir, activar. Nada actúa sin que la persona lo diga.
+  modulos: {
+    disponibles: () => ipcRenderer.invoke('modulos:disponibles'),
+    lista: () => ipcRenderer.invoke('modulos:lista'),
+    instala: (id: string) => ipcRenderer.invoke('modulos:instala', id),
+    concede: (id: string, capacidades: string[]) => ipcRenderer.invoke('modulos:concede', id, capacidades),
+    revoca: (id: string, capacidades: string[]) => ipcRenderer.invoke('modulos:revoca', id, capacidades),
+    activa: (id: string) => ipcRenderer.invoke('modulos:activa', id),
+    desactiva: (id: string) => ipcRenderer.invoke('modulos:desactiva', id),
+  },
   hilos: { lista: () => ipcRenderer.invoke('hilos:lista'), leer: (id: string) => ipcRenderer.invoke('hilos:leer', id), guardar: (h: unknown) => ipcRenderer.invoke('hilos:guardar', h),
     borrar: (id: string) => ipcRenderer.invoke('hilos:borrar', id), buscar: (q: string) => ipcRenderer.invoke('hilos:buscar', q), nuevoId: () => ipcRenderer.invoke('hilos:nuevoId') },
   licencia: { estado: () => ipcRenderer.invoke('licencia:estado'), activar: (c: string) => ipcRenderer.invoke('licencia:activar', c), quitar: () => ipcRenderer.invoke('licencia:quitar') },
