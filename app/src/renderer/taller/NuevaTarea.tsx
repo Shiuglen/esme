@@ -7,14 +7,14 @@ import { cuandoDe, fraseCuando, type OpcionCuando } from './cuando'
 import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
 import { useEffect, useMemo, useState } from 'react'
-import { bridge, type MotorTaller, type OpcionMotor, type AccesoTarea } from '../lib/bridge'
+import { bridge, type MotorTaller, type OpcionMotor, type AccesoTarea, type Repeticion } from '../lib/bridge'
 import type { Rol } from '../../main/taller/roles'
 import { cn } from '../lib/cn'
 import { candidatosDe, elegibles, elegir, elegirVarios, historial, type Eleccion, type Veredicto } from './eleccion'
 import { configInicial, nombreValor, SelectorOpcion } from './Opciones'
 import { Bicho } from '../marca/SerVista'
 import { Oficios } from './Oficios'
-import { TarjetaNecesidad, TarjetaRepeticion, useNecesidades, useRepeticiones } from './Repeticion'
+import { TarjetaNecesidad, TarjetaRepeticion, EditorSkill, useNecesidades, useRepeticiones } from './Repeticion'
 import { useMuelle } from '../tinta/movimiento'
 
 const leer = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(`esme:taller:${k}`); return v === null ? d : (JSON.parse(v) as T) } catch { return d } }
@@ -43,6 +43,8 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
   const repetidas = useRepeticiones()
   // lo que falta: herramientas que el equipo echa de menos (el fallo se repitió)
   const necesidades = useNecesidades()
+  // la receta que se está escribiendo: una repetición convertida en skill (la escribe el creador)
+  const [receta, setReceta] = useState<Repeticion | null>(null)
   // Fabricar una herramienta que falta: la Forja la escribe y tú la apruebas.
   const fabricar = async (encargo: string) => {
     const r = await bridge.forja.encargar(encargo)
@@ -266,9 +268,13 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
             <span className="mr-1 text-[13px] font-medium text-texto">Lo que repites</span>
             <span className="text-[12px] text-texto-3">La mente lo ha visto. Si quieres, úsalo como receta.</span>
           </div>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2.5">
-            {repetidas.map((r) => <TarjetaRepeticion key={`${r.titulo}-${r.desde}`} r={r} onElegir={setTexto} />)}
-          </div>
+          {receta ? (
+            <EditorSkill r={receta} onCerrar={() => setReceta(null)} />
+          ) : (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2.5">
+              {repetidas.map((r) => <TarjetaRepeticion key={`${r.titulo}-${r.desde}`} r={r} onElegir={setTexto} onConvertir={setReceta} />)}
+            </div>
+          )}
         </section>
       )}
       {instalados.length > 0 && !texto && necesidades.length > 0 && (

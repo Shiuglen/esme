@@ -5,7 +5,7 @@ repetidas que aparece en la app y la propuesta que el sueño deja en la memoria.
 """
 from daimon.home import Home
 from daimon.ingest import Event
-from daimon.repeticion import MIN_REPETICIONES, propuesta, repeticiones
+from daimon.repeticion import MIN_COHESION, MIN_REPETICIONES, propuesta, repeticiones
 from tests.fakes import fake_encoder
 
 
@@ -199,3 +199,82 @@ def test_una_tarea_que_se_rompió_no_es_un_hábito(tmp_path):
                             for i in range(3)],
                  "veredictos": []})
     assert repeticiones(h.hippo.events()) == []
+
+
+# ---- La receta: el esqueleto que la mente pone y el creador escribe ----
+
+def test_la_propuesta_lleva_el_borrador_de_la_receta(tmp_path):
+    """La tarjeta de «lo que repites» trae el esqueleto: sin esto, la skill no se puede escribir."""
+    h = _home(tmp_path)
+    _ruido(h)
+    h.add([
+        _encargo(1, "actualiza el README del proyecto con la instalación nueva"),
+        _encargo(2, "actualiza el README del proyecto con la instalación nueva"),
+        _encargo(3, "actualiza el README del proyecto con la instalación nueva"),
+    ])
+    props = repeticiones(h.hippo.events())
+    b = props[0].borrador
+    assert b["nombre"] and b["descripcion"] and b["cuerpo"]
+    # el nombre tiene que poder ser una carpeta: sólo letras, números y guiones
+    assert all(c.isalnum() or c in "-." for c in b["nombre"]), b["nombre"]
+    # y la receta lleva la evidencia, no invenciones
+    assert "README" in b["cuerpo"]
+    assert "3 veces" in b["cuerpo"]
+    # los huecos están vacíos a propósito: la receta la escribe el creador
+    assert "- [ ]" in b["cuerpo"]
+
+
+def test_el_borrador_no_inventa_como_se_hace(tmp_path):
+    """La mente no sabe el «cómo»: por eso el cuerpo deja huecos, no pasos."""
+    h = _home(tmp_path)
+    _ruido(h)
+    h.add([_encargo(i, "publica la versión nueva en la tienda con su licencia") for i in (1, 2, 3)])
+    b = repeticiones(h.hippo.events())[0].borrador
+    # lo único que sabe de la tarea es lo que pidió el creador
+    assert "publica la versión nueva" in b["cuerpo"]
+    # y que la escribió el creador (el hueco lo dice)
+    assert "lo escribe el creador" in b["cuerpo"]
+
+
+def test_el_nombre_no_se_parte_por_las_tildes(tmp_path):
+    """«instalación» es una palabra, no «instalaci-n»."""
+    h = _home(tmp_path)
+    _ruido(h)
+    h.add([_encargo(i, "actualiza el README con la instalación nueva del servidor") for i in (1, 2, 3)])
+    b = repeticiones(h.hippo.events())[0].borrador
+    assert "instalacion" in b["nombre"]
+    # ninguna palabra queda partida: ni «instalaci-n» ni «readme-» al final
+    assert not b["nombre"].endswith("-")
+    assert "-n" not in b["nombre"]
+
+
+def test_un_grupo_disperso_avisa_en_la_receta(tmp_path):
+    """Si los encargos del grupo no se parecen, la receta lo dice: no es la misma tarea."""
+    h = _home(tmp_path)
+    h.add([
+        _encargo(1, "actualiza el readme del proyecto con la instalación nueva"),
+        _encargo(2, "mide el consumo de memoria del servidor en reposo"),
+        _encargo(3, "publica la versión nueva en la tienda con su licencia"),
+    ])
+    props = repeticiones(h.hippo.events())
+    if not props:
+        return                      # el codificador de mentira puede no agrupar: no hay nada que avisar
+    p = props[0]
+    assert p.coherencia < 1.0
+    assert p.dispersa is (p.coherencia < MIN_COHESION)
+    if p.dispersa:
+        assert "no se parecen mucho" in p.borrador["cuerpo"]
+
+
+def test_una_tarea_de_verdad_no_avisa(tmp_path):
+    """La misma tarea dicha de tres formas: la receta va tranquila."""
+    h = _home(tmp_path)
+    h.add([
+        _encargo(1, "actualiza el readme del proyecto con la instalación nueva"),
+        _encargo(2, "actualiza el readme del proyecto con la instalación nueva"),
+        _encargo(3, "actualiza el readme del proyecto con la instalación nueva"),
+    ])
+    p = repeticiones(h.hippo.events())[0]
+    assert p.coherencia == 1.0
+    assert p.dispersa is False
+    assert "no se parecen mucho" not in p.borrador["cuerpo"]

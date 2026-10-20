@@ -47,7 +47,9 @@ export type MetodoEntrada = { id: string; nombre: string; descripcion: string; t
 // - apagado: no hay cerebro; esto sí es un fallo y hay que decirlo
 export type EstadoMente = 'conectando' | 'viva' | 'apagado'
 /** Una tarea que el creador repite: la candidata a convertirse en skill. */
-export type Repeticion = { titulo: string; veces: number; terminos: string[]; ejemplo: string; desde: string; hasta: string; motores: string[]; encargos: string[] }
+export type Repeticion = { titulo: string; veces: number; terminos: string[]; ejemplo: string; desde: string; hasta: string; motores: string[]; encargos: string[]; borrador?: BorradorSkill }
+/** El esqueleto de la skill que puede salir de una repetición: la mente pone la mesa, el creador escribe la receta. */
+export type BorradorSkill = { nombre: string; descripcion: string; cuerpo: string }
 /** Una herramienta que el equipo echa de menos: la Forja puede fabricarla. */
 export type Necesidad = { titulo: string; fallo: string; veces: number; motores: string[]; herramienta: string; encargos: string[] }
 export type BrainInfo = { url: string | null; estado: EstadoMente }
@@ -104,6 +106,7 @@ type ElectronApi = {
     catalogo(): Promise<{ skills: SkillCatalogo[]; agentes: { id: string; nombre: string }[]; veredicto: EstadoVeredicto }>; vistaPrevia(id: string): Promise<VistaSkill>
     instalar(id: string, agentes: string[], conScripts: boolean): Promise<{ ok: true; conflictos: { carpeta: string; motivo: string }[]; carpetas: { carpeta: string; agentes: string[] }[]; scriptsOmitidos: boolean } | { ok: false; error: string }>
     desinstalar(id: string): Promise<{ ok: true; quitados: string[] } | { ok: false; error: string }>
+    propuesta(p: { nombre: string; descripcion: string; cuerpo: string; agentes: string[]; herramientas?: string }): Promise<{ ok: true; nombre: string; canonica: string; skillMd: string; carpetas: { carpeta: string; agentes: string[] }[]; conflictos: { carpeta: string; motivo: string }[] } | { ok: false; error: string }>
   }
   forja: { encargar(n: string, nombre?: string, agente?: string): Promise<{ ok: true; tarea: string; herramienta: string; agente: string } | { ok: false; error: string }>; probar(id: string): Promise<{ ok: true; acciones: { nombre: string; descripcion: string }[] } | { ok: false; error: string }>; de(id: string): Promise<EncargoForja | null>; instalar(id: string): Promise<{ ok: true; herramienta: string; acciones: number } | { ok: false; error: string }> }
   herramientas: {
@@ -211,6 +214,9 @@ export const bridge = {
     vistaPrevia: async (id: string): Promise<VistaSkill> => (isElectron() ? window.daimon!.skills.vistaPrevia(id) : { ok: false, error: 'Solo en la app de escritorio.' }),
     instalar: async (id: string, agentes: string[], conScripts: boolean) => (isElectron() ? window.daimon!.skills.instalar(id, agentes, conScripts) : { ok: false as const, error: 'Solo en la app de escritorio.' }),
     desinstalar: async (id: string) => (isElectron() ? window.daimon!.skills.desinstalar(id) : { ok: false as const, error: 'Solo en la app de escritorio.' }),
+    // La propuesta del sueño, hecha receta: la escribe el creador y se instala como cualquier skill.
+    propuesta: async (p: { nombre: string; descripcion: string; cuerpo: string; agentes: string[]; herramientas?: string }) =>
+      (isElectron() ? window.daimon!.skills.propuesta(p) : { ok: false as const, error: 'Solo en la app de escritorio.' }),
   },
   forja: {
     de: async (id: string): Promise<EncargoForja | null> => (isElectron() ? window.daimon!.forja.de(id) : null),

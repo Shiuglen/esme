@@ -43,6 +43,7 @@ contextBridge.exposeInMainWorld('daimon', {
   skills: {
     catalogo: () => ipcRenderer.invoke('skills:catalogo'), vistaPrevia: (id: string) => ipcRenderer.invoke('skills:vistaPrevia', id),
     instalar: (id: string, agentes: string[], conScripts: boolean) => ipcRenderer.invoke('skills:instalar', id, agentes, conScripts), desinstalar: (id: string) => ipcRenderer.invoke('skills:desinstalar', id),
+    propuesta: (p: { nombre: string; descripcion: string; cuerpo: string; agentes: string[]; herramientas?: string }) => ipcRenderer.invoke('skills:propuesta', p),
   },
   forja: { de: (id: string) => ipcRenderer.invoke('forja:de', id), instalar: (id: string) => ipcRenderer.invoke('forja:instalar', id), probar: (id: string) => ipcRenderer.invoke('forja:probar', id), encargar: (n: string, nombre?: string, agente?: string) => ipcRenderer.invoke('forja:encargar', n, nombre, agente) },
   herramientas: {

@@ -8,6 +8,7 @@ import { alertasDe } from './alertas'
 import catalogo from './catalogo.json'
 import { arbolSha256, descargarSkill, esTexto, type ArchivoSkill } from './descargar'
 import { AGENTES_CON_SKILLS, desinstalarSkill, esScript, instalarSkill, skillsInstaladas } from './instalar'
+import { instalarPropuesta } from './propuesta'
 import { leerSkillMd } from './skill-md'
 import { aplicaAlCatalogo, veredictosRemotos, type OrigenVeredicto, type Veredictos } from './veredicto'
 
@@ -70,4 +71,18 @@ export function registerSkills() {
     } catch (e) { return { ok: false, error: mensaje(e) } }
   })
   ipcMain.handle('skills:desinstalar', (_e, id: unknown) => (typeof id === 'string' ? desinstalarSkill({ datos: datos(), id }) : { ok: false, error: 'Datos no válidos.' }))
+  // La propuesta del sueño hecha skill: una receta que escribe el creador (la editó en la app)
+  // a partir de una tarea que repitió. Se instala por el mismo camino que la Tienda: copia
+  // canónica, enlaces en las carpetas de cada agente y la marca de Esme (para poder quitarla).
+  ipcMain.handle('skills:propuesta', async (_e, o: unknown) => {
+    if (!o || typeof o !== 'object') return { ok: false, error: 'Datos no válidos.' }
+    const p = o as { nombre?: unknown; descripcion?: unknown; cuerpo?: unknown; agentes?: unknown; herramientas?: unknown }
+    return instalarPropuesta({
+      nombre: typeof p.nombre === 'string' ? p.nombre : '',
+      descripcion: typeof p.descripcion === 'string' ? p.descripcion : '',
+      cuerpo: typeof p.cuerpo === 'string' ? p.cuerpo : '',
+      herramientas: typeof p.herramientas === 'string' ? p.herramientas : '',
+      agentes: Array.isArray(p.agentes) ? p.agentes.filter((a): a is string => typeof a === 'string') : [],
+    }, { home: homedir(), datos: datos() })
+  })
 }

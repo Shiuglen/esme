@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import unicodedata
 from collections import Counter
 from datetime import datetime, timezone
 
@@ -35,6 +36,7 @@ from .suenio import _STOP
 
 MIN_REPETICIONES = 3      # cuántas veces se repite antes de proposer una skill
 SIM_MIN = 0.5             # coseno mínimo para que dos encargos sean la misma tarea
+MIN_COHESION = 0.5        # palabras compartidas: por debajo, el grupo no es una sola tarea
 TOPE_TERMINOS = 5         # términos que nombran la tarea en la propuesta
 MAX_CITA = 220            # longitud del encargo de ejemplo que se lleva la propuesta
 MAX_ENCARGO = 400         # un encargo de verdad es corto: una transcripción no lo es
@@ -130,11 +132,33 @@ def _id_estable(r: "Repeticion") -> str:
     return _id("|".join(sorted(r.encargos)))
 
 
+def _coherencia(textos: list[str]) -> float:
+    """Cuánto se parecen los encargos del grupo entre sí: palabras comunes sobre la unión.
+
+    El coseno agrupa por significado, pero un grupo puede acabar con encargos que se
+    parecen de lejos («actualiza el readme» y «mide el consumo»): son vecinos, no la
+    misma tarea. Con palabras (sin stopwords) se ve enseguida: dos encargos de la
+    misma cosa comparten muchas; dos encargos distintos, casi ninguna.
+    """
+    if len(textos) < 2:
+        return 1.0
+    firmas = [set(_firma(t)) for t in textos]
+    total = 0.0
+    n = 0
+    for i in range(len(firmas)):
+        for j in range(i + 1, len(firmas)):
+            a, b = firmas[i], firmas[j]
+            union = a | b
+            total += (len(a & b) / len(union)) if union else 0.0
+            n += 1
+    return total / n if n else 1.0
+
+
 class Repeticion:
     """Una tarea que se repite y la skill que podría salir de ella."""
 
     def __init__(self, veces: int, terminos: list[str], ejemplo: str, desde: str, hasta: str,
-                 encargos: list[str], motores: list[str]):
+                 encargos: list[str], motores: list[str], coherencia: float = 1.0):
         self.veces = veces
         self.terminos = terminos
         self.ejemplo = ejemplo
@@ -142,6 +166,13 @@ class Repeticion:
         self.hasta = hasta
         self.encargos = encargos
         self.motores = motores
+        # cuánto se parecen los encargos entre sí: si es poco, el grupo no es una sola tarea
+        self.coherencia = coherencia
+
+    @property
+    def dispersa(self) -> bool:
+        """El grupo se parece menos de lo que debería: la receta avisa antes de nada."""
+        return self.coherencia < MIN_COHESION
 
     @property
     def texto(self) -> str:
@@ -159,10 +190,98 @@ class Repeticion:
             return ", ".join(self.terminos[:3])
         return (self.ejemplo[:60] + "…") if len(self.ejemplo) > 60 else self.ejemplo
 
+    @property
+    def borrador(self) -> dict:
+        """El esqueleto de la skill: la evidencia real, sin inventar el cómo.
+
+        La mente sabe **qué** se repite y con qué palabras lo pidió el creador; no sabe
+        cómo se hace (nadie le ha grabado la manera). Por eso el borrador trae los
+        encargos de verdad y una lista de huecos por rellenar: **la receta la escribes
+        tú**, la mente sólo pone la mesa.
+        """
+        return _borrador(self)
+
     def a_dict(self) -> dict:
         return {"titulo": self.titulo, "veces": self.veces, "terminos": self.terminos,
                 "ejemplo": self.ejemplo, "desde": self.desde, "hasta": self.hasta,
-                "motores": self.motores, "encargos": self.encargos}
+                "motores": self.motores, "encargos": self.encargos,
+                "coherencia": round(self.coherencia, 3), "dispersa": self.dispersa,
+                "borrador": self.borrador}
+
+
+def _slug(texto: str, tope: int = 64) -> str:
+    """Un nombre de skill: minúsculas, guiones y sólo letras y números.
+
+    El nombre de una skill es su carpeta: tiene que poder vivir en un disco y no
+    depender de cómo se escribieron las palabras. Las tildes se quitan («instalación»
+    → «instalacion»), no se rompen a mitad («instalaci-n»).
+    """
+    plano = unicodedata.normalize("NFD", texto or "").encode("ascii", "ignore").decode("ascii")
+    base = re.sub(r"[^a-z0-9]+", "-", plano.lower()).strip("-")
+    base = re.sub(r"-{2,}", "-", base)[:tope].strip("-")
+    return base
+
+
+def _borrador(r: "Repeticion") -> dict:
+    """El esqueleto de la skill que puede salir de esta repetición.
+
+    Tres piezas y ninguna invención:
+    - **el nombre**: los términos que nombran la tarea (o el título recortado);
+    - **la descripción**: qué es esto y cuándo usarla (la leen los agentes);
+    - **el cuerpo**: la evidencia (los encargos de verdad) y los huecos que rellenas.
+
+    Los huecos son la parte importante: la mente no sabe cómo se hace la tarea, así que
+    no lo escribe. Lo escribe el creador, y por eso esto es un borrador y no una skill.
+    """
+    titulo = r.titulo
+    nombre = _slug("-".join(r.terminos[:3]) or titulo)
+    if not nombre:
+        nombre = "tarea-repetida"
+    descripcion = (f"«{titulo}»: una tarea que el creador ha encargado {r.veces} veces "
+                   f"(del {r.desde} al {r.hasta}). Úsala cuando te pida algo como «{r.ejemplo[:120]}».")
+    otros = [e for e in r.encargos if e != r.ejemplo][:3]
+    lineas = [
+        f"# {titulo}",
+        "",
+        f"Esta receta nació de una costumbre: el creador ha encargado esta tarea "
+        f"**{r.veces} veces**, del {r.desde} al {r.hasta}.",
+        "",
+    ]
+    if r.dispersa:
+        # El grupo se parece menos de lo que debería: se dice antes de que la receta mienta.
+        lineas += [
+            "> **Ojo:** estos encargos no se parecen mucho entre sí. Puede que no sean la "
+            "misma tarea: léelos y corrige la receta antes de instalar.",
+            "",
+        ]
+    lineas += [
+        "## El encargo de ejemplo",
+        "",
+        f"> {r.ejemplo}",
+        "",
+    ]
+    if otros:
+        lineas += ["## Cómo lo pidió otras veces", ""]
+        lineas += [f"- {e}" for e in otros]
+        lineas += [""]
+    lineas += [
+        "## Antes de empezar",
+        "",
+        "- [ ] Qué hay que mirar primero (lo escribe el creador).",
+        "- [ ] Qué se prepara antes de tocar nada (lo escribe el creador).",
+        "",
+        "## Al terminar",
+        "",
+        "- [ ] Cómo se comprueba que está bien (lo escribe el creador).",
+        "",
+        "---",
+        "",
+        f"Propuesta de Esme: {r.veces} encargos iguales "
+        f"({'los motores: ' + ', '.join(r.motores) if r.motores else 'sin motor anotado'}). "
+        "La receta la escribes tú.",
+        "",
+    ]
+    return {"nombre": nombre, "descripcion": descripcion, "cuerpo": "\n".join(lineas)}
 
 
 def _candidatos(eventos: list[Event]) -> list[Event]:
@@ -212,7 +331,7 @@ def repeticiones(eventos: list[Event], vectores=None) -> list[Repeticion]:
         ejemplo = (ejemplo[:MAX_CITA] + "…") if len(ejemplo) > MAX_CITA else ejemplo
         días = sorted(e.ts[:10] for e in pila)
         motores = sorted({e.source for e in pila})
-        fuera.append(Repeticion(len(pila), términos, ejemplo, días[0], días[-1], textos, motores))
+        fuera.append(Repeticion(len(pila), términos, ejemplo, días[0], días[-1], textos, motores, _coherencia(textos)))
     fuera.sort(key=lambda r: (-r.veces, r.titulo))
     return fuera
 

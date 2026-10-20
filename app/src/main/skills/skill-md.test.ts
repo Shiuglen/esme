@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { leerSkillMd } from './skill-md'
+import { escribirSkillMd, leerSkillMd } from './skill-md'
 
 const md = (cabecera: string, cuerpo = '# Hola\nInstrucciones.') => `---\n${cabecera}\n---\n${cuerpo}\n`
 
@@ -39,3 +39,38 @@ describe('leer un SKILL.md (estándar abierto agentskills.io)', () => {
     const s = leerSkillMd('---\nname: x\ndescription: d\n---\n\n   \n', 'x')
     expect(s.ok && s.avisos).toContain('El cuerpo está vacío: no hay instrucciones que leer.')
   })
+
+describe('escribir un SKILL.md (el mismo formato que se lee)', () => {
+  it('lo que se escribe, se lee igual', () => {
+    const texto = escribirSkillMd({ nombre: 'readme-instalacion', descripcion: 'Actualiza el readme con la instalación nueva.', cuerpo: '# Hola\nInstrucciones.' })
+    const s = leerSkillMd(texto, 'readme-instalacion')
+    expect(s.ok).toBe(true)
+    if (!s.ok) return
+    expect(s.skill.nombre).toBe('readme-instalacion')
+    expect(s.skill.descripcion).toBe('Actualiza el readme con la instalación nueva.')
+    expect(s.skill.cuerpo).toBe('# Hola\nInstrucciones.')
+    expect(s.avisos).toEqual([])
+  })
+  it('una descripción con dos puntos no rompe la cabecera', () => {
+    const texto = escribirSkillMd({ nombre: 'x', descripcion: 'Tarea: actualizar el readme: paso a paso.', cuerpo: 'cuerpo' })
+    const s = leerSkillMd(texto, 'x')
+    expect(s.ok && s.skill.descripcion).toBe('Tarea: actualizar el readme: paso a paso.')
+  })
+  it('una descripción con comillas sobrevive el viaje', () => {
+    const texto = escribirSkillMd({ nombre: 'x', descripcion: 'Lo llama "el readme" y nada más.', cuerpo: 'cuerpo' })
+    const s = leerSkillMd(texto, 'x')
+    expect(s.ok && s.skill.descripcion).toBe('Lo llama "el readme" y nada más.')
+  })
+  it('los opcionales van en la cabecera (herramientas, licencia, sólo a mano)', () => {
+    const texto = escribirSkillMd({ nombre: 'x', descripcion: 'd', cuerpo: 'cuerpo', herramientas: 'Bash Read', licencia: 'MIT', soloManual: true })
+    const s = leerSkillMd(texto, 'x')
+    expect(s.ok && s.skill.herramientasPermitidas).toBe('Bash Read')
+    expect(s.ok && s.skill.licencia).toBe('MIT')
+    expect(s.ok && s.skill.soloManual).toBe(true)
+  })
+  it('sin nombre, sin descripción o sin cuerpo: no se escribe (y se dice por qué)', () => {
+    expect(() => escribirSkillMd({ nombre: ' ', descripcion: 'd', cuerpo: 'c' })).toThrow(/nombre/)
+    expect(() => escribirSkillMd({ nombre: 'x', descripcion: ' ', cuerpo: 'c' })).toThrow(/descripción/)
+    expect(() => escribirSkillMd({ nombre: 'x', descripcion: 'd', cuerpo: '  ' })).toThrow(/cuerpo/)
+  })
+})

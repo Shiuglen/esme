@@ -1,7 +1,10 @@
 // Lo que el creador repite: lo que dice la tarjeta y qué puede hacer con ella.
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { Necesidad, Repeticion } from '../lib/bridge'
-import { encargoNecesidad, fraseNecesidad, fraseRepeticion, sePuedeUsar } from './Repeticion'
+import { encargoNecesidad, fraseNecesidad, fraseRepeticion, nombreValido, sePuedeUsar } from './Repeticion'
+
+// El editor habla con la app por el puente; en esta prueba el puente no hace nada.
+vi.mock('../lib/bridge', () => ({ bridge: { skills: { catalogo: async () => ({ skills: [], agentes: [] }) }, mente: { repeticiones: async () => ({ repeticiones: [] }), necesidad: async () => ({ necesidades: [] }) } } }))
 
 const r: Repeticion = {
   titulo: 'readme, proyecto, instalación',
@@ -58,5 +61,41 @@ describe('la herramienta que falta', () => {
   it('si no se sabe el nombre, el encargo lleva el fallo entero', () => {
     const e = encargoNecesidad({ ...n, herramienta: '', titulo: 'algo' })
     expect(e).toContain('command not found: pdftotext')
+  })
+})
+
+describe('la receta: el nombre tiene que poder ser una carpeta', () => {
+  it('acepta lo que la mente propone (guiones, números y letras)', () => {
+    expect(nombreValido('readme-instalacion')).toBe(true)
+    expect(nombreValido('tarea-2')).toBe(true)
+  })
+  it('rechaza lo que rompería la carpeta', () => {
+    expect(nombreValido('con espacio')).toBe(false)
+    expect(nombreValido('acentuado-ñ')).toBe(false)
+    expect(nombreValido('-empieza-mal')).toBe(false)
+    expect(nombreValido('')).toBe(false)
+    expect(nombreValido('a'.repeat(65))).toBe(false)
+  })
+})
+
+describe('el editor de la receta (pintado de verdad)', () => {
+  it('enseña el borrador de la mente: nombre, descripción y receta, y el botón de instalar', async () => {
+    const { renderToStaticMarkup } = await import('react-dom/server')
+    const { EditorSkill } = await import('./Repeticion')
+    const r: Repeticion = {
+      titulo: 'readme, instalación', veces: 3, terminos: ['readme', 'instalación'],
+      ejemplo: 'actualiza el readme con la instalación nueva', desde: '2026-10-18', hasta: '2026-10-20',
+      motores: ['opencode'], encargos: [],
+      borrador: { nombre: 'readme-instalacion', descripcion: 'Actualiza el readme con la instalación nueva.', cuerpo: '# Hola\n- [ ] Qué hay que mirar primero.' },
+    }
+    const React = await import('react')
+    const html = renderToStaticMarkup(React.createElement(EditorSkill, { r, onCerrar: () => {} }))
+    expect(html).toContain('readme-instalacion')
+    expect(html).toContain('Actualiza el readme con la instalación nueva.')
+    expect(html).toContain('Qué hay que mirar primero.')
+    expect(html).toContain('Instalar la receta')
+    // y avisa si el nombre no puede ser una carpeta
+    const malo = renderToStaticMarkup(React.createElement(EditorSkill, { r: { ...r, borrador: { ...r.borrador!, nombre: 'con espacio' } }, onCerrar: () => {} }))
+    expect(malo).toContain('Sólo letras, números, guiones y puntos')
   })
 })
