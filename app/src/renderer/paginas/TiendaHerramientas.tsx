@@ -55,8 +55,8 @@ export function TiendaHerramientas() {
 
       <section className="grid gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <label className="flex h-10 w-[380px] max-w-full items-center gap-2 rounded-full border border-linea bg-s1/70 px-4 backdrop-blur focus-within:border-foco">
-            <Search className="size-4 text-texto-3" strokeWidth={1.75} />
+          <label className="flex h-10 w-[380px] max-w-full items-center gap-2 rounded-full border border-linea px-3.5 focus-within:border-foco">
+            <Search className="size-4 shrink-0 text-texto-3" strokeWidth={1.75} />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Busca entre ~10.000: github, blender, figma, postgres…" aria-label="Buscar herramientas"
               className="min-w-0 flex-1 bg-transparent text-[14px] text-texto outline-none placeholder:text-texto-3" />
           </label>
@@ -65,9 +65,24 @@ export function TiendaHerramientas() {
         {error && <p className="m-0 text-[13px] text-peligro">El registro no responde ahora ({error}). Vuelve a intentarlo en un momento.</p>}
         <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
           {fichas === null
-            ? Array.from({ length: 6 }, (_, i) => <span key={i} className="h-40 animate-pulse rounded-4 bg-s2/60" />)
+            ? Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="vidrio grid content-start gap-3 rounded-4 border p-4" aria-hidden>
+                <div className="flex items-start gap-3">
+                  <span className="size-9 shrink-0 animate-pulse rounded-3 bg-s2/60" />
+                  <span className="flex-1"><span className="block h-4 w-2/3 animate-pulse rounded bg-s2/60" /><span className="mt-2 block h-3 w-1/3 animate-pulse rounded bg-s2/60" /></span>
+                </div>
+                <span className="block h-3 w-full animate-pulse rounded bg-s2/60" />
+                <span className="block h-3 w-2/3 animate-pulse rounded bg-s2/60" />
+              </div>
+            ))
             : fichas.map((f) => <Tarjeta key={f.id} f={f} conectada={tengo.has(f.id)} abierta={abierta === f.id} onAbrir={() => setAbierta((a) => (a === f.id ? null : f.id))} onConectada={() => { setAbierta(null); recargar() }} />)}
-          {fichas?.length === 0 && !error && <p className="col-span-full m-0 py-8 text-center text-texto-3">Nada con «{q}». Prueba otra palabra.</p>}
+          {fichas?.length === 0 && !error && (
+            <div className="col-span-full grid justify-items-center gap-3 py-12 text-center">
+              <p className="m-0 max-w-[40ch] text-[13.5px] leading-6 text-texto-2">Nada con «{q}» en el registro. Prueba otra palabra, o descríbelo y te la forjamos.</p>
+              <button type="button" onClick={() => setQ('')}
+                className="inline-flex h-9 items-center rounded-full border border-linea px-4 text-[13px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">Quitar la búsqueda</button>
+            </div>
+          )}
         </div>
       </section>
 

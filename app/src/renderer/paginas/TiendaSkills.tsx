@@ -84,7 +84,24 @@ export function TiendaSkills() {
             </button>
           </li>
         ))}
-        {datos && !visibles.length && <li className="bg-[var(--hoja)] p-6 text-[13px] text-texto-3">Nada con eso. Prueba con otras palabras.</li>}
+        {datos && !visibles.length && (
+          <li className="col-span-full grid justify-items-center gap-3 bg-[var(--hoja)] p-10 text-center">
+            <p className="m-0 max-w-[40ch] text-[13.5px] leading-6 text-texto-2">
+              {q.trim() ? `Nada con «${q.trim()}». Prueba con otras palabras.` : 'No hay skills en este grupo todavía. Vuelve cuando el catálogo crece.'}
+            </p>
+            {q.trim() && (
+              <button type="button" onClick={() => setQ('')}
+                className="inline-flex h-9 items-center rounded-full border border-linea px-4 text-[13px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">Quitar la búsqueda</button>
+            )}
+          </li>
+        )}
+        {!datos && Array.from({ length: 6 }, (_, i) => (
+          <li key={i} className="bg-[var(--hoja)] p-4">
+            <span className="block h-5 w-1/3 animate-pulse rounded bg-s2/60" />
+            <span className="mt-2 block h-3 w-full animate-pulse rounded bg-s2/60" />
+            <span className="mt-2 block h-3 w-2/3 animate-pulse rounded bg-s2/60" />
+          </li>
+        ))}
       </ul>
 
       <AnimatePresence>

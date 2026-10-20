@@ -1,7 +1,7 @@
 // La Tienda de Esme (docs/superpowers/specs/2026-10-18-la-tienda.md), paso 1: pieles. Lo de casa (la colección de
 // lanzamiento) más el catálogo firmado de la red. Descubrir por palabras, por color o «Sorpréndeme»; probar en vivo sobre
 // tu propia Esme antes de quedártela; vestir; guardar en tu colección. Paso 2: herramientas MCP (TiendaHerramientas.tsx).
-import { Heart, Shuffle, Sparkles } from 'lucide-react'
+import { Heart, Search, Shuffle, Sparkles, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { bridge } from '../lib/bridge'
@@ -23,17 +23,24 @@ const leerColeccion = (): string[] => { try { return JSON.parse(localStorage.get
 export function Tienda({ tema, pieles }: { tema: Tema; pieles: Pieles }) {
   const [remotos, setRemotos] = useState<ItemTienda[]>([])
   const [origen, setOrigen] = useState<string>('')
+  const [cargando, setCargando] = useState(true)
   useEffect(() => {
     void bridge.tienda.catalogo().then((r) => {
+      setCargando(false)
       setOrigen(r.origen === 'red' ? 'catálogo al día' : r.origen === 'copia' ? 'catálogo guardado (sin conexión)' : 'colección de casa')
       setRemotos(r.productos.flatMap((p) => {
         if (p.tipo !== 'piel') return []
         const v = validarPiel(p.contenido)   // un producto ajeno se valida como cualquier piel
         return v.ok ? [{ id: p.id, tipo: 'piel' as const, piel: v.piel, descripcion: p.descripcion, etiquetas: p.etiquetas, autor: p.autor, origen: 'tienda' as const }] : []
       }))
-    })
+    }).catch(() => { setCargando(false); setOrigen('colección de casa') })
   }, [])
-  const todos = useMemo<ItemTienda[]>(() => [...PIELES_TIENDA.map((p) => ({ ...p, tipo: 'piel' as const, origen: 'casa' as const })), ...remotos], [remotos])
+  // lo que llega del catálogo firmado manda sobre lo que viaja en la app: si una piel de la red tiene el mismo id que la
+  // de casa, la de la red la sustituye (viene firmada; la de casa es la copia de reserva, la que queda sin conexión)
+  const todos = useMemo<ItemTienda[]>(() => {
+    const deLaRed = new Set(remotos.map((r) => r.id))
+    return [...PIELES_TIENDA.filter((p) => !deLaRed.has(p.id)).map((p) => ({ ...p, tipo: 'piel' as const, origen: 'casa' as const })), ...remotos]
+  }, [remotos])
   // cada ficha se enseña con su letra: se cargan las de los diseños de la Tienda (una vez cada una)
   useEffect(() => { for (const i of todos) { void cargarLetra(i.piel.letra.titulos); void cargarLetra(i.piel.letra.texto) } }, [todos])
   const [seccion, setSeccion] = useState<'disenos' | 'herramientas' | 'skills'>('disenos')
@@ -55,53 +62,85 @@ export function Tienda({ tema, pieles }: { tema: Tema; pieles: Pieles }) {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto grid max-w-[1180px] gap-6 px-10 pt-10 pb-28">
         <header className="grid gap-2">
-          <h1 className="m-0 text-[40px] leading-none font-light tracking-[-0.04em] text-texto">Tienda</h1>
-          <p className="m-0 max-w-[66ch] text-[15px] text-texto-2">Pieles para cambiarme por fuera, manos nuevas para hacer más cosas y skills para que yo y tus agentes trabajemos como expertos. Pruébalo todo antes de quedártelo; nada actúa sin tu permiso.</p>
+          <p className="m-0 text-[11.5px] tracking-[0.18em] text-texto-3 uppercase">La Tienda</p>
+          <h1 className="m-0 font-display text-[40px] leading-none font-light tracking-[-0.04em] text-texto">Vísteme y hazme más</h1>
+          <p className="m-0 max-w-[66ch] text-[15px] leading-6 text-texto-2">Pieles para cambiarme por fuera, manos nuevas para hacer más cosas y skills para que yo y tus agentes trabajemos como expertos. Pruébalo todo antes de quedártelo; nada actúa sin tu permiso.</p>
         </header>
         <div role="tablist" aria-label="Qué buscas" className="flex w-fit gap-1 rounded-full border border-linea p-1 text-[14px]">
           {([['disenos', 'Diseños'], ['herramientas', 'Herramientas'], ['skills', 'Skills']] as const).map(([id, nombre]) => (
-            <button key={id} type="button" role="tab" aria-selected={seccion === id} onClick={() => setSeccion(id)}
-              className={cn('rounded-full px-4 py-1.5', seccion === id ? 'bg-s3 text-texto' : 'text-texto-2 hover:text-texto')}>{nombre}</button>
+            <button key={id} id={`tab-${id}`} type="button" role="tab" aria-selected={seccion === id} aria-controls={`panel-${id}`} onClick={() => setSeccion(id)}
+              className={cn('rounded-full px-4 py-1.5 transition-colors', seccion === id ? 'bg-acento text-sobre-acento' : 'text-texto-2 hover:text-texto')}>{nombre}</button>
           ))}
         </div>
 
-        {seccion === 'skills' ? <TiendaSkills /> : seccion === 'herramientas' ? <TiendaHerramientas /> : <>
+        {seccion === 'skills'
+          ? <div id="panel-skills" role="tabpanel" aria-labelledby="tab-skills"><TiendaSkills /></div>
+          : seccion === 'herramientas'
+            ? <div id="panel-herramientas" role="tabpanel" aria-labelledby="tab-herramientas"><TiendaHerramientas /></div>
+            : <div id="panel-disenos" role="tabpanel" aria-labelledby="tab-disenos" className="grid gap-6">
         <div className="flex flex-wrap items-center gap-3">
-          <input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Busca: neón, calma, editorial, verde…" aria-label="Buscar en la Tienda"
-            className="h-10 w-[320px] rounded-full border border-linea bg-s1/70 px-4 text-[14px] text-texto outline-none backdrop-blur placeholder:text-texto-3 focus:border-foco" />
+          <label className="flex h-10 w-[320px] max-w-full items-center gap-2 rounded-full border border-linea px-3.5 focus-within:border-foco">
+            <Search className="size-4 shrink-0 text-texto-3" strokeWidth={1.75} />
+            <input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Busca: neón, calma, editorial, verde…" aria-label="Buscar en la Tienda"
+              className="min-w-0 flex-1 bg-transparent text-[14px] text-texto outline-none placeholder:text-texto-3" />
+            {texto && <button type="button" onClick={() => setTexto('')} aria-label="Quitar la búsqueda" className="grid size-5 shrink-0 place-items-center rounded-full text-texto-3 transition-colors hover:text-texto"><X className="size-3.5" strokeWidth={1.75} /></button>}
+          </label>
           <div role="radiogroup" aria-label="Color" className="flex items-center gap-1.5">
             {FAMILIAS.map((f) => (
-              <button key={f} type="button" role="radio" aria-checked={color === f} title={f} onClick={() => setColor((c) => (c === f ? null : f))}
-                className={cn('size-6 rounded-full border-2 transition-transform hover:scale-110', color === f ? 'scale-110 border-texto' : 'border-transparent')} style={{ background: PUNTO[f] }} />
+              <button key={f} type="button" role="radio" aria-checked={color === f} aria-label={`Color ${f}`} title={f} onClick={() => setColor((c) => (c === f ? null : f))}
+                className={cn('size-6 rounded-full border-2 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foco', color === f ? 'scale-110 border-texto' : 'border-transparent')} style={{ background: PUNTO[f] }} />
             ))}
           </div>
           <button type="button" onClick={() => { const s = sorprendeme(filtrados.length ? filtrados : todos, probando?.item.id ?? null); if (s) probar(s) }}
             className="flex h-10 items-center gap-2 rounded-full bg-acento px-4 text-[14px] font-medium text-sobre-acento shadow-[0_8px_24px_-10px_var(--acento)]"><Shuffle className="size-4" />Sorpréndeme</button>
           <div className="ml-auto flex gap-1 rounded-full border border-linea p-1 text-[13px]">
             {(['todo', 'coleccion'] as const).map((v) => (
-              <button key={v} type="button" onClick={() => setVista(v)} className={cn('rounded-full px-3 py-1', vista === v ? 'bg-s3 text-texto' : 'text-texto-2 hover:text-texto')}>{v === 'todo' ? 'Todo' : `Mi colección (${coleccion.length})`}</button>
+              <button key={v} type="button" onClick={() => setVista(v)} className={cn('rounded-full px-3 py-1 transition-colors', vista === v ? 'bg-acento text-sobre-acento' : 'text-texto-2 hover:text-texto')}>{v === 'todo' ? 'Todo' : `Mi colección (${coleccion.length})`}</button>
             ))}
           </div>
         </div>
         {origen && <p className="m-0 -mt-3 text-xs text-texto-3">{filtrados.length} {filtrados.length === 1 ? 'diseño' : 'diseños'} · {origen}</p>}
 
+        {cargando ? (
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-5" aria-hidden>
+            {Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="vidrio grid gap-3 rounded-4 border p-3">
+                <span className="h-[168px] animate-pulse rounded-[14px] bg-s2/60" />
+                <span className="h-4 w-1/2 animate-pulse rounded bg-s2/60" />
+                <span className="h-3 w-full animate-pulse rounded bg-s2/60" />
+                <span className="h-9 w-full animate-pulse rounded-full bg-s2/60" />
+              </div>
+            ))}
+          </div>
+        ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-5">
           {filtrados.map((i) => (
             <Ficha key={i.id} i={i} tema={tema} probando={probando?.item.id === i.id} puesta={JSON.stringify(pieles.actual) === JSON.stringify(i.piel) && !probando}
               guardada={coleccion.includes(i.id)} onProbar={() => probar(i)} onVestir={() => { pieles.vestir(i.piel); setProbando(null); toast.success(`Llevas «${i.piel.nombre}»`) }}
               onGuardar={() => setColeccion((c) => (c.includes(i.id) ? c.filter((x) => x !== i.id) : [...c, i.id]))} />
           ))}
-          {!filtrados.length && <p className="col-span-full m-0 py-10 text-center text-texto-3">{vista === 'coleccion' ? 'Tu colección está vacía: guarda diseños con el corazón.' : 'Nada con esos filtros. Prueba otra palabra u otro color.'}</p>}
+          {!filtrados.length && (
+            <div className="col-span-full grid justify-items-center gap-3 py-14 text-center">
+              <p className="m-0 max-w-[42ch] text-[14px] leading-6 text-texto-2">
+                {vista === 'coleccion' ? 'Tu colección está vacía: guarda diseños con el corazón y volverán aquí.' : 'Nada con esos filtros. Prueba otra palabra u otro color.'}
+              </p>
+              {(texto || color) && (
+                <button type="button" onClick={() => { setTexto(''); setColor(null) }}
+                  className="inline-flex h-9 items-center rounded-full border border-linea px-4 text-[13px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">Quitar los filtros</button>
+              )}
+            </div>
+          )}
         </div>
-        </>}
+        )}
+        </div>}
       </div>
 
       {probando && (
-        <div role="status" className="hoja fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full border border-linea px-5 py-2.5 shadow-2xl backdrop-blur-xl">
+        <div role="status" className="hoja fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-full border border-linea px-5 py-2.5 shadow-flotante">
           <Sparkles className="size-4 text-acento" />
-          <span className="text-[14px] text-texto">Probando «{probando.item.piel.nombre}»</span>
-          <button type="button" onClick={quedarse} className="rounded-full bg-acento px-4 py-1.5 text-[13px] font-medium text-sobre-acento">Quedármela</button>
-          <button type="button" onClick={volver} className="rounded-full px-3 py-1.5 text-[13px] text-texto-2 hover:text-texto">Volver a la mía</button>
+          <span className="text-[14px] whitespace-nowrap text-texto">Probando «{probando.item.piel.nombre}»</span>
+          <button type="button" onClick={quedarse} className="inline-flex h-9 items-center rounded-full bg-acento px-4 text-[13px] font-medium text-sobre-acento">Quedármela</button>
+          <button type="button" onClick={volver} className="inline-flex h-9 items-center rounded-full px-3 text-[13px] text-texto-2 transition-colors hover:text-texto">Volver a la mía</button>
         </div>
       )}
     </div>
@@ -119,8 +158,9 @@ function Ficha({ i, tema, probando, puesta, guardada, onProbar, onVestir, onGuar
   const borde = p.piezas.superficie === 'neon' ? `1px solid ${m.acento}` : p.piezas.superficie === 'brutal' ? `2px solid ${m.texto}` : '1px solid rgba(255,255,255,.08)'
   const sombra = p.piezas.superficie === 'brutal' ? `4px 4px 0 ${m.texto}` : p.piezas.superficie === 'neon' ? `0 0 16px -4px ${m.acento}` : '0 10px 24px -14px rgba(0,0,0,.6)'
   return (
-    <article className={cn('group grid gap-3 rounded-4 border p-3 transition-all', probando ? 'border-acento ring-2 ring-acento/40' : 'border-linea hover:border-linea-fuerte')}>
-      <button type="button" onClick={onProbar} aria-label={`Probar «${p.nombre}» en vivo`} className="relative block h-[168px] overflow-hidden text-left" style={{ background: m.fondo, borderRadius: r(14) }}>
+    <article className={cn('vidrio group grid gap-3 rounded-4 border p-3 transition-colors', probando ? 'border-acento ring-2 ring-acento/40' : 'hover:border-linea-fuerte')}>
+      <button type="button" onClick={onProbar} aria-label={`Probar «${p.nombre}» en vivo`}
+        className="relative block h-[168px] overflow-hidden text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foco" style={{ background: m.fondo, borderRadius: r(14) }}>
         <span aria-hidden className="absolute inset-0 opacity-60" style={{ background: `radial-gradient(70% 60% at 50% 35%, ${m.acento}55, transparent 70%)` }} />
         <span aria-hidden className="absolute top-2.5 left-2.5 h-4 w-16" style={{ background: m.superficie, border: borde, borderRadius: r(10), boxShadow: sombra }} />
         <span aria-hidden className="absolute top-2.5 right-2.5 h-4 w-10" style={{ background: m.superficie, border: borde, borderRadius: r(10), boxShadow: sombra }} />
@@ -135,8 +175,10 @@ function Ficha({ i, tema, probando, puesta, guardada, onProbar, onVestir, onGuar
       <div className="grid gap-1 px-0.5">
         <div className="flex items-center gap-2">
           <h3 className="m-0 truncate text-[15px] font-semibold text-texto">{p.nombre}</h3>
-          {puesta && <span className="rounded-full bg-acento-velo px-2 text-[11px] text-acento">la llevas</span>}
-          <button type="button" onClick={onGuardar} aria-pressed={guardada} aria-label={guardada ? 'Quitar de mi colección' : 'Guardar en mi colección'} className="ml-auto rounded-full p-1 text-texto-3 hover:text-texto">
+          {puesta && <span className="shrink-0 rounded-full bg-acento-velo px-2 py-0.5 text-[11px] whitespace-nowrap text-acento">la llevas</span>}
+          {i.origen === 'tienda' && <span title="Viene del catálogo firmado de la red" className="shrink-0 rounded-full border border-linea px-2 py-0.5 text-[10.5px] whitespace-nowrap text-texto-3">de la red</span>}
+          <button type="button" onClick={onGuardar} aria-pressed={guardada} aria-label={guardada ? 'Quitar de mi colección' : 'Guardar en mi colección'}
+            className="ml-auto grid size-7 shrink-0 place-items-center rounded-full text-texto-3 transition-colors hover:bg-s2 hover:text-texto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foco">
             <Heart className={cn('size-4', guardada && 'fill-current text-acento')} strokeWidth={1.75} />
           </button>
         </div>
@@ -144,8 +186,8 @@ function Ficha({ i, tema, probando, puesta, guardada, onProbar, onVestir, onGuar
         <p className="m-0 text-[11.5px] text-texto-3">{sup} · {p.escena === 'ninguna' ? 'sin escena' : ESCENAS[p.escena].nombre} · {t.nombre} · {i.autor}</p>
       </div>
       <div className="flex gap-2">
-        <button type="button" onClick={onProbar} className="flex-1 rounded-full border border-linea py-1.5 text-[13px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">Probar en vivo</button>
-        <button type="button" onClick={onVestir} className="flex-1 rounded-full bg-acento py-1.5 text-[13px] font-medium text-sobre-acento">Vestir</button>
+        <button type="button" onClick={onProbar} className="inline-flex h-9 flex-1 items-center justify-center rounded-full border border-linea px-3 text-[13px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">Probar en vivo</button>
+        <button type="button" onClick={onVestir} className="inline-flex h-9 flex-1 items-center justify-center rounded-full bg-acento px-3 text-[13px] font-medium text-sobre-acento transition-opacity hover:opacity-90">Vestir</button>
       </div>
     </article>
   )
