@@ -15,6 +15,14 @@ describe('leer un SKILL.md (estándar abierto agentskills.io)', () => {
     const s = leerSkillMd(md('name: x\ndescription: >\n  Primera línea\n  y segunda.'), 'x')
     expect(s.ok && s.skill.descripcion).toBe('Primera línea y segunda.')
   })
+  it('una descripción en varias líneas sin indicador (YAML la pliega) también se lee', () => {
+    const s = leerSkillMd(md('name: x\ndescription:\n  Primera línea\n  y segunda.'), 'x')
+    expect(s.ok && s.skill.descripcion).toBe('Primera línea y segunda.')
+  })
+  it('un mapa anidado no se cuela como valor', () => {
+    const s = leerSkillMd(md('name: x\ndescription: y\nmetadata:\n  author: vercel\n  version: \'1.0.0\''), 'x')
+    expect(s.ok && s.skill.descripcion).toBe('y')
+  })
   it('sin cabecera, sin name o sin description: no vale, y dice por qué', () => {
     expect(leerSkillMd('# solo texto', 'x')).toMatchObject({ ok: false })
     expect(leerSkillMd(md('description: algo'), 'x')).toMatchObject({ ok: false, error: expect.stringMatching(/name/) })

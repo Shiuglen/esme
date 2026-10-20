@@ -74,6 +74,11 @@ export function TiendaSkills() {
               <span className="line-clamp-2 text-[13px] leading-5 text-texto-2">{s.descripcionEs}</span>
               <span className="flex items-center gap-2 text-[11.5px] text-texto-3">
                 <span className="truncate">{autor(s.repo)} · {s.licencia} · {s.grupo}{s.tieneScripts ? ' · trae scripts' : ''}</span>
+                {s.veredicto?.medidas.tokens != null && (
+                  <span className="shrink-0" title="Lo que ocupa su SKILL.md en el contexto, medido y firmado por el juez">
+                    ~{s.veredicto.medidas.tokens.toLocaleString('es-ES')} tokens
+                  </span>
+                )}
                 <SelloVeredicto v={s.veredicto} />
               </span>
             </button>
@@ -131,6 +136,9 @@ function Ficha({ skill: s, agentes, onCerrar, onCambio }: { skill: SkillCatalogo
               ? <>Juzgada y firmada por el juez: {s.veredicto.causa}.</>
               : <>Sin medir: el juez todavía no dictó sobre esta skill.</>}
           </p>
+          {s.veredicto?.medidas.tokens != null && (
+            <p className="m-0 text-[11.5px] text-texto-3">Su SKILL.md ocupa ~{s.veredicto.medidas.tokens.toLocaleString('es-ES')} tokens de contexto cada vez que entra.</p>
+          )}
         </header>
 
         <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_260px] gap-0 overflow-hidden">

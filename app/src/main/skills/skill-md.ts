@@ -28,6 +28,20 @@ export function cabeceraDe(yaml: string): Record<string, string> {
       while (i + 1 < lineas.length && (/^\s+\S/.test(lineas[i + 1]) || lineas[i + 1].trim() === '')) bloque.push(lineas[++i].trim())
       campos[clave] = valor.trim().startsWith('>') ? bloque.filter(Boolean).join(' ') : bloque.join('\n').trim()
     } else if (valor.trim()) campos[clave] = sinComillas(valor)
+    else {
+      // valor en varias líneas SIN indicador: YAML lo pliega en una sola línea
+      // (description: seguido de líneas indentadas). Si lo que sigue es un mapa
+      // anidado (una clave con valor vacío), no es un valor: se ignora.
+      const bloque: string[] = []
+      let anidado = false
+      while (i + 1 < lineas.length && (/^\s+\S/.test(lineas[i + 1]) || lineas[i + 1].trim() === '')) {
+        const linea = lineas[++i]
+        if (!linea.trim()) continue
+        if (/^\s+[A-Za-z0-9_-]+:\s*$/.test(linea)) { anidado = true; break }
+        bloque.push(linea.trim())
+      }
+      if (bloque.length && !anidado) campos[clave] = bloque.join(' ')
+    }
   }
   return campos
 }

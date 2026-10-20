@@ -16,12 +16,12 @@ import {
 
 const par = () => { const { publicKey, privateKey } = generateKeyPairSync('ed25519'); return { publica: publicKey.export({ type: 'spki', format: 'pem' }).toString(), privada: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString() } }
 const { publica, privada } = par()
-const medida = { arbolSha256: 'a'.repeat(64), licencia: 'MIT', commit: 'b'.repeat(40), ficheros: 2, bytes: 100, ejecutables: false }
+const medida = { arbolSha256: 'a'.repeat(64), licencia: 'MIT', commit: 'b'.repeat(40), ficheros: 2, bytes: 100, ejecutables: false, tokens: 100, skillMdSha256: 'c'.repeat(64) }
 const skill: VeredictoSkill = { id: 'anthropics/frontend-design', entra: true, nivel: 'ok', causa: 'todo comprobable', medidas: medida }
 const cuerpo = (v: { version: number; emitido: number; firmante: string; catalogoSha256: string; skills: VeredictoSkill[] }) => Buffer.from(JSON.stringify({
   version: v.version, emitido: v.emitido, firmante: v.firmante, catalogoSha256: v.catalogoSha256,
   skills: v.skills.map((s) => ({ id: s.id, entra: s.entra, nivel: s.nivel, causa: s.causa,
-    medidas: { arbolSha256: s.medidas.arbolSha256, licencia: s.medidas.licencia, commit: s.medidas.commit, ficheros: s.medidas.ficheros, bytes: s.medidas.bytes, ejecutables: s.medidas.ejecutables } })),
+    medidas: { arbolSha256: s.medidas.arbolSha256, licencia: s.medidas.licencia, commit: s.medidas.commit, ficheros: s.medidas.ficheros, bytes: s.medidas.bytes, ejecutables: s.medidas.ejecutables, tokens: s.medidas.tokens ?? null, skillMdSha256: s.medidas.skillMdSha256 ?? '' } })),
 }))
 const firmar = (skills: VeredictoSkill[], o: { clave?: string; firmante?: string; signedBy?: string; catalogo?: string } = {}) => {
   const firmante = o.firmante ?? 'huella'

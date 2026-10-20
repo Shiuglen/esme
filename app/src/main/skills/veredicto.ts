@@ -12,7 +12,9 @@ import catalogo from './catalogo.json'
 import veredictos from './veredictos-skills.json'
 
 export type Nivel = 'ok' | 'aviso' | 'fuera'
-export type MedidasSkill = { arbolSha256: string; licencia: string; commit: string; ficheros: number; bytes: number; ejecutables: boolean }
+export type MedidasSkill = { arbolSha256: string; licencia: string; commit: string; ficheros: number; bytes: number; ejecutables: boolean
+  /** Los tokens que ocupa su SKILL.md, medidos por el juez (null = sin medir). */
+  tokens: number | null; skillMdSha256: string }
 export type VeredictoSkill = { id: string; entra: boolean; nivel: Nivel; causa: string; medidas: MedidasSkill }
 
 type Firma = { algorithm: string; signature: string; signed_at: string; signed_by: string; hash: string }
@@ -49,6 +51,8 @@ const cuerpo = (v: { version: number; emitido: number; firmante: string; catalog
         ficheros: s.medidas.ficheros,
         bytes: s.medidas.bytes,
         ejecutables: s.medidas.ejecutables,
+        tokens: s.medidas.tokens ?? null,
+        skillMdSha256: s.medidas.skillMdSha256 ?? '',
       },
     })),
   }))
