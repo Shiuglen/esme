@@ -31,6 +31,24 @@ export function candidatosDe(motores: Pick<MotorTaller, 'id' | 'nombre' | 'insta
   })
 }
 
+/** Los modelos que el motor rechazó por retirado o caído: no se vuelven a proponer.
+ *  Como con los motores que no están listos, **manda el último intento**: si el modelo vuelve a
+ *  funcionar, vuelve a estar disponible. (Banearlo para siempre era un resto de una decisión anterior.) */
+export function caidosDe(tareas: Pick<TareaTaller, 'inicio' | 'error' | 'opciones'>[]): string[] {
+  const ultimo = new Map<string, Pick<TareaTaller, 'inicio' | 'error' | 'opciones'>>()
+  for (const t of tareas) {
+    const modelo = t.opciones?.find((o) => o.id === 'model')?.actual
+    if (!modelo) continue
+    const u = ultimo.get(modelo)
+    if (!u || t.inicio > u.inicio) ultimo.set(modelo, t)
+  }
+  const fuera: string[] = []
+  for (const [modelo, t] of ultimo) {
+    if (t.error && explicarError(t.error, '', '')?.tipo === 'modelo') fuera.push(modelo)
+  }
+  return fuera
+}
+
 /** Los fallos que ya sabemos sin que el creador etiquete nada: cada tarea que acabó en error es un fallo de su motor y su modelo.
  *  Sólo cuentan los que dicen qué modelo falló: los que mueren antes de elegir modelo (la sesión se cae) son culpa del motor,
  *  y de ésos se ocupa `noListos`. */

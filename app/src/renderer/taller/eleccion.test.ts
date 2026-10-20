@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { candidatosDe, elegibles, elegir, elegirVarios, fallosDe, historial, semillado, type Candidato, noListos } from './eleccion'
+import { candidatosDe, caidosDe, elegibles, elegir, elegirVarios, fallosDe, historial, semillado, type Candidato, noListos } from './eleccion'
 
 const opcionModelo = (ids: string[], actual = ids[0]) => ({ id: 'model', nombre: 'Model', actual, valores: ids.map((id) => ({ id, nombre: `opencode/${id.split('/')[1]} Nombre` })) })
 const motores = [{ id: 'opencode', nombre: 'OpenCode', instalado: true }, { id: 'cline', nombre: 'Cline', instalado: true }, { id: 'gemini', nombre: 'Gemini CLI', instalado: false }]
@@ -69,6 +69,37 @@ describe('qué motores no están listos (aprendido de lo que pasó)', () => {
     expect(r.get('mudo')).toBe('Se quedó mudo la última vez')
     expect(r.has('opencode')).toBe(false) // volvió a funcionar
     expect(r.has('cline')).toBe(false)    // un límite es pasajero, no es «no listo»
+  })
+})
+
+describe('los modelos que el motor rechazó', () => {
+  const tarea = (modelo: string, inicio: number, error?: string) => ({
+    inicio, error, opciones: [{ id: 'model', nombre: 'Model', actual: modelo, valores: [] }],
+  }) as never
+
+  it('un modelo retirado o caído no se vuelve a proponer', () => {
+    expect(caidosDe([
+      tarea('opencode/exo-free', 1, 'Internal error: Model exo-free has been deprecated.'),
+      tarea('opencode/otro', 2),
+    ])).toEqual(['opencode/exo-free'])
+  })
+
+  it('un límite pasajero no lo tira: sólo lo que no se va a arreglar', () => {
+    expect(caidosDe([tarea('opencode/x', 1, 'Rate limit exceeded')])).toEqual([])
+  })
+
+  it('si el modelo vuelve a funcionar, vuelve a estar disponible', () => {
+    expect(caidosDe([
+      tarea('opencode/exo-free', 1, 'Internal error: Model exo-free has been deprecated.'),
+      tarea('opencode/exo-free', 2),   // después funcionó
+    ])).toEqual([])
+  })
+
+  it('manda el último intento, no el primero', () => {
+    expect(caidosDe([
+      tarea('opencode/x', 1),
+      tarea('opencode/x', 2, 'Internal error: Model x has been deprecated.'),
+    ])).toEqual(['opencode/x'])
   })
 })
 

@@ -99,6 +99,25 @@ describe('Taller', () => {
     expect((await t!.eventos(tarea.id)).some((e) => e.tipo === 'herencia')).toBe(false)
   })
 
+  it('cuando una tarea se rompe, la mente se lo apunta (no sólo cuando hay veredicto)', async () => {
+    const s = sesiones(async () => { throw new Error('se rompió el motor') })   // no se reintenta: no es temporal
+    const pedidos: { url: string; cuerpo: any }[] = []
+    const f = vi.fn(async (url: string, o?: { body?: string }) => {
+      pedidos.push({ url, cuerpo: JSON.parse(o?.body ?? '{}') })
+      return { ok: true, status: 200, json: async () => ({ lecciones: 1, ids: [], texto: [] }) } as Response
+    })
+    vi.stubGlobal('fetch', f)
+    try {
+      const tarea = crear(s.abrir, copiasFalsas().ops, { mente: () => ({ url: 'http://mente', token: 'tok' }) })
+        .crear({ motor, carpeta: '/proyecto', texto: 'Arregla el examen' })
+      await esperar(tarea.id, 'error')
+      await vi.waitFor(() => expect(pedidos.some((p) => p.url.endsWith('/equipo'))).toBe(true), { timeout: 3000 })
+      const equipo = pedidos.find((p) => p.url.endsWith('/equipo'))!
+      expect(equipo.cuerpo.tareas).toEqual([expect.objectContaining({ estado: 'error', error: 'se rompió el motor' })])
+      expect(equipo.cuerpo.tareas[0].actividad).toBeUndefined()   // sólo lo que la mente necesita
+    } finally { vi.unstubAllGlobals() }
+  })
+
   it('cuenta herramientas distintas, primera respuesta y uso acumulado', async () => {
     const s = sesiones(async (o) => {
       reloj = 1250
