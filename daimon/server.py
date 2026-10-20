@@ -28,7 +28,8 @@ ORIGINS = {"http://localhost:5173", "http://127.0.0.1:5173", "app://daimon"}
 class EventBus:
     """Eventos de la mente (quién recordó qué) para el Atlas en vivo; seguro entre hilos."""
 
-    def __init__(self, keep: int = 200):
+    def __init__(self, keep: int = 2000):
+        # 2000 eventos en vivo: la app puede mirar atrás sin quedarse sin historial
         self.history: deque[dict] = deque(maxlen=keep)
         self._subs: set[asyncio.Queue] = set()
         self._loop: asyncio.AbstractEventLoop | None = None
@@ -112,7 +113,9 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
     async def recall(req: Request):
         b = await req.json()
         motor = b.get("motor")
-        text, used, ids = await locked(home.thalamus.compose)(b["query"], int(b.get("budget", 1500)), motor=motor)
+        # El presupuesto es el de la mente (configurable); 0 usa ese, y un negativo significa sin límite.
+        presupuesto = int(b.get("budget", 0)) or int(home.config.get("presupuesto", 4000))
+        text, used, ids = await locked(home.thalamus.compose)(b["query"], presupuesto, motor=motor)
         ev = {"type": "recall", "who": b.get("who", "app"), "query": b["query"], "ids": ids, "tokens": used,
               "abstained": not ids, "motor": motor}
         bus.publish(ev)
@@ -135,7 +138,8 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
 
     @mcp.custom_route("/memories", methods=["GET"])
     async def memories(req: Request):
-        q, limit = req.query_params.get("q", ""), int(req.query_params.get("limit", 20))
+        # 200 recuerdos por defecto: la app no se queda con la punta de iceberg
+        q, limit = req.query_params.get("q", ""), int(req.query_params.get("limit", 200))
         if not q:   # sin búsqueda: lo último que aprendió tu mente
             recientes = (await locked(home.hippo.events)())[::-1][:limit]
             return JSONResponse([{**_event_dict(e), "score": 0} for e in recientes])
@@ -192,7 +196,7 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
     async def atlas(_: Request):
         return JSONResponse(await locked(atlas_for)(home))
 
-    # La voz de Esme (daimon/voz.py): oír PCM float32 a 16 kHz (hasta 3 min) y decir texto como WAV.
+    # La voz de Esme (daimon/voz.py): oír PCM float32 a 16 kHz (hasta 15 min) y decir texto como WAV.
     if voz is None:
         from daimon.voz import Voz
         voz = Voz()
@@ -209,15 +213,15 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
         datos = await req.body()
         if not datos or len(datos) % 4:
             return JSONResponse({"error": "falta el audio (PCM float32 a 16 kHz)"}, 400)
-        if len(datos) > 16000 * 4 * 180:
-            return JSONResponse({"error": "el audio pasa de 3 minutos"}, 413)
+        if len(datos) > 16000 * 4 * 900:   # 15 minutos de audio, no 3: no se rechaza una charla larga
+            return JSONResponse({"error": "el audio pasa de 15 minutos"}, 413)
         pcm = np.frombuffer(datos, dtype="<f4")
         texto = await con_voz(voz.oir)(pcm, req.query_params.get("idioma", "es"))
         return JSONResponse({"texto": texto})
 
     @mcp.custom_route("/voz/decir", methods=["POST"])
     async def voz_decir(req: Request):
-        texto = str((await req.json()).get("texto", "")).strip()[:4000]
+        texto = str((await req.json()).get("texto", "")).strip()[:20000]   # hasta 20 000 caracteres, no 4 000
         if not texto:
             return JSONResponse({"error": "no hay nada que decir"}, 400)
         return Response(await con_voz(voz.decir)(texto), media_type="audio/wav")

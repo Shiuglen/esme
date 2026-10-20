@@ -45,9 +45,31 @@ def test_ruta_excluida_no_entra():
     assert not any("FirmeDigital-notas" in e.source for e in evs)
 
 
-def test_nota_con_un_trozo_excluido_se_descarta_entera():
+def test_nota_con_un_trozo_excluido_conserva_el_resto():
+    # Un fragmento prohibido ya no tira la nota entera: solo cae el trozo culpable.
     evs = collect([FIX / "excluida"])
-    assert not any(e.source.endswith("mezcla.md") for e in evs)
+    assert any("Una línea normal" in e.text for e in evs)
+    assert any("Texto inocente" in e.text for e in evs)
+    assert not any("FirmeDigital" in e.text for e in evs)
+    assert not any("El deploy de" in e.text for e in evs)
+
+
+def test_ingiere_codigo_config_y_texto(tmp_path):
+    (tmp_path / "a.py").write_text("def hola():\n    return 'mundo'\n")
+    (tmp_path / "b.toml").write_text("[herramienta]\nnombre = 'daimon'\n")
+    (tmp_path / "c.txt").write_text("una nota suelta\n")
+    (tmp_path / "d.yaml").write_text("clave: valor\n")
+    evs = collect([tmp_path])
+    fuentes = {Path(e.source).name for e in evs}
+    assert {"a.py", "b.toml", "c.txt", "d.yaml"} <= fuentes
+    assert any("mundo" in e.text for e in evs)
+
+
+def test_fichero_enorme_se_salta(tmp_path):
+    (tmp_path / "enorme.txt").write_text("x" * (2 * 1024 * 1024 + 10))
+    (tmp_path / "normal.txt").write_text("esto sí entra\n")
+    evs = collect([tmp_path])
+    assert {Path(e.source).name for e in evs} == {"normal.txt"}
 
 
 def test_secreto_partido_entre_trozos():

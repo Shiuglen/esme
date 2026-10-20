@@ -42,8 +42,10 @@ def test_oir_recibe_pcm_float32_y_devuelve_texto(ctx):
 def test_oir_sin_audio_o_demasiado_largo_se_rechaza(ctx):
     c, _ = ctx
     assert c.post("/voz/oir", content=b"", headers=H).status_code == 400
-    largo = np.zeros(16000 * 181, dtype="<f4").tobytes()   # más de 3 minutos
-    assert c.post("/voz/oir", content=largo, headers=H).status_code == 413
+    largo = np.zeros(16000 * 300, dtype="<f4").tobytes()   # 5 minutos: ahora entra (antes se rechazaba a los 3)
+    assert c.post("/voz/oir", content=largo, headers=H).status_code == 200
+    demais = np.zeros(16000 * 960, dtype="<f4").tobytes()   # 16 minutos: pasa de 15, se rechaza
+    assert c.post("/voz/oir", content=demais, headers=H).status_code == 413
 
 
 def test_decir_devuelve_wav(ctx):

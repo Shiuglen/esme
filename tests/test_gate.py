@@ -21,6 +21,32 @@ def test_recall_sin_memoria(tmp_path):
     assert recall_tool(_home(tmp_path), "algo", 500) == "Sin recuerdos relevantes."
 
 
+def test_remember_no_duplica_variantes(tmp_path):
+    """La misma frase con otros espacios o mayúsculas ya no crea dos recuerdos."""
+    h = _home(tmp_path)
+    a = remember_tool(h, "El servidor corre en Linux")
+    b = remember_tool(h, "el   servidor corre en linux")
+    assert a == b and len(h.hippo) == 1
+
+
+def test_remember_conserva_el_tipo(tmp_path):
+    """Antes un tipo desconocido se forzaba a «note» y se perdía el matiz."""
+    h = _home(tmp_path)
+    remember_tool(h, "Adoptamos Postgres", kind="decision")
+    assert h.hippo.events()[0].kind == "decision"
+
+
+def test_recall_toma_el_presupuesto_de_la_mente(tmp_path):
+    """Sin budget explícito, la mente usa el suyo (configurable)."""
+    import json
+    (tmp_path / "config.json").write_text(json.dumps({"presupuesto": 40}), encoding="utf-8")
+    h = _home(tmp_path)
+    remember_tool(h, "Laya decide sin coste " * 200)
+    out = recall_tool(h, "Laya decide")
+    assert "Laya" in out
+    assert len(out) < 40 * 4 * 2          # respeta el presupuesto de la mente
+
+
 def test_remember_rechaza_firme(tmp_path):
     h = _home(tmp_path)
     assert remember_tool(h, "notas de FirmeDigital").startswith("rechazado")

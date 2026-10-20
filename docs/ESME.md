@@ -5,7 +5,7 @@
 > - **Cuándo se actualiza:** al terminar cada paso.
 > - **Qué hacer con los detalles:** están en los enlaces. Si algo contradice a este fichero, gana este fichero, y el conflicto se anota aquí.
 >
-> **Última revisión:** 2026-10-12, tras releer las 58 rondas de preguntas y todos los mensajes del creador.
+> **Última revisión:** 2026-10-20, tras el trabajo «sin límites» de la mente y la búsqueda en X del mismo día.
 
 ## 0. La regla madre (palabras del creador)
 - **Esme es maleable (17-oct):** «no quiero limitarlo… que sea totalmente cambiante… que la persona pueda modificar cualquier cosa, incluso cambiar lo visual por librerías que vio». No hay un diseño fijo: hay **pieles**. Todo lo visual (color, tipografía, densidad, formas, movimiento, fondo, componentes) vive en una piel que se cambia en vivo con deshacer e historial; Esme genera pieles a petición («hazla como Linear», «como esta web»), las comprueba (contraste, legibilidad) y enseña antes y después; las pieles se comparten y venden en la Tienda. Esmeralda, Tinta y Luz y el violeta son las primeras pieles, no «el diseño».
@@ -246,3 +246,22 @@ En pie desde el 19-oct, por decisión del creador: **la ingeniería inversa est�
 - **Las cifras de Uso en cursiva de casa ✅**: los KPI con la tipografía display de los números grandes del Taller.
 - Puertas: 339 tests verdes · typecheck limpio · build 4 s. Capturas: mente-viva, taller-enfocada, cajon-nuevo, ajustes-bichos.
 - **Cola abierta (para no dormirse nunca)**: Nueva tarea con vida al teclear (gemelos) · prismas mayores (área/línea + mermaid propio) · muelle de subagentes (Synara #198) · trazas en cascada (Charm #33) · paleta con estados de la casa · minar más del FYP y del GitHub del creador.
+
+## Sin límites: la mente deja de frenar al agente (20 oct 2026)
+
+- **Encargo del creador**: «elimina limitaciones de esto que estamos creando» y «cambiar todo esto ya que es malísimo». Regla aplicada: **un límite sólo se conserva si es decisión del creador, nunca un resto de una decisión anterior**. Tres tipos: de recurso (fuera), de seguridad (intactos: token, hosts, `Origin`, redacción, exclusión) y de política (intactos: no clonar apps ajenas).
+- **La memoria ya no cierra la puerta ✅**: `recall` ya no devuelve vacío cuando nada parece mucho; devuelve lo mejor que hay y lo marca `[contexto débil: …]`. Antes el agente se quedaba parado sin saber por qué.
+- **Los recuerdos ya no se olvidan solos ✅**: la recencia tenía vida media de 90 días (a los ~276 días un recuerdo pesaba 0,05 y desaparecía). Ahora son 3650 días y configurable (`recencia_dias`): lo viejo se atenúa, no se amputa.
+- **Lo aprendido sobrevive al reinicio ✅**: antes el feedback sólo valía si recall y feedback-passaban en el mismo proceso — al cerrar la app se perdía la lección de cada IA. Ahora las consultas compuestas se guardan (`ultimas.json`) y el feedback sigue sirviendo al arrancar.
+- **El contexto ya no se corta a media palabra ✅**: `pack()` recortaba a caracteres crudos (y la garantía dura quitaba de cuatro en cuatro). Ahora recorta al final de una palabra y marca con «…».
+- **Sin topes arbitrarios ✅**: fuera el tope de 60 recuerdos (manda el presupuesto, y `budget=0` = sin límite); fuera el presupuesto fijo de 1500 tokens (el de la mente es configurable, 4000 por defecto); el HTTP `/recall` también lo toma.
+- **La mente ve mucho más ✅**: la ingesta sólo leía `.md` y `.jsonl` — el código, la configuración y los datos del usuario eran invisibles. Ahora lee 26 formatos (con salto de lo que pase de 2 MiB) y una nota con un fragmento excluido ya no se tira entera: cae sólo el trozo culpable.
+- **Los ids citados son los que entraron ✅**: antes los recuerdos truncados desaparecían sin que nadie lo supiera; ahora se cita lo que de verdad está en el contexto.
+- **El tipo de un recuerdo ya no se pierde ✅**: `decision`, `preferencia` o lo que sea se guarda tal cual (antes todo se forzaba a `note`); y la misma idea con otros espacios ya no crea un recuerdo gemelo.
+- **LA MEMORIA LLEGABA A OPENCODE POR LA FORMA QUE ESTÁ EN DESUSO ✅**: Esme escribía `mcp.esme` en `opencode.json`; el esquema de OpenCode marca esa forma plana como *deprecated* (`additionalProperties` con `"deprecated": true`) y la moderna es `mcp.servers.esme`. Ahora se escribe en `mcp.servers.esme` y, al conectar, se retira la plana que quedara de antes. Sin esto, un OpenCode abierto a mano no tenía tu memoria (las sesiones de la app sí, por ACP).
+- **Más aire donde sobraba**: `k` de candidatos 40→120, `recall(k=60, hops=3)`, `/memories` 20→200, texto de voz 4000→20 000 caracteres, audio 3→15 minutos, historial SSE 200→2000, lente hasta 8192 tokens (recortado a la ventana que declara el modelo).
+- **Puertas**: 137 pruebas Python verdes (antes 120) · 644 pruebas de la app verdes (104 ficheros) · typecheck limpio. **El examen del creador está pendiente**: esto toca el contexto que recibe la IA y hay que volver a medirlo contra `rag_denso_eg` antes de darlo por bueno — si el número no mejora, no entra.
+- **Investigación en X (mismo día)**: 17 búsquedas con el navegador del creador (el CLI de `agent-reach` no está instalado y el puente de `opencli` no está conectado; se fue a mano con CDP, sólo lectura). Salieron 52 señales con 8 palancas: el navegador como espacio de primera clase con Jev (7 s / 0,0039 $ por tarea), publicar `esme` en el Registro oficial de MCP, A2A y Agent Cards para el Taller, Mem0/Hindsight como banco de examen, skills por cuenco de trabajo, roles en YAML (OpenRig), voz local diminuta (SKI, tyger-s2s con ASR de 14 M) y el informe de equivalencia económica. Está en `docs/investigacion/2026-10-20-x-escala.md`.
+- **La tesis de escala y el orden**: `docs/ideas/2026-10-20-escala-maxima.md` (doce palancas, tres movimientos, y la frontera legal de REA: ingeniería inversa sólo sobre lo propio, lo del usuario con permiso y el forense propio; nunca sobre apps de terceros para copiarlas).
+- **Detalle de lo quitado**: `docs/resultados/2026-10-20-limites-eliminados.md`.
+- **Cola abierta**: medir el examen con el contexto nuevo · que todo motor nuevo arranque con la sesión de la mente sin pedirla · el informe de equivalencia (lo que Esme sustituye por 0 €) · REA (`rea-agents` v6.7.0, MIT) registrado como MCP de Esme para que entienda su propio binario.

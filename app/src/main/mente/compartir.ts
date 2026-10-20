@@ -5,29 +5,57 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, join } from 'node:path'
 
 type Json = Record<string, unknown>
-export type Agente = { id: string; nombre: string; fichero: string; clave: 'mcpServers' | 'mcp'; entrada(url: string, cabeceras: Record<string, string>): Json }
+export type Agente = { id: string; nombre: string; fichero: string; clave: 'mcpServers' | 'mcp'; subclave?: string; entrada(url: string, cabeceras: Record<string, string>): Json }
 
 export const AGENTES: Agente[] = [
   { id: 'claude-code', nombre: 'Claude Code', fichero: '.claude.json', clave: 'mcpServers', entrada: (url, headers) => ({ type: 'http', url, headers }) },
   { id: 'gemini', nombre: 'Gemini CLI', fichero: '.gemini/settings.json', clave: 'mcpServers', entrada: (httpUrl, headers) => ({ httpUrl, headers }) },
   { id: 'qwen', nombre: 'Qwen Code', fichero: '.qwen/settings.json', clave: 'mcpServers', entrada: (httpUrl, headers) => ({ httpUrl, headers }) },
   { id: 'cursor', nombre: 'Cursor', fichero: '.cursor/mcp.json', clave: 'mcpServers', entrada: (url, headers) => ({ url, headers }) },
-  { id: 'opencode', nombre: 'OpenCode', fichero: '.config/opencode/opencode.json', clave: 'mcp', entrada: (url, headers) => ({ type: 'remote', url, headers, enabled: true }) },
+  // OpenCode anida los servidores en mcp.servers; la forma plana (mcp.esme) está en desuso y
+  // OpenCode puede dejar de leerla: con la anidada la memoria llega al agente y no por casualidad.
+  { id: 'opencode', nombre: 'OpenCode', fichero: '.config/opencode/opencode.json', clave: 'mcp', subclave: 'servers', entrada: (url, headers) => ({ type: 'remote', url, headers, enabled: true }) },
 ]
 
 const objeto = (x: unknown): x is Json => !!x && typeof x === 'object' && !Array.isArray(x)
+/** La sección donde viven los servidores MCP de este agente (con OpenCode, un nivel más abajo). */
+function seccion(json: Json, a: Agente): Json {
+  const raiz = objeto(json[a.clave]) ? (json[a.clave] as Json) : {}
+  if (!a.subclave) return raiz
+  return objeto(raiz[a.subclave]) ? (raiz[a.subclave] as Json) : {}
+}
 export function conEsme(json: Json, a: Agente, url: string, token: string): Json {
-  const previos = objeto(json[a.clave]) ? (json[a.clave] as Json) : {}
-  return { ...json, [a.clave]: { ...previos, esme: a.entrada(url, { Authorization: `Bearer ${token}` }) } }
+  const entrada = a.entrada(url, { Authorization: `Bearer ${token}` })
+  if (!a.subclave) {
+    const previos = objeto(json[a.clave]) ? (json[a.clave] as Json) : {}
+    return { ...json, [a.clave]: { ...previos, esme: entrada } }
+  }
+  const raiz = objeto(json[a.clave]) ? (json[a.clave] as Json) : {}
+  const previos = objeto(raiz[a.subclave]) ? (raiz[a.subclave] as Json) : {}
+  const { esme: _plano, ...raizSinPlano } = raiz      // la forma plana en desuso se retira al conectar
+  return { ...json, [a.clave]: { ...raizSinPlano, [a.subclave]: { ...previos, esme: entrada } } }
 }
 export function sinEsme(json: Json, a: Agente): Json {
-  if (!objeto(json[a.clave])) return json
-  const { esme: _fuera, ...resto } = json[a.clave] as Json
-  if (Object.keys(resto).length) return { ...json, [a.clave]: resto }
+  const raiz = objeto(json[a.clave]) ? (json[a.clave] as Json) : {}
+  if (!a.subclave) {
+    const { esme: _fuera, ...resto } = raiz
+    if (Object.keys(resto).length) return { ...json, [a.clave]: resto }
+    const { [a.clave]: _vacia, ...sinClave } = json
+    return sinClave
+  }
+  const sub = objeto(raiz[a.subclave]) ? (raiz[a.subclave] as Json) : {}
+  const { esme: _fuera, ...subResto } = sub
+  const { esme: _plano, ...raizResto } = raiz          // también se quita la forma plana que quedara
+  const { [a.subclave]: _vaciaSub, ...raizSinSub } = raizResto
+  const nuevo = Object.keys(subResto).length ? { ...raizResto, [a.subclave]: subResto } : raizSinSub
+  if (Object.keys(nuevo).length) return { ...json, [a.clave]: nuevo }
   const { [a.clave]: _vacia, ...sinClave } = json
   return sinClave
 }
-export const estaConectado = (json: Json, a: Agente) => objeto(json[a.clave]) && 'esme' in (json[a.clave] as Json)
+export const estaConectado = (json: Json, a: Agente) => {
+  const raiz = objeto(json[a.clave]) ? (json[a.clave] as Json) : {}
+  return 'esme' in seccion(json, a) || 'esme' in raiz
+}
 
 function leer(f: string): Json {
   if (!existsSync(f)) return {}

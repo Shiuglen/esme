@@ -22,6 +22,29 @@ def test_pack_no_excede():
     assert pack([], 100) == ("", 0)
 
 
+def test_pack_no_corta_palabras_por_la_mitad():
+    """Antes el recorte era a caracteres crudos: la IA recibía media palabra y no entendía nada."""
+    larga = "palabra " * 400
+    text, used = pack([larga], budget=50)
+    assert used <= 50 and count(text) <= 50
+    assert text.endswith("…")
+    assert not text[:-1].endswith("palabr")      # no queda una palabra partida
+    assert "palabra" in text                      # y lo que sí cabe es texto entero
+
+
+def test_pack_sin_limite():
+    """budget 0 = sin límite: entra todo."""
+    textos = ["uno", "dos", "tres"]
+    text, used = pack(textos, budget=0)
+    assert used == count(text) and "tres" in text
+
+
+def test_pack_dice_que_entro():
+    incluidos: list[int] = []
+    pack(["a", "b" * 10000, "c"], budget=20, incluidos=incluidos)
+    assert incluidos and incluidos[0] == 0        # lo que entró de verdad
+
+
 def test_pack_salta_lo_que_no_cabe():
     text, used = pack(["a" * 40, "b" * 1000, "c" * 40], budget=40)
     assert "a" * 40 in text and used <= 40

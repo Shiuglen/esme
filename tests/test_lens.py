@@ -155,3 +155,13 @@ def test_la_lente_suelta_el_modelo_si_nadie_la_usa_y_lo_recupera_al_volver():
     b = enc(["la tinta envejece con los días"])
     assert enc.cargada()
     assert np.allclose(a, b, atol=1e-5)
+
+
+@_hay_modelo
+def test_un_texto_largo_se_recorta_pero_no_revienta_el_modelo():
+    # La ventana del troceador es amplia (8192), pero el modelo manda: un texto más largo
+    # se recorta a su contexto, no revienta la sesión de ONNX.
+    from daimon.lens import onnx_encoder
+    enc, dim = onnx_encoder("embeddinggemma-300m", inactividad=None, cache=0)
+    v = enc(["palabra " * 6000])
+    assert v.shape == (1, 768) and np.all(np.isfinite(v)) and abs(float(np.linalg.norm(v)) - 1) < 1e-3
