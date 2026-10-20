@@ -64,7 +64,7 @@
     "ai": "^7.0.137",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "esme-platform": "github:Shiuglen/esme-platform#5208eed5eeac53e93f89ec68dc49e7e28f4f198c",
+    "esme-platform": "https://github.com/Shiuglen/esme-platform/releases/download/v0.1.0/esme-platform-0.1.0.tgz",
     "lucide-react": "^1.55.0",
     "motion": "^14.1.0",
     "ollama-ai-provider-v2": "^4.0.1",
