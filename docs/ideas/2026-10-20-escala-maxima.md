@@ -236,6 +236,7 @@ ya usas**.
 | `inworld-ai/open-tts-eval` | MIT | 2 MB | El núcleo de evaluación de TTS (WER/CER, umbrales, informe offline) es **local y portable**; sus tres proveedores de muestra son de pago → hay que escribir un `TTSProvider` propio |
 | `egma-ai/egma` | MIT (núcleo) | 35 MB | Pruebas de simulación para agentes de voz. El núcleo es libre; `ee/` no |
 **Se mide.** Latencia de ida y vuelta en conversación real, y el error de dictado (WER).
+**Medido (20-oct).** El oído (faster-whisper «small») y la voz (Piper) de Esme, con el método limpio: el texto es la verdad, se sintetiza, se oye y se compara palabra a palabra. La voz habla **12× más rápido que en tiempo real** (RTF 0,083). El oído **en la CPU iba más despacio que en tiempo real** (RTF 0,643: diez segundos de voz tardaban seis y medio) y **en la GPU es 8,6 veces más rápido con el mismo error** (RTF 0,074, WER 0,150). **Arreglado**: `daimon/voz.py` elige GPU si hay CUDA y 1,5 GB de VRAM libre (la app la usa para sus escenas), si no CPU. Queda: el streaming real (full-dúplex) y la voz como servicio para los agentes por MCP. Detalle: `docs/resultados/2026-10-20-voz.md`.
 
 ### Palanca 11 — El informe de equivalencia económica
 **Idea.** «En GitHub hay una cantidad absurda de proyectos gratis que ya hacen lo mismo que la
