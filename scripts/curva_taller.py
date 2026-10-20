@@ -116,7 +116,9 @@ def metricas(datos: dict) -> dict:
                                  "ficheros": 0, "mas": 0, "veredictos": 0, "aciertos": 0})
             b["tareas"] += 1
             estado = t.get("estado") or "lista"
-            if estado in b:
+            if estado == "lista":
+                b["terminadas"] += 1
+            elif estado in b:
                 b[estado] += 1
             b["herramientas"] += int(t.get("herramientas") or 0)
             b["turnos"] += int(t.get("turnos") or 0)
@@ -184,6 +186,34 @@ def metricas(datos: dict) -> dict:
     }
 
 
+def a_formato_de_la_app(m: dict) -> dict:
+    """La misma forma que la app (app/src/main/taller/curva.ts): un único formato para los dos.
+
+    Así el fichero que escribe este script se puede leer tal cual desde la app (y al revés), sin
+    traducciones por el camino que se puedan desincronizar.
+    """
+    motores = []
+    for nombre, b in m["por_motor"].items():
+        motores.append({
+            "motor": nombre, "tareas": b["tareas"], "terminadas": b["terminadas"], "error": b["error"],
+            "parada": b["parada"], "trabajando": b["trabajando"], "herramientas": b["herramientas"],
+            "tokens": b["entrada"] + b["salida"], "coste": b["coste"], "ficheros": b["ficheros"],
+            "veredictos": b["veredictos"], "aciertos": b["aciertos"],
+            "aciertosPorTarea": b["aciertos_por_tarea"], "herramientasPorTarea": b["herramientas_por_tarea"],
+            "tokensPorTarea": b["tokens_por_tarea"], "costePorTarea": b["coste_por_tarea"],
+        })
+    return {
+        "tareas": m["tareas"],
+        "estados": m["estados"],
+        "veredictos": m["veredictos"],
+        "porDia": [{"dia": d, "positivos": v["positivos"], "negativos": v["negativos"], "aciertos": v["aciertos"]}
+                   for d, v in m["curva"].items()],
+        "porMotor": motores,
+        "fallos": [{"mensaje": k, "veces": v} for k, v in m["fallos"].items()],
+        "costeDelAcierto": m["coste_del_acierto"],
+    }
+
+
 def imprime(m: dict) -> None:
     print(f"tareas: {m['tareas']} · estados: {m['estados']}")
     v = m["veredictos"]
@@ -212,6 +242,7 @@ def main() -> int:
     ap.add_argument("--taller", default="~/.config/daimon-app/taller")
     ap.add_argument("--json", action="store_true", help="volcar el JSON y nada más")
     ap.add_argument("--out", default="runs/taller/curva.json")
+    ap.add_argument("--formato-app", action="store_true", help="escribir sólo el JSON (la forma de la app)")
     args = ap.parse_args()
 
     taller = Path(args.taller).expanduser()
@@ -223,8 +254,11 @@ def main() -> int:
     salida = ROOT / args.out
     salida.parent.mkdir(parents=True, exist_ok=True)
     salida.write_text(json.dumps(m, indent=1, ensure_ascii=False), encoding="utf-8")
+    app = a_formato_de_la_app(m)
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    Path(args.out).write_text(json.dumps(app, indent=1, ensure_ascii=False), encoding="utf-8")
     if args.json:
-        print(json.dumps(m, indent=1, ensure_ascii=False))
+        print(json.dumps(app, indent=1, ensure_ascii=False))
     else:
         imprime(m)
         print(f"\nescrito: {salida}")

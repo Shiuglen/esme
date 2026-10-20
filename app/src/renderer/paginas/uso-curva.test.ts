@@ -36,6 +36,25 @@ describe('la curva del Taller, contada', () => {
     expect(v.motores.every((m) => m.acierto === null)).toBe(true)
   })
 
+  it('cuenta cómo acabaron las tareas: eso es lo que se mide día a día', () => {
+    const v = vistaCurva(curva({ tareas: 46, estados: { lista: 19, error: 16, parada: 9, trabajando: 2 } }))
+    expect(v.estados).toEqual([
+      { texto: 'terminadas', valor: 19, tono: 'bien' },
+      { texto: 'con error', valor: 16, tono: 'mal' },
+      { texto: 'paradas', valor: 9, tono: 'normal' },
+      { texto: 'trabajando', valor: 2, tono: 'normal' },
+    ])
+  })
+
+  it('sin un solo «sí» la línea no miente: lo dice con palabras', () => {
+    const v = vistaCurva(curva({ tareas: 46, veredictos: { total: 11, positivos: 0, negativos: 11 },
+      porDia: [{ dia: '2026-10-18', positivos: 0, negativos: 2, aciertos: 0 }] }))
+    expect(v.sinAciertos).toBe(true)
+    const con = vistaCurva(curva({ tareas: 46, veredictos: { total: 11, positivos: 1, negativos: 10 },
+      porDia: [{ dia: '2026-10-18', positivos: 1, negativos: 1, aciertos: 0.5 }] }))
+    expect(con.sinAciertos).toBe(false)
+  })
+
   it('el coste del acierto sólo se cuenta si hubo alguna tarea que te quedaste', () => {
     const con = vistaCurva(curva({ tareas: 2, veredictos: { total: 1, positivos: 1, negativos: 0 }, costeDelAcierto: { tareas: 1, tokens: 1234, coste: 0 } }))
     expect(con.costeDelAcierto).toContain('1,2 mil tokens')

@@ -6,6 +6,7 @@ import type { Curva } from '../lib/bridge'
 import { fmtTokens, fmtUSD } from '../chat/formatos'
 
 export type BarraCurva = { dia: string; titulo: string; altura: number; acierto: boolean }
+export type PedazoEstado = { texto: string; valor: number; tono: 'bien' | 'mal' | 'normal' }
 export type LineaMotor = { motor: string; tareas: number; error: number; tokens: number; acierto: number | null }
 export type VistaCurva = {
   titulo: string
@@ -15,13 +16,23 @@ export type VistaCurva = {
   motores: LineaMotor[]
   fallos: { mensaje: string; veces: number }[]
   costeDelAcierto: string | null
+  estados: PedazoEstado[]
+  sinAciertos: boolean
 }
 
 /** La curva, ya contada para la vista: lo que se ve es lo que dice. */
 export function vistaCurva(curva: Curva | null): VistaCurva {
   if (!curva || curva.tareas === 0) {
-    return { titulo: 'La curva del Taller', subtitulo: 'Aún no hay tareas que medir.', hayCurva: false, barras: [], motores: [], fallos: [], costeDelAcierto: null }
+    return { titulo: 'La curva del Taller', subtitulo: 'Aún no hay tareas que medir.', hayCurva: false, barras: [], motores: [], fallos: [],
+      costeDelAcierto: null, estados: [], sinAciertos: false }
   }
+  // Cómo acabaron las tareas: lo que de verdad se mide, día a día.
+  const estados: PedazoEstado[] = ([
+    { texto: 'terminadas', valor: curva.estados.lista ?? 0, tono: 'bien' },
+    { texto: 'con error', valor: curva.estados.error ?? 0, tono: 'mal' },
+    { texto: 'paradas', valor: curva.estados.parada ?? 0, tono: 'normal' },
+    { texto: 'trabajando', valor: curva.estados.trabajando ?? 0, tono: 'normal' },
+  ] as PedazoEstado[]).filter((e) => e.valor > 0)
   const v = curva.veredictos
   const barra = (b: { dia: string; positivos: number; negativos: number; aciertos: number }): BarraCurva => ({
     dia: b.dia,
@@ -47,5 +58,8 @@ export function vistaCurva(curva: Curva | null): VistaCurva {
     motores,
     fallos: curva.fallos.slice(0, 4),
     costeDelAcierto: coste ? `${fmtTokens(coste.tokens)} tokens y ${fmtUSD(coste.coste)} por tarea que te quedaste` : null,
+    estados,
+    // Sin un solo «sí» todavía la línea de barras no dice nada: mejor decirlo con palabras.
+    sinAciertos: curva.veredictos.total > 0 && curva.veredictos.positivos === 0,
   }
 }

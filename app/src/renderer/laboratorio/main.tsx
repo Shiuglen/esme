@@ -21,6 +21,8 @@ import { FondoVivo } from '../shell/FondoVivo'
 import '../styles/esme.css'
 
 const reales = import.meta.glob<{ atlas: Atlas }>('./datos/atlas.json', { eager: true, import: 'default' })
+// La curva real del Taller (la escribe scripts/curva_taller.py): si está, se enseña la de verdad.
+const curvas = import.meta.glob<Curva>('./datos/curva.json', { eager: true, import: 'default' })
 
 /** Una mente inventada pero creíble: 6 temas, 360 recuerdos en 20 días, un tercio dichos por una IA. */
 function sintetica(): Atlas {
@@ -47,6 +49,8 @@ function tareasDeMuestra(): TareaTaller[] {
 
 // La curva del Taller, con los números reales del 20-oct: para verla sin abrir la app.
 function PiezaCurva() {
+  const real = Object.values(curvas)[0]
+  if (real) return <div className="h-full overflow-y-auto p-10"><div className="mx-auto grid max-w-[720px] gap-6"><CurvaTaller curva={real} /></div></div>
   const curva: Curva = {
     tareas: 46,
     estados: { error: 16, lista: 19, parada: 9, trabajando: 2 },

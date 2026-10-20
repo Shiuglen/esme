@@ -17,7 +17,22 @@ export function CurvaTaller({ curva }: { curva: Curva | null }) {
         <span className="text-xs text-texto-3">{vista.subtitulo}</span>
       </div>
 
-      {vista.barras.length > 0 && (
+      {vista.estados.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-texto-3">
+          {vista.estados.map((e) => (
+            <span key={e.texto} className="inline-flex items-baseline gap-1">
+              <span className={cn('font-display text-[15px] leading-none', e.tono === 'mal' ? 'text-peligro' : e.tono === 'bien' ? 'text-exito' : 'text-texto-2')}>{e.valor}</span>
+              {e.texto}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {vista.sinAciertos && (
+        <p className="text-xs text-texto-3">Todavía no te has quedado ninguna tarea: la línea sube el primer día que digas «esta sí».</p>
+      )}
+
+      {vista.barras.length > 0 && !vista.sinAciertos && (
         <div className="flex h-14 items-end gap-[4px] border-b border-linea pb-px" role="img" aria-label="Aciertos por día del Taller: la altura de cada barra es la proporción de tareas que te quedaste">
           {vista.barras.map((b) => (
             <span key={b.dia} title={b.titulo}
