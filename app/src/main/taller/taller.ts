@@ -5,7 +5,7 @@ import { appendFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } fr
 import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { abrirSesionACP, type EventoMotor, type OpcionConfig } from '../motores/sesion-acp'
-import { bloqueHerencia, heredar, type Mente } from './herencia'
+import { bloqueEquipo, bloqueHerencia, heredar, heredarEquipo, type Mente } from './herencia'
 import { leeCurva } from './curva-io'
 import type { Curva } from './curva'
 import { errorDelProveedor, esTemporal, sesionMuerta } from './fallos'
@@ -379,6 +379,22 @@ export class Taller {
     // `tarea` es el id de la tarea: sin él, la curva del Taller sólo sabe el motor, no quién deliveró.
     const v: Veredicto = { ts: this.ahora(), motor: r.tarea.motor, modelo: r.tarea.modelo, exito, tarea: r.tarea.id }
     try { mkdirSync(this.dir, { recursive: true }); appendFileSync(join(this.dir, 'veredictos.jsonl'), JSON.stringify(v) + '\n') } catch { /* no debe romper la operación */ }
+    // Y la mente se lo apunta: lo que tú te quedas o descartas es la lección del equipo.
+    void this.aprenderEquipo()
+  }
+
+  /** Le cuenta a la mente cómo va el equipo (qué te quedas, qué descartas, qué se rompe). */
+  async aprenderEquipo(): Promise<void> {
+    const mente = this.mente()
+    if (!mente) return
+    try {
+      await fetch(`${mente.url}/equipo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mente.token}` },
+        body: JSON.stringify({ veredictos: await this.veredictos(), tareas: this.lista() }),
+        signal: AbortSignal.timeout(10_000),
+      })
+    } catch { /* la mente no está o no contesta: la tarea sigue igual */ }
   }
 
   private escribirParche(id: string, parche: string): void {
@@ -433,6 +449,9 @@ export class Taller {
           this.registrar(r, { tipo: 'herencia', tokens: h.tokens, recuerdos: h.ids.length })
           mensaje = bloqueHerencia(h) + texto
         }
+        // Y lo que la mente aprendió del equipo: qué motor acierta contigo y qué se rompe siempre.
+        const e = await heredarEquipo(this.mente())
+        if (e) mensaje = bloqueEquipo(e) + mensaje
       }
       const motivo = await this.preguntar(r, mensaje)
       if (r.descartada || this.cerrado) return

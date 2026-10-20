@@ -48,10 +48,13 @@ describe('una sola puerta entre el TypeScript y el cerebro', () => {
   })
 
   it('quien habla con la mente lo hace por la puerta (y no por un fetch suelto)', () => {
+    // un fetch a la URL del cerebro (con una de sus rutas) fuera de la puerta: prohibido.
+    // (el servidor de vista previa del Taller es otra cosa: no habla con la mente)
     const culpables: string[] = []
+    const ruta = '/(memories|recall|remember|feedback|forget|ingest|health|rumbo|atlas|events)'
     for (const f of todos) {
       const texto = readFileSync(f, 'utf8')
-      if (/fetch\(\s*`?\$\{[^}]*\.url\}/.test(texto)) culpables.push(relative(SRC, f))
+      if (new RegExp(`fetch\\(\\s*\`?\\$\\{[^}]*\\.url\\}${ruta}`).test(texto)) culpables.push(relative(SRC, f))
     }
     expect(culpables, `llama al cerebro sin la puerta:\n${culpables.join('\n')}`).toEqual([])
   })

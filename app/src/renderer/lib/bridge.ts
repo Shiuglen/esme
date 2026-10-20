@@ -70,12 +70,17 @@ export type OrigenCatalogo = { origen: 'red' | 'cache' | 'semilla'; fecha: numbe
 export type Deseo = { autor: string; texto: string; post: string; destino: string; dominio: string; herramienta: string }
 export type OrigenPiel = { tipo: 'referencia'; url: string; dominio: string } | { tipo: 'propia' } | null
 export type PielPropia = { id: string; nombre: string; creada: number; origen: OrigenPiel; piel: Record<string, unknown> }
+export type Pilar = { id: string; texto: string; creado: number }
+export type Objetivo = { id: string; texto: string; estado: 'activo' | 'hecho' | 'pausado'; creado: number; cerrado: number | null; pilar: string | null }
+export type Rumbo = { version: 1; pilares: Pilar[]; objetivos: Objetivo[] }
 
 type ElectronApi = {
   brain: { info(): Promise<BrainInfo>; onChange(fn: (i: BrainInfo) => void): () => void }
   mente: {
     agentes(): Promise<AgenteMente[]>; conectar(id: string, si: boolean): Promise<ResultadoTaller>
     salud(): Promise<ResultadoMente<{ ok: boolean; memories: number }>>
+    rumbo(): Promise<ResultadoMente<Rumbo>>
+    rumboMover(accion: string, datos?: unknown): Promise<ResultadoMente<Rumbo>>
     recuerdos(q: string, limit: number): Promise<ResultadoMente<Memoria[]>>
     recordar(query: string, o: unknown): Promise<ResultadoMente<{ context: string; tokens: number; ids: string[]; abstained: boolean }>>
     escribir(texto: string, kind: string): Promise<ResultadoMente<{ id: string }>>
@@ -176,6 +181,8 @@ export const bridge = {
     agentes: async (): Promise<AgenteMente[]> => (isElectron() ? window.daimon!.mente.agentes() : []),
     conectar: async (id: string, si: boolean): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.mente.conectar(id, si) : { ok: false, error: 'Solo en la app.' }),
     salud: async () => dato(isElectron() ? window.daimon!.mente.salud() : solo<{ ok: boolean; memories: number }>()),
+    rumbo: async () => dato(isElectron() ? window.daimon!.mente.rumbo() : solo<Rumbo>()),
+    rumboMover: async (accion: string, datos?: unknown) => dato(isElectron() ? window.daimon!.mente.rumboMover(accion, datos) : solo<Rumbo>()),
     recuerdos: async (q: string, limit: number) => dato(isElectron() ? window.daimon!.mente.recuerdos(q, limit) : solo<Memoria[]>()),
     recordar: async (query: string, o: unknown) => dato(isElectron() ? window.daimon!.mente.recordar(query, o) : solo<{ context: string; tokens: number; ids: string[]; abstained: boolean }>()),
     escribir: async (texto: string, kind: string) => dato(isElectron() ? window.daimon!.mente.escribir(texto, kind) : solo<{ id: string }>()),

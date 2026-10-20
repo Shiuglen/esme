@@ -39,3 +39,30 @@ export function bloqueHerencia(r: Recuerdo | null): string {
   return `Contexto heredado de la memoria de Esme (${cuantos} ${cuantos === 1 ? 'recuerdo' : 'recuerdos'}, ${r.tokens} tokens). `
     + `Úsalo si encaja con la tarea; no lo repitas ni lo menciones:\n\n${r.texto}\n\n---\n\n`
 }
+
+/** Lo que la mente sabe del equipo: qué motor acierta contigo y qué se rompe siempre. */
+export async function heredarEquipo(mente: Mente | null, o: { presupuesto?: number; fetch?: typeof fetch } = {}): Promise<Recuerdo | null> {
+  if (!mente) return null
+  const f = o.fetch ?? fetch
+  try {
+    const r = await f(`${mente.url}/recall`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mente.token}` },
+      body: JSON.stringify({ query: 'del equipo: qué motor y qué modelo aciertan, y qué se rompe siempre', budget: o.presupuesto ?? 300, who: 'taller' }),
+      signal: AbortSignal.timeout(8_000),
+    })
+    if (!r.ok) return null
+    const j = (await r.json()) as { context?: string; tokens?: number; ids?: string[] }
+    const texto = (j.context ?? '').trim()
+    if (!texto) return null
+    return { texto, tokens: j.tokens ?? 0, ids: j.ids ?? [] }
+  } catch {
+    return null   // sin mente no hay herencia, pero la tarea sigue
+  }
+}
+
+/** El bloque del equipo, para que el motor sepa con quién trabaja y con qué no fiarse. */
+export function bloqueEquipo(r: Recuerdo | null): string {
+  if (!r) return ''
+  return `Lo que la mente aprendió de tu equipo (${r.ids.length} ${r.ids.length === 1 ? 'lección' : 'lecciones'}):\n${r.texto}\n\n---\n\n`
+}

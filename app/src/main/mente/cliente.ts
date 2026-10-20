@@ -15,6 +15,11 @@ export type Recuerdos = { context: string; tokens: number; ids: string[]; abstai
 /** El certificado de olvido: lo que el cerebro certifica que olvidó. */
 export type Olvido = { forgotten: string[]; [k: string]: unknown }
 
+/** El rumbo de la mente: las estrellas fijas y lo que va cambiando. */
+export type Pilar = { id: string; texto: string; creado: number }
+export type Objetivo = { id: string; texto: string; estado: 'activo' | 'hecho' | 'pausado'; creado: number; cerrado: number | null; pilar: string | null }
+export type Rumbo = { version: 1; pilares: Pilar[]; objetivos: Objetivo[] }
+
 /** Un fallo del cerebro, siempre con la misma forma (nunca una excepción suelta de fetch). */
 export type FalloCerebro = { ok: false; error: string }
 
@@ -30,6 +35,7 @@ export const RUTAS = {
   orquestacion: '/orquesta',
   atlas: '/atlas',
   mcp: '/mcp',
+  rumbo: '/rumbo',
 } as const
 
 const MS = 10_000
@@ -103,6 +109,16 @@ export class ClienteCerebro {
   /** La mente duerme: destila y guarda. */
   async sueno(): Promise<Record<string, unknown>> {
     return this.llamar<Record<string, unknown>>(RUTAS.sueno, { method: 'POST', body: '{}' })
+  }
+
+  /** El rumbo: para qué trabaja esta mente (pilares y objetivos). */
+  async rumbo(): Promise<Rumbo> {
+    return this.llamar<Rumbo>(RUTAS.rumbo)
+  }
+
+  /** Mover el rumbo: añadir un pilar, un objetivo, cerrarlo, quitarlo… */
+  async moverRumbo(accion: string, datos: Record<string, unknown> = {}): Promise<Rumbo> {
+    return this.llamar<Rumbo>(RUTAS.rumbo, { method: 'POST', body: JSON.stringify({ accion, ...datos }) })
   }
 
   /** El atlas: el mapa de lo que la mente sabe. */

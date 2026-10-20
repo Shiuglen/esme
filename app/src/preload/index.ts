@@ -19,6 +19,8 @@ contextBridge.exposeInMainWorld('daimon', {
   mente: {
     agentes: () => ipcRenderer.invoke('mente:agentes'), conectar: (id: string, si: boolean) => ipcRenderer.invoke('mente:conectar', id, si),
     salud: () => ipcRenderer.invoke('mente:salud'),
+    rumbo: () => ipcRenderer.invoke('mente:rumbo'),
+    rumboMover: (accion: string, datos: unknown) => ipcRenderer.invoke('mente:rumbo:mover', accion, datos),
     recuerdos: (q: string, limit: number) => ipcRenderer.invoke('mente:recuerdos', q, limit),
     recordar: (query: string, o: unknown) => ipcRenderer.invoke('mente:recordar', query, o),
     escribir: (texto: string, kind: string) => ipcRenderer.invoke('mente:escribir', texto, kind),
@@ -34,6 +36,8 @@ contextBridge.exposeInMainWorld('daimon', {
     onEvento: (fn: (e: unknown) => void) => on('mente:evento', fn),
   },
     salud: () => ipcRenderer.invoke('mente:salud'),
+    rumbo: () => ipcRenderer.invoke('mente:rumbo'),
+    rumboMover: (accion: string, datos: unknown) => ipcRenderer.invoke('mente:rumbo:mover', accion, datos),
   skills: {
     catalogo: () => ipcRenderer.invoke('skills:catalogo'), vistaPrevia: (id: string) => ipcRenderer.invoke('skills:vistaPrevia', id),
     instalar: (id: string, agentes: string[], conScripts: boolean) => ipcRenderer.invoke('skills:instalar', id, agentes, conScripts), desinstalar: (id: string) => ipcRenderer.invoke('skills:desinstalar', id),

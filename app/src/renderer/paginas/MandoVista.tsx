@@ -29,6 +29,7 @@ import { TintaVista, tintaDeTarea } from '../marca/PuntoVista'
 import { useAgenda } from '../taller/Agenda'
 import { bridge } from '../lib/bridge'
 import { Constelacion } from './Constelacion'
+import { Rumbo } from './Rumbo'
 import type { SeccionId } from '../shell/secciones'
 import type { EstadoMente } from '../lib/bridge'
 import { estadoDelDia } from './mando-vivo'
@@ -137,6 +138,7 @@ export function Mando({ onSeccion, presencia = 'orbe', sitio = { izquierda: 240,
               ))}
             </div>
           )}
+          {!vivo && !escuchando && <Rumbo />}
         </div>
 
         <AnimatePresence>

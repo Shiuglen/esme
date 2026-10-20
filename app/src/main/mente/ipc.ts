@@ -24,6 +24,10 @@ export function registerMente(o: Opciones) {
   }
 
   ipcMain.handle('mente:salud', () => conMente((c) => c.salud()))
+  // el rumbo: para qué trabaja esta mente
+  ipcMain.handle('mente:rumbo', () => conMente((c) => c.rumbo()))
+  ipcMain.handle('mente:rumbo:mover', (_e, accion: unknown, datos: unknown) =>
+    conMente((c) => c.moverRumbo(String(accion ?? ''), (datos ?? {}) as Record<string, unknown>)))
   ipcMain.handle('mente:recuerdos', (_e, q: unknown, limit: unknown) => conMente((c) => c.recuerdos(String(q ?? ''), Number(limit) || 20)))
   ipcMain.handle('mente:recordar', (_e, query: unknown, opts: unknown) => conMente((c) => c.recordar(String(query ?? ''), (opts ?? {}) as { motor?: string; budget?: number; who?: string })))
   ipcMain.handle('mente:escribir', (_e, texto: unknown, kind: unknown) => conMente((c) => c.escribir(String(texto ?? ''), String(kind ?? 'note'))))
