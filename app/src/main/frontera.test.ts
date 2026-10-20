@@ -20,7 +20,7 @@ const ficheros = (dir: string): string[] =>
   })
 
 // Las rutas del cerebro. Si aparecen fuera de la puerta, alguien ha abierto una puerta de más.
-const RUTAS_CEREBRO = ['/health', '/memories', '/recall', '/remember', '/feedback', '/forget', '/ingest', '/sueño', '/orquesta', '/atlas', '/voz/oir', '/voz/decir', '/events']
+const RUTAS_CEREBRO = ['/health', '/memories', '/recall', '/remember', '/feedback', '/forget', '/ingest', '/ingest-x', '/equipo', '/sueño', '/orquesta', '/atlas', '/voz/oir', '/voz/decir', '/events', '/rumbo', '/memory/']
 
 const RELATIVO_A_PUERTA = (f: string) => relative(SRC, f).endsWith(PUERTA)
 
@@ -67,5 +67,35 @@ describe('una sola puerta entre el TypeScript y el cerebro', () => {
       if (/BrainInfo/.test(texto) && /token\s*:\s*string/.test(texto)) culpables.push(`${relative(SRC, f)} → BrainInfo con token`)
     }
     expect(culpables, `la ventana toca el token de la mente:\n${culpables.join('\n')}`).toEqual([])
+  })
+
+  it('una ruta del cerebro fuera de la puerta, aunque vaya pegada a una url', () => {
+    // El caso que se colaba: `fetch(`${url}/recall`)` con la ruta al FINAL de
+    // una plantilla (no como cadena suelta). Una puerta de más, disfrazada.
+    const culpables: string[] = []
+    for (const f of todos) {
+      const texto = readFileSync(f, 'utf8')
+      for (const r of RUTAS_CEREBRO) {
+        // en la plantilla, el $ va escapado: un $ literal, no el ancla
+        const re = new RegExp(`\\$\\{[^}]*\\.url\\}${r.replace('/', '\\/')}`)
+        if (re.test(texto)) culpables.push(`${relative(SRC, f)} → ${r}`)
+      }
+    }
+    expect(culpables, `llama al cerebro por su cuenta:\n${culpables.join('\n')}`).toEqual([])
+  })
+
+  it('el token de la mente no se escribe a mano fuera de la puerta', () => {
+    // Bearer + una ruta del cerebro, aunque no sea un fetch: si alguien
+    // construye la llamada a mano, está abriendo otra puerta.
+    const culpables: string[] = []
+    for (const f of todos) {
+      const texto = readFileSync(f, 'utf8')
+      if (!/Bearer/.test(texto)) continue
+      for (const r of RUTAS_CEREBRO) {
+        const re = new RegExp(`Bearer[^\\n]{0,120}${r.replace('/', '\\/')}`)
+        if (re.test(texto)) culpables.push(`${relative(SRC, f)} → ${r}`)
+      }
+    }
+    expect(culpables, `escribe el token de la mente a mano:\n${culpables.join('\n')}`).toEqual([])
   })
 })

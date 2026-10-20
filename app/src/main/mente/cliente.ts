@@ -36,6 +36,14 @@ export const RUTAS = {
   atlas: '/atlas',
   mcp: '/mcp',
   rumbo: '/rumbo',
+  // la superficie del cerebro, TODA declarada aquí (una sola puerta: la spec
+  // es estandar/cerebro-frontera.spec.yaml y el kit la comprueba contra esto)
+  memoria: '/memory/{id}',
+  vozOir: '/voz/oir',
+  vozDecir: '/voz/decir',
+  eventos: '/events',
+  ingestX: '/ingest-x',
+  equipo: '/equipo',
 } as const
 
 const MS = 10_000
@@ -79,6 +87,16 @@ export class ClienteCerebro {
   async recuerdosDeFuente(fuente: string, limite = 80): Promise<Recuerdo[]> {
     const params = new URLSearchParams({ fuente, limit: String(limite) })
     return this.llamar<Recuerdo[]>(`${RUTAS.recuerdos}?${params.toString()}`)
+  }
+
+  /** La mente absorbe tu X: una cosecha de FYP, guardados o búsquedas entra como recuerdos. */
+  async ingestarX(cosecha: string | object): Promise<{ added: number; memories: number }> {
+    return this.llamar<{ added: number; memories: number }>(RUTAS.ingestX, { method: 'POST', body: JSON.stringify({ cosecha }) })
+  }
+
+  /** Lo que la mente aprende del equipo: cada veredicto del creador es una lección. */
+  async equipo(datos: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.llamar<Record<string, unknown>>(RUTAS.equipo, { method: 'POST', body: JSON.stringify(datos) })
   }
 
   /** El Tálamo compone el contexto con presupuesto: lo que entra en el prompt. */
@@ -128,12 +146,12 @@ export class ClienteCerebro {
 
   /** Un recuerdo suelto, por su id. */
   async memoria(id: string): Promise<Recuerdo> {
-    return this.llamar<Recuerdo>(`/memory/${encodeURIComponent(id)}`)
+    return this.llamar<Recuerdo>(`${RUTAS.memoria.replace('{id}', encodeURIComponent(id))}`)
   }
 
   /** El oído: PCM float32 mono a 16 kHz → texto (en el equipo, sin salir a internet). */
   async oir(pcm: ArrayBuffer, idioma = 'es'): Promise<{ texto: string }> {
-    const r = await this.http(`${this.info.url}/voz/oir?idioma=${encodeURIComponent(idioma)}`, {
+    const r = await this.http(`${this.info.url}${RUTAS.vozOir}?idioma=${encodeURIComponent(idioma)}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${this.info.token}`, 'Content-Type': 'application/octet-stream' },
       body: pcm,
@@ -145,7 +163,7 @@ export class ClienteCerebro {
 
   /** La voz: texto → audio (WAV). */
   async decir(texto: string): Promise<ArrayBuffer> {
-    const r = await this.http(`${this.info.url}/voz/decir`, {
+    const r = await this.http(`${this.info.url}${RUTAS.vozDecir}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${this.info.token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ texto }),
@@ -157,7 +175,7 @@ export class ClienteCerebro {
 
   /** Los eventos de la mente (SSE): lo que va haciendo, en vivo. */
   async eventos(onEvento: (e: unknown) => void, parar: AbortSignal): Promise<void> {
-    const r = await this.http(`${this.info.url}/events?token=${encodeURIComponent(this.info.token)}`, { signal: parar })
+    const r = await this.http(`${this.info.url}${RUTAS.eventos}?token=${encodeURIComponent(this.info.token)}`, { signal: parar })
     if (!r.ok || !r.body) throw new Error(`los eventos de la mente no vinieron (${r.status})`)
     const lector = r.body.getReader()
     const dec = new TextDecoder()

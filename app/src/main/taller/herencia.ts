@@ -8,22 +8,17 @@
 //
 // Si la mente no está (la app se está empezando, el servidor cayó), la tarea arranca igual: la
 // herencia es una mejora, nunca una condición.
+import { ClienteCerebro } from '../mente/cliente'
+
 export type Mente = { url: string; token: string }
 export type Recuerdo = { texto: string; tokens: number; ids: string[] }
 
 /** Lo que la mente sabe del encargo. `null` si no hay nada que heredar. */
 export async function heredar(mente: Mente | null, consulta: string, o: { presupuesto?: number; fetch?: typeof fetch } = {}): Promise<Recuerdo | null> {
   if (!mente || !consulta.trim()) return null
-  const f = o.fetch ?? fetch
   try {
-    const r = await f(`${mente.url}/recall`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mente.token}` },
-      body: JSON.stringify({ query: consulta, budget: o.presupuesto ?? 0, who: 'taller' }),
-      signal: AbortSignal.timeout(10_000),
-    })
-    if (!r.ok) return null
-    const j = (await r.json()) as { context?: string; tokens?: number; ids?: string[] }
+    // por la puerta, como todo lo demás: el token y el reloj son de la puerta
+    const j = await new ClienteCerebro(mente, o.fetch).recordar(consulta, { budget: o.presupuesto ?? 0, who: 'taller' })
     const texto = (j.context ?? '').trim()
     if (!texto) return null
     return { texto, tokens: j.tokens ?? 0, ids: j.ids ?? [] }
@@ -43,16 +38,8 @@ export function bloqueHerencia(r: Recuerdo | null): string {
 /** Lo que la mente sabe del equipo: qué motor acierta contigo y qué se rompe siempre. */
 export async function heredarEquipo(mente: Mente | null, o: { presupuesto?: number; fetch?: typeof fetch } = {}): Promise<Recuerdo | null> {
   if (!mente) return null
-  const f = o.fetch ?? fetch
   try {
-    const r = await f(`${mente.url}/recall`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mente.token}` },
-      body: JSON.stringify({ query: 'del equipo: qué motor y qué modelo aciertan, y qué se rompe siempre', budget: o.presupuesto ?? 300, who: 'taller' }),
-      signal: AbortSignal.timeout(8_000),
-    })
-    if (!r.ok) return null
-    const j = (await r.json()) as { context?: string; tokens?: number; ids?: string[] }
+    const j = await new ClienteCerebro(mente, o.fetch).recordar('del equipo: qué motor y qué modelo aciertan, y qué se rompe siempre', { budget: o.presupuesto ?? 300, who: 'taller' })
     const texto = (j.context ?? '').trim()
     if (!texto) return null
     return { texto, tokens: j.tokens ?? 0, ids: j.ids ?? [] }

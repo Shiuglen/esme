@@ -5,6 +5,7 @@ import { appendFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } fr
 import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { abrirSesionACP, type EventoMotor, type OpcionConfig } from '../motores/sesion-acp'
+import { ClienteCerebro } from '../mente/cliente'
 import { bloqueEquipo, bloqueHerencia, heredar, heredarEquipo, type Mente } from './herencia'
 import { leeCurva } from './curva-io'
 import type { Curva } from './curva'
@@ -391,12 +392,8 @@ export class Taller {
     try {
       // Sólo lo que la mente necesita para destilar la lección: la tarea entera pesa y no aporta.
       const tareas = this.lista().map((t) => ({ id: t.id, motor: t.motor, modelo: t.modelo, estado: t.estado, error: t.error }))
-      await fetch(`${mente.url}/equipo`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mente.token}` },
-        body: JSON.stringify({ veredictos: await this.veredictos(), tareas }),
-        signal: AbortSignal.timeout(10_000),
-      })
+      // por la puerta: el token y el reloj son de la puerta, no de aquí
+      await new ClienteCerebro(mente).equipo({ veredictos: await this.veredictos(), tareas })
     } catch { /* la mente no está o no contesta: la tarea sigue igual */ }
   }
 

@@ -160,9 +160,9 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
         hits = await locked(home.hippo.recall)(q, k=limit, hops=0)
         return JSONResponse([{**_event_dict(h.event), "score": round(h.score, 4)} for h in hits])
 
-    @mcp.custom_route("/memory/{mid}", methods=["GET"])
+    @mcp.custom_route("/memory/{id}", methods=["GET"])
     async def memory(req: Request):
-        e = await locked(home.hippo.get)(req.path_params["mid"])
+        e = await locked(home.hippo.get)(req.path_params["id"])
         return JSONResponse(_event_dict(e)) if e else JSONResponse({"error": "no existe"}, 404)
 
     @mcp.custom_route("/forget", methods=["POST"])
