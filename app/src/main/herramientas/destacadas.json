@@ -189,5 +189,22 @@
     "donde": "cabecera"
    }
   ]
+ },
+ {
+  "id": "io.github.morluto/rea",
+  "slug": "rea",
+  "titulo": "REA",
+  "descripcion": "Reverse engineer anything from your terminal or agent with one CLI and MCP server.",
+  "version": "6.7.0",
+  "web": "https://github.com/morluto/rea",
+  "conexion": {
+   "tipo": "npm",
+   "paquete": "rea-agents",
+   "version": "6.7.0",
+   "args": [
+    "mcp"
+   ]
+  },
+  "variables": []
  }
 ]

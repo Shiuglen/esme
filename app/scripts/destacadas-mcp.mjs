@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Prepara las herramientas destacadas que viajan dentro de Esme (se ven al instante y sin conexión): las oficiales de
 // cada empresa, traducidas a fichas con la misma lógica que la app. Uso: node scripts/destacadas-mcp.mjs
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { buscarEnRegistro, DESTACADAS } from '../src/main/herramientas/registro-mcp.ts'
 
 /** Por qué buscar cada una: primero el identificador exacto (el registro lo acepta), luego el nombre
@@ -28,5 +28,12 @@ for (const id of DESTACADAS) {
   console.log(encontradas.has(id) ? '✓' : '✗', id)
 }
 const fichas = DESTACADAS.map((id) => encontradas.get(id)).filter(Boolean)
-writeFileSync(new URL('../src/main/herramientas/destacadas.json', import.meta.url), JSON.stringify(fichas, null, 1) + '\n')
-console.log(`${fichas.length}/${DESTACADAS.length} destacadas guardadas`)
+const salida = new URL('../src/main/herramientas/destacadas.json', import.meta.url)
+// Si el registro falla hoy, no se pierde lo que ya estaba: la ficha vieja se queda hasta que haya una nueva.
+let previas = []
+try { previas = JSON.parse(readFileSync(salida, 'utf8')) } catch { /* no había fichero */ }
+const mapa = new Map(previas.map((f) => [f.id, f]))
+for (const f of fichas) mapa.set(f.id, f)
+const final = DESTACADAS.map((id) => mapa.get(id)).filter(Boolean)
+writeFileSync(salida, JSON.stringify(final, null, 1) + '\n')
+console.log(`${final.length}/${DESTACADAS.length} destacadas guardadas (${fichas.length} nuevas, ${final.length - fichas.length} conservadas)`)
