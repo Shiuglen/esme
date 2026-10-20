@@ -103,6 +103,7 @@ type ElectronApi = {
     onPaso(id: string, fn: (p: Paso) => void): () => void; onPermiso(id: string, fn: (p: PermisoPedido) => void): () => void; responder(chat: string, llamada: string, r: string): Promise<unknown>
     onChunk(id: string, fn: (d: string) => void): () => void; onPensamiento(id: string, fn: (d: string) => void): () => void; onDone(id: string, fn: () => void): () => void; onError(id: string, fn: (m: string) => void): () => void
     onUsage(id: string, fn: (u: ChatUso) => void): () => void
+    juicio(util: boolean): Promise<unknown>
   }
   catalogo: { proveedores(): Promise<ProveedorResumen[]>; modelos(id: string): Promise<ModeloCatalogo[]>; origen(): Promise<OrigenCatalogo> }
   uso: {
@@ -226,6 +227,8 @@ export const bridge = {
     remove: async (id: string) => { if (isElectron()) await window.daimon!.keys.remove(id) },
   },
 
+  /** Tu veredicto sobre la última respuesta: Esme lo guarda y cambia de motor la próxima vez. */
+  async chatJuicio(useful: boolean): Promise<void> { if (isElectron()) await window.daimon!.chat.juicio(useful) },
   chat(provider: string, model: string, messages: ChatMsg[], memory: { context: string; ids: string[] } | null, ahorrados?: number, extra: { panorama?: string; voz?: boolean } = {}): ChatStream {
     const id = newId()
     const usageFns: ((u: ChatUso) => void)[] = []

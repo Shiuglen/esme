@@ -15,7 +15,7 @@ import { encargarDesdeChat, equipoParaChat, programarDesdeChat } from './ipc-tal
 import { forjarDesdeChat } from './forja-ipc'
 import { keys } from './keys'
 import { anotarConsumo } from './ipc-proveedores'
-import { decidirMotor } from './router/motor'
+import { decidirMotor, registrarJuicio } from './router/motor'
 import { buildSystem, makeModel, type ProviderId } from './providers'
 import { conversarConAgente } from './conversacion-agente'
 import { agentesDeRespaldo, motorParaConversar } from './ipc-taller'
@@ -37,6 +37,8 @@ export function registerChat(d: Deps) {
     return { ok: true }
   })
   ipcMain.handle('chat:stop', (_e, id: string) => { running.get(id)?.abort(); return { ok: true } })
+  // «sirvió» / «no sirvió»: lo que le dices al final de una respuesta decide qué motor usará después
+  ipcMain.handle('chat:juicio', (_e, util: unknown) => ({ ok: registrarJuicio(Boolean(util)) }))
   ipcMain.handle('chat:responder', (_e, chat: unknown, llamada: unknown, r: unknown) => {
     const f = esperando.get(`${chat}:${llamada}`)
     if (!f || (r !== 'una' && r !== 'siempre' && r !== 'no')) return { ok: false }

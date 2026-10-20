@@ -2,6 +2,7 @@
 // que sepas qué motor usar: se lo dices y Esme elige, y te explica por qué.
 import { describe, expect, it } from 'vitest'
 import { candidatosDe, decidir, tipoDe } from './auto'
+import { Aprendizaje } from './niveles'
 import type { ProveedorCatalogo } from '../catalogo/modelsdev'
 
 const modelo = (id: string, salida: number, gratis = false, herramientas = true) => ({
@@ -34,6 +35,11 @@ describe('qué motor usa Esme', () => {
     { id: 'anthropic', local: false, hasKey: true },
     { id: 'openai', local: false, hasKey: false },
   ]
+  // los dos con clave: así hay dos candidatos y se ve cuál elige
+  const dosMotores = [
+    { id: 'anthropic', local: false, hasKey: true },
+    { id: 'openai', local: false, hasKey: true },
+  ]
 
   it('el motor que tú fijas gana siempre', () => {
     const d = decidir({ mensaje: 'programa algo', motores, catalogo, fijado: { proveedor: 'anthropic', modelo: 'claude-opus-5' } })
@@ -64,6 +70,26 @@ describe('qué motor usa Esme', () => {
 
   it('sin motores utilizables, no decide (y la app lo dirá)', () => {
     expect(decidir({ mensaje: 'hola', motores: [], catalogo })).toBeNull()
+  })
+
+  // dos modelos del mismo nivel y el mismo precio: así lo que aprendió decides de verdad
+  const gemelos: ProveedorCatalogo[] = [
+    { id: 'anthropic', nombre: 'Anthropic', env: [], modelos: [modelo('claude-opus-5', 30)] },
+    { id: 'openai', nombre: 'OpenAI', env: [], modelos: [modelo('gpt-5', 30)] },
+  ]
+
+  it('lo que no sirvió no se repite: Esme aprende de tu veredicto', () => {
+    const a = new Aprendizaje()   // en memoria: aquí no toca disco
+    a.registrar('construir', 'anthropic', 'claude-opus-5', 'rechazado')
+    const d = decidir({ mensaje: 'programa una función que ordene una lista', motores: dosMotores, catalogo: gemelos, calidad: (t, c) => a.calidad(t, c.proveedor, c.modelo) })
+    expect(d!.modelo).toBe('gpt-5')
+  })
+
+  it('lo que sí sirvió se repite', () => {
+    const a = new Aprendizaje()
+    a.registrar('construir', 'anthropic', 'claude-opus-5', 'aprobado')
+    const d = decidir({ mensaje: 'programa una función que ordene una lista', motores: dosMotores, catalogo: gemelos, calidad: (t, c) => a.calidad(t, c.proveedor, c.modelo) })
+    expect(d!.modelo).toBe('claude-opus-5')
   })
 
   it('los candidatos son los modelos de los motores que tienes', () => {

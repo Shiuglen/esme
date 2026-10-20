@@ -56,6 +56,7 @@ contextBridge.exposeInMainWorld('daimon', {
     remove: (id: string) => ipcRenderer.invoke('keys:remove', id),
   },
   chat: {
+    juicio: (util: boolean) => ipcRenderer.invoke('chat:juicio', util),
     start: (req: unknown) => ipcRenderer.invoke('chat:start', req),
     stop: (id: string) => ipcRenderer.invoke('chat:stop', id),
     onChunk: (id: string, fn: (d: string) => void) => on(`chat:chunk:${id}`, (d) => fn(d as string)),

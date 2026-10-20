@@ -175,6 +175,8 @@ export function ChatPanel(props: { brain: BrainClient | null; onAjustes?(): void
     const t = turns[i]
     if (!props.brain || !t.ids?.length || !t.query) return
     await props.brain.feedback(t.ids, useful, t.query).catch(() => {})
+    // y al router: así la próxima vez elige el motor que sí sirvió
+    void bridge.chatJuicio(useful)
     setTurns((all) => all.map((x, k) => (k === i ? { ...x, judged: true } : x)))
   }
 
