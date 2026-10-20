@@ -220,7 +220,9 @@ abierta que existe. Copia la carpeta entera, así que sus `references/` viajan c
 **Por qué multiplica.** Es la diferencia entre un taller que se programa y un taller que se describe.
 **Primer paso.** Un `roles.yaml` por tipo de tarea; el Taller lo lee; la traza de seis pasos se
 muestra en la interfaz.
-**Se mide.** Tiempo de montar un equipo nuevo de agentes.
+**Hecho (20-oct), el primer paso: los oficios.** La arena ya reparte papeles: **Constructor**, **Revisor**, **Probador** y
+**Explorador** (de casa; el creador puede poner los suyos en `roles.json`). El encargo llega a cada motor con su oficio delante
+y la fila muestra quién hace qué. Queda: la traza de equipo (quién tocaron qué, para comparar los rivales de verdad). Tiempo de montar un equipo nuevo de agentes.
 
 ### Palanca 10 — La voz local como infraestructura de los demás
 **Idea.** SKI da voz full-dúplex on-device a Claude Code, Cursor, Codex y Gemini CLI (pero es de

@@ -9,6 +9,7 @@ import { bloqueHerencia, heredar, type Mente } from './herencia'
 import { leeCurva } from './curva-io'
 import type { Curva } from './curva'
 import { errorDelProveedor, esTemporal, sesionMuerta } from './fallos'
+import { leeRoles, textoConRol, type Rol } from './roles'
 import { otroModeloGratis } from './gratis'
 import { autoRespuesta, type Acceso } from './acceso'
 import { aplicarParche, cambiosCopia, commitCopia, crearCopia, diffCopia, exportarCopia, parcheCopia, quitarCopia, type Cambios, type Copia } from './copias'
@@ -26,6 +27,7 @@ export type Tarea = {
   aplicada?: Aplicada   // adónde se llevaron los cambios: carpeta (con deshacer), rama o exportada
   actividadMs: number   // dónde acaba el último cubo: sin eventos nuevos, la interfaz desplaza la micrográfica sola
   arena?: string   // las tareas que compiten con el mismo encargo comparten este id
+  rol?: string     // el oficio del motor en esa arena (constructor, revisor, probador…)
   acceso?: Acceso   // cuánto puede hacer sin preguntarte (taller/acceso.ts); las antiguas, sin campo, preguntan todo
 }
 export type MotorElegido = { id: string; nombre: string; comando: string; args: string[]; env?: Record<string, string>; entrarCon?: string }
@@ -164,11 +166,14 @@ export class Taller {
     }
   }
 
-  crear(p: { motor: MotorElegido; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: Acceso }): Tarea {
+  crear(p: { motor: MotorElegido; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: Acceso; rol?: Rol }): Tarea {
     let id = nuevoId()
     while (this.registros.has(id)) id = nuevoId()
     const titulo = (p.texto.split('\n').find((l) => l.trim()) ?? '').trim().slice(0, 120)
-    const tarea: Tarea = { id, titulo, texto: p.texto, motor: p.motor.id, motorNombre: p.motor.nombre, carpeta: p.carpeta, ...(p.arena ? { arena: p.arena } : {}),
+    // El oficio va delante del encargo: el motor sabe de entrada para qué está trabajando.
+    const encargo = textoConRol(p.texto, p.rol)
+    const tarea: Tarea = { id, titulo, texto: encargo, motor: p.motor.id, motorNombre: p.motor.nombre, carpeta: p.carpeta, ...(p.arena ? { arena: p.arena } : {}),
+      ...(p.rol ? { rol: p.rol.nombre } : {}),
       estado: 'preparando', copia: null, inicio: this.ahora(), turnos: 0, herramientas: 0, cambios: null,
       uso: { entrada: 0, salida: 0, pensamiento: 0 }, permiso: null, actividad: new Array(CUBOS).fill(0), actividadMs: 0, opciones: [], modelo: null,
       acceso: p.acceso ?? 'ediciones' }
@@ -177,7 +182,7 @@ export class Taller {
     r.motor = p.motor; r.config = { ...p.config }
     this.registros.set(id, r)
     this.cambio(r, true)
-    void this.ejecutar(r, p.texto)
+    void this.ejecutar(r, encargo)
     return instantanea(tarea)
   }
 
@@ -307,6 +312,11 @@ export class Taller {
     let texto = ''
     try { texto = await readFile(join(this.dir, 'veredictos.jsonl'), 'utf8') } catch { return [] }
     return texto.split('\n').filter(Boolean).flatMap((l) => { try { return [JSON.parse(l) as Veredicto] } catch { return [] } })
+  }
+
+  /** Los oficios del equipo: los del creador si ha puesto los suyos, si no los de casa. */
+  roles(): Rol[] {
+    return leeRoles(this.dir)
   }
 
   /** La curva: qué rindieron las tareas de verdad (aciertos por día, por motor y los fallos). */

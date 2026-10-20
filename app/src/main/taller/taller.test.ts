@@ -446,6 +446,24 @@ describe('Taller: arena', () => {
     expect(otro.lista().map((x) => x.arena)).toEqual(['arena001', 'arena001'])
     otro.cerrarTodo()
   })
+
+  it('cada motor de la arena trabaja con su oficio, y el encargo lo lleva delante', async () => {
+    const s = sesiones(async () => 'end_turn')
+    const rol = { id: 'revisor', nombre: 'Revisor', instruccion: 'Míralo con ojo crítico.' }
+    const a = crear(s.abrir).crear({ motor, carpeta: null, texto: 'Arregla el arranque', arena: 'arena002', rol })
+    expect(a.rol).toBe('Revisor')
+    expect(a.texto.startsWith('Míralo con ojo crítico.')).toBe(true)
+    expect(a.texto).toContain('Arregla el arranque')
+    await esperar(a.id, 'lista')
+  })
+
+  it('los oficios vienen de los de casa si el creador no pone los suyos', async () => {
+    const s = sesiones(async () => 'end_turn')
+    crear(s.abrir)
+    const roles = t!.roles()
+    expect(roles.map((r) => r.id)).toContain('constructor')
+    expect(roles.map((r) => r.id)).toContain('revisor')
+  })
 })
 
 describe('Taller: el vigilante', () => {

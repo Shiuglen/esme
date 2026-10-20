@@ -62,9 +62,11 @@ describe('qué motores no están listos (aprendido de lo que pasó)', () => {
       t('pi', 1, 'error', "data: { code: 'ENOENT' }"),
       t('opencode', 1, 'error', 'Authentication required'), t('opencode', 2, 'lista'),
       t('cline', 1, 'error', 'Rate limit exceeded'),
+      t('mudo', 1, 'error', 'El motor dejó de responder (40 min sin señales).'),
     ])
     expect(r.get('qwen')).toBe('Inicia sesión en qwen')
     expect(r.get('pi')).toBe('No se encuentra en este equipo')
+    expect(r.get('mudo')).toBe('Se quedó mudo la última vez')
     expect(r.has('opencode')).toBe(false) // volvió a funcionar
     expect(r.has('cline')).toBe(false)    // un límite es pasajero, no es «no listo»
   })

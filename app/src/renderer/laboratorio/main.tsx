@@ -14,6 +14,7 @@ import { FirmaMente, Sello } from '../marca/SelloVista'
 import { firmaDe, giroSello } from '../marca/sello'
 import { Escena } from '../taller/Escena'
 import { CurvaTaller } from '../paginas/CurvaTaller'
+import { Oficios } from '../taller/Oficios'
 import { RedNeuronal, type RedHandle } from '../memoria/RedNeuronal'
 import { FondoVivo } from '../shell/FondoVivo'
 import '../styles/esme.css'
@@ -75,6 +76,29 @@ function PiezaCurva() {
   )
 }
 
+
+// Los oficios del equipo: los roles que se pueden repartir en una arena.
+function PiezaOficios() {
+  const roles = [
+    { id: 'constructor', nombre: 'Constructor', instruccion: 'Eres quien construye. Haz el encargo entero y deja el código limpio.' },
+    { id: 'revisor', nombre: 'Revisor', instruccion: 'Eres quien revisa. No rehaces el trabajo: lo miras con ojo crítico.' },
+    { id: 'probador', nombre: 'Probador', instruccion: 'Eres quien prueba. Escribe o ejecuta las pruebas del encargo.' },
+    { id: 'explorador', nombre: 'Explorador', instruccion: 'Eres quien explora. Antes de tocar nada, entérate de cómo está hecho.' },
+  ]
+  const [elegidos, setElegidos] = useState<string[]>(['constructor', 'revisor'])
+  return (
+    <div className="h-full overflow-y-auto p-10">
+      <div className="mx-auto grid max-w-[720px] gap-6">
+        <div className="vidrio aurora-foco rounded-4 border p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Oficios roles={roles} elegidos={elegidos} onCambiar={setElegidos} />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Taller({ atlas, tema }: { atlas: Atlas; tema: string }) {  const [tareas] = useState(tareasDeMuestra)
   return (
     <FirmaMente.Provider value={firmaDe(atlas)}>
@@ -115,7 +139,7 @@ function Lab() {
   return (
     <div className="h-screen w-screen overflow-hidden bg-papel text-texto">
       <FondoVivo tema={tema} estado="reposo" />
-      <div className="relative z-10 h-full">{pieza === 'chispa' ? <PiezaChispa atlas={atlas} /> : pieza === 'curva' ? <PiezaCurva /> : pieza === 'taller' ? <Taller atlas={atlas} tema={tema} /> : <RedNeuronal ref={red} atlas={atlas} tema={tema} recordados={[]} onPick={() => {}} />}</div>
+      <div className="relative z-10 h-full">{pieza === 'chispa' ? <PiezaChispa atlas={atlas} /> : pieza === 'curva' ? <PiezaCurva /> : pieza === 'oficios' ? <PiezaOficios /> : pieza === 'taller' ? <Taller atlas={atlas} tema={tema} /> : <RedNeuronal ref={red} atlas={atlas} tema={tema} recordados={[]} onPick={() => {}} />}</div>
     </div>
   )
 }
