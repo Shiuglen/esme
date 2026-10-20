@@ -15,6 +15,7 @@ import { firmaDe, giroSello } from '../marca/sello'
 import { Escena } from '../taller/Escena'
 import { CurvaTaller } from '../paginas/CurvaTaller'
 import { Oficios } from '../taller/Oficios'
+import { Bienvenida } from '../paginas/Bienvenida'
 import { Arena } from '../taller/Arena'
 import { RedNeuronal, type RedHandle } from '../memoria/RedNeuronal'
 import { FondoVivo } from '../shell/FondoVivo'
@@ -127,6 +128,20 @@ function PiezaArena() {
   )
 }
 
+
+// La bienvenida: lo primero que ve cualquiera al abrir Esme por primera vez.
+function PiezaBienvenida() {
+  return (
+    <div className="h-full overflow-y-auto p-10">
+      <div className="mx-auto grid max-w-[620px] gap-6">
+        <p className="m-0 text-[13px] tracking-[0.02em] text-texto-3">Lunes, 20 de octubre</p>
+        <h1 className="m-0 font-display text-[clamp(46px,5.6vw,76px)] leading-[0.95] font-medium italic tracking-[-0.01em] text-texto">Buenos días.</h1>
+        <Bienvenida onProbar={() => {}} />
+      </div>
+    </div>
+  )
+}
+
 function Taller({ atlas, tema }: { atlas: Atlas; tema: string }) {  const [tareas] = useState(tareasDeMuestra)
   return (
     <FirmaMente.Provider value={firmaDe(atlas)}>
@@ -167,7 +182,7 @@ function Lab() {
   return (
     <div className="h-screen w-screen overflow-hidden bg-papel text-texto">
       <FondoVivo tema={tema} estado="reposo" />
-      <div className="relative z-10 h-full">{pieza === 'chispa' ? <PiezaChispa atlas={atlas} /> : pieza === 'curva' ? <PiezaCurva /> : pieza === 'oficios' ? <PiezaOficios /> : pieza === 'arena' ? <PiezaArena /> : pieza === 'taller' ? <Taller atlas={atlas} tema={tema} /> : <RedNeuronal ref={red} atlas={atlas} tema={tema} recordados={[]} onPick={() => {}} />}</div>
+      <div className="relative z-10 h-full">{pieza === 'chispa' ? <PiezaChispa atlas={atlas} /> : pieza === 'curva' ? <PiezaCurva /> : pieza === 'oficios' ? <PiezaOficios /> : pieza === 'bienvenida' ? <PiezaBienvenida /> : pieza === 'arena' ? <PiezaArena /> : pieza === 'taller' ? <Taller atlas={atlas} tema={tema} /> : <RedNeuronal ref={red} atlas={atlas} tema={tema} recordados={[]} onPick={() => {}} />}</div>
     </div>
   )
 }

@@ -11,6 +11,7 @@ import { ROTULO } from '../memoria/pintar'
 import { Compositor } from '../shell/Compositor'
 import { esGrafito } from '../tinta/trazo'
 import { AlDia } from './AlDia'
+import { Bienvenida } from './Bienvenida'
 import { diarioDe, type Entrada } from './diario'
 import { fechaLarga, hace, historiaMente } from './portada'
 
@@ -30,6 +31,9 @@ export function Portada({ sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, v
     const pts = atlas?.points ?? []
     return { temas: atlas?.clusters.length ?? 0, grafito: pts.filter((p) => esGrafito(p.trust)).length, pts: pts.length }
   }, [atlas])
+  // La primera vez: la mente está viva pero en blanco. Entonces lo que hace falta no es un resumen
+  // (no hay nada que resumir), sino una bienvenida y tres primeros pases que funcionan de verdad.
+  const enBlanco = conectado && (recuerdos ?? 0) === 0 && !(atlas?.points.length ?? 0)
   const historia = useMemo(() => {
     if (!conectado) return estadoMente === 'conectando' ? 'Despertando tu mente…' : 'No encuentro tu cerebro. Arráncalo y vuelvo a conectar sola.'
     const pts = atlas?.points ?? []
@@ -55,7 +59,11 @@ export function Portada({ sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, v
         <motion.h1 {...entrada(1)} className="m-0 text-[clamp(46px,5.6vw,76px)] leading-[0.95] font-medium italic tracking-[-0.01em] text-texto" style={{ fontFamily: ROTULO }}>
           {saludo()}.
         </motion.h1>
-        <motion.p {...entrada(2)} className="m-0 max-w-[46ch] text-[16px] leading-[1.6] text-texto-2 text-pretty">{historia}</motion.p>
+        {enBlanco ? (
+          <div className="max-w-[46ch]"><Bienvenida onProbar={(q) => onPreguntar(q)} /></div>
+        ) : (
+          <motion.p {...entrada(2)} className="m-0 max-w-[46ch] text-[16px] leading-[1.6] text-texto-2 text-pretty">{historia}</motion.p>
+        )}
         {vitrales.length > 0 && (
           <motion.div {...entrada(3)} className="flex flex-wrap gap-2">
             {vitrales.map((v) => (
