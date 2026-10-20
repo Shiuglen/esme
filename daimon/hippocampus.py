@@ -119,8 +119,10 @@ class Hippocampus:
         (row,) = self.db.execute("SELECT row FROM events WHERE id=?", (event_id,)).fetchone()
         return self.V[row]
 
-    def recall(self, query: str, k: int = 20, hops: int = 2, beta: float = 20.0) -> list[Hit]:
-        """Cada salto trae k recuerdos nuevos; la consulta se desplaza hacia lo recordado (Hopfield moderna)."""
+    def recall(self, query: str, k: int = 60, hops: int = 3, beta: float = 20.0) -> list[Hit]:
+        """Cada salto trae k recuerdos nuevos; la consulta se desplaza hacia lo recordado (Hopfield moderna).
+        Por defecto 60 recuerdos y 3 saltos: con el decaimiento 0.9 por salto, el vecino más lejano
+        aún pesa 0.73 del primero, así que la búsqueda llega mucho más lejos que antes."""
         if not self._alive.any():
             return []
         q = self.lens.encode([query], role="query")[0]

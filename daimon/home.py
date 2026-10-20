@@ -44,9 +44,17 @@ class Home:
         if lens_file.exists() and any(prefixes.values()):
             self.lens.query_prefix, self.lens.doc_prefix = prefixes["query_prefix"], prefixes["doc_prefix"]
         self.hippo = Hippocampus(self.path / "mem.db", self.lens)
+        # Todos los topes que la mente tenía hardcodeados pasan a ser configuración:
+        # candidatos (k), tope de recuerdos (max_items, None = sin tope) y vida de la recencia.
         self.thalamus = Thalamus(self.hippo, BM25(self.hippo.events()),
                                  mmr_lambda=self.config.get("mmr_lambda", 0.7),
-                                 max_drop=self.config.get("max_drop"), min_dense=self.config.get("min_dense"))
+                                 max_drop=self.config.get("max_drop"), min_dense=self.config.get("min_dense"),
+                                 k=int(self.config.get("k", 40)),
+                                 max_items=self.config.get("max_items"),
+                                 hops=int(self.config.get("hops", 2)),
+                                 k_cola=int(self.config.get("k_cola", 120)),
+                                 tokens_por_recuerdo=int(self.config.get("tokens_por_recuerdo", 50)),
+                                 recencia_dias=float(self.config.get("recencia_dias", 90.0)))
         pesos = self.path / "pesos.npz"
         if pesos.exists():
             self.thalamus.load(pesos)

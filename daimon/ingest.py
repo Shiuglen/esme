@@ -12,6 +12,17 @@ from .immune import TRUST, clean, is_excluded, redact
 
 _SKIP = ("node_modules", "/dist/", "/.git/", "/.venv/", "/build/")
 
+# Extensiones que la mente sabe leer. Antes solo se ingirían .md y .jsonl, así que Esme no aprendía
+# del código, de la configuración ni de los datos: aquí entra todo lo que sea texto legible.
+SUFIJOS = (
+    ".md", ".markdown", ".mdx", ".txt", ".text", ".rst", ".org", ".adoc",
+    ".py", ".pyi", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs",
+    ".json", ".jsonl", ".toml", ".yaml", ".yml", ".csv", ".sql", ".sh", ".html", ".css", ".ipynb",
+)
+
+# Tope de tamaño: por encima de 2 MiB el fichero suele ser un binario o un volcado, no algo que leer.
+MAX_BYTES = 2 * 1024 * 1024
+
 
 @dataclass
 class Event:
@@ -48,7 +59,8 @@ def _mtime_iso(path: Path) -> str:
 
 
 def from_markdown(path: Path, kind: str = "note") -> list[Event]:
-    """Un evento por trozo de cada sección; la cabecera viaja con su sección."""
+    """Un evento por trozo de cada sección; la cabecera viaja con su sección.
+    Vale para cualquier texto legible (código, config, datos): si no hay cabeceras, es un bloque único."""
     text = redact(path.read_text(encoding="utf-8", errors="replace"))   # redactar ANTES de trocear
     sections = re.split(r"(?m)^(?=#{1,6}\s)", text)
     ts, src, trust = _mtime_iso(path), str(path), TRUST["file"]
@@ -90,11 +102,21 @@ def from_claude_jsonl(path: Path) -> list[Event]:
     return events
 
 
+def _muy_grande(p: Path) -> bool:
+    """Un fichero de más de 2 MiB (o ilegible) no se lee: se salta."""
+    try:
+        return p.stat().st_size > MAX_BYTES
+    except OSError:
+        return True
+
+
 def _files(sources: list[Path]):
     for s in sources:
-        paths = [s] if s.is_file() else sorted(p for p in s.rglob("*") if p.suffix in (".md", ".jsonl"))
+        paths = [s] if s.is_file() else sorted(p for p in s.rglob("*") if p.suffix in SUFIJOS)
         for p in paths:
             if not any(k in str(p) for k in _SKIP) and not is_excluded(str(p)):
+                if _muy_grande(p):
+                    continue          # binarios o volcados: no son conocimiento
                 yield p
 
 
@@ -103,8 +125,8 @@ def collect(sources: list[Path]) -> list[Event]:
     seen, out = set(), []
     for p in _files(sources):
         evs = from_claude_jsonl(p) if p.suffix == ".jsonl" else from_markdown(p, "note" if "Obsidian" in str(p) else "doc")
-        if p.suffix == ".md" and any(is_excluded(e.text) for e in evs):
-            continue          # una nota que toca lo excluido se descarta entera, no solo el trozo
+        # Antes, un fragmento excluido tiraba la nota entera; ahora solo cae el fragmento culpable:
+        # el filtro por evento (clean) deja vivo todo el resto del contenido.
         for e in evs:
             cleaned = clean(e.text)
             if cleaned is None:

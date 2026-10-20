@@ -37,6 +37,34 @@ const ELEGIDAS = [
   ['openai/openai-docs', 'openai/skills', 'openai-docs', 'Investigación', 'Consulta la documentación oficial de OpenAI para responder con datos al día.'],
   ['marketing/copywriting', 'coreyhaines31/marketingskills', 'copywriting', 'Escritura', 'Textos que convencen: titulares, páginas y llamadas a la acción.'],
   ['marketing/content-strategy', 'coreyhaines31/marketingskills', 'content-strategy', 'Escritura', 'Estrategia de contenidos: temas, calendario y por qué cada pieza.'],
+  // La colección de addy Osmani (MIT, 108.668★ el 20-oct-2026): 25 skills de ingeniería y método.
+  // Es la mayor colección abierta y verificada que existe; se copia la carpeta entera, así que sus
+  // `references/` viajan con ella (el fallo #361 de `npx skills add` no aplica aquí).
+  ['addy/context-engineering', 'addyosmani/agent-skills', 'context-engineering', 'Método', 'Ingeniería de contexto: cómo darle a un agente lo justo en el momento justo.'],
+  ['addy/spec-driven-development', 'addyosmani/agent-skills', 'spec-driven-development', 'Método', 'Desarrollar desde una especificación escrita antes de la primera línea de código.'],
+  ['addy/test-driven-development', 'addyosmani/agent-skills', 'test-driven-development', 'Método', 'La disciplina del test primero, con sus reglas y su ritmo.'],
+  ['addy/code-review-and-quality', 'addyosmani/agent-skills', 'code-review-and-quality', 'Método', 'Revisar código como un revisor exigente: qué mirar y qué no perdonar.'],
+  ['addy/code-simplification', 'addyosmani/agent-skills', 'code-simplification', 'Método', 'Quitar lo de más: menos código, menos casos, menos superficie.'],
+  ['addy/doubt-driven-development', 'addyosmani/agent-skills', 'doubt-driven-development', 'Método', 'Construir dudando: poner a prueba lo que parece funcionar antes de creerlo.'],
+  ['addy/constraint-driven-development', 'addyosmani/agent-skills', 'constraint-driven-development', 'Método', 'Las restricciones como motor: acotar el problema hasta que la solución se ve.'],
+  ['addy/incremental-implementation', 'addyosmani/agent-skills', 'incremental-implementation', 'Método', 'Avanzar en pasos que dejo la rama verde en todo momento.'],
+  ['addy/planning-and-task-breakdown', 'addyosmani/agent-skills', 'planning-and-task-breakdown', 'Método', 'Partir un objetivo grande en tareas que se pueden cerrar y verificar.'],
+  ['addy/idea-refine', 'addyosmani/agent-skills', 'idea-refine', 'Método', 'Afinar una idea floja hasta que se pueda empezar a trabajar en ella.'],
+  ['addy/interview-me', 'addyosmani/agent-skills', 'interview-me', 'Investigación', 'Preguntar bien: sacar de alguien lo que sabe sin cansarle.'],
+  ['addy/source-driven-development', 'addyosmani/agent-skills', 'source-driven-development', 'Investigación', 'Desarrollar desde las fuentes: leer la documentación y el código antes de inventar.'],
+  ['addy/debugging-and-error-recovery', 'addyosmani/agent-skills', 'debugging-and-error-recovery', 'Método', 'Encontrar la causa raíz y no el síntoma; y recuperarse cuando algo falla.'],
+  ['addy/deprecation-and-migration', 'addyosmani/agent-skills', 'deprecation-and-migration', 'Código', 'Retirar lo viejo y migrar a lo nuevo sin romper a nadie por el camino.'],
+  ['addy/api-and-interface-design', 'addyosmani/agent-skills', 'api-and-interface-design', 'Diseño', 'Diseñar APIs e interfaces que se puedan usar bien a la primera.'],
+  ['addy/frontend-ui-engineering', 'addyosmani/agent-skills', 'frontend-ui-engineering', 'Diseño', 'Ingeniería de interfaz: estados, carga, error y los detalles que no se ven.'],
+  ['addy/browser-testing-with-devtools', 'addyosmani/agent-skills', 'browser-testing-with-devtools', 'Código', 'Probar una web con las herramientas del navegador y leer lo que de verdad pasa.'],
+  ['addy/performance-optimization', 'addyosmani/agent-skills', 'performance-optimization', 'Código', 'Medir antes de optimizar y atacar primero lo que se nota.'],
+  ['addy/observability-and-instrumentation', 'addyosmani/agent-skills', 'observability-and-instrumentation', 'Código', 'Instrumentar para saber qué pasa de verdad en producción.'],
+  ['addy/security-and-hardening', 'addyosmani/agent-skills', 'security-and-hardening', 'Código', 'Endurecer lo que se entrega: dependencias, entradas, secretos y permisos.'],
+  ['addy/ci-cd-and-automation', 'addyosmani/agent-skills', 'ci-cd-and-automation', 'Código', 'Automatizar la integración continua sin convertirla en una pesadilla.'],
+  ['addy/git-workflow-and-versioning', 'addyosmani/agent-skills', 'git-workflow-and-versioning', 'Código', 'Flujo de trabajo con Git: ramas, commits y deshacer sin perder nada.'],
+  ['addy/documentation-and-adrs', 'addyosmani/agent-skills', 'documentation-and-adrs', 'Documentos', 'Escribir documentación que aguanta el paso del tiempo y decisiones con su porqué.'],
+  ['addy/shipping-and-launch', 'addyosmani/agent-skills', 'shipping-and-launch', 'Método', 'De «listo» a publicado: la última mile, que es donde se cae lo demás.'],
+  ['addy/using-agent-skills', 'addyosmani/agent-skills', 'using-agent-skills', 'Método', 'Cómo usar bien las skills: elegir, combinar y no duplicar effort.'],
 ]
 
 const gh = (ruta) => JSON.parse(execFileSync('gh', ['api', ruta], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }))

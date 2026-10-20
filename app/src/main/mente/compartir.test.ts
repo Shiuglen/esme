@@ -19,8 +19,21 @@ describe('tu mente en cada agente, con su propio formato', () => {
   it('Cursor: url', () => {
     expect(conEsme({}, ag('cursor'), U, T)).toEqual({ mcpServers: { esme: { url: U, headers: { Authorization: 'Bearer tok' } } } })
   })
-  it('OpenCode: mcp.esme remoto', () => {
-    expect(conEsme({ $schema: 's' }, ag('opencode'), U, T)).toEqual({ $schema: 's', mcp: { esme: { type: 'remote', url: U, headers: { Authorization: 'Bearer tok' }, enabled: true } } })
+  it('OpenCode: mcp.servers.esme remoto (la forma plana estaba en desuso)', () => {
+    expect(conEsme({ $schema: 's' }, ag('opencode'), U, T)).toEqual({ $schema: 's', mcp: { servers: { esme: { type: 'remote', url: U, headers: { Authorization: 'Bearer tok' }, enabled: true } } } })
+  })
+  it('OpenCode: conectar retira la forma plana que quedó de antes y no toca el resto', () => {
+    const antes = { $schema: 's', mcp: { esme: { type: 'remote', url: 'http://viejo' }, timeout: { startup: 1000 }, servers: { otro: { type: 'remote', url: 'http://otro' } } } }
+    const r = conEsme(antes, ag('opencode'), U, T)
+    expect((r.mcp as any).esme).toBeUndefined()
+    expect((r.mcp as any).timeout).toEqual({ startup: 1000 })
+    expect((r.mcp as any).servers.otro).toEqual({ type: 'remote', url: 'http://otro' })
+    expect((r.mcp as any).servers.esme.url).toBe(U)
+  })
+  it('OpenCode: quitar deja el fichero como estaba', () => {
+    const antes = { $schema: 's', mcp: { servers: { otro: { type: 'remote', url: 'http://otro' } } } }
+    expect(sinEsme(conEsme(antes, ag('opencode'), U, T), ag('opencode'))).toEqual(antes)
+    expect(sinEsme({ mcp: { servers: { esme: {} } } }, ag('opencode'))).toEqual({})
   })
   it('quitarla deja el fichero como estaba', () => {
     const antes = { mcpServers: { otro: { command: 'x' } } }

@@ -88,12 +88,46 @@ def test_compose_corte_adaptativo(tmp_path):
     assert cut[0] == full[0]
 
 
-def test_se_abstiene_ante_pregunta_ajena(tmp_path):
+def test_no_se_abstiene_ante_pregunta_ajena(tmp_path):
+    """Antes devolvía "" y el agente se quedaba parado sin poder hacer nada.
+
+    Ahora, si nada parece mucho, devuelve lo mejor que hay y lo marca como contexto débil."""
     th = _setup(tmp_path, _corpus())
     th.min_dense = 0.6          # el codificador falso (32 dims) da hasta ~0.4 por azar
-    assert th.compose("receta de paella valenciana con mariscos", 1500) == ("", 0, [])
-    text, used, ids = th.compose("tema3 detalle", 1500)
-    assert ids and used > 0
+    text, used, ids = th.compose("receta de paella valenciana con mariscos", 1500)
+    assert text.startswith("[contexto débil")
+    assert used > 0 and ids
+
+
+def test_el_presupuesto_manda_y_no_hay_tope_de_60(tmp_path):
+    """El tope de 60 recuerdos desapareció: ahora manda el presupuesto (y 0 = sin límite)."""
+    th = _setup(tmp_path, _corpus())
+    th.max_items = None
+    _, _, ids = th.compose("tema3 detalle", 0)          # sin límite
+    assert len(ids) > 60
+    _, _, pocos = th.compose("tema3 detalle", 60)       # con presupuesto corto
+    assert len(pocos) < len(ids)
+
+
+def test_el_feedback_sobrevive_al_reinicio(tmp_path):
+    """La señal no se pierde al reiniciar: las consultas compuestas se guardan."""
+    th = _setup(tmp_path, _corpus())
+    _, _, ids = th.compose("tema1 detalle", 300)
+    th.save(tmp_path / "pesos.npz")
+
+    otro = _setup(tmp_path, _corpus())
+    otro.load(tmp_path / "pesos.npz")                  # como si la app reiniciase
+    assert otro.feedback(ids[:1], 1.0, "tema1 detalle") is True
+
+
+def test_el_feedback_aguanta_un_query_distinto(tmp_path):
+    """Si el aviso llega con otra consulta, el aprendizaje no se pierde: se busca entre las
+    composiciones recientes la que traiga esos recuerdos."""
+    th = _setup(tmp_path, _corpus())
+    _, _, ids = th.compose("tema1 detalle", 300)
+    w0 = th.w.copy()
+    assert th.feedback(ids[:1], 1.0, "otra consulta que no es") is True
+    assert (th.w != w0).any()
 
 
 def test_feedback_negativo_no_destruye(tmp_path):

@@ -1,6 +1,7 @@
 """Lente personal: codificador de significado + adaptador residual que se entrena con el usuario."""
 from __future__ import annotations
 
+import json
 import os
 import time
 from collections import OrderedDict
@@ -114,8 +115,20 @@ def _devolver_memoria() -> None:
         pass
 
 
+def _contexto_del_modelo(carpeta: Path, por_defecto: int) -> int:
+    """Cuántos tokens le caben al modelo (max_position_embeddings de su config.json).
+    El troceador puede admitir muchos más, pero al modelo no: sin este tope, una entrada
+    larga revienta la sesión de ONNX en vez de recortarse."""
+    try:
+        cfg = json.loads((carpeta / "config.json").read_text(encoding="utf-8"))
+        n = int(cfg.get("max_position_embeddings", por_defecto))
+    except (OSError, ValueError, TypeError):
+        return por_defecto
+    return n if n > 0 else por_defecto
+
+
 def onnx_encoder(nombre: str = "embeddinggemma-300m", variante: str = "model_quantized", hilos: int | None = None,
-                 tokens_por_lote: int = 2048, max_tokens: int = 2048, cache: int = 4096,
+                 tokens_por_lote: int = 2048, max_tokens: int = 8192, cache: int = 4096,
                  inactividad: float | None = 60) -> tuple[Encoder, int]:
     """La Lente propia: el modelo corre dentro del cerebro con ONNX Runtime (CPU), sin Ollama ni servidores aparte.
     Agrupa por longitud y llena cada lote hasta un presupuesto de tokens (no rellena en balde), usa la mitad de
@@ -124,7 +137,8 @@ def onnx_encoder(nombre: str = "embeddinggemma-300m", variante: str = "model_qua
     y cargarlo cuesta ~0,1 s. Así que tras `inactividad` segundos sin usarse lo suelta y devuelve la memoria al sistema;
     al volver a usarse lo recupera. None lo deja siempre cargado.
     Lotes de 2048 tokens: al absorber, el pico baja de ~2,7 GB a ~1,6 GB perdiendo un 9 % de velocidad (medido el 12-oct;
-    con 1024 apenas baja más y se pierde un 32 %)."""
+    con 1024 apenas baja más y se pierde un 32 %).
+    Ventana del troceador: 8192 tokens (antes 2048), siempre dentro del contexto que declare el modelo."""
     import threading
 
     import onnxruntime as ort
@@ -162,7 +176,13 @@ def onnx_encoder(nombre: str = "embeddinggemma-300m", variante: str = "model_qua
         estado["reloj"].start()
 
     tok = Tokenizer.from_file(str(d / "tokenizer.json"))
-    tok.enable_truncation(max_tokens)
+    # Ventana amplia (8192) para que un fragmento largo no se corte a los 2048, pero sin pasarse
+    # del contexto que declara el modelo: si ese es menor, manda él (si no, el texto revienta ONNX).
+    ventana = min(max_tokens, _contexto_del_modelo(d, max_tokens))
+    try:
+        tok.enable_truncation(ventana)
+    except Exception:   # un modelo que no admita esa ventana se carga igual, con la de siempre
+        tok.enable_truncation(2048)
     tok.no_padding()
     with cerrojo:
         dim = int(abrir().get_outputs()[-1].shape[-1])

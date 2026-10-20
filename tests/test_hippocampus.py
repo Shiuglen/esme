@@ -25,6 +25,14 @@ def test_recall_vacio(tmp_path):
     assert _hippo(tmp_path).recall("lo que sea") == []
 
 
+def test_los_defaults_del_recuerdo_son_generosos(tmp_path):
+    # Sin k ni hops: 60 recuerdos y 3 saltos (4 rondas), no 20 y 2.
+    h = _hippo(tmp_path)
+    h.store([_ev(i, f"recuerdo {i} de la colección") for i in range(1, 251)])
+    hits = h.recall("recuerdo")
+    assert len(hits) == 240 and max(x.hop for x in hits) == 3
+
+
 def test_multisalto(tmp_path):
     h = _hippo(tmp_path)
     h.store([_ev(1, "alfa beta"), _ev(2, "beta gamma"), _ev(3, "gamma delta"), _ev(4, "zeta eta theta")])
