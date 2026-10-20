@@ -8,6 +8,8 @@ pueda saber qué ofrece antes de pedir nada.
 Lo que ofrece Esme de verdad hoy:
 - **memoria**: `recall` (el contexto que una IA necesita), `remember` (guardar una decisión),
   `feedback` (decirle qué sirvió), por MCP y por HTTP.
+- **navegador**: `navegar`, `clic_en_la_pagina` y `escribir_en_la_pagina` — la web de verdad, con el
+  navegador de la app detrás (MCP).
 - **sueño**: la mente ordena su memoria, aprende de las tareas del Taller y prepara el día.
 - **voz**: el oído y la voz de Esme, en el equipo, sin ir a la nube.
 
@@ -46,6 +48,20 @@ def agent_card(url_base: str, version: str = VERSION) -> dict:
                     "Guarda esta decisión: primero lo esencial impecable.",
                 ],
                 "x-esme": {"herramientas": ["recall", "remember", "feedback"], "http": ["/recall", "/remember", "/feedback", "/memories"]},
+            },
+            {
+                "id": "navegador",
+                "name": "Navegador de Esme",
+                "description": ("Abre la web de verdad (con JavaScript y formularios), te devuelve lo que hay: el texto, "
+                                "los botones, los campos y las acciones posibles, y puede pulsar y rellenar por ti. "
+                                "Es el navegador de la app, servido por la mente: cualquier agente que hable con Esme "
+                                "puede usarlo."),
+                "tags": ["web", "navegador", "herramientas"],
+                "examples": [
+                    "Abre la página de las noticias y dime qué hay.",
+                    "Busca en esa web el precio y vuelve con la cifra.",
+                ],
+                "x-esme": {"herramientas": ["navegar", "clic_en_la_pagina", "escribir_en_la_pagina"]},
             },
             {
                 "id": "sueno",
