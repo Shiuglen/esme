@@ -21,8 +21,12 @@ export async function leeCurva(dir: string): Promise<Curva> {
     }
   } catch { /* sin veredictos: aún nadie ha aplicado ni descartado nada */ }
 
+  // Los fallos: cada tarea guarda su último error, así que no hace falta leer los historiales
+  // (algunos pesan megabytes). Sólo si falta, se mira el registro de esa tarea y de ninguna más.
   const fallos: string[] = []
   for (const t of tareas) {
+    if (t.estado !== 'error') continue
+    if (t.error) { fallos.push(t.error); continue }
     try {
       const texto = await readFile(join(dir, `${t.id}.jsonl`), 'utf8')
       for (const linea of texto.split('\n')) {
