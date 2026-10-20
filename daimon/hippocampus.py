@@ -115,6 +115,15 @@ class Hippocampus:
     def events(self) -> list[Event]:
         return [self._event(r) for r in self.db.execute(f"SELECT {_COLS} FROM events WHERE deleted=0 ORDER BY row")]
 
+    def por_fuente(self, fuente: str, limite: int = 100) -> list[Event]:
+        """Los recuerdos de una fuente concreta (lo que guardaste en X, por ejemplo), los más recientes primero.
+
+        Es una pregunta distinta a «busca esto»: aquí no hay búsqueda, hay una coleta. Por eso va por índice
+        (source) y no por similitud: son los eventos de una fuente, tal como entraron."""
+        limite = max(1, min(int(limite), 500))
+        r = self.db.execute(f"SELECT {_COLS} FROM events WHERE deleted=0 AND source=? ORDER BY row DESC LIMIT ?", (fuente, limite))
+        return [self._event(x) for x in r]
+
     def vector(self, event_id: str) -> np.ndarray:
         (row,) = self.db.execute("SELECT row FROM events WHERE id=?", (event_id,)).fetchone()
         return self.V[row]

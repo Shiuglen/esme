@@ -5,7 +5,7 @@ import { Cloud, Globe, Hammer, Laptop, Plug, Search, Trash2 } from 'lucide-react
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { bridge, type ConectadaVista, type Ficha } from '../lib/bridge'
+import { bridge, type ConectadaVista, type Deseo, type Ficha } from '../lib/bridge'
 import { cn } from '../lib/cn'
 
 export function TiendaHerramientas() {
@@ -13,9 +13,13 @@ export function TiendaHerramientas() {
   const [fichas, setFichas] = useState<Ficha[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [conectadas, setConectadas] = useState<ConectadaVista[]>([])
+  const [deseos, setDeseos] = useState<Deseo[]>([])
+  const [notaDeseos, setNotaDeseos] = useState<string | null>(null)
   const [abierta, setAbierta] = useState<string | null>(null)
   const recargar = () => void bridge.herramientas.conectadas().then(setConectadas)
   useEffect(recargar, [])
+  // lo que guardaste es tu lista de deseos: cada deseo se busca en el registro y se puede conectar
+  useEffect(() => { void bridge.tienda.deseos().then((r) => { if (r.ok) setDeseos(r.deseos); else setNotaDeseos(r.error) }).catch(() => setNotaDeseos('No pude leer lo que guardaste.')) }, [])
   // se busca al dejar de teclear; sin texto, las destacadas (las oficiales de empresas conocidas)
   useEffect(() => {
     let vivo = true
@@ -27,6 +31,36 @@ export function TiendaHerramientas() {
 
   return (
     <div className="grid gap-8">
+      {(deseos.length > 0 || notaDeseos) && (
+        <section className="grid gap-3">
+          <h2 className="m-0 text-[15px] font-medium text-texto">Lo que guardaste · tu lista de deseos</h2>
+          <p className="m-0 max-w-[70ch] text-[13px] leading-5 text-texto-2">
+            Guardaste esto en X: son cosas que querías. Búscalas en el registro y conéctalas cuando quieras.
+          </p>
+          {notaDeseos && <p className="m-0 text-[13px] text-texto-3">{notaDeseos}</p>}
+          <ul className="m-0 grid list-none gap-2 p-0">
+            {deseos.map((d) => (
+              <li key={d.destino} className="vidrio flex flex-wrap items-center gap-3 rounded-3 border px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="m-0 truncate text-[14px] text-texto">{d.herramienta ? d.herramienta : d.dominio}</p>
+                  <p className="m-0 line-clamp-1 text-[12px] text-texto-3">
+                    {d.autor ? `${d.autor} · ` : ''}{d.texto}
+                  </p>
+                </div>
+                {d.herramienta && (
+                  <button type="button" onClick={() => setQ(d.herramienta)}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-linea px-3 text-[12.5px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">
+                    <Search className="size-3.5" strokeWidth={1.75} />Buscar en el registro
+                  </button>
+                )}
+                {d.post && (
+                  <a href={d.post} target="_blank" rel="noreferrer" className="text-[12.5px] text-texto-3 underline decoration-linea underline-offset-2 hover:text-texto">El post</a>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {conectadas.length > 0 && (
         <section className="grid gap-3">
           <h2 className="m-0 text-[15px] font-medium text-texto">Conectadas · Esme y tu equipo ya las usan</h2>

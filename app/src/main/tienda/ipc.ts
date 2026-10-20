@@ -4,7 +4,10 @@ import { app, ipcMain } from 'electron'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { CLAVES_TIENDA } from '../claves'
+import type { BrainInfo } from '../brain-process'
+import { ClienteCerebro } from '../mente/cliente'
 import { verificarCatalogo, type Producto } from './catalogo'
+import { deseosDe, type Deseo } from './deseos'
 
 export const URL_CATALOGO = 'https://raw.githubusercontent.com/Shiuglen/esme-tienda/main/catalogo.json'
 const copia = () => join(app.getPath('userData'), 'tienda-catalogo.json')
@@ -24,4 +27,15 @@ export async function catalogo(): Promise<RespuestaCatalogo> {
   return { productos: [], origen: 'ninguno' }
 }
 
-export function registerTienda() { ipcMain.handle('tienda:catalogo', () => catalogo()) }
+export function registerTienda(o: { brainInfo: () => BrainInfo | null } = { brainInfo: () => null }) {
+  ipcMain.handle('tienda:catalogo', () => catalogo())
+  // Lo que guardaste en X: tu lista de deseos. La Tienda la cumple: cada deseo se puede buscar en el registro.
+  ipcMain.handle('tienda:deseos', async (): Promise<{ ok: true; deseos: Deseo[] } | { ok: false; error: string }> => {
+    const i = o.brainInfo()
+    if (!i) return { ok: false, error: 'Tu mente está apagada: no puedo leer lo que guardaste.' }
+    try {
+      const rs = await new ClienteCerebro(i).recuerdosDeFuente('x:bookmarks', 80)
+      return { ok: true, deseos: deseosDe(rs.map((r) => String(r.text ?? ''))) }
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : 'no pude leer lo que guardaste' } }
+  })
+}

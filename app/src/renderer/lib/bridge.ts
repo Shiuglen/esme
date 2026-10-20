@@ -64,6 +64,7 @@ export type ResultadoMente<T> = { ok: true; dato: T } | { ok: false; error: stri
 export type Memoria = { id: string; text: string; source: string; kind: string; ts: string; trust: number; compartment: string; score?: number }
 export type InstalarMotor = { ok: true; nombre: string } | { ok: false; error: string }
 export type OrigenCatalogo = { origen: 'red' | 'cache' | 'semilla'; fecha: number }
+export type Deseo = { autor: string; texto: string; post: string; destino: string; dominio: string; herramienta: string }
 
 type ElectronApi = {
   brain: { info(): Promise<BrainInfo>; onChange(fn: (i: BrainInfo) => void): () => void }
@@ -111,7 +112,10 @@ type ElectronApi = {
     onConsumo(fn: (c: ConsumoConCoste) => void): () => void; onAlerta(fn: (e: EstadoUso['evaluacion']) => void): () => void
   }
   motores: { detectar(): Promise<MotorDetectado[]> }
-  tienda: { catalogo(): Promise<RespuestaCatalogo> }
+  tienda: {
+    catalogo(): Promise<RespuestaCatalogo>
+    deseos(): Promise<{ ok: true; deseos: Deseo[] } | { ok: false; error: string }>
+  }
   hilos: { lista(): Promise<ResumenHilo[]>; leer(id: string): Promise<Hilo | null>; guardar(h: Hilo): Promise<boolean>; borrar(id: string): Promise<boolean>; buscar(q: string): Promise<(ResumenHilo & { trozo: string })[]>; nuevoId(): Promise<string> }
   licencia: { estado(): Promise<EstadoPlan>; activar(c: string): Promise<{ ok: boolean; motivo?: string; estado: EstadoPlan }>; quitar(): Promise<EstadoPlan> }
   taller: {
@@ -288,7 +292,10 @@ export const bridge = {
     onAlerta: (fn: (e: EstadoUso['evaluacion']) => void): (() => void) => (isElectron() ? window.daimon!.uso.onAlerta(fn) : () => {}),
   },
   motores: { detectar: async (): Promise<MotorDetectado[]> => (isElectron() ? window.daimon!.motores.detectar() : []) },
-  tienda: { catalogo: async (): Promise<RespuestaCatalogo> => (isElectron() ? window.daimon!.tienda.catalogo() : { productos: [], origen: 'ninguno' }) },
+  tienda: {
+    catalogo: async (): Promise<RespuestaCatalogo> => (isElectron() ? window.daimon!.tienda.catalogo() : { productos: [], origen: 'ninguno' }),
+    deseos: async (): Promise<{ ok: true; deseos: Deseo[] } | { ok: false; error: string }> => (isElectron() ? window.daimon!.tienda.deseos() : { ok: false, error: 'Solo en la app de escritorio' }),
+  },
   hilos: {
     lista: async (): Promise<ResumenHilo[]> => (isElectron() ? window.daimon!.hilos.lista() : []),
     leer: async (id: string): Promise<Hilo | null> => (isElectron() ? window.daimon!.hilos.leer(id) : null),

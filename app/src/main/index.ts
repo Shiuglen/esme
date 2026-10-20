@@ -122,7 +122,7 @@ function startPtyHost() {
 function registerIpc() {
   registerLicencia()
   registerHilos()
-  registerTienda()
+  registerTienda({ brainInfo: () => brain.info })
   registerHerramientas({ python: { python: RUTAS.python, extraPython: RUTAS.extraPython } })
   registerSkills()
   registerForja()

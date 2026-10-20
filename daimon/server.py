@@ -140,6 +140,10 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
     async def memories(req: Request):
         # 200 recuerdos por defecto: la app no se queda con la punta de iceberg
         q, limit = req.query_params.get("q", ""), int(req.query_params.get("limit", 200))
+        # por fuente: lo que guardaste (en X, en un archivo…), sin búsqueda: es una coleta, no un recuerdo
+        fuente = req.query_params.get("fuente", "")
+        if fuente:
+            return JSONResponse([{**_event_dict(e), "score": 0} for e in await locked(home.hippo.por_fuente)(fuente, limit)])
         if not q:   # sin búsqueda: lo último que aprendió tu mente
             recientes = (await locked(home.hippo.events)())[::-1][:limit]
             return JSONResponse([{**_event_dict(e), "score": 0} for e in recientes])

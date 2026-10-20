@@ -69,6 +69,12 @@ export class ClienteCerebro {
     return this.llamar<Recuerdo[]>(`${RUTAS.recuerdos}?${params.toString()}`)
   }
 
+  /** Lo que guardaste: los recuerdos de una fuente (x:bookmarks…), sin búsqueda: es una coleta. */
+  async recuerdosDeFuente(fuente: string, limite = 80): Promise<Recuerdo[]> {
+    const params = new URLSearchParams({ fuente, limit: String(limite) })
+    return this.llamar<Recuerdo[]>(`${RUTAS.recuerdos}?${params.toString()}`)
+  }
+
   /** El Tálamo compone el contexto con presupuesto: lo que entra en el prompt. */
   async recordar(query: string, o: { motor?: string; budget?: number; who?: string } = {}): Promise<Recuerdos> {
     return this.llamar<Recuerdos>(RUTAS.recordar, { method: 'POST', body: JSON.stringify({ query, ...o }) })
