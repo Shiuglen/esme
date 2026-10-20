@@ -83,6 +83,7 @@ export function noListos(tareas: Pick<TareaTaller, 'motor' | 'motorNombre' | 'in
   for (const [motor, t] of ultimo) {
     if (t.estado !== 'error' || !t.error) continue
     if (/ENOENT|not found|no se encuentra/i.test(t.error)) out.set(motor, 'No se encuentra en este equipo')
+    else if (/dejó de responder|sin señales/i.test(t.error)) out.set(motor, 'Se quedó mudo la última vez')
     else if (explicarError(t.error, t.motorNombre, '')?.tipo === 'sesion') out.set(motor, `Inicia sesión en ${t.motorNombre}`)
   }
   return out

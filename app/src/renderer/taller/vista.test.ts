@@ -107,6 +107,13 @@ describe('explicarError — los muertos hablan humano', () => {
     expect(explicarError('Operation timed out after 30000 ms', '', '')?.titulo).toContain('sin tiempo')
     expect(explicarError('TypeError: undefined is not a function', '', 'x')).toBe(null)
   })
+
+  it('un motor que se quedó mudo se explica: se le dio por muerto y el trabajo quedó en la copia', () => {
+    const e = explicarError('El motor dejó de responder (40 min sin señales).', 'OpenCode', '')
+    expect(e?.tipo).toBe('motor')
+    expect(e?.titulo).toContain('mudo')
+    expect(e?.consejo).toContain('copia')
+  })
 })
 
 describe('archivar lo viejo', () => {

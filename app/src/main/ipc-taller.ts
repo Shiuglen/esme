@@ -121,6 +121,9 @@ async function sondear(motor: MotorElegido): Promise<OpcionConfig[]> {
 
 const emitir = (canal: string, dato: unknown) => { for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(canal, dato) }
 const mensaje = (e: unknown) => (e instanceof Error ? e.message : String(e))
+/** El oficio de una tarea: un id de los que hay (nunca texto suelto del renderer). */
+const rolValido = (x: unknown): x is string => typeof x === 'string' && /^[a-z0-9_-]{1,32}$/.test(x)
+
 const idValido = (v: unknown): v is string => typeof v === 'string' && ID.test(v)
 const textoValido = (v: unknown): v is string => typeof v === 'string' && v.trim().length > 0 && v.length <= MAX_TEXTO
 
@@ -233,6 +236,8 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
     dir: join(app.getPath('userData'), 'taller'),
     emitir: (canal, dato) => emitir(`taller:${canal}`, dato),
     mcp: () => mcpDeEsme(o.brainInfo()),
+    // La herencia: la mente a la que el Taller le pregunta qué sabe del encargo antes de la primera pregunta.
+    mente: () => o.brainInfo(),
     masMcp: () => { try { return mcpParaTaller() } catch { return [] } },
     resolverMotor: async (id) => { const m = await elegirMotor(id); return 'error' in m ? null : m },
     // Cada turno que termina alimenta el Uso de la app: la historia del gasto real por tarea.
@@ -289,13 +294,15 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
   ipcMain.handle('taller:instalarMotor', (_e, id: unknown) => instalarMotor(id))
   ipcMain.handle('taller:lista', () => t.lista())
   ipcMain.handle('taller:eventos', async (_e, id: unknown) => (idValido(id) ? t.eventos(id).catch(() => []) : []))
-  ipcMain.handle('taller:crear', async (_e, p: { motor?: unknown; carpeta?: unknown; texto?: unknown; config?: unknown; arena?: unknown; acceso?: unknown } | null) => {
+  ipcMain.handle('taller:crear', async (_e, p: { motor?: unknown; carpeta?: unknown; texto?: unknown; config?: unknown; arena?: unknown; acceso?: unknown; rol?: unknown } | null) => {
     const config = p ? configValida(p.config) : undefined
     if (!p || config === null || (p.arena !== undefined && !idValido(p.arena)) || !textoValido(p.texto) || !(p.carpeta === null || (typeof p.carpeta === 'string' && p.carpeta.length > 0))) return entrada
     const motor = await elegirMotor(p.motor)
     if ('error' in motor) return { ok: false, error: motor.error }
-    try { return { ok: true, tarea: t.crear({ motor, carpeta: p.carpeta, texto: p.texto, config, ...(typeof p.arena === 'string' ? { arena: p.arena } : {}), ...(accesoValido(p.acceso) ? { acceso: p.acceso } : {}) }) } } catch (e) { return { ok: false, error: mensaje(e) } }
+    const rol = rolValido(p.rol) ? t.roles().find((r) => r.id === p.rol) ?? null : null
+    try { return { ok: true, tarea: t.crear({ motor, carpeta: p.carpeta, texto: p.texto, config, ...(typeof p.arena === 'string' ? { arena: p.arena } : {}), ...(accesoValido(p.acceso) ? { acceso: p.acceso } : {}), ...(rol ? { rol } : {}) }) } } catch (e) { return { ok: false, error: mensaje(e) } }
   })
+  ipcMain.handle('taller:roles', () => t.roles())
   ipcMain.handle('taller:seguir', (_e, id: unknown, texto: unknown) => (idValido(id) && textoValido(texto) ? accion(() => t.seguir(id, texto)) : entrada))
   ipcMain.handle('taller:parar', (_e, id: unknown) => (idValido(id) ? accion(() => t.parar(id)) : entrada))
   ipcMain.handle('taller:descartar', (_e, id: unknown) => (idValido(id) ? accion(() => { cerrarVista(id); return t.descartar(id) }) : entrada))
@@ -331,6 +338,7 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
     return t.exportar(id, r.filePath)
   })
   ipcMain.handle('taller:veredictos', () => t.veredictos())
+  ipcMain.handle('taller:curva', () => t.curva())
   ipcMain.handle('taller:responder', (_e, id: unknown, opcion: unknown) => {
     if (!idValido(id) || typeof opcion !== 'string' || opcion.length === 0 || opcion.length > 200) return entrada
     t.responder(id, opcion)

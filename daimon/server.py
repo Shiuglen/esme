@@ -57,11 +57,14 @@ class EventBus:
             self._subs.discard(q)
 
 
+# Rutas públicas: la Agent Card (qué sabe hacer Esme). No llevan nada de tu memoria.
+PUBLICAS = ("/.well-known/agent-card.json", "/.well-known/agent.json")
+
+
 class Guard(BaseHTTPMiddleware):
     def __init__(self, app, token: str, hosts: set[str]):
         super().__init__(app)
         self.token, self.hosts = token, hosts
-
     async def dispatch(self, request: Request, call_next):
         host = (request.headers.get("host") or "").split(":")[0]
         if host not in self.hosts:
@@ -73,6 +76,12 @@ class Guard(BaseHTTPMiddleware):
             return Response(status_code=204, headers=_cors(origin))
         auth = request.headers.get("authorization", "")
         qtok = request.query_params.get("token") if request.url.path == "/events" else None
+        # La Agent Card es pública: sólo dice qué sabe hacer Esme, no lleva nada de tu memoria.
+        if request.url.path in PUBLICAS:
+            resp = await call_next(request)
+            for k, v in _cors(origin).items():
+                resp.headers[k] = v
+            return resp
         if auth != f"Bearer {self.token}" and qtok != self.token:
             return JSONResponse({"error": "token requerido"}, 401)
         resp = await call_next(request)
@@ -89,8 +98,7 @@ def _cors(origin: str | None) -> dict:
 
 
 def _event_dict(e) -> dict:
-    return {"id": e.id, "text": e.text, "source": e.source, "kind": e.kind, "ts": e.ts, "trust": e.trust,
-            "compartment": e.compartment}
+    return {"id": e.id, "text": e.text, "source": e.source, "kind": e.kind, "ts": e.ts, "trust": e.trust,            "compartment": e.compartment}
 
 
 def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, voz=None):
@@ -234,6 +242,20 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
     async def events(_: Request):
         return StreamingResponse(bus.stream(), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+    # La Agent Card: la puerta por la que otro agente descubre qué sabe hacer Esme.
+    # Es pública (no lleva datos del usuario, sólo capacidades) y pública es como se descubre.
+    def agent_card_of(request: Request) -> dict:
+        from daimon.agent_card import agent_card
+        return agent_card(str(request.base_url).rstrip("/"))
+
+    @mcp.custom_route("/.well-known/agent-card.json", methods=["GET"])
+    async def agent_card_ruta(_: Request):
+        return JSONResponse(agent_card_of(_))
+
+    @mcp.custom_route("/.well-known/agent.json", methods=["GET"])
+    async def agent_json(_: Request):
+        return JSONResponse(agent_card_of(_))
 
     hosts = {"127.0.0.1", "localhost", *(allowed_hosts or [])}
     app = mcp.streamable_http_app(

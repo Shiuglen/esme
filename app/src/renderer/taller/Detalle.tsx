@@ -219,6 +219,10 @@ function Item({ i }: { i: ItemLinea }) {
       <p className="flex items-center gap-2 text-[12.5px] text-atencion" title={i.motivo}>
         <Hourglass className="size-3.5 shrink-0" strokeWidth={1.75} />El proveedor limita las peticiones: lo reintento en {Math.round(i.ms / 1000)} s
       </p>)
+    case 'herencia': return (
+      <p className="flex items-center gap-2 text-[12px] text-texto-3" title="Lo que tu mente ya sabía del encargo: el motor arranca con esto, sin que tengas que pegarle nada">
+        <Brain className="size-3.5 shrink-0" strokeWidth={1.5} />Le heredé tu memoria: {i.recuerdos} {i.recuerdos === 1 ? 'recuerdo' : 'recuerdos'} ({i.tokens} tokens)
+      </p>)
   }
 }
 

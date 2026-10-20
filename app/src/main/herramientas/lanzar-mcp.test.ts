@@ -13,6 +13,12 @@ describe('cómo se arranca cada herramienta', () => {
   it('npm: npx con la versión fijada y solo las variables que tienen valor', () => {
     expect(lanzamientoDe(npm, { PERPLEXITY_API_KEY: 'k' })).toEqual({ tipo: 'stdio', comando: 'npx', args: ['-y', '@perplexity-ai/mcp-server@2.1.0'], env: { PERPLEXITY_API_KEY: 'k' } })
   })
+  it('los argumentos del paquete van detrás (REA necesita «mcp» para hablar MCP)', () => {
+    const rea: Ficha = { ...npm, id: 'io.github.morluto/rea', slug: 'rea', conexion: { tipo: 'npm', paquete: 'rea-agents', version: '6.7.0', args: ['mcp'] }, variables: [] }
+    expect(lanzamientoDe(rea, {})).toEqual({ tipo: 'stdio', comando: 'npx', args: ['-y', 'rea-agents@6.7.0', 'mcp'], env: {} })
+    const pypiArgs: Ficha = { ...npm, conexion: { tipo: 'pypi', paquete: 'mcp-y', version: '0.3', args: ['serve'] }, variables: [] }
+    expect(lanzamientoDe(pypiArgs, {})).toEqual({ tipo: 'stdio', comando: 'uvx', args: ['mcp-y==0.3', 'serve'], env: {} })
+  })
   it('pypi: uvx con la versión fijada', () => {
     expect(lanzamientoDe(pypi, {})).toEqual({ tipo: 'stdio', comando: 'uvx', args: ['mcp-y==0.3'], env: {} })
   })

@@ -173,13 +173,24 @@ def _dir(qset):
     return d
 
 
+def _nombres(a) -> list[str]:
+    """Qué variantes entran en la corrida: todas, o sólo las que se pidan con --variants.
+
+    Existe para no gastar la GPU (que aquí es una y con 6 GB) en repetir respuestas de variantes
+    que no han cambiado: si sólo cambia la recuperación de Esme, se mide sólo esa, y las demás se
+    comparan con lo ya medido.
+    """
+    pedidos = [v.strip() for v in (getattr(a, "variants", "") or "").split(",") if v.strip()]
+    return [n for n in MAIN + ABLATIONS if not pedidos or n in pedidos]
+
+
 def cmd_contexts(a):
     variants, texts = build_variants()
     path = _dir(a.set) / "contexts.jsonl"
     done = {(r["item_id"], r["variant"]) for r in map(json.loads, path.read_text().splitlines())} if path.exists() else set()
     with path.open("a", encoding="utf-8") as f:
         for i in items_for(a.set, a.split):
-            for n in MAIN + ABLATIONS:
+            for n in _nombres(a):
                 if (i.id, n) in done:
                     continue
                 ctx, used = variants[n](i.question, BUDGET)
@@ -194,7 +205,7 @@ def cmd_answer(a):
     ctx = {(r["item_id"], r["variant"]): (r["context"], r["tokens"])
            for r in map(json.loads, (_dir(a.set) / "contexts.jsonl").read_text(encoding="utf-8").splitlines())}
     qid = {i.question: i.id for i in its}
-    variants = {n: (lambda n: (lambda q, b: ctx[(qid[q], n)]))(n) for n in MAIN + ABLATIONS}
+    variants = {n: (lambda n: (lambda q, b: ctx[(qid[q], n)]))(n) for n in _nombres(a)}
     rows = run(its, variants, Ollama(ANSWERER, timeout=300), BUDGET, _dir(a.set) / "answers.jsonl", MAX_TOKENS,
                on_row=lambda r: print(f'{r["item_id"]} {r["variant"]} {r["status"]} {r["latency_s"]}s', flush=True))
     print(f"filas: {len(rows)}; errores: {sum(r['status'] == 'error' for r in rows)}")
@@ -226,6 +237,7 @@ if __name__ == "__main__":
     for c in ("contexts", "answer"):
         p = sp.add_parser(c); p.add_argument("--set", choices=["original", "parafrasis"], required=True)
         p.add_argument("--split", choices=["oculto", "visible"], default="oculto")
+        p.add_argument("--variants", default="", help="sólo estas variantes (a,b). Vacío = todas")
     for c in ("judge", "report"):
         p = sp.add_parser(c); p.add_argument("--set", choices=["original", "parafrasis"], required=True)
     a = ap.parse_args()

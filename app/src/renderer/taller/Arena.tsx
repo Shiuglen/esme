@@ -37,7 +37,10 @@ export function Arena({ tareas, actual, lineas, ahora, onVer, onQuedarme, onCarg
                   <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-texto" title={t.modelo ?? ''}>{modelo(t)}</span>
                   <PastillaEstado estado={t.estado} />
                 </div>
-                <p className="mt-0.5 text-xs text-texto-3">{t.motorNombre}</p>
+                <p className="mt-0.5 flex items-center gap-1.5 text-xs text-texto-3">
+                  {t.motorNombre}
+                  {t.rol && <span className="rounded-full border border-linea-fuerte/60 px-1.5 py-px text-[11px]">{t.rol}</span>}
+                </p>
                 <div className="mt-2 flex items-baseline gap-3 tabular-nums">
                   <span className={cn('font-display text-[24px] leading-none font-light', rapida ? 'text-texto' : 'text-texto-2')}>{duracion(tiempo)}</span>
                   {rapida && <span className="text-[11px] text-texto-3">la más rápida</span>}
@@ -47,6 +50,18 @@ export function Arena({ tareas, actual, lineas, ahora, onVer, onQuedarme, onCarg
                   <div><dt className="text-texto-3">Ficheros</dt><dd className="text-[12.5px] text-texto">{t.cambios?.ficheros ?? '—'}</dd></div>
                   <div><dt className="text-texto-3">Tokens</dt><dd className="text-[12.5px] text-texto">{t.uso.entrada + t.uso.salida ? fmtTokens(t.uso.entrada + t.uso.salida) : '—'}</dd></div>
                 </dl>
+                {t.cambios?.lista?.length ? (
+                  <ul className="mt-2 grid gap-0.5 text-[11.5px] text-texto-3">
+                    {t.cambios.lista.slice(0, 4).map((f) => (
+                      <li key={f.ruta} className="truncate" title={`${f.ruta} · +${f.mas} −${f.menos}`}>
+                        <span className="text-texto-2">{f.ruta.split('/').pop()}</span>
+                        <span className="text-exito"> +{f.mas}</span>
+                        {f.menos > 0 && <span className="text-peligro"> −{f.menos}</span>}
+                      </li>
+                    ))}
+                    {t.cambios.lista.length > 4 && <li className="text-texto-3">y {t.cambios.lista.length - 4} más…</li>}
+                  </ul>
+                ) : null}
               </header>
               <div className="min-h-0 flex-1 overflow-y-auto px-3.5 py-2.5 text-[13px] leading-5 text-texto-2">
                 {t.estado === 'error' ? <p className="text-peligro">{t.error}</p>

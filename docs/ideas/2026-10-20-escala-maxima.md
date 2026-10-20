@@ -114,6 +114,7 @@ de agentes**: otro agente puede encargarle trabajo y cobrar por ello.
 **Primer paso.** Una Agent Card por rol del Taller; un endpoint `/.well-known/agent.json`; un
 `esme_encienda_agente(rol, objetivo)` en el MCP.
 **Se mide.** Tareas encargadas desde fuera.
+**Hecho (20-oct), el primer paso.** La Agent Card de Esme vive en `/.well-known/agent-card.json` del cerebro (y su alias `agent.json`), **pública**: sólo capacidades, nada de tu memoria. Skills: **memoria** (`recall`/`remember`/`feedback` por MCP y HTTP), **sueño** y **voz**. Lo que falta: **encargar tareas al Taller desde fuera** (`esme_encienda_agente(rol, objetivo)` en el MCP) y una Agent Card por rol del Taller.
 
 ### Palanca 4 — Cualquier motor, en caliente
 **Idea.** MemGPT y sus sucesores (Mem0, Hindsight, Letta) coinciden: el problema no es el modelo,
@@ -130,6 +131,15 @@ contexto del proyecto y lo inyecte en el primer mensaje.
 **Primer paso.** `daimon/bench/` añade un rung con las tareas reales del creador contra
 `rag_denso_eg` (el rival actual, que ya gana en el veredicto) **y** contra Mem0/Hindsight.
 **Se mide.** Acierto y tokens por tarea. Sólo entra lo que mejora el número.
+**Medido (20-oct, Palanca 5 cerrada en su primera parte).** mem0 2.2.1 (Apache-2.0, 67K★), en local,
+con su Qdrant y su BM25 híbrido, **con el mismo codificador que Esme** (para medir la recuperación y
+no el codificador), el mismo corpus (5.768 recuerdos), las mismas 35 preguntas ocultas y el mismo
+presupuesto (1.500 tokens): **Esme 0,929 / 1.124 tokens · mem0 0,857 / 1.499** con las preguntas
+literales; **0,900 / 1.246 · 0,757 / 1.499** con las paráfrasis. Esme gana por **7,2 puntos con un
+25 % menos de contexto** (y por 14,3 con las paráfrasis). Cara a cara: 3–1–31. La diferencia está en
+**el corte aprendido**: mem0 tenía la evidencia en su top-20 en el 95,7 % de los casos y el
+presupuesto se la dejaba fuera en 4 de 35. Detalle: `docs/resultados/2026-10-20-banco-memoria.md`.
+**Queda:** la consolidación de mem0 (extraer hechos con un LLM) y Hindsight.
 
 ### Palanca 5-bis — Evaluación y trazas: el hueco que nadie vio hasta ahora
 **Idea.** Las tres listas de X (@Lummox_eth, @ridark_eth) terminan igual: **Langfuse, Opik,
@@ -147,6 +157,16 @@ evaluación, es un número que sube o baja cada noche.
   contenedores con ClickHouse) y Opik (9 con MySQL+ZooKeeper) **no caben** en 6 GB.
 **Se mide.** La curva de aciertos por tarea del Taller, guardada cada noche.
 **Riesgo.** El juez debe ser el mismo modelo que la respuesta o se mide con el sesgo del juez.
+**Hecho (20-oct), la parte que no necesita juez: la curva.** Esme ya **mide a sus propios agentes**
+sin gastar un token: la etiqueta es del creador (aplicar = sí, descartar = no) y las medidas las
+dejó la app. Vive en **Uso › La curva del Taller**, con script para la terminal y pieza en el
+laboratorio. Al mirarla de verdad: **16 de 46 tareas con error (35 %)** — «Internal error» del
+proveedor (7), «Authentication required» (3), «Rate limit» (2), «getaddrinfo ETIMEOUT» (2), modelo
+retirado (1) y «la sesión del motor está cerrada» (3) — y **0 de 11 veredictos positivos**. Con ese
+número a la vista, **lo temporal se reintenta solo** (red, saturación, «Internal error» una vez, y
+la sesión muerta se abre otra); lo que necesita al creador **no** se reintenta.
+**Queda:** el juez de calidad (DeepEval) y la traza abierta (OpenLLMetry). El juez **no se puede
+hacer hoy**: el Ollama de esta máquina está roto y un juez de pago rompe la regla de no consumir.
 
 ### Palanca 6 — Esme aprende de sí misma: **REA**
 **Idea.** REA (*Reverse Engineer Anything*, MCP + CLI, **MIT**, `rea-agents` v6.7.0, publicado el
@@ -200,7 +220,9 @@ abierta que existe. Copia la carpeta entera, así que sus `references/` viajan c
 **Por qué multiplica.** Es la diferencia entre un taller que se programa y un taller que se describe.
 **Primer paso.** Un `roles.yaml` por tipo de tarea; el Taller lo lee; la traza de seis pasos se
 muestra en la interfaz.
-**Se mide.** Tiempo de montar un equipo nuevo de agentes.
+**Hecho (20-oct), el primer paso: los oficios.** La arena ya reparte papeles: **Constructor**, **Revisor**, **Probador** y
+**Explorador** (de casa; el creador puede poner los suyos en `roles.json`). El encargo llega a cada motor con su oficio delante
+y la fila muestra quién hace qué. Queda: la traza de equipo (quién tocaron qué, para comparar los rivales de verdad). Tiempo de montar un equipo nuevo de agentes.
 
 ### Palanca 10 — La voz local como infraestructura de los demás
 **Idea.** SKI da voz full-dúplex on-device a Claude Code, Cursor, Codex y Gemini CLI (pero es de
@@ -217,6 +239,7 @@ ya usas**.
 | `inworld-ai/open-tts-eval` | MIT | 2 MB | El núcleo de evaluación de TTS (WER/CER, umbrales, informe offline) es **local y portable**; sus tres proveedores de muestra son de pago → hay que escribir un `TTSProvider` propio |
 | `egma-ai/egma` | MIT (núcleo) | 35 MB | Pruebas de simulación para agentes de voz. El núcleo es libre; `ee/` no |
 **Se mide.** Latencia de ida y vuelta en conversación real, y el error de dictado (WER).
+**Medido (20-oct).** El oído (faster-whisper «small») y la voz (Piper) de Esme, con el método limpio: el texto es la verdad, se sintetiza, se oye y se compara palabra a palabra. La voz habla **12× más rápido que en tiempo real** (RTF 0,083). El oído **en la CPU iba más despacio que en tiempo real** (RTF 0,643: diez segundos de voz tardaban seis y medio) y **en la GPU es 8,6 veces más rápido con el mismo error** (RTF 0,074, WER 0,150). **Arreglado**: `daimon/voz.py` elige GPU si hay CUDA y 1,5 GB de VRAM libre (la app la usa para sus escenas), si no CPU. Queda: el streaming real (full-dúplex) y la voz como servicio para los agentes por MCP. Detalle: `docs/resultados/2026-10-20-voz.md`.
 
 ### Palanca 11 — El informe de equivalencia económica
 **Idea.** «En GitHub hay una cantidad absurda de proyectos gratis que ya hacen lo mismo que la

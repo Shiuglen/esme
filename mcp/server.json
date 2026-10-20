@@ -1,0 +1,36 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.shiuglen/esme",
+  "title": "Esme",
+  "description": "La memoria viva de Esme: recuerda lo que sabes y devuelve el contexto que cada IA necesita.",
+  "version": "0.1.0",
+  "repository": {
+    "url": "https://github.com/Shiuglen/esme",
+    "source": "github"
+  },
+  "websiteUrl": "https://github.com/Shiuglen/esme",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "daimon-esme",
+      "version": "0.1.0",
+      "transport": { "type": "stdio" },
+      "packageArguments": [
+        { "value": "serve-mcp", "type": "positional" },
+        {
+          "type": "named",
+          "name": "--home",
+          "value": "{home}",
+          "variables": {
+            "home": {
+              "description": "La carpeta donde vive tu mente (la que usa la app). Déjala vacía para la de por defecto.",
+              "format": "filepath",
+              "isRequired": false,
+              "default": "data/mente_v2"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

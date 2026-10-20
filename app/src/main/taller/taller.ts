@@ -5,6 +5,11 @@ import { appendFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } fr
 import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { abrirSesionACP, type EventoMotor, type OpcionConfig } from '../motores/sesion-acp'
+import { bloqueHerencia, heredar, type Mente } from './herencia'
+import { leeCurva } from './curva-io'
+import type { Curva } from './curva'
+import { errorDelProveedor, esTemporal, sesionMuerta } from './fallos'
+import { leeRoles, textoConRol, type Rol } from './roles'
 import { otroModeloGratis } from './gratis'
 import { autoRespuesta, type Acceso } from './acceso'
 import { aplicarParche, cambiosCopia, commitCopia, crearCopia, diffCopia, exportarCopia, parcheCopia, quitarCopia, type Cambios, type Copia } from './copias'
@@ -22,6 +27,7 @@ export type Tarea = {
   aplicada?: Aplicada   // adónde se llevaron los cambios: carpeta (con deshacer), rama o exportada
   actividadMs: number   // dónde acaba el último cubo: sin eventos nuevos, la interfaz desplaza la micrográfica sola
   arena?: string   // las tareas que compiten con el mismo encargo comparten este id
+  rol?: string     // el oficio del motor en esa arena (constructor, revisor, probador…)
   acceso?: Acceso   // cuánto puede hacer sin preguntarte (taller/acceso.ts); las antiguas, sin campo, preguntan todo
 }
 export type MotorElegido = { id: string; nombre: string; comando: string; args: string[]; env?: Record<string, string>; entrarCon?: string }
@@ -31,7 +37,7 @@ export type AbrirSesion = (o: { comando: string; args: string[]; cwd: string; en
 export type OperacionesCopia = { crear: typeof crearCopia; cambios: typeof cambiosCopia; diff: typeof diffCopia; quitar: typeof quitarCopia
   parche: typeof parcheCopia; aplicar: typeof aplicarParche; commit: typeof commitCopia; exportar: typeof exportarCopia }
 export type Aplicada = { cuando: number; modo: 'carpeta' | 'rama' | 'exportada'; ficheros: number; destino?: string; commit?: string }
-export type Veredicto = { ts: number; motor: string; modelo: string | null; exito: boolean }
+export type Veredicto = { ts: number; motor: string; modelo: string | null; exito: boolean; tarea?: string }
 // El delta de uso real de un turno, para el Uso de la app: cada tarea levanta su historia.
 export type Anoto = { motorId: string; motorNombre: string; modelo: string | null; origen: 'taller' | 'arena'; tareaId: string; titulo: string
   delta: { entrada: number; salida: number; pensamiento: number }; coste?: { cantidad: number; moneda: string } }
@@ -60,6 +66,13 @@ const mensajeDe = (e: unknown) => (e instanceof Error ? e.message : String(e))
 const nuevoId = () => Array.from(randomBytes(8), (b) => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('')
 const instantanea = (t: Tarea): Tarea => ({ ...t, uso: { ...t.uso }, actividad: [...t.actividad] })
 
+// El vigilante: cada cuánto se mira si algún motor se ha muerto en silencio, y cuánto se le
+// concede antes de darlo por muerto. Medido en las tareas reales (20-oct): una tarea se quedó
+// «trabajando» tres días con el motor muerto, sin un solo error; su trabajo, al menos, quedó a
+// salvo en la copia. Treinta minutos sin una señal es un motor muerto, no uno que piensa.
+const MS_VIGILIA = 30_000
+const MS_SILENCIO = 30 * 60_000
+
 export class Taller {
   private readonly registros = new Map<string, Registro>()
   private readonly dir: string
@@ -69,16 +82,22 @@ export class Taller {
   private readonly copias: OperacionesCopia
   private readonly mcp: () => Mcp | null
   private readonly masMcp: () => McpServer[]
+  private readonly mente: () => Mente | null
   private readonly resolverMotor?: (id: string) => Promise<MotorElegido | null>
   private readonly alAnotar?: (a: Anoto) => void
   private readonly ahora: () => number
   private readonly esperas: number[]
+  private readonly intervaloVigila: number
+  private readonly silencioMaximo: number
   private guardado?: NodeJS.Timeout
+  private vigilante?: NodeJS.Timeout
   private cerrado = false
 
   constructor(o: { dir: string; emitir(canal: 'cambio' | 'evento' | 'quitada', dato: unknown): void
     abrirSesion?: AbrirSesion; copias?: OperacionesCopia; mcp?: () => Mcp | null; masMcp?: () => McpServer[]
-    resolverMotor?: (id: string) => Promise<MotorElegido | null>; alAnotar?: (a: Anoto) => void; ahora?: () => number; esperasReintento?: number[] }) {
+    mente?: () => Mente | null
+    resolverMotor?: (id: string) => Promise<MotorElegido | null>; alAnotar?: (a: Anoto) => void; ahora?: () => number; esperasReintento?: number[]
+    vigilarMs?: number; silencioMs?: number }) {
     this.dir = o.dir
     this.dirCopias = join(o.dir, 'copias')
     this.emitir = o.emitir
@@ -86,10 +105,49 @@ export class Taller {
     this.copias = o.copias ?? { crear: crearCopia, cambios: cambiosCopia, diff: diffCopia, quitar: quitarCopia, parche: parcheCopia, aplicar: aplicarParche, commit: commitCopia, exportar: exportarCopia }
     this.mcp = o.mcp ?? (() => null)
     this.masMcp = o.masMcp ?? (() => [])
+    this.mente = o.mente ?? (() => null)
     this.resolverMotor = o.resolverMotor
     this.alAnotar = o.alAnotar
     this.ahora = o.ahora ?? Date.now
     this.esperas = o.esperasReintento ?? [8000, 20_000, 45_000]
+    this.intervaloVigila = o.vigilarMs ?? MS_VIGILIA
+    this.silencioMaximo = o.silencioMs ?? MS_SILENCIO
+  }
+
+  /** El vigilante: una tarea cuyo motor no da señales desde hace media hora tiene el motor muerto.
+   *
+   * No se mata a la ligera: se marca como error con un mensaje claro (para que la reencarnación
+   * sea una mano) y su trabajo sigue a salvo en la copia. Sólo se mira mientras hay tareas en
+   * marcha: en reposo no se hace nada.
+   */
+  private mirarSilencios(): void {
+    const ahora = this.ahora()
+    for (const r of this.registros.values()) {
+      const t = r.tarea
+      if (t.estado !== 'trabajando' || !t.actividadMs) continue
+      const silencio = ahora - t.actividadMs
+      if (silencio < this.silencioMaximo) continue
+      const minutos = Math.round(silencio / 60000)
+      t.estado = 'error'
+      t.error = `El motor dejó de responder (${minutos} min sin señales).`
+      t.fin = ahora
+      this.registrar(r, { tipo: 'fallo', mensaje: t.error })
+      r.sesion?.cerrar(); r.sesion = undefined
+      this.cambio(r, true)
+    }
+  }
+
+  private arrancarVigilante(): void {
+    if (this.vigilante || this.cerrado) return
+    this.vigilante = setInterval(() => {
+      if (![...this.registros.values()].some((r) => ACTIVAS.includes(r.tarea.estado))) { this.pararVigilante(); return }
+      this.mirarSilencios()
+    }, this.intervaloVigila)
+    this.vigilante.unref?.()
+  }
+
+  private pararVigilante(): void {
+    if (this.vigilante) { clearInterval(this.vigilante); this.vigilante = undefined }
   }
 
   async cargar(): Promise<void> {
@@ -108,11 +166,14 @@ export class Taller {
     }
   }
 
-  crear(p: { motor: MotorElegido; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: Acceso }): Tarea {
+  crear(p: { motor: MotorElegido; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: Acceso; rol?: Rol }): Tarea {
     let id = nuevoId()
     while (this.registros.has(id)) id = nuevoId()
     const titulo = (p.texto.split('\n').find((l) => l.trim()) ?? '').trim().slice(0, 120)
-    const tarea: Tarea = { id, titulo, texto: p.texto, motor: p.motor.id, motorNombre: p.motor.nombre, carpeta: p.carpeta, ...(p.arena ? { arena: p.arena } : {}),
+    // El oficio va delante del encargo: el motor sabe de entrada para qué está trabajando.
+    const encargo = textoConRol(p.texto, p.rol)
+    const tarea: Tarea = { id, titulo, texto: encargo, motor: p.motor.id, motorNombre: p.motor.nombre, carpeta: p.carpeta, ...(p.arena ? { arena: p.arena } : {}),
+      ...(p.rol ? { rol: p.rol.nombre } : {}),
       estado: 'preparando', copia: null, inicio: this.ahora(), turnos: 0, herramientas: 0, cambios: null,
       uso: { entrada: 0, salida: 0, pensamiento: 0 }, permiso: null, actividad: new Array(CUBOS).fill(0), actividadMs: 0, opciones: [], modelo: null,
       acceso: p.acceso ?? 'ediciones' }
@@ -121,7 +182,7 @@ export class Taller {
     r.motor = p.motor; r.config = { ...p.config }
     this.registros.set(id, r)
     this.cambio(r, true)
-    void this.ejecutar(r, p.texto)
+    void this.ejecutar(r, encargo)
     return instantanea(tarea)
   }
 
@@ -253,6 +314,16 @@ export class Taller {
     return texto.split('\n').filter(Boolean).flatMap((l) => { try { return [JSON.parse(l) as Veredicto] } catch { return [] } })
   }
 
+  /** Los oficios del equipo: los del creador si ha puesto los suyos, si no los de casa. */
+  roles(): Rol[] {
+    return leeRoles(this.dir)
+  }
+
+  /** La curva: qué rindieron las tareas de verdad (aciertos por día, por motor y los fallos). */
+  async curva(): Promise<Curva> {
+    return leeCurva(this.dir)
+  }
+
   lista(): Tarea[] {
     return [...this.registros.values()].map((r) => instantanea(r.tarea)).sort((a, b) => b.inicio - a.inicio)
   }
@@ -273,6 +344,7 @@ export class Taller {
   cerrarTodo(): void {
     this.cerrado = true
     if (this.guardado) clearTimeout(this.guardado)
+    this.pararVigilante()
     for (const r of this.registros.values()) {
       if (r.temporizador) clearTimeout(r.temporizador)
       r.sesion?.cerrar()
@@ -304,7 +376,8 @@ export class Taller {
   }
 
   private veredicto(r: Registro, exito: boolean): void {
-    const v: Veredicto = { ts: this.ahora(), motor: r.tarea.motor, modelo: r.tarea.modelo, exito }
+    // `tarea` es el id de la tarea: sin él, la curva del Taller sólo sabe el motor, no quién deliveró.
+    const v: Veredicto = { ts: this.ahora(), motor: r.tarea.motor, modelo: r.tarea.modelo, exito, tarea: r.tarea.id }
     try { mkdirSync(this.dir, { recursive: true }); appendFileSync(join(this.dir, 'veredictos.jsonl'), JSON.stringify(v) + '\n') } catch { /* no debe romper la operación */ }
   }
 
@@ -344,14 +417,24 @@ export class Taller {
       if (parada()) return
       if (!r.sesion) {
         const motor = r.motor!
-        r.sesion = await this.abrirSesion({ comando: motor.comando, args: motor.args, cwd: t.copia.ruta, env: motor.env, ...(motor.entrarCon ? { entrarCon: motor.entrarCon } : {}), mcp: this.mcp() ?? undefined, masMcp: this.masMcp(), config: { ...r.config },
-          alEvento: (e) => this.alEvento(r, e), alPedirPermiso: (p) => this.alPedirPermiso(r, p) })
+        r.sesion = await this.abrirSesionDe(r)
       }
       if (r.descartada || this.cerrado || parada()) return
       t.estado = 'trabajando'; this.cambio(r, true)
+      this.arrancarVigilante()
       r.inicioTurno = this.ahora()
       this.registrar(r, { tipo: 'usuario', texto })
-      const motivo = await this.preguntar(r, texto)
+      // La herencia: el primer turno de la tarea empieza con lo que la mente ya sabe del encargo.
+      // Solo el primero: en los turnos siguientes el motor ya lo tiene en su conversación.
+      let mensaje = texto
+      if (t.turnos === 0) {
+        const h = await heredar(this.mente(), texto)
+        if (h) {
+          this.registrar(r, { tipo: 'herencia', tokens: h.tokens, recuerdos: h.ids.length })
+          mensaje = bloqueHerencia(h) + texto
+        }
+      }
+      const motivo = await this.preguntar(r, mensaje)
       if (r.descartada || this.cerrado) return
       this.registrar(r, { tipo: 'fin', motivo, ms: this.ahora() - r.inicioTurno })
       const cambios = await this.copias.cambios(t.copia).catch(() => null)
@@ -371,13 +454,17 @@ export class Taller {
   }
 
   // Los proveedores gratis limitan las peticiones a la vez: ante un límite, primero se pasa a otro modelo gratis del mismo
-  // motor (sin esperar); si no quedan, se reintenta con espera creciente. Todo se cuenta en la línea de tiempo.
+  // motor (sin esperar); si no quedan, se reintenta con espera creciente. Lo mismo con lo temporal (la red o el
+  // proveedor se caen un rato) y con la sesión del motor que se cierra: se reintenta, y si la sesión está muerta se abre otra.
+  // Todo se cuenta en la línea de tiempo. Lo que necesita al creador (entrar en su cuenta) no se reintenta: no se arregla.
   private async preguntar(r: Registro, texto: string): Promise<string> {
     const probados = new Set<string>()
     for (let intento = 0; ; ) {
       try { return await r.sesion!.preguntar(texto) } catch (e) {
         const motivo = e instanceof Error ? e.message : String(e)
         const limite = /rate limit|too many requests|\b429\b|quota exceeded/i.test(motivo)
+        const muerta = sesionMuerta(motivo)
+        const temporal = esTemporal(motivo) || (errorDelProveedor(motivo) && intento < 1)
         if (limite && !r.cancelado && !r.descartada && !this.cerrado) {
           const actual = r.tarea.opciones?.find((o) => o.id === 'model')?.actual
           if (actual) probados.add(actual)
@@ -390,15 +477,28 @@ export class Taller {
             continue
           }
         }
-        if (!limite || intento >= this.esperas.length || r.cancelado || r.descartada || this.cerrado) throw e
+        if ((!limite && !temporal && !muerta) || intento >= this.esperas.length || r.cancelado || r.descartada || this.cerrado) throw e
         const ms = this.esperas[intento++]
-        this.registrar(r, { tipo: 'reintento', ms, motivo })
+        this.registrar(r, { tipo: 'reintento', ms, motivo: muerta ? `${motivo} · abro sesión nueva` : motivo })
         this.cambio(r, true)
         const fin = Date.now() + ms
         while (Date.now() < fin && !r.cancelado && !r.descartada && !this.cerrado) await new Promise((ok) => setTimeout(ok, Math.min(250, fin - Date.now())))
         if (r.cancelado) return 'cancelled'
+        if (muerta) {
+          // la sesión está cerrada: se abre otra y se sigue por donde iba
+          r.sesion?.cerrar(); r.sesion = undefined
+          r.sesion = await this.abrirSesionDe(r)
+        }
       }
     }
+  }
+
+  /** Abre la sesión del motor de una tarea (la primera vez y cuando la anterior se muere). */
+  private async abrirSesionDe(r: Registro): Promise<SesionMotor> {
+    const t = r.tarea
+    const motor = r.motor!
+    return this.abrirSesion({ comando: motor.comando, args: motor.args, cwd: t.copia!.ruta, env: motor.env, ...(motor.entrarCon ? { entrarCon: motor.entrarCon } : {}), mcp: this.mcp() ?? undefined, masMcp: this.masMcp(), config: { ...r.config },
+      alEvento: (e) => this.alEvento(r, e), alPedirPermiso: (p) => this.alPedirPermiso(r, p) })
   }
 
   private alPedirPermiso(r: Registro, p: Permiso): Promise<string | 'cancelar'> {

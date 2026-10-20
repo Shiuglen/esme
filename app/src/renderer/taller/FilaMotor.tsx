@@ -83,6 +83,7 @@ export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida
       <div className="flex items-center gap-2">
         <TintaVista motor={t.motor} px={plegada ? 22 : 30} estado={tintaDeTarea(t.estado)} />
         <span className="shrink-0 whitespace-nowrap text-[13px] font-medium text-texto">{t.motorNombre}</span>
+        {t.rol && <span title="Su oficio en la arena" className="shrink-0 whitespace-nowrap rounded-full border border-linea-fuerte/60 px-1.5 py-px text-[11px] text-texto-3">{t.rol}</span>}
         {t.modelo && <span className="min-w-0 truncate text-[12px] text-texto-3" title={t.modelo}>{modeloCorto(t.modelo)}</span>}
         <PastillaEstado estado={t.estado} />
         {t.aplicada && <Sello lado={16} giro={giroSello(t.id)} titulo="Aprobada por ti" />}

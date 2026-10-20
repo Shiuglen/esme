@@ -98,6 +98,7 @@ contextBridge.exposeInMainWorld('daimon', {
     aplicar: (id: string) => ipcRenderer.invoke('taller:aplicar', id), deshacer: (id: string) => ipcRenderer.invoke('taller:deshacer', id),
     guardarRama: (id: string, mensaje?: string) => ipcRenderer.invoke('taller:guardarRama', id, mensaje),
     exportar: (id: string) => ipcRenderer.invoke('taller:exportar', id), veredictos: () => ipcRenderer.invoke('taller:veredictos'),
+    curva: () => ipcRenderer.invoke('taller:curva'), roles: () => ipcRenderer.invoke('taller:roles'),
     parar: (id: string) => ipcRenderer.invoke('taller:parar', id), descartar: (id: string) => ipcRenderer.invoke('taller:descartar', id),
     diff: (id: string) => ipcRenderer.invoke('taller:diff', id), carpeta: () => ipcRenderer.invoke('taller:carpeta'), abrir: (id: string) => ipcRenderer.invoke('taller:abrir', id),
     onCambio: (fn: (t: unknown) => void) => on('taller:cambio', (t) => fn(t)),

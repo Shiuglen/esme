@@ -61,6 +61,8 @@ export const ESTADOS: Record<TareaTaller['estado'], { texto: string; tono: 'vida
 export type Explicacion = { tipo: 'sesion' | 'modelo' | 'limite' | 'motor'; titulo: string; consejo: string }
 /** Traduce los errores típicos de los motores a qué pasa y qué hacer. null si no es uno conocido. */
 export function explicarError(error: string, motor: string, login: string): Explicacion | null {
+  if (/dejó de responder|sin señales/i.test(error))
+    return { tipo: 'motor', titulo: 'El motor se quedó mudo', consejo: 'Dejó de dar señales durante mucho rato y se le dio por muerto. Lo que había hecho quedó a salvo en su copia: reencarna la tarea con otro motor (⟳ arriba).' }
   if (/auth(entication|enticate)? required|authMethods|not authenticated|unauthori[sz]ed|sign in|log ?in required/i.test(error))
     return { tipo: 'sesion', titulo: `${motor} necesita que inicies sesión`, consejo: login || `Inicia sesión en ${motor} desde una terminal.` }
   if (/rate limit|too many requests|\b429\b|quota exceeded/i.test(error))

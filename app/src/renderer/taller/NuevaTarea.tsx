@@ -8,16 +8,18 @@ import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
 import { bridge, type MotorTaller, type OpcionMotor, type AccesoTarea } from '../lib/bridge'
+import type { Rol } from '../../main/taller/roles'
 import { cn } from '../lib/cn'
 import { candidatosDe, elegibles, elegir, elegirVarios, type Eleccion, type Veredicto } from './eleccion'
 import { configInicial, nombreValor, SelectorOpcion } from './Opciones'
 import { Bicho } from '../marca/SerVista'
+import { Oficios } from './Oficios'
 import { useMuelle } from '../tinta/movimiento'
 
 const leer = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(`esme:taller:${k}`); return v === null ? d : (JSON.parse(v) as T) } catch { return d } }
 const guardar = (k: string, v: unknown) => { try { localStorage.setItem(`esme:taller:${k}`, JSON.stringify(v)) } catch { /* sin almacenamiento */ } }
 
-type Peticion = { motor: string; carpeta: string | null; texto: string; config: Record<string, string>; arena?: string; acceso?: AccesoTarea }
+type Peticion = { motor: string; carpeta: string | null; texto: string; config: Record<string, string>; arena?: string; acceso?: AccesoTarea; rol?: string }
 const AUTO = 'auto'
 const nuevoId = () => Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('')
 const corto = (e: Eleccion) => nombreValor({ id: e.modelo, nombre: e.modeloNombre })
@@ -32,6 +34,9 @@ export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores
   useEffect(() => { if (motorPedido) setMotor(motorPedido.id) }, [motorPedido?.n])  // eslint-disable-line react-hooks/exhaustive-deps
   const [arena, setArena] = useState(false)
   const [rivales, setRivales] = useState<Eleccion[]>([])
+  // los oficios del equipo: los del creador si ha puesto los suyos, si no los de casa
+  const [roles, setRoles] = useState<Rol[]>([])
+  const [oficios, setOficios] = useState<string[]>(() => leer<string[]>('oficios', []))
   const [todas, setTodas] = useState<Record<string, OpcionMotor[]> | null>(null)
   const [veredictos, setVeredictos] = useState<Veredicto[]>([])
   const [carpeta, setCarpeta] = useState<string | null>(() => leer<string | null>('carpeta', null))
@@ -58,6 +63,7 @@ export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores
   const candidatos = todas ? elegibles(candidatosDe(instalados, todas, leer<string[]>('caidos', [])), veredictos).filter((c) => auto ? !noListos.has(c.motor) : c.motor === actual?.id) : []
   const tirar = () => setRivales(elegirVarios(candidatos, veredictos, 3))
   useEffect(() => { if (arena) tirar() }, [arena, auto, actual?.id, todas])   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void bridge.taller.roles().then(setRoles).catch(() => {}) }, [])
 
   useEffect(() => {
     if (!actual) { setOpciones([]); return }
@@ -84,7 +90,9 @@ export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores
     let peticiones: Peticion[]
     if (arena) {
       const id = nuevoId()
-      peticiones = rivales.map((r) => ({ motor: r.motor, carpeta, texto: q, config: { model: r.modelo }, arena: id, acceso }))
+      const elegidos = oficios.length ? oficios : roles.slice(0, 2).map((r) => r.id)
+      peticiones = rivales.map((r, i) => ({ motor: r.motor, carpeta, texto: q, config: { model: r.modelo }, arena: id, acceso,
+        ...(elegidos.length ? { rol: elegidos[i % elegidos.length] } : {}) }))
     } else if (auto) {
       const e = elegir(candidatos, veredictos)!
       peticiones = [{ motor: e.motor, carpeta, texto: q, config: { model: e.modelo }, acceso }]
@@ -136,6 +144,10 @@ export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores
                 )
               })}
             </div>
+            {arena && (
+              <Oficios roles={roles} elegidos={oficios}
+                onCambiar={(n) => { setOficios(n); guardar('oficios', n) }} />
+            )}
             {!auto && !arena && (opciones === null ? <span className="h-8 w-40 animate-pulse rounded-2 bg-s2/70" aria-label="Leyendo los modelos del motor" />
               : opciones.filter((o) => o.id === 'model' || o.id === 'mode').map((o) => (
                 <SelectorOpcion key={o.id} o={o} valor={config[o.id]} onCambiar={(v) => cambiarOpcion(o.id, v)} className={o.id === 'model' ? 'max-w-[220px]' : 'max-w-[150px]'} />

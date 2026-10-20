@@ -7,6 +7,9 @@ import type { Hilo, ResumenHilo, TurnoHilo } from '../../main/hilos/hilos'
 import type { RespuestaCatalogo } from '../../main/tienda/ipc'
 import type { Producto } from '../../main/tienda/catalogo'
 import type { Tarea as TareaTaller, Veredicto as VeredictoTaller } from '../../main/taller/taller'
+import { CURVA_VACIA, type Curva } from '../../main/taller/curva'
+import type { Rol } from '../../main/taller/roles'
+export type { Curva }
 import type { NuevoProgramado, Programado } from '../../main/taller/agenda'
 import type { Paso } from '../../main/herramientas/propias'
 import type { Ficha } from '../../main/herramientas/registro-mcp'
@@ -124,13 +127,15 @@ type ElectronApi = {
     metodosEntrada(id: string): Promise<{ ok: true; metodos: MetodoEntrada[]; actual: string | null } | { ok: false; error: string }>
     entrar(id: string, metodo: string | null): Promise<{ ok: boolean; error?: string; terminal?: boolean }>
     instalarMotor(id: string): Promise<InstalarMotor>; onInstalacion(fn: (p: { id: string; trozo?: string; listo?: boolean }) => void): () => void
-    crear(p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: AccesoTarea }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }>
+    crear(p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: AccesoTarea; rol?: string }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }>
     seguir(id: string, texto: string): Promise<ResultadoTaller>; responder(id: string, opcion: string): Promise<ResultadoTaller>
     vistaPrevia(id: string): Promise<{ ok: true; url: string } | { ok: false; error: string }>; cerrarVista(id: string): Promise<ResultadoTaller>
     configurar(id: string, opcion: string, valor: string): Promise<ResultadoTaller>; opcionesMotor(motor: string): Promise<OpcionMotor[]>
     aplicar(id: string): Promise<{ ok: true; ficheros: number } | { ok: false; error: string; ficheros?: string[] }>; deshacer(id: string): Promise<ResultadoTaller>
     guardarRama(id: string, mensaje?: string): Promise<{ ok: true; commit: string } | { ok: false; error: string }>; exportar(id: string): Promise<ResultadoTaller>
     veredictos(): Promise<VeredictoTaller[]>
+    curva(): Promise<Curva>
+    roles(): Promise<Rol[]>
     parar(id: string): Promise<ResultadoTaller>; descartar(id: string): Promise<ResultadoTaller>
     diff(id: string): Promise<{ texto: string; truncado: boolean }>; carpeta(): Promise<string | null>; abrir(id: string): Promise<ResultadoTaller>
     onCambio(fn: (t: TareaTaller) => void): () => void; onEvento(fn: (e: { id: string; n: number; evento: EventoTaller }) => void): () => void; onQuitada(fn: (id: string) => void): () => void
@@ -322,7 +327,7 @@ export const bridge = {
     onInstalacion: (fn: (p: { id: string; trozo?: string; listo?: boolean }) => void): (() => void) => (isElectron() ? window.daimon!.taller.onInstalacion(fn) : () => {}),
     lista: async (): Promise<TareaTaller[]> => (isElectron() ? window.daimon!.taller.lista() : []),
     eventos: async (id: string): Promise<EventoTaller[]> => (isElectron() ? window.daimon!.taller.eventos(id) : []),
-    crear: async (p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: AccesoTarea }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }> =>
+    crear: async (p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: AccesoTarea; rol?: string }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }> =>
       (isElectron() ? window.daimon!.taller.crear(p) : SOLO_ESCRITORIO),
     seguir: async (id: string, texto: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.seguir(id, texto) : SOLO_ESCRITORIO),
     responder: async (id: string, opcion: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.responder(id, opcion) : SOLO_ESCRITORIO),
@@ -335,6 +340,8 @@ export const bridge = {
     guardarRama: async (id: string, mensaje?: string): Promise<{ ok: true; commit: string } | { ok: false; error: string }> => (isElectron() ? window.daimon!.taller.guardarRama(id, mensaje) : SOLO_ESCRITORIO),
     exportar: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.exportar(id) : SOLO_ESCRITORIO),
     veredictos: async (): Promise<VeredictoTaller[]> => (isElectron() ? window.daimon!.taller.veredictos() : []),
+    curva: async (): Promise<Curva> => (isElectron() ? window.daimon!.taller.curva() : CURVA_VACIA),
+    roles: async (): Promise<Rol[]> => (isElectron() ? window.daimon!.taller.roles() : []),
     parar: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.parar(id) : SOLO_ESCRITORIO),
     descartar: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.descartar(id) : SOLO_ESCRITORIO),
     diff: async (id: string): Promise<{ texto: string; truncado: boolean }> => (isElectron() ? window.daimon!.taller.diff(id) : { texto: '', truncado: false }),

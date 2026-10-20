@@ -71,6 +71,34 @@ describe('Taller', () => {
     expect(emisiones.filter((e) => e.canal === 'evento').every((e) => e.dato.id === tarea.id)).toBe(true)
   })
 
+  it('el primer turno hereda lo que la mente sabe del encargo; los siguientes ya lo tienen', async () => {
+    const vistos: string[] = []
+    const s = sesiones(async (_o, texto) => { vistos.push(texto); return 'end_turn' })
+    const f = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ context: 'el proyecto usa vitest', tokens: 812, ids: ['a', 'b'] }) }) as Response)
+    vi.stubGlobal('fetch', f)
+    try {
+      const tarea = crear(s.abrir, copiasFalsas().ops, { mente: () => ({ url: 'http://mente', token: 'tok' }) })
+        .crear({ motor, carpeta: '/proyecto', texto: 'Arregla el examen' })
+      await esperar(tarea.id, 'lista')
+      expect(vistos[0]).toContain('el proyecto usa vitest')
+      expect(vistos[0]).toContain('Arregla el examen')
+      const ev = await t!.eventos(tarea.id)
+      expect(ev.find((e) => e.tipo === 'herencia')).toEqual({ tipo: 'herencia', tokens: 812, recuerdos: 2 })
+      await t!.seguir(tarea.id, 'otra cosa')
+      await esperar(tarea.id, 'lista')
+      expect(vistos[1]).toBe('otra cosa')   // el segundo turno no repite la herencia
+    } finally { vi.unstubAllGlobals() }
+  })
+
+  it('sin mente (o con la mente caída) la tarea arranca igual', async () => {
+    const vistos: string[] = []
+    const s = sesiones(async (_o, texto) => { vistos.push(texto); return 'end_turn' })
+    const tarea = crear(s.abrir, copiasFalsas().ops).crear({ motor, carpeta: '/proyecto', texto: 'Arregla el examen' })
+    await esperar(tarea.id, 'lista')
+    expect(vistos[0]).toBe('Arregla el examen')
+    expect((await t!.eventos(tarea.id)).some((e) => e.tipo === 'herencia')).toBe(false)
+  })
+
   it('cuenta herramientas distintas, primera respuesta y uso acumulado', async () => {
     const s = sesiones(async (o) => {
       reloj = 1250
@@ -329,7 +357,7 @@ describe('Taller: hallazgos de la revisión', () => {
       expect(await readFile(join(dir, `${tarea.id}.aplicado.patch`), 'utf8')).toBe('PARCHE')
       expect(t!.lista()[0].aplicada).toEqual({ cuando: reloj, modo: 'carpeta', ficheros: 1 })
       expect(emisiones.filter((e) => e.canal === 'cambio').at(-1)!.dato.aplicada?.modo).toBe('carpeta')
-      expect(await t!.veredictos()).toEqual([{ ts: reloj, motor: 'falso', modelo: null, exito: true }])
+      expect(await t!.veredictos()).toEqual([{ ts: reloj, motor: 'falso', modelo: null, exito: true, tarea: tarea.id }])
       expect(await t!.aplicar(tarea.id)).toEqual({ ok: false, error: 'Ya está aplicada.' })
     })
 
@@ -374,7 +402,7 @@ describe('Taller: hallazgos de la revisión', () => {
     it('descartar sin aplicar anota un veredicto negativo', async () => {
       const a = await lista()
       await t!.descartar(a.tarea.id)
-      expect(await t!.veredictos()).toEqual([{ ts: reloj, motor: 'falso', modelo: null, exito: false }])
+      expect(await t!.veredictos()).toEqual([{ ts: reloj, motor: 'falso', modelo: null, exito: false, tarea: a.tarea.id }])
       const b = await lista()
       await t!.aplicar(b.tarea.id)
       await t!.descartar(b.tarea.id)
@@ -418,6 +446,47 @@ describe('Taller: arena', () => {
     expect(otro.lista().map((x) => x.arena)).toEqual(['arena001', 'arena001'])
     otro.cerrarTodo()
   })
+
+  it('cada motor de la arena trabaja con su oficio, y el encargo lo lleva delante', async () => {
+    const s = sesiones(async () => 'end_turn')
+    const rol = { id: 'revisor', nombre: 'Revisor', instruccion: 'Míralo con ojo crítico.' }
+    const a = crear(s.abrir).crear({ motor, carpeta: null, texto: 'Arregla el arranque', arena: 'arena002', rol })
+    expect(a.rol).toBe('Revisor')
+    expect(a.texto.startsWith('Míralo con ojo crítico.')).toBe(true)
+    expect(a.texto).toContain('Arregla el arranque')
+    await esperar(a.id, 'lista')
+  })
+
+  it('los oficios vienen de los de casa si el creador no pone los suyos', async () => {
+    const s = sesiones(async () => 'end_turn')
+    crear(s.abrir)
+    const roles = t!.roles()
+    expect(roles.map((r) => r.id)).toContain('constructor')
+    expect(roles.map((r) => r.id)).toContain('revisor')
+  })
+})
+
+describe('Taller: el vigilante', () => {
+  it('una tarea cuyo motor no da señales se marca como error, no se queda colgada', async () => {
+    // el motor contesta una vez y luego se muere en silencio (así se quedó una tarea tres días)
+    // el motor se muere en silencio: la pregunta nunca vuelve (así se quedó una tarea tres días)
+    const s = sesiones(async () => await new Promise<string>(() => {}))
+    const tarea = crear(s.abrir, undefined, { vigilarMs: 5, silencioMs: 60_000 }).crear({ motor, carpeta: null, texto: 'x' })
+    await vi.waitFor(() => expect(t!.lista()[0].estado).toBe('trabajando'), { timeout: 3000 })
+    reloj += 40 * 60_000   // cuarenta minutos sin una sola señal
+    await vi.waitFor(() => expect(t!.lista()[0].estado).toBe('error'), { timeout: 3000 })
+    expect(t!.lista()[0].error).toContain('dejó de responder')
+  })
+
+  it('una tarea que está esperando a su creator no se toca: eso es 정상', async () => {
+    // el motor pide permiso y se queda esperando a que su creador conteste: eso no es un motor muerto
+    const s = sesiones(async (o) => { await o.alPedirPermiso({ titulo: 'editar un fichero', opciones: [{ id: 'si', nombre: 'Sí', tipo: 'opción' }] }); return 'end_turn' })
+    const tarea = crear(s.abrir, undefined, { vigilarMs: 5, silencioMs: 60_000 }).crear({ motor, carpeta: null, texto: 'x' })
+    await vi.waitFor(() => expect(t!.lista()[0].estado).toBe('esperando'), { timeout: 3000 })
+    reloj += 40 * 60_000
+    await new Promise((r) => setTimeout(r, 120))
+    expect(t!.lista()[0].estado).toBe('esperando')
+  })
 })
 
 describe('Taller: límites de peticiones', () => {
@@ -453,6 +522,39 @@ describe('Taller: límites de peticiones', () => {
     const tarea = crear(s.abrir, undefined, { esperasReintento: [5, 5] }).crear({ motor, carpeta: null, texto: 'x' })
     await esperar(tarea.id, 'error')
     expect(intentos).toBe(1)
+  })
+  it('lo que necesita tu sesión no se reintenta: reintentar no entra por ti', async () => {
+    let intentos = 0
+    const s = sesiones(async () => { intentos++; throw new Error('Authentication required: provider authentication required') })
+    const tarea = crear(s.abrir, undefined, { esperasReintento: [5, 5] }).crear({ motor, carpeta: null, texto: 'x' })
+    await esperar(tarea.id, 'error')
+    expect(intentos).toBe(1)
+  })
+  it('un fallo de red se reintenta solo y la tarea termina bien', async () => {
+    let intentos = 0
+    const s = sesiones(async () => { if (++intentos < 3) throw new Error('getaddrinfo ETIMEOUT opencode.ai'); return 'end_turn' })
+    const tarea = crear(s.abrir, undefined, { esperasReintento: [5, 5, 5] }).crear({ motor, carpeta: null, texto: 'x' })
+    await esperar(tarea.id, 'lista')
+    expect(intentos).toBe(3)
+    const ev = await t!.eventos(tarea.id)
+    expect(ev.filter((e) => e.tipo === 'reintento')).toHaveLength(2)
+    expect(ev.some((e) => e.tipo === 'fallo')).toBe(false)
+  })
+  it('el «Internal error» del proveedor se reintenta una vez, no más', async () => {
+    let intentos = 0
+    const s = sesiones(async () => { intentos++; throw new Error('Internal error') })
+    const tarea = crear(s.abrir, undefined, { esperasReintento: [5, 5, 5] }).crear({ motor, carpeta: null, texto: 'x' })
+    await esperar(tarea.id, 'error')
+    expect(intentos).toBe(2)
+  })
+  it('si la sesión del motor se cierra, se abre otra y se sigue', async () => {
+    let intentos = 0
+    const s = sesiones(async () => { if (++intentos === 1) throw new Error('La sesión del motor está cerrada.'); return 'end_turn' })
+    const tarea = crear(s.abrir, undefined, { esperasReintento: [5] }).crear({ motor, carpeta: null, texto: 'x' })
+    await esperar(tarea.id, 'lista')
+    expect(s.abrir).toHaveBeenCalledTimes(2)
+    const ev = await t!.eventos(tarea.id)
+    expect(ev.find((e) => e.tipo === 'reintento')).toMatchObject({ motivo: expect.stringMatching(/sesión nueva/) })
   })
 })
 

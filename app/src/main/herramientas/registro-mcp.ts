@@ -2,7 +2,8 @@
 // ficha que Esme entiende: cómo conectarla (remota por HTTP, o local con npx/uvx) y qué claves pide. Las remotas se
 // prefieren: no ejecutan nada en tu equipo. Lo que Esme aún no sabe lanzar (docker, nuget…) se descarta.
 export type Variable = { nombre: string; descripcion: string; secreta: boolean; requerida: boolean; donde: 'env' | 'cabecera' }
-export type Conexion = { tipo: 'remoto'; url: string } | { tipo: 'npm'; paquete: string; version?: string } | { tipo: 'pypi'; paquete: string; version?: string }
+export type Conexion = { tipo: 'remoto'; url: string } | { tipo: 'npm'; paquete: string; version?: string; args?: string[] }
+  | { tipo: 'pypi'; paquete: string; version?: string; args?: string[] }
   | { tipo: 'forjada'; fichero: string }   // hecha por la Forja: se arranca con el Python de Esme
 export type Ficha = { id: string; slug: string; titulo: string; descripcion: string; version: string; web?: string; conexion: Conexion; variables: Variable[] }
 
@@ -25,6 +26,29 @@ const web = (u: unknown): u is string => typeof u === 'string' && /^https?:\/\//
 const variable = (v: Record<string, unknown>, donde: Variable['donde']): Variable =>
   ({ nombre: texto(v.name), descripcion: texto(v.description), secreta: v.isSecret === true, requerida: v.isRequired === true, donde })
 
+/** Los argumentos con los que hay que arrancar el paquete.
+ *
+ * El registro los declara en `packageArguments` (posicionales como «mcp» o con nombre como «--port»).
+ * Antes de esto se perdían: un servidor que necesita un subcomando se lanzaba en modo CLI y no
+ * hablaba MCP, y Esme lo contaba como «falló» sin decir por qué. Los que traen una plantilla
+ * (`${PUERTO}`) se dejan fuera: los rellena quien instala la herramienta, no el catálogo.
+ */
+export function argumentosDe(p: Record<string, unknown>): string[] {
+  const crudos = (Array.isArray(p.packageArguments) ? p.packageArguments : []) as Record<string, unknown>[]
+  const out: string[] = []
+  for (const a of crudos) {
+    const valor = texto(a.value)
+    if (!valor || /\$\{[^}]+\}/.test(valor)) continue
+    if (a.type === 'named') {
+      const nombre = texto(a.name) || valor
+      out.push(valor.startsWith('--') ? valor : `${nombre}=${valor}`)
+      continue
+    }
+    out.push(valor)
+  }
+  return out
+}
+
 export function fichaDe(s: unknown): Ficha | null {
   const x = s as Record<string, unknown> | null
   if (!x || typeof x.name !== 'string') return null
@@ -36,7 +60,8 @@ export function fichaDe(s: unknown): Ficha | null {
   const p = paquetes.find((q) => q.registryType === 'npm' && typeof q.identifier === 'string') ?? paquetes.find((q) => q.registryType === 'pypi' && typeof q.identifier === 'string')
   if (!p) return null
   const variables = (Array.isArray(p.environmentVariables) ? p.environmentVariables : []).filter((v: Record<string, unknown>) => typeof v.name === 'string').map((v: Record<string, unknown>) => variable(v, 'env'))
-  return { ...base, conexion: { tipo: p.registryType as 'npm' | 'pypi', paquete: p.identifier as string, ...(p.version ? { version: String(p.version) } : {}) }, variables }
+  const args = argumentosDe(p)
+  return { ...base, conexion: { tipo: p.registryType as 'npm' | 'pypi', paquete: p.identifier as string, ...(p.version ? { version: String(p.version) } : {}), ...(args.length ? { args } : {}) }, variables }
 }
 
 const REGISTRO = 'https://registry.modelcontextprotocol.io/v0/servers'
@@ -56,6 +81,12 @@ export async function buscarEnRegistro(q: string, f: typeof fetch = fetch, esper
   throw ultimo instanceof Error ? ultimo : new Error('El registro de herramientas no responde.')
 }
 
-/** Las oficiales de empresas conocidas: lo primero que ves en la Tienda. */
+/** Las oficiales de empresas conocidas: lo primero que ves en la Tienda.
+ *
+ * La última no es de una empresa: es REA (ingeniería inversa, MIT), que es el espejo de Esme — con
+ * ella la app puede entender su propio binario y el de las herramientas del usuario, con la
+ * evidencia de cada conclusión. Va con la versión fijada: REA publica rápido y rompe cosas.
+ */
 export const DESTACADAS = ['com.figma.mcp/mcp', 'com.notion/mcp', 'app.linear/linear', 'com.atlassian/atlassian-mcp-server', 'com.canva.mcp/mcp',
-  'co.huggingface/hf-mcp-server', 'com.cloudflare.mcp/mcp', 'ai.exa/exa', 'ai.perplexity/mcp-server', 'com.neon/mcp', 'com.airtable/mcp', 'com.apify/apify-mcp-server', 'com.paypal.mcp/mcp']
+  'co.huggingface/hf-mcp-server', 'com.cloudflare.mcp/mcp', 'ai.exa/exa', 'ai.perplexity/mcp-server', 'com.neon/mcp', 'com.airtable/mcp', 'com.apify/apify-mcp-server', 'com.paypal.mcp/mcp',
+  'io.github.morluto/rea']

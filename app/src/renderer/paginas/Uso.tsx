@@ -4,10 +4,11 @@ import { ArrowRight } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { fmtTokens, fmtUSD } from '../chat/formatos'
-import { bridge, type EstadoUso, type ResumenUso, type UsoExterno } from '../lib/bridge'
+import { bridge, type EstadoUso, type ResumenUso, type UsoExterno, type Curva } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { diasSeguidos, rejillaActividad } from '../uso/vista'
 import { historiaDeUso } from './historia-uso'
+import { CurvaTaller } from './CurvaTaller'
 import { Bicho } from '../marca/SerVista'
 import { useMuelle } from '../tinta/movimiento'
 import { diaLegible } from '../lib/cifras'
@@ -36,12 +37,14 @@ export function Uso({ onIr }: { onIr(id: 'ajustes'): void }) {
   const [anual, setAnual] = useState<ResumenUso | null>(null)
   const [estado, setEstado] = useState<EstadoUso | null>(null)
   const [externo, setExterno] = useState<UsoExterno | null>(null)
+  const [curva, setCurva] = useState<Curva | null>(null)
   useEffect(() => {
     const leer = () => {
       void bridge.uso.resumen(inicioDe(rango), Date.now()).then(setResumen)
       void bridge.uso.resumen(Date.now() - 52 * 7 * DIA, Date.now()).then(setAnual)
       void bridge.uso.externo().then(setExterno).catch(() => {})
       void bridge.uso.estado().then(setEstado)
+      void bridge.taller.curva().then(setCurva).catch(() => {})
     }
     leer(); return bridge.uso.onConsumo(leer)
   }, [rango])
@@ -117,6 +120,9 @@ export function Uso({ onIr }: { onIr(id: 'ajustes'): void }) {
           </div>
           <div className="flex items-center justify-end gap-1.5 text-[11px] text-texto-3">menos{[0, 1, 2, 3, 4].map((n) => <span key={n} className="size-[11px] rounded-[3px]" style={{ background: `var(--actividad-${n})` }} />)}más</div>
         </motion.section>
+
+        {/* La curva del Taller: sin juez y sin coste. La etiqueta es tuya (aplicar = sí, descartar = no). */}
+        <CurvaTaller curva={curva} />
 
         <motion.div {...entrada(3)} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-4 max-[1000px]:grid-cols-1">
           <section className="grid content-start gap-3 rounded-3 vidrio halo border p-4">
