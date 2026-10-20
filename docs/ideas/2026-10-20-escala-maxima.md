@@ -114,6 +114,7 @@ de agentes**: otro agente puede encargarle trabajo y cobrar por ello.
 **Primer paso.** Una Agent Card por rol del Taller; un endpoint `/.well-known/agent.json`; un
 `esme_encienda_agente(rol, objetivo)` en el MCP.
 **Se mide.** Tareas encargadas desde fuera.
+**Hecho (20-oct), el primer paso.** La Agent Card de Esme vive en `/.well-known/agent-card.json` del cerebro (y su alias `agent.json`), **pública**: sólo capacidades, nada de tu memoria. Skills: **memoria** (`recall`/`remember`/`feedback` por MCP y HTTP), **sueño** y **voz**. Lo que falta: **encargar tareas al Taller desde fuera** (`esme_encienda_agente(rol, objetivo)` en el MCP) y una Agent Card por rol del Taller.
 
 ### Palanca 4 — Cualquier motor, en caliente
 **Idea.** MemGPT y sus sucesores (Mem0, Hindsight, Letta) coinciden: el problema no es el modelo,
