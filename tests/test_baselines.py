@@ -28,8 +28,9 @@ def test_pack_no_corta_palabras_por_la_mitad():
     text, used = pack([larga], budget=50)
     assert used <= 50 and count(text) <= 50
     assert text.endswith("…")
-    assert not text[:-1].endswith("palabr")      # no queda una palabra partida
-    assert "palabra" in text                      # y lo que sí cabe es texto entero
+    cuerpo = text[:-1]
+    assert cuerpo.endswith("palabra")        # la última palabra está entera
+    assert not cuerpo.endswith("palabr")      # y no queda ninguna partida
 
 
 def test_pack_sin_limite():

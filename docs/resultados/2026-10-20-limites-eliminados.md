@@ -21,10 +21,10 @@ Eso se aplicó con una regla operativa, para no confundir «limitación» con «
 | # | Limitación | Antes | Ahora | Prueba |
 |---|---|---|---|---|
 | 1 | **La puerta se cerraba** | `min_dense` hacía que `recall` devolviera **vacío**: el agente se quedaba parado sin saber por qué | devuelve lo mejor que hay y lo marca `[contexto débil: …]`. La opción sigue existiendo, pero ya no bloquea | `tests/test_thalamus.py::test_no_se_abstiene_ante_pregunta_ajena` |
-| 2 | **Los recuerdos se olvidaban solos** | la recencia caía con vida media de **90 días** (a los ~276 días pesaba 0,05) | vida media de **3650 días** y configurable (`recencia_dias`): lo viejo se atenúa, no se amputa | `daimon/thalamus.py` (`features`, `Thalamus.__init__`) |
+| 2 | **La recencia no llegaba a amputar: era un problema inventado** | la recencia caía con vida media de **90 días** (a los ~276 días pesaba 0,05) | **Se probó con 3650 días y el examen lo rechazó** (−0,012): un rasgo que ya no distingue nada desplaza el balance de los otros pesos. Y el peso aprendido sobre la recencia es **0,02**: nunca llegó a amputar. **Se queda en 90 días**, ahora configurable | §5.2 |
 | 3 | **Lo aprendido moría al reiniciar** | el feedback sólo valía si recall y feedback-passaban en el **mismo proceso**: al cerrar la app se perdía la lección de cada IA | las consultas compuestas se guardan en `ultimas.json` y se recuperan al arrancar: **el feedback sobrevive al reinicio** | `tests/test_thalamus.py::test_el_feedback_sobrevive_al_reinicio` |
-| 4 | **El contexto se cortaba a media palabra** | `pack()` recortaba a caracteres crudos y la garantía dura quitaba **de cuatro en cuatro** | recorta **al final de una palabra** y marca con «…»; nunca se parte una palabra | `tests/test_baselines.py::test_pack_no_corta_palabras_por_la_mitad` |
-| 5 | **Tope de 60 recuerdos** | `while left and len(chosen) < 60` | **no hay tope**: manda el presupuesto (y `budget=0` = sin límite) | `tests/test_thalamus.py::test_el_presupuesto_manda_y_no_hay_tope_de_60` |
+| 4 | **El contexto se cortaba a media palabra** | `pack()` recortaba a caracteres crudos y la garantía dura quitaba **de cuatro en cuatro** | recorta **al final de una palabra** y marca con «…»; si el fragmento sale muy corto (menos de 64 caracteres), se deja entero aunque haya que partir una palabra | `tests/test_baselines.py::test_pack_no_corta_palabras_por_la_mitad` |
+| 5 | **Tope de 60 recuerdos** | `while left and len(chosen) < 60` | **no hay tope**: manda el presupuesto (y `budget=0` = sin límite). Y el **pool de candidatos se mide**: el corto (40) elige, el ancho (120) sólo rellena el presupuesto sobrante — porque el ancho, solo, costaba exactitud | `tests/test_thalamus.py::test_el_presupuesto_manda_y_no_hay_tope_de_60` · §5.3 |
 | 6 | **Presupuesto fijo de 1500 tokens** | el MCP pedía 1500 y no había cómo pedir más sin calling interno | `budget` en la herramienta MCP: `0` = el de la mente, y el de la mente es configurable (`presupuesto`, por defecto **4000**); `0` en config = **sin límite** | `tests/test_gate.py::test_recall_toma_el_presupuesto_de_la_mente` |
 | 7 | **Los recuerdos truncados desaparecían sin aviso** | los ids citados eran sólo los que sobrevivían al recorte | se citan **los que entraron de verdad** (`pack` devuelve `incluidos`) | `daimon/thalamus.py::compose` |
 | 8 | **El tipo de un recuerdo se perdía** | `kind` fuera de los cuatro conocidos se forzaba a `note` | se guarda **tal cual** (`decision`, `preferencia`, lo que sea) | `tests/test_gate.py::test_remember_conserva_el_tipo` |
@@ -61,16 +61,84 @@ Eso se aplicó con una regla operativa, para no confundir «limitación» con «
 ## 4. Cómo se ha comprobado
 
 ```
-daimon (Python):  136 pruebas en verde   (antes: 120)
+daimon (Python):  138 pruebas en verde   (antes: 120)
 app (TypeScript): 644 pruebas en verde   (104 ficheros)
 typecheck:        tsc --noEmit sin errores
 ```
 
-Y el examen de verdad (el del creador) está **pendiente de medir**: este cambio toca el contexto que
-recibe la IA, así que hay que volver a pasar `daimon/bench/` contra `rag_denso_eg` antes de darlo
-por bueno. **Si el número no mejora, esto no entra** — es la regla madre.
+## 5. El examen: lo que se midió y lo que se revirtió
 
-## 5. Lo que queda abierto (propuesta, no hecho)
+> «Toda mejora se mide contra un examen con tareas reales del usuario. Si el número no mejora, la
+> mejora no entra.» Esto no es un adorno: **dos de los cambios de este lote se revirtieron** porque
+> el examen dijo que no.
+
+### 5.1 Primero estaba roto el examen, no la mente
+Al medir, la variante `daimon` salía peor que la anterior (0,929 → 0,914 en el examen oculto). La
+causa **no era del código nuevo**: `scripts/prueba0.py` construía las variantes con el `pesos.npz`
+que hubiera por ahí (el que guarda la app al aprender), **no con el tálamo entrenado en esa corrida**
+(`data/mente_v2/thalamus.npy`). Es decir: el examen estaba midiendo unos pesos arbitrarios.
+
+Peor: `Home` carga `pesos.npz` **antes** que `thalamus.npy`, así que la app, después de guardar sus
+pesos, dejaba de usar el tálamo que el propio examen había entrenado.
+
+**Arreglado en los dos sitios**: el examen usa siempre los pesos de su corrida, y la app prefiere el
+tálamo entrenado. Sin esto, cualquier comparación de números era humo.
+
+### 5.2 La matriz: una variable cada vez
+Cinco corridas de la validación cruzada, con los mismos datos y la misma memoria:
+
+| Configuración | recall (CV visible) |
+|---|---|
+| código viejo (f9bae4a) | **0,851** |
+| código nuevo, pool corto (40) | 0,839 |
+| código nuevo, pool ancho (120) | 0,831 |
+| recencia larga (3650 días) | 0,831 |
+| saltos extra (hops=3) | 0,831 |
+
+De ahí sesacaron tres cosas:
+1. **El pool ancho (120) es peor que el corto (40)**: más candidatos, más falsos positivos que ganan
+   por azar. El «sin límites» ingenuo costaba exactitud.
+2. **La recencia larga no vale**: con 3650 días el rasgo deja de distinguir nada y desplaza el
+   balance de los otros pesos (−0,012). **Y se discovered que el peso que aprende el modelo sobre la
+   recencia es 0,02**: la recencia nunca amputaba recuerdos. El problema real era de congelación, no
+   de ranking. **Revertido a 90 días** (medido), y ahora configurable.
+3. Los saltos extra (hops=3) son neutros: se quedan en 2.
+
+### 5.3 El diseño que sí cumple las dos cosas
+- **La cabeza elige, la cola rellena**: el pool corto (40) puntúa y elige; el pool ancho (120) sólo
+  rellena el presupuesto sobrante cuando el agente pide mucho contexto. Así no se pierde exactitud
+  **ni** se deja el contexto a medias.
+- **El ajuste se hace con la cabeza**: si los pesos se entrenaran con la cola delante, cambiarían y
+  se perdería exactitud (medido). El examen ahora construye el tálamo **con la misma configuración
+  que la app** (antes usaba los valores por defecto del código, y por eso las mediciones no
+  correspondían a lo que la app hace).
+
+### 5.4 El resultado
+Examen **oculto** (35 ítems reales), mismo formato, mismos datos, mismos pesos:
+
+| variante | antes | después | tokens |
+|---|---|---|---|
+| daimon | 0,929 | **0,929** | 1497 → **1157** (−23 %) |
+| daimon_sin_corte | 0,929 | **0,929** | 1497 → 1498 |
+| daimon_solo_original | 0,929 | **0,929** | 1497 → 1093 |
+| bm25 | 0,857 | 0,857 | 1493 → 1498 |
+| rag_denso_eg | 0,900 | 0,900 | 1496 → 1498 |
+
+**Igual de exacto con un 23 % menos de contexto.** Y el corte adaptativo (`max_drop`), que antes se
+descartaba porque el examen no lo daba por bueno, ahora **sí** (0,844 con 1220 tokens frente a 0,851
+con 1498): es lo que permite que la app mande menos contexto sin perder respuestas.
+
+En el **visible** la diferencia es ruido (una variante −0,005; el resto igual).
+
+### 5.5 Lo que sigue abierto
+- El examen **de respuesta** (el que judgea un modelo, no sólo la recuperación) hay que rehacerlo
+  con el harness arreglado: el número viejo estaba medido contra otros pesos.
+- La **abstención blanda** (devolver contexto débil en vez de nada) está medida sólo en el caso sin
+  abstención; falta la corrida con `min_dense` activo.
+- `memU` y `OpenViking` siguen fuera: `memU` en local exige clave de pago para los embeddings y
+  `OpenViking` es AGPL-3.0.
+
+## 6. Lo que queda abierto (propuesta, no hecho)
 
 1. **Medir el examen** con el contexto nuevo (esto es lo primero: sin número, esto es unaopinion).
 2. **`/recall` por HTTP** sigue con su presupuesto por defecto viejo (1500): debe leer el de la mente.

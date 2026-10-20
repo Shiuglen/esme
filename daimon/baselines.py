@@ -11,6 +11,9 @@ from .lexical import BM25
 from .tokens import count
 
 SEP = "\n---\n"
+# Por debajo de este tamaño (en caracteres) un fragmento ya no se parte por palabras: es más útil
+# entero que limpio.
+MIN_FRAGMENTO = 64
 CtxFn = Callable[[str, int], tuple[str, int]]
 
 
@@ -18,26 +21,32 @@ def fmt(e: Event) -> str:
     return f"[{e.kind} · {e.ts[:10]}] {e.text}"
 
 
-def _corta(t: str, room_tokens: int) -> str:
-    """Recorta al final de una palabra y marca el corte: nunca se parte una palabra por la mitad.
+def _corta(t: str, room_chars: int) -> str:
+    """Recorta al final de una palabra.
 
-    Antes el recorte era a caracteres crudos (y la garantía dura quitaba de cuatro en cuatro),
-    así que la IA recibía media palabra y no entendía nada. Ahora recibe texto legible hasta el final.
+    Antes el recorte era a caracteres crudos (y la garantía dura quitaba de cuatro en cuatro), así
+    que la IA recibía media palabra y no entendía nada. Ahora se corta por palabras.
+
+    Excepción: si el trozo sale muy corto (menos de `MIN_FRAGMENTO`), se deja entero aunque haya
+    que partir una palabra: un fragmento de tres palabras partido no vale ni un Sorted, y prefiero
+    que la IA reciba el comienzo del recuerdo que no le llegue nada.
     """
-    room = max(room_tokens, 0) * 4
-    if len(t) <= room:
+    if len(t) <= room_chars:
         return t
-    corte = t[:room]
+    corte = t[:room_chars]
     if " " in corte:
-        corte = corte[:corte.rfind(" ")]
-    return corte.rstrip() + "…"
+        i = corte.rfind(" ")
+        if i >= MIN_FRAGMENTO:
+            return corte[:i].rstrip() + "…"
+    return corte + "…"
 
 
 def pack(texts: list[str], budget: int, incluidos: list[int] | None = None) -> tuple[str, int]:
     """Concatena sin pasarse nunca del presupuesto.
 
     - `budget <= 0` significa SIN LÍMITE: entra todo lo que haya (para quien quiera el contexto entero).
-    - Si un trozo no cabe, se recorta por palabras y se marca con «…»; nunca se mutila a media palabra.
+    - Si un recuerdo no cabe entero, se recorta **por palabras** (nunca a media palabra) y se marca
+      con «…»; así la IA recibe el comienzo del recuerdo, que es lo que le sirve.
     - `incluidos` recibe los índices de los trozos que de verdad entraron en el texto.
     """
     if budget <= 0:                      # sin límite: el presupuesto deja de limitar nada
@@ -54,18 +63,22 @@ def pack(texts: list[str], budget: int, incluidos: list[int] | None = None) -> t
                 incluidos.append(i)
             continue
         used = count(SEP.join(parts)) if parts else 0
-        remaining = budget - used
-        room = remaining * 4 - (len(SEP) if parts else 0)
-        if room >= 40:                    # queda sitio para un trozo legible
-            parts.append(_corta(t, max(room // 4, 0)))
+        room = (budget - used) * 4 - (len(SEP) if parts else 0)
+        if room >= MIN_FRAGMENTO:
+            parts.append(_corta(t, room))
             if incluidos is not None:
                 incluidos.append(i)
         break
     text = SEP.join(parts)
-    while count(text) > budget:          # garantía dura, pero sin cortar a media palabra
-        base = text[:-1] if text.endswith("…") else text
-        corte = base.rfind(" ")
-        text = ((base[:corte].rstrip()) if corte > 0 else base[:-4]).rstrip() + "…"
+    while count(text) > budget and parts:   # garantía dura, pero recortando por palabras
+        last = parts[-1]
+        corte = last[:-1] if last.endswith("…") else last
+        i = corte.rfind(" ")
+        if i >= MIN_FRAGMENTO:
+            parts[-1] = corte[:i].rstrip() + "…"
+        else:
+            parts.pop()
+        text = SEP.join(parts)
     return text, count(text)
 
 

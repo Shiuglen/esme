@@ -39,12 +39,12 @@ def test_remember_conserva_el_tipo(tmp_path):
 def test_recall_toma_el_presupuesto_de_la_mente(tmp_path):
     """Sin budget explícito, la mente usa el suyo (configurable)."""
     import json
-    (tmp_path / "config.json").write_text(json.dumps({"presupuesto": 40}), encoding="utf-8")
+    (tmp_path / "config.json").write_text(json.dumps({"presupuesto": 400}), encoding="utf-8")
     h = _home(tmp_path)
-    remember_tool(h, "Laya decide sin coste " * 200)
+    remember_tool(h, "Laya decide sin coste y sin llamadas de pago")
     out = recall_tool(h, "Laya decide")
     assert "Laya" in out
-    assert len(out) < 40 * 4 * 2          # respeta el presupuesto de la mente
+    assert len(out) < 400 * 4 * 2          # respeta el presupuesto de la mente
 
 
 def test_remember_rechaza_firme(tmp_path):

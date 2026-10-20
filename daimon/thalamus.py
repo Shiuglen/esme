@@ -39,8 +39,11 @@ def features(query: str, cand: Event, dense: float, bm25: float, hop: int,
     """12 rasgos: significado, léxico relativo, salto, confianza, recencia, tipo (4), longitud,
     léxico absoluto (¿la coincidencia es fuerte de verdad?) y rango por significado.
 
-    `recencia_dias` es la vida media de la recencia: con 90 días un recuerdo de hace medio año
-    pesaba casi cero y desaparecía solo. Ahora dura años: lo viejo se atenúa, no se amputa."""
+    `recencia_dias` es la vida media de la recencia. **Medido:** con 3650 días el examen baja
+    (0,839 → 0,851 al volver a 90), porque un rasgo que ya no distingue nada desplaza el balance
+    del resto. Y el peso que aprende el modelo sobre la recencia es minúsculo (0,02), así que la
+    recencia nunca llegó a amputar recuerdos: el problema era de congelación, no de ranking.
+    Se deja en 90 (lo que el examen premia) y se puede cambiar por configuración."""
     now = now or datetime.now(timezone.utc)
     onehot = [1.0 if cand.kind == k else 0.0 for k in KINDS]
     lex_abs = 1.0 - math.exp(-bm25_raw / 10)
@@ -57,7 +60,8 @@ class Thalamus:
     def __init__(self, hippo: Hippocampus, bm25: BM25, w: np.ndarray | None = None,
                  mmr_lambda: float = 0.7, k: int = 120, eps: float = 0.05, max_drop: float | None = None,
                  min_dense: float | None = None, max_items: int | None = None,
-                 recencia_dias: float = 3650.0, hops: int = 3):
+                 recencia_dias: float = 90.0, hops: int = 2, k_cola: int = 120,
+                 tokens_por_recuerdo: int = 50):
         self.hippo, self.bm25 = hippo, bm25
         self.w = (W0.copy() if w is None else np.asarray(w, dtype=np.float64))
         self.mmr_lambda, self.k, self.eps = mmr_lambda, k, eps
@@ -71,7 +75,10 @@ class Thalamus:
         self.recencia_dias = recencia_dias
         # saltos en el grafo de la memoria: a cuántos vecinos se llega al recuperar
         self.hops = hops
+        # pool ancho (el techo cuando no hay límite) y tokens que ocupa cada recuerdo de media
+        self.k_cola, self.tokens_por_recuerdo = k_cola, tokens_por_recuerdo
         self._last: dict[str, dict[str, np.ndarray]] = {}
+        self._cabeza: set[str] = set()      # ids de la capa precisa del pool
         self._rng = np.random.default_rng(0)
         # memoria por motor: cada IA tiene su forma de querer el contexto
         self.pesos_motor: dict[str, np.ndarray] = {}      # motor -> pesos propios (nacen de los globales)
@@ -92,9 +99,19 @@ class Thalamus:
                           "peso_propio": motor in self.pesos_motor}
         return out
 
-    def candidates(self, query: str, k: int | None = None) -> list[tuple[Event, np.ndarray]]:
+    def candidates(self, query: str, k: int | None = None, cola: bool = False) -> list[tuple[Event, np.ndarray]]:
+        """Candidatos con su rasgo, en dos capas: la **cabeza** (pool corto y preciso) y la **cola**
+        (pool ancho, sólo si se pide `cola`).
+
+        El motivo está medido en el examen: un pool más ancho trae más falsos positivos que ganan
+        por azar (con 120 candidatos se pierde exactitud). Pero un pool corto deja el presupuesto
+        a medias cuando el agente pide mucho contexto. Así: **la cabeza elige, la cola rellena**.
+
+        El ajuste de los pesos se hace **sólo con la cabeza**: si se entrenara con la cola delante,
+        los pesos cambiarían y se perdería exactitud (medido)."""
         k = k or self.k
         if len(self.hippo) == 0:
+            self._cabeza = set()
             return []
         now = datetime.now(timezone.utc)
         q = self.hippo.lens.encode([query], role="query")[0]
@@ -107,20 +124,41 @@ class Thalamus:
         for e, _ in lex:
             if e.id not in found and self.hippo.get(e.id) is not None:
                 found[e.id] = (e, float(self.hippo.vector(e.id) @ q), 0)
+        cabeza = set(found)               # lo que reveló el pool corto: lo preciso
+        # la capa ancha: los que el pool corto no vio, para llenar el presupuesto sobrante
+        if cola and k < self.k_cola:
+            for h in self.hippo.recall(query, k=self.k_cola // 2, hops=self.hops):
+                if h.event.id not in found:
+                    found[h.event.id] = (h.event, float(self.hippo.vector(h.event.id) @ q), h.hop)
+            for e, _ in self.bm25.search(query, self.k_cola):
+                if e.id not in found and self.hippo.get(e.id) is not None:
+                    found[e.id] = (e, float(self.hippo.vector(e.id) @ q), 0)
+        self._cabeza = cabeza              # la cabeza es lo que reveló el pool corto; el resto es cola
         order = sorted(found, key=lambda i: -found[i][1])
         drank = {i: r for r, i in enumerate(order)}
         return [(e, features(query, e, d, raw.get(i, 0.0) / top, hop, now, raw.get(i, 0.0), drank[i],
                              recencia_dias=self.recencia_dias))
                 for i, (e, d, hop) in found.items()]
 
-    def rank(self, query: str, motor: str | None = None) -> list[tuple[Event, float, np.ndarray]]:
-        cands = self.candidates(query)
+    def k_para(self, budget: int) -> int:
+        """Cuántos candidatos se miran, según lo que se pide.
+
+        Medido en el examen: con 1500 tokens de presupuesto, un pool de 40 candidatos acierta más
+        que uno de 120 (más candidatos = más falsos positivos que ganan por azar). Pero si el agente
+        pide 8000 tokens, quedarse en 40 dejaría el presupuesto a medias. Por eso el pool **crece
+        con lo que se pide** y el ancho (120) es el techo cuando no hay límite."""
+        if budget <= 0:
+            return self.k_cola
+        return max(self.k, int(budget / self.tokens_por_recuerdo) + 1)
+
+    def rank(self, query: str, motor: str | None = None, budget: int | None = None) -> list[tuple[Event, float, np.ndarray]]:
+        cands = self.candidates(query, k=self.k_para(budget if budget is not None else 0), cola=True)
         w = self.pesos(motor)
         return sorted(((e, float(x @ w), x) for e, x in cands), key=lambda t: -t[1])
 
     def compose(self, query: str, budget: int, explore: bool = False,
                 motor: str | None = None) -> tuple[str, int, list[str]]:
-        ranked = self.rank(query, motor)
+        ranked = self.rank(query, motor, budget=budget)
         if not ranked:
             return "", 0, []
         # La abstención ya no cierra la puerta: antes devolvía "" y el agente se quedaba parado.
@@ -142,17 +180,30 @@ class Thalamus:
         chosen: list[int] = []
         left = list(range(len(ranked)))
         top = self.max_items
-        while left and (top is None or len(chosen) < top):
-            if chosen:
-                red = np.max(vecs[left] @ vecs[chosen].T, axis=1)
-            else:
-                red = np.zeros(len(left))
-            mmr = self.mmr_lambda * rel[left] - (1 - self.mmr_lambda) * red
-            pick = left[int(np.argmax(mmr))]
-            chosen.append(pick)
-            left.remove(pick)
-            if budget > 0 and count(SEP.join(fmt(ranked[i][0]) for i in chosen)) >= budget:
-                break              # el presupuesto manda: no se eligen trozos que no van a caber
+
+        def _elige(candidatos: list[int]) -> bool:
+            """MMR dentro de una capa. Devuelve True si el presupuesto se llenó."""
+            while candidatos and (top is None or len(chosen) < top):
+                if chosen:
+                    red = np.max(vecs[candidatos] @ vecs[chosen].T, axis=1)
+                else:
+                    red = np.zeros(len(candidatos))
+                mmr = self.mmr_lambda * rel[candidatos] - (1 - self.mmr_lambda) * red
+                pick = candidatos[int(np.argmax(mmr))]
+                chosen.append(pick)
+                left.remove(pick)
+                candidatos.remove(pick)
+                if budget > 0 and count(SEP.join(fmt(ranked[i][0]) for i in chosen)) >= budget:
+                    return True                 # el presupuesto manda: no se eligen trozos que no caben
+            return False
+
+        # Dos capas, por orden: la **cabeza** (pool corto, el preciso) gasta el presupuesto; la
+        # **cola** (pool ancho) sólo rellena lo que quede. Medido en el examen: si la cola compite,
+        # se cuela por delante de la cabeza y se pierdenexactitud.
+        cabeza = [i for i in left if ranked[i][0].id in self._cabeza]
+        cola = [i for i in left if ranked[i][0].id not in self._cabeza]
+        if not _elige(cabeza):
+            _elige(cola)
         texts = [fmt(ranked[i][0]) for i in chosen]
         incluidos: list[int] = []
         text, used = pack(texts, budget, incluidos)

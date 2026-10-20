@@ -49,10 +49,12 @@ class Home:
         self.thalamus = Thalamus(self.hippo, BM25(self.hippo.events()),
                                  mmr_lambda=self.config.get("mmr_lambda", 0.7),
                                  max_drop=self.config.get("max_drop"), min_dense=self.config.get("min_dense"),
-                                 k=int(self.config.get("k", 120)),
+                                 k=int(self.config.get("k", 40)),
                                  max_items=self.config.get("max_items"),
-                                 hops=int(self.config.get("hops", 3)),
-                                 recencia_dias=float(self.config.get("recencia_dias", 3650.0)))
+                                 hops=int(self.config.get("hops", 2)),
+                                 k_cola=int(self.config.get("k_cola", 120)),
+                                 tokens_por_recuerdo=int(self.config.get("tokens_por_recuerdo", 50)),
+                                 recencia_dias=float(self.config.get("recencia_dias", 90.0)))
         pesos = self.path / "pesos.npz"
         if pesos.exists():
             self.thalamus.load(pesos)

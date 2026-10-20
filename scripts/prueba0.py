@@ -59,7 +59,15 @@ def _fit(home: Home, items: list[Item], with_para: bool) -> Thalamus:
     ex = [(i.question, set(i.evidence)) for i in items]
     if with_para:
         ex += [(para[i.id], set(i.evidence)) for i in items]
-    th = Thalamus(home.hippo, home.thalamus.bm25, mmr_lambda=1.0, min_dense=home.config.get("min_dense"))
+    # El tálamo del examen se construye con la MISMA configuración que el de la app: si el examen
+    # midiera otra cosa, el número no valdría para nada (medido: así se encontró que la recencia
+    # larga desplazaba el balance de los pesos y costaba 0,012 de exactitud).
+    th = Thalamus(home.hippo, home.thalamus.bm25, mmr_lambda=1.0,
+                  min_dense=home.config.get("min_dense"),
+                  k=int(home.config.get("k", 40)),
+                  k_cola=int(home.config.get("k_cola", 120)),
+                  hops=int(home.config.get("hops", 2)),
+                  recencia_dias=float(home.config.get("recencia_dias", 90.0)))
     th.fit(ex, epochs=300, lr=0.1)
     return th
 
@@ -114,17 +122,34 @@ def build_variants():
     evs = home.hippo.events()
     bm = home.thalamus.bm25
     two = lambda th: (lambda q, b: th.compose(q, b)[:2])   # noqa: E731 — Tálamo → firma común (texto, tokens)
-    sin_corte = Thalamus(home.hippo, bm, mmr_lambda=1.0, min_dense=home.thalamus.min_dense)
+
+    def _nuevo(max_drop):
+        """Un tálamo con la configuración de la casa (los mismos k, saltos y recencia que la app)."""
+        return Thalamus(home.hippo, bm, mmr_lambda=1.0, max_drop=max_drop,
+                        min_dense=home.thalamus.min_dense,
+                        k=int(home.config.get("k", 40)),
+                        k_cola=int(home.config.get("k_cola", 120)),
+                        hops=int(home.config.get("hops", 2)),
+                        recencia_dias=float(home.config.get("recencia_dias", 90.0)))
+
+    # El tálamo del examen es **el entrenado en esta corrida** (thalamus.npy), no el pesos.npz que
+    # hubiera por ahí: si el examen midiera otros pesos, el número no valdría para nada. (Así se
+    # descubrió que la app, al guardar pesos.npz, dejaba de usar el tálamo entrenado.)
+    base = _nuevo(home.thalamus.max_drop)
+    if (HOME / "thalamus.npy").exists():
+        base.load(HOME / "thalamus.npy")
+    else:
+        base = home.thalamus
+    sin_corte = _nuevo(None)
     sin_corte.load(HOME / "thalamus.npy")
-    solo_orig = Thalamus(home.hippo, bm, mmr_lambda=1.0, max_drop=home.thalamus.max_drop,
-                         min_dense=home.thalamus.min_dense)
+    solo_orig = _nuevo(home.thalamus.max_drop)
     solo_orig.load(RUNS / "thalamus_solo_original.npy")
     bm25 = make_ctx_bm25(bm)
     return {
         "ia_sola": ctx_none, "md": make_ctx_md([p for p in MD_FILES if p.exists()]),
         "bm25": bm25, "bm25_1000": lambda q, b: bm25(q, min(b, 1000)),
         "rag_denso_eg": make_ctx_dense(home.hippo), "contexto_largo": make_ctx_long(evs),
-        "daimon": two(home.thalamus), "daimon_sin_corte": two(sin_corte), "daimon_solo_original": two(solo_orig),
+        "daimon": two(base), "daimon_sin_corte": two(sin_corte), "daimon_solo_original": two(solo_orig),
     }, {e.id: e.text for e in evs}
 
 
