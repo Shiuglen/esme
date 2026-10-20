@@ -130,6 +130,15 @@ contexto del proyecto y lo inyecte en el primer mensaje.
 **Primer paso.** `daimon/bench/` añade un rung con las tareas reales del creador contra
 `rag_denso_eg` (el rival actual, que ya gana en el veredicto) **y** contra Mem0/Hindsight.
 **Se mide.** Acierto y tokens por tarea. Sólo entra lo que mejora el número.
+**Medido (20-oct, Palanca 5 cerrada en su primera parte).** mem0 2.2.1 (Apache-2.0, 67K★), en local,
+con su Qdrant y su BM25 híbrido, **con el mismo codificador que Esme** (para medir la recuperación y
+no el codificador), el mismo corpus (5.768 recuerdos), las mismas 35 preguntas ocultas y el mismo
+presupuesto (1.500 tokens): **Esme 0,929 / 1.124 tokens · mem0 0,857 / 1.499** con las preguntas
+literales; **0,900 / 1.246 · 0,757 / 1.499** con las paráfrasis. Esme gana por **7,2 puntos con un
+25 % menos de contexto** (y por 14,3 con las paráfrasis). Cara a cara: 3–1–31. La diferencia está en
+**el corte aprendido**: mem0 tenía la evidencia en su top-20 en el 95,7 % de los casos y el
+presupuesto se la dejaba fuera en 4 de 35. Detalle: `docs/resultados/2026-10-20-banco-memoria.md`.
+**Queda:** la consolidación de mem0 (extraer hechos con un LLM) y Hindsight.
 
 ### Palanca 5-bis — Evaluación y trazas: el hueco que nadie vio hasta ahora
 **Idea.** Las tres listas de X (@Lummox_eth, @ridark_eth) terminan igual: **Langfuse, Opik,
