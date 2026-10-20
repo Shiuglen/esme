@@ -80,3 +80,14 @@ def test_secreto_partido_entre_trozos():
     p.write_text(filler + " password: hunter2xyz " + " ".join(f"v{i}" for i in range(200)))
     evs = collect([p])
     assert evs and all("hunter2xyz" not in e.text for e in evs)
+
+
+def test_las_urls_rotas_del_harvest_se_vuelven_a_pegar():
+    # el harvest trocea el texto del post: la URL llega partida en varias líneas
+    from daimon.x import repara_urls
+    roto = "¡Prueba esto! \nhttps://\ngithub.com/segfault42/hel\niosgen\n…\n\nCódigo abierto"
+    arreglado = repara_urls(roto)
+    assert "https://github.com/segfault42/heliosgen" in arreglado
+    assert "https://\n" not in arreglado
+    # y un texto normal no se toca
+    assert repara_urls("una línea\notra línea") == "una línea\notra línea"

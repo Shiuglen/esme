@@ -96,3 +96,17 @@ def test_dos_procesos_no_chocan(tmp_path):
     h3 = _hippo(tmp_path)
     assert {e.id for e in h3.events()} == {"id1", "id2"} and len(h3.V) == 2
     assert not list(tmp_path.glob("*.tmp*"))
+
+
+def test_por_fuente_devuelve_lo_que_guardaste_de_esa_fuente(tmp_path):
+    # "lo que guardaste" es una coleta, no una búsqueda: por fuente, y los más recientes primero
+    h = _hippo(tmp_path)
+    viejo = Event("idv", "un post viejo", "x:bookmarks", "doc", "2026-10-01T00:00:00Z", 0.6)
+    nuevo = Event("idn", "un post nuevo", "x:bookmarks", "doc", "2026-10-10T00:00:00Z", 0.6)
+    otro = Event("ido", "otra cosa", "x:fyp", "doc", "2026-10-11T00:00:00Z", 0.6)
+    h.store([viejo, nuevo, otro])
+    guardados = h.por_fuente("x:bookmarks")
+    assert [e.id for e in guardados] == ["idn", "idv"]     # la fuente pedida, lo más reciente antes
+    assert h.por_fuente("x:fyp")[0].id == "ido"
+    assert h.por_fuente("x:no-existe") == []
+    assert len(h.por_fuente("x:bookmarks", limite=1)) == 1
