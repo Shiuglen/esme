@@ -1,21 +1,31 @@
 from pathlib import Path
 
-from daimon.ingest import chunk, collect, from_claude_jsonl, from_markdown
+from daimon.ingest import collect, from_claude_jsonl, from_markdown
+from daimon.troceo import trocea
 
 FIX = Path(__file__).parent / "fixtures"
 
 
-def test_chunk_respeta_tamano():
-    words = [f"w{i}" for i in range(500)]
-    parts = chunk(" ".join(words), max_words=160, overlap=30)
-    assert all(len(p.split()) <= 160 for p in parts)
-    assert parts[1].split()[0] == words[130]
-    assert parts[-1].split()[-1] == "w499"
+def test_trocea_por_filas_de_tabla():
+    """El hallazgo del 12-oct: la tabla entra POR FILAS (antes iba entera y no pasaba el presupuesto)."""
+    doc = "| Área | Estado |\n|---|---|\n| Red | hecha |\n| Prueba 0 | a medias |"
+    trozos = trocea("doc", doc)
+    filas = [t for t in trozos if t.tipo == "fila-tabla"]
+    assert [t.texto for t in filas] == ["| Área | Estado |", "| Red | hecha |", "| Prueba 0 | a medias |"]
+    # el separador de cabecera no es el oro de nadie
+    assert all(not t.texto.startswith("|---") for t in trozos)
 
 
-def test_chunk_corto():
-    assert chunk("hola mundo") == ["hola mundo"]
-    assert chunk("   ") == []
+def test_trocea_por_apartados_y_parrafos():
+    doc = "# Título\n\nUn párrafo.\n\n## Otro\n\nMás texto."
+    trozos = trocea("doc", doc)
+    assert [t.texto for t in trozos] == ["Un párrafo.", "Más texto."]
+    assert trozos[0].fuente == "doc#titulo"
+    assert trozos[1].fuente == "doc#otro"
+
+
+def test_trocea_vacio():
+    assert trocea("doc", "   ") == []
 
 
 def test_markdown_eventos():

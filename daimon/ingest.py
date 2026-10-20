@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .immune import TRUST, clean, is_excluded, redact
+from .troceo import trocea
 
 _SKIP = ("node_modules", "/dist/", "/.git/", "/.venv/", "/build/")
 
@@ -41,33 +42,21 @@ def _id(text: str) -> str:
     return hashlib.sha1(" ".join(text.lower().split()).encode()).hexdigest()[:16]
 
 
-def chunk(text: str, max_words: int = 160, overlap: int = 30) -> list[str]:
-    words = text.split()
-    if not words:
-        return []
-    step = max_words - overlap
-    out = []
-    for start in range(0, len(words), step):
-        out.append(" ".join(words[start:start + max_words]))
-        if start + max_words >= len(words):
-            break
-    return out
-
-
 def _mtime_iso(path: Path) -> str:
     return datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).isoformat()
 
 
 def from_markdown(path: Path, kind: str = "note") -> list[Event]:
-    """Un evento por trozo de cada sección; la cabecera viaja con su sección.
-    Vale para cualquier texto legible (código, config, datos): si no hay cabeceras, es un bloque único."""
+    """Un evento por trozo; la cabecera viaja con su sección.
+    Vale para cualquier texto legible (código, config, datos): si no hay cabeceras, es un bloque único.
+
+    El troceo es el del módulo esme.nucleo.troceo-pro (por apartados, párrafos y FILAS de tabla): antes
+    era una ventana de 160 palabras y la tabla entera iba como un bloque (y no pasaba el presupuesto)."""
     text = redact(path.read_text(encoding="utf-8", errors="replace"))   # redactar ANTES de trocear
-    sections = re.split(r"(?m)^(?=#{1,6}\s)", text)
     ts, src, trust = _mtime_iso(path), str(path), TRUST["file"]
     events = []
-    for sec in sections:
-        for part in chunk(sec):
-            events.append(Event(_id(part), part, src, kind, ts, trust))
+    for trozo in trocea(src, text):
+        events.append(Event(_id(trozo.texto), trozo.texto, src, kind, ts, trust))
     return events
 
 
@@ -97,8 +86,8 @@ def from_claude_jsonl(path: Path) -> list[Event]:
         else:
             kind, trust, text = "ai_msg", TRUST["ai"], _text_of(content)
         ts = row.get("timestamp") or _mtime_iso(path)
-        for part in chunk(redact(text)):
-            events.append(Event(_id(part), part, src, kind, ts, trust))
+        for trozo in trocea(src, redact(text)):
+            events.append(Event(_id(trozo.texto), trozo.texto, src, kind, ts, trust))
     return events
 
 
