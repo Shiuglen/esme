@@ -15,7 +15,7 @@ import { NuevaTarea } from '../taller/NuevaTarea'
 import { Terminales } from '../taller/Terminales'
 import type { useTaller } from '../taller/useTaller'
 import { activa, archivable, ESTADOS, explicarError } from '../taller/vista'
-import { fallosDe, noListos } from '../taller/eleccion'
+import { caidosDe, fallosDe, noListos } from '../taller/eleccion'
 import { cn } from '../lib/cn'
 import { useMuelle } from '../tinta/movimiento'
 import { Agenda, useAgenda } from '../taller/Agenda'
@@ -49,15 +49,13 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
   // desde un aviso de fuera («Ver»): abre esa tarea
   useEffect(() => { if (foco) { setSeleccion(foco.id); void tl.cargar(foco.id) } }, [foco?.n])   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (seleccion && !tl.tareas.some((t) => t.id === seleccion)) setSeleccion(null) }, [tl.tareas, seleccion])
-  // Un modelo que el motor rechaza por retirado o caído no se vuelve a proponer.
+  // Un modelo que el motor rechaza por retirado o caído no se vuelve a proponer... salvo que vuelva a funcionar.
+  const caidos = useMemo(() => caidosDe(tl.tareas), [tl.tareas])
   useEffect(() => {
-    const caidos = tl.tareas.flatMap((t) => (t.error && explicarError(t.error, '', '')?.tipo === 'modelo' ? t.opciones.filter((o) => o.id === 'model').map((o) => o.actual) : []))
-    if (!caidos.length) return
     try {
-      const ya: string[] = JSON.parse(localStorage.getItem('esme:taller:caidos') ?? '[]')
-      localStorage.setItem('esme:taller:caidos', JSON.stringify([...new Set([...ya, ...caidos])]))
+      localStorage.setItem('esme:taller:caidos', JSON.stringify(caidos))
     } catch { /* sin almacenamiento */ }
-  }, [tl.tareas])
+  }, [caidos])
   const agenda = useAgenda()
   const login = (motor: string) => tl.motores.find((m) => m.id === motor)?.login ?? ''
 
