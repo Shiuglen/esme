@@ -15,6 +15,7 @@ import { firmaDe, giroSello } from '../marca/sello'
 import { Escena } from '../taller/Escena'
 import { CurvaTaller } from '../paginas/CurvaTaller'
 import { Oficios } from '../taller/Oficios'
+import { Arena } from '../taller/Arena'
 import { RedNeuronal, type RedHandle } from '../memoria/RedNeuronal'
 import { FondoVivo } from '../shell/FondoVivo'
 import '../styles/esme.css'
@@ -99,6 +100,29 @@ function PiezaOficios() {
   )
 }
 
+
+// La arena con oficios: dos rivales, cada uno con su papel, y los ficheros que tocó cada uno.
+function PiezaArena() {
+  const ahora = Date.now()
+  const tarea = (id: string, rol: string, motor: string, modelo: string, mas: number, ficheros: string[], extra: object = {}): TareaTaller => ({
+    id, titulo: 'Arregla el arranque', texto: '', motor, motorNombre: motor, carpeta: null, estado: 'lista', copia: { id, ruta: '/tmp/x', rama: null, base: 'b', repo: null },
+    inicio: ahora - 400_000, fin: ahora - 100_000, turnos: 3, herramientas: 12,
+    cambios: { ficheros: ficheros.length, mas, menos: 0, lista: ficheros.map((r) => ({ ruta: r, mas: 10, menos: 0, binario: false })) },
+    uso: { entrada: 40_000, salida: 3_000, pensamiento: 0 }, permiso: null, actividad: [], opciones: [], modelo, actividadMs: 0, rol, ...extra,
+  } as unknown as TareaTaller)
+  const tareas = [
+    tarea('a1', 'Constructor', 'opencode', 'opencode/glm-5.3-flash-free', 120, ['src/main/app.ts', 'src/main/lanzador.ts', 'docs/ESME.md', 'tests/app.test.ts', 'src/ui/panel.tsx']),
+    tarea('b2', 'Revisor', 'qwen-code', 'qwen/qwen3-coder-free', 30, ['src/main/app.ts', 'docs/ESME.md']),
+  ]
+  return (
+    <div className="h-full overflow-hidden p-6">
+      <div className="mx-auto h-full max-w-[900px] rounded-4 border border-linea">
+        <Arena tareas={tareas} actual="a1" lineas={{}} ahora={ahora} onVer={() => {}} onQuedarme={async () => {}} onCargar={() => {}} />
+      </div>
+    </div>
+  )
+}
+
 function Taller({ atlas, tema }: { atlas: Atlas; tema: string }) {  const [tareas] = useState(tareasDeMuestra)
   return (
     <FirmaMente.Provider value={firmaDe(atlas)}>
@@ -139,7 +163,7 @@ function Lab() {
   return (
     <div className="h-screen w-screen overflow-hidden bg-papel text-texto">
       <FondoVivo tema={tema} estado="reposo" />
-      <div className="relative z-10 h-full">{pieza === 'chispa' ? <PiezaChispa atlas={atlas} /> : pieza === 'curva' ? <PiezaCurva /> : pieza === 'oficios' ? <PiezaOficios /> : pieza === 'taller' ? <Taller atlas={atlas} tema={tema} /> : <RedNeuronal ref={red} atlas={atlas} tema={tema} recordados={[]} onPick={() => {}} />}</div>
+      <div className="relative z-10 h-full">{pieza === 'chispa' ? <PiezaChispa atlas={atlas} /> : pieza === 'curva' ? <PiezaCurva /> : pieza === 'oficios' ? <PiezaOficios /> : pieza === 'arena' ? <PiezaArena /> : pieza === 'taller' ? <Taller atlas={atlas} tema={tema} /> : <RedNeuronal ref={red} atlas={atlas} tema={tema} recordados={[]} onPick={() => {}} />}</div>
     </div>
   )
 }
