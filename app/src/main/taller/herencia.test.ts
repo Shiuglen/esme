@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { bloqueHerencia, heredar } from './herencia'
+import { bloqueEquipo, bloqueHerencia, heredar, heredarEquipo } from './herencia'
 
 const mente = { url: 'http://127.0.0.1:7777', token: 'tok' }
 const json = (x: unknown, ok = true) => ({ ok, status: ok ? 200 : 500, json: async () => x }) as Response
@@ -28,5 +28,31 @@ describe('la herencia: lo que la mente le pasa al motor', () => {
     expect(b).toContain('el proyecto usa vitest')
     expect(b).toContain('no lo repitas')
     expect(bloqueHerencia(null)).toBe('')
+  })
+})
+
+describe('lo que la mente aprendió del equipo', () => {
+  it('la herencia del equipo pregunta por los motores y trae la lección', async () => {
+    const llamadas: string[] = []
+    const f = vi.fn(async (url: string, o?: { body?: string }) => {
+      llamadas.push(url)
+      expect(JSON.parse(o?.body ?? '{}').query).toContain('equipo')
+      expect(JSON.parse(o?.body ?? '{}').budget).toBeLessThanOrEqual(400)
+      return { ok: true, json: async () => ({ context: 'Del equipo: con opencode te quedaste 2 de 3 tareas.', tokens: 20, ids: ['a1'] }) } as Response
+    })
+    const r = await heredarEquipo({ url: 'http://mente', token: 't' }, { fetch: f as unknown as typeof fetch })
+    expect(r?.texto).toContain('opencode')
+    expect(llamadas[0]).toBe('http://mente/recall')
+  })
+
+  it('sin mente no hay lección, pero la tarea sigue', async () => {
+    expect(await heredarEquipo(null)).toBeNull()
+    expect(bloqueEquipo(null)).toBe('')
+  })
+
+  it('el bloque del equipo se le pasa al motor como contexto', () => {
+    const b = bloqueEquipo({ texto: 'Del equipo: con opencode te quedaste 2 de 3 tareas.', tokens: 20, ids: ['a1'] })
+    expect(b).toContain('Del equipo')
+    expect(b).toContain('---')
   })
 })

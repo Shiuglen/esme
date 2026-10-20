@@ -225,6 +225,15 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
         bus.publish({"type": "sueño", **informe})
         return JSONResponse(informe)
 
+    @mcp.custom_route("/equipo", methods=["POST"])
+    async def equipo(req: Request):
+        """Lo que la mente aprende del equipo: cada veredicto del creador es una lección."""
+        from .equipo import aprender
+        b = await req.json()
+        informe = await locked(aprender)(home, b if isinstance(b, dict) else {})
+        bus.publish({"type": "equipo", **informe})
+        return JSONResponse(informe)
+
     @mcp.custom_route("/orquesta", methods=["GET"])
     async def orquesta(_: Request):
         """Qué motor gana en qué: las señales que ha aprendido la mente de cada IA."""
