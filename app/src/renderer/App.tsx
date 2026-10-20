@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Toaster, toast } from 'sonner'
 import { BrainClient, type Atlas as AtlasData, type MindEvent } from './lib/brain'
-import { bridge } from './lib/bridge'
+import { bridge, type BrainInfo, type EstadoMente } from './lib/bridge'
 import { cn } from './lib/cn'
 import { FirmaMente } from './marca/SelloVista'
 import { firmaDe } from './marca/sello'
@@ -18,7 +18,6 @@ import { Portada, type EventoMente } from './paginas/PortadaVista'
 import { Mando } from './paginas/MandoVista'
 import { panoramaDe } from './paginas/panorama'
 import { notaTaller } from './paginas/portada'
-import { Proximamente } from './paginas/Proximamente'
 import { Tienda } from './paginas/TiendaVista'
 import { Taller } from './paginas/Taller'
 import { avisosDe } from './taller/avisos'
@@ -169,12 +168,17 @@ export function App() {
   }, [ir])
 
   // el cerebro: conexión, reconexión y lo que hace en vivo
+  const [estadoMente, setEstadoMente] = useState<EstadoMente>('conectando')
+  const conectar = useCallback((i: BrainInfo) => {
+    setEstadoMente(i.estado)
+    setBrain(i.estado === 'viva' ? new BrainClient() : null)
+  }, [])
+  const reconectar = useCallback(() => { void bridge.brainInfo().then(conectar) }, [conectar])
   useEffect(() => {
-    const conectar = (i: { url: string } | null) => setBrain(i ? new BrainClient() : null)
     void bridge.brainInfo().then(conectar)
     const off = bridge.onBrainChange(conectar)
     return off
-  }, [])
+  }, [conectar])
   const refrescar = useCallback(() => {
     if (!brain) return
     void brain.health().then((h) => setRecuerdos(h.memories)).catch(() => setRecuerdos(null))
@@ -210,7 +214,7 @@ export function App() {
   const oir = async (pcm: Float32Array) => {
     if (!brain) { toast.error('Para oírte necesito el cerebro encendido.'); return }
     try { const t = (await brain.oir(pcm)).trim(); if (t) { toast(`Te oí: «${t}»`); preguntar(t, true) } else toast('No te entendí bien. ¿Me lo repites?') }
-    catch (e) { toast.error(`No pude oírte: ${(e as Error).message}`) }
+    catch { toast.error('No pude oírte. El oído de tu mente no está disponible ahora mismo.') }
   }
   const panorama = useMemo(() => panoramaDe(atlas, tl.tareas), [atlas, tl.tareas])
   const hablar = (texto: string) => { if (brain) void brain.decir(paraDecir(texto)).then((wav) => reproducir(wav, () => setTurnoVoz((n) => n + 1))).catch(() => {}) }
@@ -244,7 +248,7 @@ export function App() {
       case 'inicio': return null
       case 'conversacion': return (
         <div className="flex h-full flex-col px-5 pt-4 pb-4">
-          <ChatPanel brain={memoria ? brain : null} onCite={enfocarRecuerdo} onRecalled={(t) => setMemoriaUsada((s) => s + t)} seed={semilla} onBusy={setPensando} onHablar={hablar} onVivo={(texto, fin, sinPermiso) => setVivo((v) => (v ? { ...v, texto, fin, sinPermiso } : v))} panorama={panorama} />
+          <ChatPanel brain={memoria ? brain : null} onAjustes={() => ir('ajustes')} onCite={enfocarRecuerdo} onRecalled={(t) => setMemoriaUsada((s) => s + t)} seed={semilla} onBusy={setPensando} onHablar={hablar} onVivo={(texto, fin, sinPermiso) => setVivo((v) => (v ? { ...v, texto, fin, sinPermiso } : v))} panorama={panorama} />
         </div>)
       case 'taller': return <Taller tema={tema} tl={tl} foco={focoTaller} onIr={ir} />
       case 'memoria': return (
@@ -267,7 +271,7 @@ export function App() {
   const notas: Partial<Record<SeccionId, NotaLugar>> = {
     conversacion: preguntas ? { texto: `${preguntas} ${preguntas === 1 ? 'pregunta' : 'preguntas'} en esta sesión` } : undefined,
     taller: notaTaller(resumenTaller),
-    memoria: recuerdos !== null ? { texto: `${cifra(recuerdos)} recuerdos` } : { texto: 'sin cerebro', tono: 'peligro' },
+    memoria: recuerdos !== null ? { texto: `${cifra(recuerdos)} recuerdos` } : estadoMente === 'conectando' ? { texto: 'despertando' } : { texto: 'sin cerebro', tono: 'peligro' },
     tienda: { texto: 'Pieles y herramientas' },
     ajustes: callados.length ? { texto: `${callados.join(', ')} no ${callados.length === 1 ? 'responde' : 'responden'}` } : undefined,
   }
@@ -281,7 +285,7 @@ export function App() {
     <Escena id={piel.escena} atenuada={seccion !== 'inicio'} clave={`${tema}${JSON.stringify(piel.color)}`} />
     <AlPulsar pieza={piel.piezas.pulsar}>
     <div className="relative z-10 grid h-full grid-rows-[48px_minmax(0,1fr)]">
-      <BarraSuperior seccion={nombreDe(seccion)} estado={{ conectado: !!brain && recuerdos !== null, recuerdos, pensando }} tema={tema}
+      <BarraSuperior seccion={nombreDe(seccion)} estado={{ conectado: estadoMente === 'viva', recuerdos, pensando }} tema={tema}
         onTema={() => setTema((t) => (t === 'noche' ? 'dia' : 'noche'))} onBuscar={() => setPaleta(true)} paletaAbierta={paleta}
         taller={{ trabajando: tl.tareas.filter((t) => t.estado === 'trabajando' || t.estado === 'preparando').length, esperando: tl.tareas.filter((t) => t.estado === 'esperando').length }}
         onTaller={() => ir('taller')} />
@@ -291,10 +295,10 @@ export function App() {
             adornos={seccion === 'memoria'} hueco={hueco} />
         </div>
         {piel.portada === 'mando' ? (
-          <Mando presencia={piel.presencia} sitio={marco.portada} visible={seccion === 'inicio'} conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} tareas={tl.tareas}
+          <Mando presencia={piel.presencia} sitio={marco.portada} visible={seccion === 'inicio'} conectado={estadoMente === 'viva'} estadoMente={estadoMente} recuerdos={recuerdos} atlas={atlas} tareas={tl.tareas}
             memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar} onOir={oir} vivo={vivo} turnoVoz={turnoVoz}
-            onCerrarVivo={() => { callar(); setVivo(null) }} onConversacion={() => ir('conversacion')} onSeccion={ir} onIr={(d) => (d.lugar === 'taller' ? verTarea(d.id) : ir('memoria'))} />
-        ) : <Portada sitio={marco.portada} visible={seccion === 'inicio'} conectado={!!brain && recuerdos !== null} recuerdos={recuerdos} atlas={atlas} eventos={eventos}
+            onCerrarVivo={() => { callar(); setVivo(null) }} onConversacion={() => ir('conversacion')} onReintentar={reconectar} onSeccion={ir} onIr={(d) => (d.lugar === 'taller' ? verTarea(d.id) : ir('memoria'))} />
+        ) : <Portada sitio={marco.portada} visible={seccion === 'inicio'} conectado={estadoMente === 'viva'} estadoMente={estadoMente} recuerdos={recuerdos} atlas={atlas} eventos={eventos}
           memoria={memoria} onMemoria={setMemoria} onPreguntar={preguntar}
           tareas={tl.tareas} onIr={(d) => (d.lugar === 'taller' ? verTarea(d.id) : ir('memoria'))} />}
         {[...SECCIONES, AJUSTES].filter(({ id }) => id !== 'inicio' && visitadas.has(id)).map(({ id }) => (

@@ -30,6 +30,7 @@ import { useAgenda } from '../taller/Agenda'
 import { bridge } from '../lib/bridge'
 import { Constelacion } from './Constelacion'
 import type { SeccionId } from '../shell/secciones'
+import type { EstadoMente } from '../lib/bridge'
 import { estadoDelDia } from './mando-vivo'
 import { CalendarClock, Hammer, Plug } from 'lucide-react'
 import { usePiezas } from '../tinta/movimiento'
@@ -37,11 +38,11 @@ import { usePiezas } from '../tinta/movimiento'
 const saludo = (h = new Date().getHours()) => (h < 6 ? 'Buenas noches' : h < 13 ? 'Buenos días' : h < 20 ? 'Buenas tardes' : 'Buenas noches')
 const acento = () => getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#5fffd0'
 
-export function Mando({ onSeccion, presencia = 'orbe', sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, visible, conectado, recuerdos, atlas, tareas, memoria, onMemoria, onPreguntar, onOir, onIr, vivo = null, turnoVoz = 0, onCerrarVivo, onConversacion }: {
+export function Mando({ onSeccion, presencia = 'orbe', sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, visible, conectado, estadoMente = 'viva', recuerdos, atlas, tareas, memoria, onMemoria, onPreguntar, onOir, onIr, vivo = null, turnoVoz = 0, onCerrarVivo, onConversacion, onReintentar }: {
   presencia?: TipoPresencia; sitio?: { izquierda: number; abajo: number; cabecera: number }
-  visible: boolean; conectado: boolean; recuerdos: number | null; atlas: Atlas | null; tareas: TareaTaller[]
+  visible: boolean; conectado: boolean; estadoMente?: EstadoMente; recuerdos: number | null; atlas: Atlas | null; tareas: TareaTaller[]
   memoria: boolean; onMemoria(v: boolean): void; onPreguntar(q: string, voz?: boolean): void; onOir?(pcm: Float32Array): void
-  vivo?: { pregunta: string; texto: string; fin: boolean; sinPermiso?: { motor: string; id: string } } | null; turnoVoz?: number; onCerrarVivo?(): void; onConversacion?(): void; onIr(ir: NonNullable<Entrada['ir']>): void; onSeccion?(s: SeccionId): void
+  vivo?: { pregunta: string; texto: string; fin: boolean; sinPermiso?: { motor: string; id: string } } | null; turnoVoz?: number; onCerrarVivo?(): void; onConversacion?(): void; onReintentar?(): void; onIr(ir: NonNullable<Entrada['ir']>): void; onSeccion?(s: SeccionId): void
 }) {
   // manos libres: hablas, y al callarte un momento Esme te oye y responde (lib/voz.ts)
   const { escuchando, nivel, empezar, parar } = useEscucha((pcm) => onOir?.(pcm))
@@ -78,7 +79,7 @@ export function Mando({ onSeccion, presencia = 'orbe', sitio = { izquierda: 240,
   }, [tareas])
   const muelle = useMuelle({ stiffness: 300, damping: 30 })
   const temas = atlas?.clusters.length ?? 0
-  const frases = estadoDelDia({ listas, trabajando: activos.length, esperan: esperan.length, programados: agenda.filter((p) => p.activo).map((p) => ({ texto: p.texto, proxima: p.proxima })), temas, recuerdos: recuerdos ?? 0, ahora })
+  const frases = estadoDelDia({ listas, trabajando: activos.length, esperan: esperan.length, programados: agenda.filter((p) => p.activo).map((p) => ({ texto: p.texto, proxima: p.proxima })), temas, recuerdos: recuerdos ?? 0, ahora, mente: estadoMente })
   const pausado = useRef(false); pausado.current = !visible
 
   const hablar = () => { if (escuchando) { parar(false); enConversacion.current = false } else if (nivelVoz > 0 || vivo) { onCerrarVivo?.(); enConversacion.current = false } else { enConversacion.current = true; setEscuchando(true) } }
@@ -93,6 +94,24 @@ export function Mando({ onSeccion, presencia = 'orbe', sitio = { izquierda: 240,
         <div className="absolute inset-0 [mask-image:radial-gradient(closest-side,black_62%,transparent)]">
           <Constelacion atlas={atlas} color={color} activa={visible} className="absolute inset-0 size-full" />
         </div>
+        {/* sin mapa no hay lienzo en negro: se dice qué pasa y se ofrece el camino */}
+        {!atlas?.points.length && (
+          <div className="absolute inset-0 grid place-content-center justify-items-center gap-4 px-12 text-center">
+            <p className="m-0 max-w-[36ch] font-display text-[23px] leading-snug text-texto-2">
+              {conectado
+                ? 'Tu mente todavía no tiene mapa. Cuéntale algo y aquí se verá dónde se encuadre.'
+                : estadoMente === 'conectando'
+                  ? 'Despertando tu mente… es un motor en Python que vive en tu equipo y tarda un poco en abrir los ojos.'
+                  : 'No encuentro tu mente. Es un motor en Python que vive en tu equipo; si es la primera vez, hay que preparar el entorno.'}
+            </p>
+            {!conectado && estadoMente === 'apagado' && onReintentar && (
+              <button type="button" onClick={onReintentar}
+                className="inline-flex h-9 items-center gap-2 rounded-full border border-linea px-4 text-[13px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">
+                Buscarla otra vez
+              </button>
+            )}
+          </div>
+        )}
         <button type="button" onClick={() => onIr({ lugar: 'memoria' })} className="absolute right-8 bottom-2 text-[12.5px] text-texto-3 hover:text-texto">
           {(recuerdos ?? 0).toLocaleString('es-ES', { useGrouping: 'always' } as Intl.NumberFormatOptions)} recuerdos · {temas} temas · abrir tu mente
         </button>

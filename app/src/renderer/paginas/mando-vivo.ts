@@ -7,14 +7,20 @@ const num = (n: number) => n.toLocaleString('es-ES', { useGrouping: 'always' } a
 const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : varios).replace('#', num(n))
 const corto = (t: string, n = 48) => { const s = t.replace(/\s+/g, ' ').trim(); return s.length > n ? `${s.slice(0, n)}…` : s }
 
-export function estadoDelDia(o: { listas: number; trabajando: number; esperan: number; programados: { texto: string; proxima: number | null }[]; temas: number; recuerdos: number; ahora: number }): string[] {
+export function estadoDelDia(o: { listas: number; trabajando: number; esperan: number; programados: { texto: string; proxima: number | null }[]; temas: number; recuerdos: number; ahora: number; mente?: 'conectando' | 'viva' | 'apagado' }): string[] {
   const f: string[] = []
   if (o.esperan) f.push(plural(o.esperan, '# agente te espera.', '# agentes te esperan.'))
   if (o.trabajando) f.push(plural(o.trabajando, '# agente trabaja para ti ahora mismo.', '# agentes trabajan para ti ahora mismo.'))
   if (o.listas) f.push(plural(o.listas, '# tarea está lista para que la revises.', '# tareas están listas para que las revises.'))
   const proximo = o.programados.filter((p) => p.proxima !== null).sort((a, b) => a.proxima! - b.proxima!)[0]
   if (proximo) f.push(`${fraseCuando({ tipo: 'una', ms: proximo.proxima! }, o.ahora)} tu equipo hará «${corto(proximo.texto)}» solo.`)
-  if (!f.length) f.push(`Tu mente guarda ${plural(o.recuerdos, '# recuerdo', '# recuerdos')} en ${plural(o.temas, '# tema', '# temas')}.`)
+  if (!f.length) {
+    // sin mente no hay recuerdos: decirlo como si los hubiera (0 recuerdos) es mentir
+    if (o.mente === 'apagado') f.push('Tu mente está apagada: enciéndela y vuelve a acordarse de ti.')
+    else if (o.mente === 'conectando') f.push('Despertando tu mente…')
+    else if (!o.recuerdos) f.push('Tu mente está en blanco: todavía no recuerda nada de ti. Cuéntale algo y guárdalo.')
+    else f.push(`Tu mente guarda ${plural(o.recuerdos, '# recuerdo', '# recuerdos')} en ${plural(o.temas, '# tema', '# temas')}.`)
+  }
   return f.slice(0, 3)
 }
 

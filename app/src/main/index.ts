@@ -39,7 +39,7 @@ const ICONO = join(__dirname, '../../resources/esme.png')
 // tu mente siempre en el mismo sitio (127.0.0.1:47321) y con su token fijo en el llavero: así tus otras IAs la encuentran
 const MENTE_PUERTO = 47321
 const tokenMente = () => { let t = keys.get('mente'); if (!t) { t = randomBytes(32).toString('hex'); keys.set('mente', t) } return t }
-const brain = new BrainProcess({ python: RUTAS.python, extraPython: RUTAS.extraPython, puerto: MENTE_PUERTO, token: tokenMente }, RUTAS.mente, (info: BrainInfo | null) => win?.webContents.send('brain:changed', info ? { url: info.url } : null))
+const brain = new BrainProcess({ python: RUTAS.python, extraPython: RUTAS.extraPython, puerto: MENTE_PUERTO, token: tokenMente }, RUTAS.mente, (_info: BrainInfo | null) => win?.webContents.send('brain:changed', { url: brain.info?.url ?? null, estado: brain.estado }))
 
 const MAC = process.platform === 'darwin'
 // Una sola Esme: si ya está abierta (por ejemplo, al pulsar otra vez el icono del escritorio), la abierta se trae al frente
@@ -135,8 +135,8 @@ function registerIpc() {
     try { if (conectada) conectarMente(a, homedir(), configMcp(brain.info!).url, tokenMente()); else desconectarMente(a, homedir()); return { ok: true } }
     catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) } }
   })
-  // el renderer recibe que la mente está viva, no su llave: la llave se queda en este proceso
-  ipcMain.handle('brain:info', () => (brain.info ? { url: brain.info.url } : null))
+  // el renderer recibe en qué está la mente, no su llave: la llave se queda en este proceso
+  ipcMain.handle('brain:info', () => ({ url: brain.info?.url ?? null, estado: brain.estado }))
   ipcMain.handle('ajustes:alCerrar', () => leerPreferencia(ficheroAjustes()))
   ipcMain.handle('ajustes:ponerAlCerrar', (_e, v: unknown) => {
     if (v !== 'auto' && v !== 'siempre' && v !== 'nunca') return { ok: false, error: 'Valor no válido.' }

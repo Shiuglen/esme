@@ -19,6 +19,13 @@ describe('lo que cuenta la portada de tu mundo', () => {
     expect(estadoDelDia(base)).toEqual(['Tu mente guarda 2.346 recuerdos en 17 temas.'])
     expect(estadoDelDia({ ...base, esperan: 2, trabajando: 1, listas: 3, programados: [{ texto: 'y', proxima: AHORA + 3600_000 }] })).toHaveLength(3)
   })
+  it('sin mente no dice que tiene cero recuerdos: eso es mentir', () => {
+    expect(estadoDelDia({ ...base, recuerdos: 0, temas: 0, mente: 'apagado' })).toEqual(['Tu mente está apagada: enciéndela y vuelve a acordarse de ti.'])
+    expect(estadoDelDia({ ...base, recuerdos: 0, temas: 0, mente: 'conectando' })).toEqual(['Despertando tu mente…'])
+  })
+  it('con la mente en blanco dice que está en blanco (y no que guarda cero)', () => {
+    expect(estadoDelDia({ ...base, recuerdos: 0, temas: 0, mente: 'viva' })).toEqual(['Tu mente está en blanco: todavía no recuerda nada de ti. Cuéntale algo y guárdalo.'])
+  })
 })
 
 describe('los temas de la constelación', () => {

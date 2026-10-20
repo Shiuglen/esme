@@ -38,8 +38,12 @@ export type VersionAgente = { id: string; instalada: string | null; ultima: stri
 export type MetodoEntrada = { id: string; nombre: string; descripcion: string; terminal: boolean }
 
 // Puente: la misma interfaz funciona dentro de Electron (todo) y en el navegador (modo web, para verla y probarla).
-// La mente está o no está: la ventana no necesita su url ni su token (eso vive en el proceso principal).
-export type BrainInfo = { url: string }
+// En qué está la mente. La ventana no necesita su url con token ni su llave: eso vive en el proceso principal.
+// - conectando: el proceso de Python está despertando (todavía no ha anunciado) — no es un fallo
+// - viva: la mente responde
+// - apagado: no hay cerebro; esto sí es un fallo y hay que decirlo
+export type EstadoMente = 'conectando' | 'viva' | 'apagado'
+export type BrainInfo = { url: string | null; estado: EstadoMente }
 export type ProviderView = { id: string; label: string; local: boolean; needsKey: boolean; hasKey: boolean; retainsData: boolean | 'depends'; defaultModel?: string }
 export type AgentView = { id: string; label: string; installed: boolean; memory: boolean; note?: string }
 export type ChatMsg = { role: 'user' | 'assistant'; content: string }
@@ -62,7 +66,7 @@ export type InstalarMotor = { ok: true; nombre: string } | { ok: false; error: s
 export type OrigenCatalogo = { origen: 'red' | 'cache' | 'semilla'; fecha: number }
 
 type ElectronApi = {
-  brain: { info(): Promise<BrainInfo | null>; onChange(fn: (i: BrainInfo | null) => void): () => void }
+  brain: { info(): Promise<BrainInfo>; onChange(fn: (i: BrainInfo) => void): () => void }
   mente: {
     agentes(): Promise<AgenteMente[]>; conectar(id: string, si: boolean): Promise<ResultadoTaller>
     salud(): Promise<ResultadoMente<{ ok: boolean; memories: number }>>
@@ -194,12 +198,12 @@ export const bridge = {
   mode: (): 'electron' | 'web' => (isElectron() ? 'electron' : 'web'),
   ventana: () => (isElectron() ? window.daimon!.ventana : null),
 
-  async brainInfo(): Promise<BrainInfo | null> {
+  async brainInfo(): Promise<BrainInfo> {
     if (isElectron()) return window.daimon!.brain.info()
     const url = import.meta.env.VITE_BRAIN_URL as string | undefined
-    return url ? { url } : null
+    return url ? { url, estado: 'viva' } : { url: null, estado: 'apagado' }
   },
-  onBrainChange(fn: (i: BrainInfo | null) => void): () => void {
+  onBrainChange(fn: (i: BrainInfo) => void): () => void {
     return isElectron() ? window.daimon!.brain.onChange(fn) : () => {}
   },
 

@@ -2,6 +2,7 @@
 // Arriba a la izquierda, el cartucho del mapa: la fecha, el saludo en la cursiva de los rótulos, tu mente contada en
 // frases y lo último que pasó. Abajo, en el centro, la pregunta. El resto de la pantalla es tu mente.
 import { AnimatePresence, motion } from 'motion/react'
+import type { EstadoMente } from '../lib/bridge'
 import { useMemo, useState } from 'react'
 import type { TareaTaller } from '../lib/bridge'
 import type { Atlas } from '../lib/brain'
@@ -20,8 +21,8 @@ const entrada = (i: number) => ({ initial: { opacity: 0, y: 8 }, animate: { opac
 // el texto se lee sobre la tinta del mapa gracias a un halo del color del papel, como los rótulos de un atlas
 const HALO = '[text-shadow:0_0_2px_var(--papel),0_0_10px_var(--papel),0_0_22px_var(--papel)]'
 
-export function Portada({ sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, visible, conectado, recuerdos, atlas, eventos, memoria, onMemoria, onPreguntar, tareas = [], onIr }: {
-  sitio?: { izquierda: number; abajo: number; cabecera: number }; visible: boolean; conectado: boolean; recuerdos: number | null; atlas: Atlas | null; eventos: EventoMente[]
+export function Portada({ sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, visible, conectado, estadoMente = 'viva', recuerdos, atlas, eventos, memoria, onMemoria, onPreguntar, tareas = [], onIr }: {
+  sitio?: { izquierda: number; abajo: number; cabecera: number }; visible: boolean; conectado: boolean; estadoMente?: EstadoMente; recuerdos: number | null; atlas: Atlas | null; eventos: EventoMente[]
   memoria: boolean; onMemoria(v: boolean): void; onPreguntar(q: string): void
   tareas?: TareaTaller[]; onIr?(ir: NonNullable<Entrada['ir']>): void
 }) {
@@ -30,11 +31,11 @@ export function Portada({ sitio = { izquierda: 240, abajo: 24, cabecera: 28 }, v
     return { temas: atlas?.clusters.length ?? 0, grafito: pts.filter((p) => esGrafito(p.trust)).length, pts: pts.length }
   }, [atlas])
   const historia = useMemo(() => {
-    if (!conectado) return 'No encuentro tu cerebro. Arráncalo y vuelvo a conectar sola.'
+    if (!conectado) return estadoMente === 'conectando' ? 'Despertando tu mente…' : 'No encuentro tu cerebro. Arráncalo y vuelvo a conectar sola.'
     const pts = atlas?.points ?? []
     const ultimo = pts.reduce((m, p) => Math.max(m, p.ts ? Date.parse(p.ts) || 0 : 0), 0) || undefined
     return historiaMente({ recuerdos: recuerdos ?? pts.length, temas: atlas?.clusters.length ?? 0, ultimo, grafito: pts.filter((p) => esGrafito(p.trust)).length }, Date.now())
-  }, [conectado, atlas, recuerdos])
+  }, [conectado, estadoMente, atlas, recuerdos])
   // cuentavitas: cada vitral es una puerta que le pregunta directamente a tu mente
   const vitrales: Array<{ texto: string; pregunta: string | null }> = conectado ? [
     { texto: `${contados.temas} temas vivos`, pregunta: 'Muéstrame los temas de mi mente con sus recuerdos principales' },

@@ -2,7 +2,7 @@
 // busca desde la columna de la izquierda. Esme escribe como texto de lectura (sin burbujas); tus mensajes van en cristal.
 // Ves qué recordó (y lo previsualizas al pasar por encima), le enseñas si sirvió y puedes oír cualquier respuesta.
 import { AnimatePresence, motion } from 'motion/react'
-import { Check, ChevronDown, Copy, MessageSquarePlus, Search, Trash2, Volume2 } from 'lucide-react'
+import { Check, ChevronDown, Copy, MessageSquarePlus, Plug, Search, Trash2, Volume2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { BrainClient, Memory } from '../lib/brain'
 import { Markdown } from '../chat/Markdown'
@@ -16,15 +16,16 @@ import { haceCuanto, recorta } from '../paginas/diario'
 import { useMuelle } from '../tinta/movimiento'
 import { sonar } from '../tinta/sonido'
 import { explicarFallo, modeloInicial, ordenMotores } from './motor'
+import { Pared } from '../components/Pared'
 import { PuntoVista } from '../marca/PuntoVista'
 import { nombreDeModelo } from '../lib/modelos'
 
 type Turn = TurnoHilo
 
-export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string): void; onRecalled(tokens: number): void; seed?: { q: string; n: number; voz?: boolean }; onBusy?(b: boolean): void; onHablar?(texto: string): void; onVivo?(texto: string, fin: boolean, sinPermiso?: { motor: string; id: string }): void; panorama?: string }) {
+export function ChatPanel(props: { brain: BrainClient | null; onAjustes?(): void; onCite(id: string): void; onRecalled(tokens: number): void; seed?: { q: string; n: number; voz?: boolean }; onBusy?(b: boolean): void; onHablar?(texto: string): void; onVivo?(texto: string, fin: boolean, sinPermiso?: { motor: string; id: string }): void; panorama?: string }) {
   const [providers, setProviders] = useState<ProviderView[]>([])
   const [provider, setProvider] = useState('')   // se elige el primero que responde (panels/motor.ts)
-  const [aviso, setAviso] = useState<string | null>(null)
+  const [aviso, setAviso] = useState<{ texto: string; accion?: string; onAccion?: () => void } | null>(null)
   const [models, setModels] = useState<string[]>([])
   const [model, setModel] = useState('')
   const [memoryOn, setMemoryOn] = useState(true)
@@ -76,7 +77,8 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
       for (const p of ordenMotores(ps, ultimo)) {
         try { if ((await bridge.models(p.id)).length) { setProvider(p.id); return } } catch { /* no responde: el siguiente */ }
       }
-      setProvider(ps[0]?.id ?? ''); setAviso('Ningún motor responde ahora. Conecta uno en Ajustes.')
+      setProvider(ps[0]?.id ?? '')
+      setAviso({ texto: 'Ningún motor responde ahora. Sin motor no hay conversación: puedes hablar con uno de tus agentes o conectar un modelo.', accion: 'Conectar un motor', onAccion: () => props.onAjustes?.() })
     })
   }, [])
   useEffect(() => {
@@ -85,12 +87,12 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
     const nombre = providers.find((p) => p.id === provider)?.label ?? provider
     bridge.models(provider).then((m) => {
       setModels(m)
-      if (!m.length) { setAviso(`${nombre} no tiene modelos disponibles. Elige otro motor arriba.`); return }
+      if (!m.length) { setAviso({ texto: `${nombre} no tiene modelos disponibles. Elige otro motor arriba.` }); return }
       const def = providers.find((p) => p.id === provider)?.defaultModel
       let recordado: string | null = null
       try { recordado = localStorage.getItem(`esme:modelo:${provider}`) } catch { /* sin almacenamiento */ }
       setModel(modeloInicial(m, def, recordado))
-    }).catch((e) => setAviso(explicarFallo(String(e?.message ?? e), nombre)))
+    }).catch((e) => setAviso({ texto: explicarFallo(String(e?.message ?? e), nombre) }))
   }, [provider, providers])
   const elegirMotor = (id: string) => { setProvider(id); try { localStorage.setItem('esme:proveedor', id) } catch { /* sin almacenamiento */ } }
   useEffect(() => { props.onBusy?.(busy) }, [busy])
@@ -227,7 +229,9 @@ export function ChatPanel(props: { brain: BrainClient | null; onCite(id: string)
             <ChevronDown className="pointer-events-none absolute top-2 right-2 size-4 text-texto-3" strokeWidth={1.5} aria-hidden />
           </label>
         </header>
-        {aviso && <p role="status" className="m-0 pb-1 text-[13px] text-atencion">{aviso}</p>}
+        {aviso && (aviso.onAccion
+          ? <Pared titulo={aviso.texto} accion={aviso.accion} onAccion={aviso.onAccion} icono={<Plug className="size-4" />} tono="aviso" className="mb-3" />
+          : <p role="status" className="m-0 pb-1 text-[13px] text-atencion">{aviso.texto}</p>)}
 
         <div ref={log} className="min-h-0 flex-1 overflow-y-auto" aria-live="polite">
           <div className="mx-auto grid w-full max-w-[760px] gap-7 px-2 py-6">

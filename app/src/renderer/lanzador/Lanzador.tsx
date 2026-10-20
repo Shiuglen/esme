@@ -7,7 +7,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Markdown } from '../chat/Markdown'
 import { aplicarPaso, type PasoVisto } from '../chat/pasos'
 import { Pasos, PidePermiso } from '../chat/PasosVivos'
-import { bridge, type PermisoPedido } from '../lib/bridge'
+import { bridge, type ProviderView } from '../lib/bridge'
+import { explicarFallo, modeloInicial, ordenMotores } from '../panels/motor'
+import type { PermisoPedido } from '../lib/bridge'
 import { BrainClient, type Memory } from '../lib/brain'
 import { cn } from '../lib/cn'
 import { haceCuanto } from '../paginas/diario'
@@ -46,9 +48,16 @@ export function Lanzador() {
     return () => clearTimeout(t)
   }, [texto, modo])
 
-  const preguntar = (q: string) => {
+  const preguntar = async (q: string) => {
     flujo.current?.stop()
-    const proveedor = leer('esme:proveedor') ?? 'openrouter', modelo = leer(`esme:modelo:${proveedor}`) ?? ''
+    // el mismo motor que elegiría el chat: el último que usaste si responde, si no el primero vivo (locales antes que API)
+    const ps = await bridge.providers().catch(() => [] as ProviderView[])
+    let proveedor = leer('esme:proveedor') ?? '', modelo = ''
+    for (const p of ordenMotores(ps, proveedor || null)) {
+      const ms = await bridge.models(p.id).catch(() => [] as string[])
+      if (ms.length) { proveedor = p.id; modelo = modeloInicial(ms, p.defaultModel, leer(`esme:modelo:${p.id}`)); break }
+    }
+    if (!proveedor) { setRespuesta({ pregunta: q, texto: '', pasos: [], fin: true, error: 'Ningún motor responde ahora. Conecta uno en Ajustes.' }); return }
     setRespuesta({ pregunta: q, texto: '', pasos: [], fin: false }); setTexto('')
     const s = bridge.chat(proveedor, modelo, [{ role: 'user', content: q }], null)
     flujo.current = s
@@ -56,7 +65,7 @@ export function Lanzador() {
     s.onPaso((p) => setRespuesta((r) => r && { ...r, pasos: aplicarPaso(r.pasos, p) }))
     s.onPermiso((p) => setPidiendo({ ...p, responder: (x) => { s.responder(p.id, x); setPidiendo(null) } }))
     s.onDone(() => { setRespuesta((r) => r && { ...r, fin: true }); setPidiendo(null) })
-    s.onError((m) => { setRespuesta((r) => r && { ...r, fin: true, error: m }); setPidiendo(null) })
+    s.onError((m) => { setRespuesta((r) => r && { ...r, fin: true, error: explicarFallo(m, ps.find((p) => p.id === proveedor)?.label ?? proveedor) }); setPidiendo(null) })
   }
   const encargar = async (t: string) => {
     setAviso('Encargando…')
@@ -106,7 +115,14 @@ export function Lanzador() {
                     <p className="m-0 line-clamp-2 text-[13.5px] leading-5 text-texto-2">{sinMarkdown(m.text)}</p>
                   </li>
                 ))}
-                {!recuerdos.length && <li className="text-[13px] text-texto-3">{texto.trim() ? 'Nada con ese significado.' : 'Escribe y Esme busca por significado, no por palabras.'}</li>}
+                {!recuerdos.length && (
+                  <li className="grid gap-2 py-3">
+                    <p className="m-0 text-[13px] text-texto-3">
+                      {!cerebro.current ? 'Tu mente está apagada: no puedo buscar en lo que aún no recuerda.' : texto.trim() ? 'Nada con ese significado.' : 'Escribe y Esme busca por significado, no por palabras.'}
+                    </p>
+                    {!cerebro.current && <p className="m-0 text-[12px] text-texto-3">Enciéndela en Esme y vuelve a buscar.</p>}
+                  </li>
+                )}
               </motion.ol>
             ) : respuesta ? (
               <motion.div key="respuesta" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="grid gap-3">

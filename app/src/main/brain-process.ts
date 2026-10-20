@@ -20,6 +20,12 @@ export class BrainProcess {
 
   constructor(private readonly cerebro: Cerebro, private readonly home: string, private readonly onChange: (i: BrainInfo | null) => void) {}
 
+  /** En qué está la mente: despertando (el proceso de Python aún no ha anunciado), viva o apagada (no hay proceso). */
+  get estado(): 'conectando' | 'viva' | 'apagado' {
+    if (this.info) return 'viva'
+    return this.child ? 'conectando' : 'apagado'
+  }
+
   start(): Promise<BrainInfo> {
     return new Promise((resolve, reject) => {
       const { python, extraPython } = this.cerebro

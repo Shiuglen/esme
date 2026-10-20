@@ -1,12 +1,14 @@
 // Memoria: buscar por significado, ver el DNI de cada recuerdo, olvidar con certificado y absorber fuentes nuevas. Sin
 // búsqueda, lo último que aprendió tu mente (nunca una caja vacía). Olvidar se confirma en la propia ficha, en dos pasos,
 // sin ventanas del sistema que congelen la app.
-import { Check, Eye, Search, Trash2, Upload } from 'lucide-react'
+import { Brain, Check, Eye, Search, Trash2, Upload } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type { BrainClient, Certificate, Memory } from '../lib/brain'
 import { cn } from '../lib/cn'
 import { haceCuanto } from '../paginas/diario'
 import { sinMarkdown } from '../lib/texto-plano'
+import { Pared } from '../components/Pared'
+import { explicarFallo } from './motor'
 
 const origen = (s: string) => s.split('/').pop() || s
 
@@ -37,12 +39,16 @@ export function MemoryPanel(props: { brain: BrainClient | null; focusId: string 
     if (!props.brain || !path.trim()) return
     setMsg('Absorbiendo…')
     try { const r = await props.brain.ingest([path.trim()]); setMsg(`${r.added} recuerdos nuevos · ${r.memories.toLocaleString('es-ES')} en total`); setPath(''); props.onChanged() }
-    catch (e) { setMsg(String((e as Error).message)) }
+    catch (e) { setMsg(explicarFallo(String((e as Error)?.message ?? e), 'tu mente')) }
   }
   const ahora = Date.now()
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {!props.brain && (
+        <Pared titulo="Tu mente está apagada" texto="No encuentro el motor en Python que guarda tus recuerdos. Enciéndelo y todo lo que tienes volverá a estar aquí."
+          icono={<Brain className="size-4" />} className="m-3" />
+      )}
       <label className="m-3 flex h-10 items-center gap-2 rounded-full border border-linea bg-s1/60 px-3.5 focus-within:border-foco">
         <Search className="size-4 shrink-0 text-texto-3" strokeWidth={1.75} />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Busca por significado: «lo que decidí del Taller»…" aria-label="Buscar en tu memoria"
