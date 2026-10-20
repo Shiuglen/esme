@@ -47,7 +47,10 @@ class Home:
         self.thalamus = Thalamus(self.hippo, BM25(self.hippo.events()),
                                  mmr_lambda=self.config.get("mmr_lambda", 0.7),
                                  max_drop=self.config.get("max_drop"), min_dense=self.config.get("min_dense"))
-        if (self.path / "thalamus.npy").exists():
+        pesos = self.path / "pesos.npz"
+        if pesos.exists():
+            self.thalamus.load(pesos)
+        elif (self.path / "thalamus.npy").exists():
             self.thalamus.load(self.path / "thalamus.npy")
 
     def add(self, events: list[Event]) -> int:
@@ -63,4 +66,4 @@ class Home:
         return n
 
     def save_thalamus(self) -> None:
-        self.thalamus.save(self.path / "thalamus.npy")
+        self.thalamus.save(self.path / "pesos.npz")

@@ -134,7 +134,7 @@ Por pasos, cada uno impecable antes del siguiente:
   - **Versiones**: Linux (AppImage/.deb), Windows (NSIS) y macOS (dmg, Apple Silicon) compilan en GitHub Actions con el cerebro dentro (Python 3.13 autónomo verificado por SHA-256). Un test impide nombres de fichero que solo difieren en mayúsculas.
   - **Siguiente**: MCP Apps (herramientas con interfaz propia: el «editor tipo After Effects» de la Tienda), el Sueño (aprender de las tareas de noche), modos visibles, Parlamento, firma de las versiones y actualizaciones automáticas.
 Hecho ya el 17-18 oct: «Mando» (portada centro de mando con esfera viva), 23 escenas WebGL, voz manos libres 100 % local (Whisper + Piper) con subtítulos y conversación continua, panorama de la mente para responder con sustancia, licencias e invitaciones, copia privada en GitHub (Shiuglen/esme).
-Límite que no cambia: nada de ingeniería inversa de productos ajenos para copiarlos (riesgo legal y Esme debe ser propia); las ideas sí se toman de donde sea.
+En pie desde el 19-oct, por decisión del creador: **la ingeniería inversa está permitida** (tus aparatos, software que inspeccionas con autorización, interoperabilidad, protocolos y mercado para la Tienda y las Manos; REA entra por aquí). Lo único que no se hace: malware, robo de credenciales, crack de DRM, tocar la vida o los datos de terceros. Esme se escribe sola, no se copia: las ideas se toman de donde sea.
 
 ## 3. Estado real (12-oct)
 **Leyenda:** ✅ hecho y verificado · 🟡 a medias · ❌ pendiente · ⚠️ roto.

@@ -111,9 +111,10 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
     @mcp.custom_route("/recall", methods=["POST"])
     async def recall(req: Request):
         b = await req.json()
-        text, used, ids = await locked(home.thalamus.compose)(b["query"], int(b.get("budget", 1500)))
+        motor = b.get("motor")
+        text, used, ids = await locked(home.thalamus.compose)(b["query"], int(b.get("budget", 1500)), motor=motor)
         ev = {"type": "recall", "who": b.get("who", "app"), "query": b["query"], "ids": ids, "tokens": used,
-              "abstained": not ids}
+              "abstained": not ids, "motor": motor}
         bus.publish(ev)
         return JSONResponse({"context": text, "tokens": used, "ids": ids, "abstained": not ids})
 
@@ -129,7 +130,8 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
     @mcp.custom_route("/feedback", methods=["POST"])
     async def feedback(req: Request):
         b = await req.json()
-        return JSONResponse({"result": await locked(feedback_tool)(home, b["ids"], bool(b["useful"]), b["query"])})
+        return JSONResponse({"result": await locked(feedback_tool)(home, b["ids"], bool(b["useful"]), b["query"],
+                                                                 motor=b.get("motor"))})
 
     @mcp.custom_route("/memories", methods=["GET"])
     async def memories(req: Request):
@@ -159,6 +161,32 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
         added = await locked(lambda: home.ingest(collect([Path(p).expanduser() for p in b["paths"]])))()
         bus.publish({"type": "ingest", "added": added})
         return JSONResponse({"added": added, "memories": len(home.hippo)})
+
+    @mcp.custom_route("/ingest-x", methods=["POST"])
+    async def ingest_x(req: Request):
+        """La mente absorbe tu X: una cosecha de FYP, guardados o búsquedas entra como recuerdos."""
+        from .x import eventos_de_x
+        b = await req.json()
+        cosecha = b.get("cosecha")
+        if isinstance(cosecha, str):
+            cosecha = json.loads(Path(cosecha).read_text(encoding="utf-8"))
+        eventos = eventos_de_x(cosecha or {})
+        added = await locked(lambda: home.ingest(eventos))()
+        bus.publish({"type": "ingest-x", "added": added})
+        return JSONResponse({"added": added, "memories": len(home.hippo)})
+
+    @mcp.custom_route("/sueño", methods=["POST"])
+    async def sueno(req: Request):
+        """La mente duerme: destila personas y escenas de lo vivido y lo guarda como tarjetas."""
+        from .suenio import dormir
+        informe = await locked(dormir)(home)
+        bus.publish({"type": "sueño", **informe})
+        return JSONResponse(informe)
+
+    @mcp.custom_route("/orquesta", methods=["GET"])
+    async def orquesta(_: Request):
+        """Qué motor gana en qué: las señales que ha aprendido la mente de cada IA."""
+        return JSONResponse(home.thalamus.estadisticas())
 
     @mcp.custom_route("/atlas", methods=["GET"])
     async def atlas(_: Request):

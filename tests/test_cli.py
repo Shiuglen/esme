@@ -3,9 +3,41 @@ from pathlib import Path
 import pytest
 
 from daimon.cli import ingest_cmd, main
+from daimon.ingest import Event
 from tests.fakes import fake_encoder
 
 FIX = Path(__file__).parent / "fixtures"
+
+
+def test_sueño_cli(tmp_path):
+    import json
+    home = tmp_path / "mente"
+    home.mkdir()
+    (home / "config.json").write_text('{"encoder": "hash:32"}', encoding="utf-8")
+    from daimon.home import Home
+    h = Home(home)
+    h.add([Event("id1", "Sakai revisa la Prueba 0 con Laya", "t", "note", "2026-10-01T10:00:00Z", 0.8),
+           Event("id2", "Sakai revisa la Prueba 0 con Laya otra vez", "t", "user_msg", "2026-10-02T10:00:00Z", 0.8),
+           Event("id3", "Sakai revisa la Prueba 0 con Laya bien", "t", "note", "2026-10-03T10:00:00Z", 0.8)])
+    import io, contextlib
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        main(["sueño", "--home", str(home)])
+    salida = json.loads(buf.getvalue().split("sueño: ", 1)[1])
+    assert salida["personas"] >= 1 and salida["energia"] > 0
+
+
+def test_ingest_x_cli(tmp_path):
+    import json, io, contextlib
+    homepage = tmp_path / "mente"
+    cosecha = tmp_path / "x.json"
+    cosecha.write_text(json.dumps({"tabs": [{"url": "https://x.com/i/bookmarks", "posts": [
+        {"author": "Ana", "text": "memoria de agentes", "url": "https://x.com/a/status/1", "date": "2026-10-19T10:00:00Z"},
+    ]}]}), encoding="utf-8")
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        main(["ingest-x", "--home", str(homepage), str(cosecha)])
+    assert "recuerdos nuevos de X: 1" in buf.getvalue()
 
 
 def test_ingest_cmd(tmp_path):

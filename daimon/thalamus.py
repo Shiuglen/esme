@@ -59,6 +59,24 @@ class Thalamus:
         self.min_dense = min_dense
         self._last: dict[str, dict[str, np.ndarray]] = {}
         self._rng = np.random.default_rng(0)
+        # memoria por motor: cada IA tiene su forma de querer el contexto
+        self.pesos_motor: dict[str, np.ndarray] = {}      # motor -> pesos propios (nacen de los globales)
+        self.senales: dict[str, list[float]] = {}          # motor -> recompensas vistas
+
+    def pesos(self, motor: str | None = None) -> np.ndarray:
+        """Los pesos que tocan a este motor: los suyos si ya aprendió, los globales si no."""
+        if motor and motor in self.pesos_motor:
+            return self.pesos_motor[motor]
+        return self.w
+
+    def estadisticas(self) -> dict:
+        """Qué motor gana y con qué señal: la orquesta también se mide."""
+        out = {}
+        for motor, vals in self.senales.items():
+            out[motor] = {"señales": len(vals), "media": float(np.mean(vals)) if vals else 0.0,
+                          "aciertos": int(sum(1 for v in vals if v >= 0.5)),
+                          "peso_propio": motor in self.pesos_motor}
+        return out
 
     def candidates(self, query: str, k: int | None = None) -> list[tuple[Event, np.ndarray]]:
         k = k or self.k
@@ -80,12 +98,14 @@ class Thalamus:
         return [(e, features(query, e, d, raw.get(i, 0.0) / top, hop, now, raw.get(i, 0.0), drank[i]))
                 for i, (e, d, hop) in found.items()]
 
-    def rank(self, query: str) -> list[tuple[Event, float, np.ndarray]]:
+    def rank(self, query: str, motor: str | None = None) -> list[tuple[Event, float, np.ndarray]]:
         cands = self.candidates(query)
-        return sorted(((e, float(x @ self.w), x) for e, x in cands), key=lambda t: -t[1])
+        w = self.pesos(motor)
+        return sorted(((e, float(x @ w), x) for e, x in cands), key=lambda t: -t[1])
 
-    def compose(self, query: str, budget: int, explore: bool = False) -> tuple[str, int, list[str]]:
-        ranked = self.rank(query)
+    def compose(self, query: str, budget: int, explore: bool = False,
+                motor: str | None = None) -> tuple[str, int, list[str]]:
+        ranked = self.rank(query, motor)
         if not ranked:
             return "", 0, []
         if self.min_dense is not None:
@@ -140,24 +160,67 @@ class Thalamus:
             self.w -= lr * grad
         return loss
 
-    def feedback(self, ids: list[str], reward: float, query: str, lr: float = 0.05, k_alt: int = 10) -> bool:
+    def _mover(self, paso: np.ndarray, motor: str | None) -> None:
+        """Aplica un paso a los pesos globales y a los del motor (que nacen de los globales)."""
+        self.w += paso
+        if motor:
+            propio = self.pesos_motor.setdefault(motor, self.w.copy())
+            propio += paso
+
+    def feedback(self, ids: list[str], reward: float, query: str, lr: float = 0.05, k_alt: int = 10,
+                 motor: str | None = None) -> bool:
         """Bandido por pares: lo útil sube frente a las alternativas; lo inútil baja frente a ellas.
 
-        Devuelve False (sin efecto) si esa consulta no se compuso en esta sesión."""
+        Sin alternativa con la que comparar (un recall que trae un solo recuerdo), se refuerza
+        o se penaliza el rasgo del recuerdo marcado: así la señal nunca se pierde.
+        Con motor, cada IA aprende su propia forma de querer el contexto: los pesos del motor
+        nacen de los globales y se separan a partir de ahí. Devuelve False (sin efecto) si esa
+        consulta no se compuso en esta sesión."""
         feats = self._last.get(query)
         marked = [i for i in ids if feats and i in feats]
         if not marked:
             return False
-        others = sorted((i for i in feats if i not in ids), key=lambda i: -(feats[i] @ self.w))[:k_alt]
+        w = self.pesos(motor)
+        others = sorted((i for i in feats if i not in ids), key=lambda i: -(feats[i] @ w))[:k_alt]
         pos, neg = (marked, others) if reward >= 0.5 else (others, marked)
+        if not neg:                                  # solo hay un camino: refuerza o penaliza el rasgo
+            for p in marked:
+                self._mover(lr * feats[p] if reward >= 0.5 else -lr * feats[p], motor)
+            if motor:
+                self.senales.setdefault(motor, []).append(reward)
+            return True
         for p in pos:
             for n in neg:
                 d = feats[p] - feats[n]
-                self.w += lr * _sigmoid(-(d @ self.w)) * d
+                self._mover(lr * _sigmoid(-(d @ w)) * d, motor)
+        if motor:
+            self.senales.setdefault(motor, []).append(reward)
         return True
 
     def save(self, path: Path) -> None:
-        np.save(path, self.w)
+        """Guarda los pesos globales, los de cada motor y sus señales (un solo fichero .npz)."""
+        arrays: dict[str, np.ndarray] = {"global": self.w}
+        for motor, w in self.pesos_motor.items():
+            arrays[f"motor::{motor}"] = w
+        for motor, vals in self.senales.items():
+            arrays[f"senal::{motor}"] = np.asarray(vals, dtype=np.float64)
+        with open(path, "wb") as fh:          # nombre exacto: np.savez añadiría .npz
+            np.savez(fh, **arrays)
 
     def load(self, path: Path) -> None:
-        self.w = np.load(path).astype(np.float64)
+        """Lee el formato nuevo (npz) y, si solo hay el viejo (npy), los pesos globales."""
+        if not path.exists():
+            return
+        with open(path, "rb") as fh:
+            carga = np.load(fh, allow_pickle=False)
+            if isinstance(carga, np.lib.npyio.NpzFile):
+                with carga as z:
+                    if "global" in z:
+                        self.w = z["global"].astype(np.float64)
+                    for key in z.files:
+                        if key.startswith("motor::"):
+                            self.pesos_motor[key[7:]] = z[key].astype(np.float64)
+                        elif key.startswith("senal::"):
+                            self.senales[key[7:]] = [float(v) for v in z[key]]
+                return
+            self.w = carga.astype(np.float64)

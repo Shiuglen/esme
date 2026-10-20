@@ -77,6 +77,11 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("bench-mine", help="mina preguntas reales de las sesiones")
     p.add_argument("--out", default="data/bench/minadas.jsonl")
     p.add_argument("sessions", nargs="+")
+    p = sub.add_parser("sueño", help="consolida la mente: destila personas y escenas de lo que ya víviste")
+    p.add_argument("--home", default="data/mente_v2")
+    p = sub.add_parser("ingest-x", help="absorbe tu X: una cosecha json de FYP, bookmarks o búsquedas")
+    p.add_argument("--home", default="data/mente_v2")
+    p.add_argument("cosecha")
     a = ap.parse_args(argv)
 
     if a.cmd == "ingest":
@@ -87,6 +92,16 @@ def main(argv: list[str] | None = None) -> None:
         build_server(Home(Path(a.home))).run("stdio")
     elif a.cmd == "serve":
         serve(Path(a.home), a.port, a.token)
+    elif a.cmd == "sueño":
+        from .home import Home
+        from .suenio import dormir
+        print(f"sueño: {json.dumps(dormir(Home(Path(a.home))), ensure_ascii=False)}")
+    elif a.cmd == "ingest-x":
+        from .home import Home
+        from .x import eventos_de_x
+        cosecha = json.loads(Path(a.cosecha).read_text(encoding="utf-8"))
+        n = Home(Path(a.home)).ingest(eventos_de_x(cosecha))
+        print(f"recuerdos nuevos de X: {n}")
     elif a.cmd == "bench-mine":
         from .bench.items import mine_user_questions
         cands = mine_user_questions([Path(s) for s in a.sessions])

@@ -14,8 +14,8 @@ from .ingest import Event
 KINDS = {"note", "doc", "user_msg", "ai_msg"}
 
 
-def recall_tool(home: Home, query: str, budget: int = 1500) -> str:
-    text, _, ids = home.thalamus.compose(query, budget)
+def recall_tool(home: Home, query: str, budget: int = 1500, motor: str | None = None) -> str:
+    text, _, ids = home.thalamus.compose(query, budget, motor=motor)
     return f"{text}\n\n[recuerdos: {', '.join(ids)}]" if text else "Sin recuerdos relevantes."
 
 
@@ -32,8 +32,9 @@ def remember_tool(home: Home, text: str, kind: str = "note") -> str:
     return eid
 
 
-def feedback_tool(home: Home, ids: list[str], useful: bool, query: str) -> str:
-    if not home.thalamus.feedback(ids, 1.0 if useful else 0.0, query):
+def feedback_tool(home: Home, ids: list[str], useful: bool, query: str,
+                  motor: str | None = None) -> str:
+    if not home.thalamus.feedback(ids, 1.0 if useful else 0.0, query, motor=motor):
         return "sin efecto: esa consulta no se compuso con recall en esta sesión"
     home.save_thalamus()
     return "ok"
@@ -56,16 +57,20 @@ def build_server(home: Home, lock: threading.Lock | None = None, on_event=None):
                                            "decisiones y feedback para indicar qué recuerdos sirvieron.")
 
     @mcp.tool()
-    def recall(query: str, ctx: Context, budget: int = 1500) -> str:
-        """Devuelve el contexto más útil de la memoria de Daimon para esta consulta (con ids citados)."""
+    def recall(query: str, ctx: Context, budget: int = 1500, motor: str | None = None) -> str:
+        """Devuelve el contexto más útil de la memoria de Daimon para esta consulta (con ids citados).
+
+        Manda «motor» (el nombre de la IA que vas a usar) y la mente te dará el contexto como lo
+        quiere ese motor: cada IA aprende su propia forma."""
         with lock:
-            text, used, ids = home.thalamus.compose(query, budget)
+            text, used, ids = home.thalamus.compose(query, budget, motor=motor)
         if on_event:
             try:
                 who = who_from_headers(ctx.headers)
             except Exception:
                 who = "agente"
-            on_event({"type": "recall", "who": who, "query": query, "ids": ids, "tokens": used, "abstained": not ids})
+            on_event({"type": "recall", "who": who, "query": query, "ids": ids, "tokens": used,
+                      "abstained": not ids, "motor": motor})
         return f"{text}\n\n[recuerdos: {', '.join(ids)}]" if text else "Sin recuerdos relevantes."
 
     @mcp.tool()
@@ -75,9 +80,9 @@ def build_server(home: Home, lock: threading.Lock | None = None, on_event=None):
             return remember_tool(home, text, kind)
 
     @mcp.tool()
-    def feedback(ids: list[str], useful: bool, query: str) -> str:
+    def feedback(ids: list[str], useful: bool, query: str, motor: str | None = None) -> str:
         """Indica si los recuerdos devueltos por recall sirvieron, para que Daimon aprenda qué contexto funciona."""
         with lock:
-            return feedback_tool(home, ids, useful, query)
+            return feedback_tool(home, ids, useful, query, motor=motor)
 
     return mcp

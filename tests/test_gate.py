@@ -40,7 +40,7 @@ def test_feedback_ok(tmp_path):
     recall_tool(h, "Arc USDC", 500)
     w0 = h.thalamus.w.copy()
     assert feedback_tool(h, [rid], True, "Arc USDC") == "ok"
-    assert (h.thalamus.w != w0).any() and (tmp_path / "thalamus.npy").exists()
+    assert (h.thalamus.w != w0).any() and (tmp_path / "pesos.npz").exists()
     assert feedback_tool(h, [rid], True, "consulta nunca vista").startswith("sin efecto")
 
 
