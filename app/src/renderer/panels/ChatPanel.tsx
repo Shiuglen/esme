@@ -74,6 +74,8 @@ export function ChatPanel(props: { brain: BrainClient | null; onAjustes?(): void
       setProviders(ps)
       let ultimo: string | null = null
       try { ultimo = localStorage.getItem('esme:proveedor') } catch { /* sin almacenamiento */ }
+      // lo normal es que Esme elija: si hay algún motor con el que trabajar, deja que ella decida según la tarea
+      if ((!ultimo || ultimo === 'auto') && ps.some((p) => p.hasKey || p.local)) { setProvider('auto'); return }
       for (const p of ordenMotores(ps, ultimo)) {
         try { if ((await bridge.models(p.id)).length) { setProvider(p.id); return } } catch { /* no responde: el siguiente */ }
       }
@@ -84,6 +86,7 @@ export function ChatPanel(props: { brain: BrainClient | null; onAjustes?(): void
   useEffect(() => {
     if (!provider) return
     setModels([]); setModel(''); setAviso(null)
+    if (provider === 'auto') return   // en auto no hay modelo: lo elige Esme y lo explica
     const nombre = providers.find((p) => p.id === provider)?.label ?? provider
     bridge.models(provider).then((m) => {
       setModels(m)
@@ -216,7 +219,8 @@ export function ChatPanel(props: { brain: BrainClient | null; onAjustes?(): void
         <header className="flex items-center gap-2 pb-2">
           <label className="relative">
             <span className="sr-only">IA</span>
-            <select className={cn(selector, 'max-w-[200px]')} value={provider} onChange={(e) => elegirMotor(e.target.value)}>
+            <select className={cn(selector, 'max-w-[220px]')} value={provider} onChange={(e) => elegirMotor(e.target.value)}>
+              <option value="auto">Que Esme elija</option>
               {providers.map((p) => <option key={p.id} value={p.id} disabled={!p.hasKey}>{p.label}{p.hasKey ? '' : ' (sin clave)'}</option>)}
             </select>
             <ChevronDown className="pointer-events-none absolute top-2 right-2 size-4 text-texto-3" strokeWidth={1.5} aria-hidden />

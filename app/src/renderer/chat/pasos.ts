@@ -28,6 +28,7 @@ const FRASES: Record<string, (a: Record<string, unknown>) => [string, string, st
   cambio_de_cerebro: (a) => [`Pasando la conversación a ${corto(a.agente, 30)}`, `Sigue ${corto(a.agente, 30)}, tu agente (el anterior se agotó o no tenía sesión)`, `Quiere seguir con ${corto(a.agente, 30)}`],
   cambio_de_modelo: (a) => [`Probando otro modelo gratis: ${corto(a.modelo, 40)}`, `El modelo gratis llegó a su límite: sigue con ${corto(a.modelo, 40)}`, `Quiere probar ${corto(a.modelo, 40)}`],
   usar_skill: (a) => [`Leyendo la skill «${corto(a.nombre, 40)}»`, `Usó la skill «${corto(a.nombre, 40)}»`, `Quiere usar la skill «${corto(a.nombre, 40)}»`],
+  elegir_motor: (a) => [`Escogiendo un modelo para esto: ${corto(a.modelo, 40)}`, `Respondió con ${corto(a.modelo, 40)}`, `Quiere responder con ${corto(a.modelo, 40)}`],
   programar_encargo: (a) => [`Programando «${corto(a.encargo)}»`, `Programó «${corto(a.encargo)}»`, `Quiere programar «${corto(a.encargo)}»`],
 }
 
@@ -36,7 +37,7 @@ export function fraseDePaso(p: PasoVisto): string {
   const f = FRASES[p.nombre]
   // lo que falló o negaste se dice en infinitivo («Encargar al equipo…»), nunca como hecho
   const infinitivo = (pide: string) => { const t = pide.replace(/^Quiere /, ''); return t[0].toUpperCase() + t.slice(1) }
-  if (f) { const [haciendo, hecho, pide] = f(a); return p.estado === 'pide' ? pide : p.estado === 'haciendo' ? haciendo : p.estado === 'error' ? infinitivo(pide) : hecho }
+  if (f) { const [haciendo, hecho, pide] = f(a); const base = p.estado === 'pide' ? pide : p.estado === 'haciendo' ? haciendo : p.estado === 'error' ? infinitivo(pide) : hecho; return p.resumen && p.estado === 'hecho' ? `${base} · ${p.resumen}` : base }
   // una herramienta conectada: «servidor__accion» se lee «servidor · accion»
   const nombre = p.nombre.replace('__', ' · ').replace(/_/g, ' ')
   return p.estado === 'pide' ? `Quiere usar ${nombre}` : p.estado === 'haciendo' ? `Usando ${nombre}` : p.estado === 'error' ? `Usar ${nombre}` : `Usó ${nombre}`

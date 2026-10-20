@@ -15,6 +15,7 @@ import { encargarDesdeChat, equipoParaChat, programarDesdeChat } from './ipc-tal
 import { forjarDesdeChat } from './forja-ipc'
 import { keys } from './keys'
 import { anotarConsumo } from './ipc-proveedores'
+import { decidirMotor } from './router/motor'
 import { buildSystem, makeModel, type ProviderId } from './providers'
 import { conversarConAgente } from './conversacion-agente'
 import { agentesDeRespaldo, motorParaConversar } from './ipc-taller'
@@ -26,7 +27,7 @@ import type { MotorElegido } from './taller/taller'
 const running = new Map<string, AbortController>()
 const esperando = new Map<string, (r: Respuesta) => void>()   // `${chat}:${llamada}` → quien espera el permiso
 
-export type ChatRequest = { id: string; provider: ProviderId | `acp:${string}`; model: string; messages: ModelMessage[]; memory: { context: string; ids: string[] } | null; ahorrados?: number; panorama?: string; voz?: boolean; herramientas?: boolean }
+export type ChatRequest = { id: string; provider: ProviderId | `acp:${string}` | 'auto'; model: string; messages: ModelMessage[]; memory: { context: string; ids: string[] } | null; ahorrados?: number; panorama?: string; voz?: boolean; herramientas?: boolean }
 type Deps = { brainInfo: () => BrainInfo | null }
 
 export function registerChat(d: Deps) {
@@ -89,7 +90,8 @@ async function pump(to: WebContents, req: ChatRequest, ac: AbortController, d: D
       if ('error' in motor) { to.send(`chat:error:${req.id}`, motor.error); return }
       return await conAgentes(to, req, ac, d, [motor])
     }
-    const proveedor = req.provider
+    let proveedor = req.provider
+    let modelo = req.model
     const conManos = req.herramientas !== false
     let tools = {}
     if (conManos) {
@@ -100,7 +102,15 @@ async function pump(to: WebContents, req: ChatRequest, ac: AbortController, d: D
       fallos.filter((f) => !/401|unauthori[sz]ed|iniciar sesión/i.test(f)).forEach((f, i) => to.send(`chat:paso:${req.id}`, { fase: 'error', id: `mcp-${i}`, nombre: 'herramienta conectada', error: f }))
       tools = { ...conectadas, ...herramientasPropias(manos) }
     }
-    const result = streamText({ model: makeModel(proveedor, req.model, (id) => keys.get(id)),
+    // «que Esme elija»: si no le fijaste motor, decide ella según la tarea y te explica por qué
+    if (proveedor === 'auto') {
+      const d = await decidirMotor({ mensajes: req.messages, herramientas: conManos })
+      if (!d) { to.send(`chat:error:${req.id}`, 'No hay ningún motor con el que responder. Conecta uno en Ajustes.'); return }
+      proveedor = d.proveedor as ProviderId
+      modelo = d.modelo
+      to.send(`chat:paso:${req.id}`, { fase: 'resultado', id: 'motor', nombre: 'elegir_motor', resumen: d.motivo, args: { modelo: d.modelo } })
+    }
+    const result = streamText({ model: makeModel(proveedor, modelo, (id) => keys.get(id)),
       system: buildSystem(req.memory, { panorama: req.panorama, voz: req.voz, herramientas: conManos, skills: conManos ? skillsParaEsme(app.getPath('userData')).filter((s) => !s.soloManual) : [] }),
       messages: req.messages, abortSignal: ac.signal,
       ...(conManos ? { tools, stopWhen: stepCountIs(8) } : {}) })

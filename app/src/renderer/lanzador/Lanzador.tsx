@@ -50,12 +50,20 @@ export function Lanzador() {
 
   const preguntar = async (q: string) => {
     flujo.current?.stop()
-    // el mismo motor que elegiría el chat: el último que usaste si responde, si no el primero vivo (locales antes que API)
+    // el mismo motor que el chat: si no le fijaste uno, que Esme elija (y si lo fijaste, ese manda)
     const ps = await bridge.providers().catch(() => [] as ProviderView[])
-    let proveedor = leer('esme:proveedor') ?? '', modelo = ''
-    for (const p of ordenMotores(ps, proveedor || null)) {
-      const ms = await bridge.models(p.id).catch(() => [] as string[])
-      if (ms.length) { proveedor = p.id; modelo = modeloInicial(ms, p.defaultModel, leer(`esme:modelo:${p.id}`)); break }
+    const fijado = leer('esme:proveedor')
+    let proveedor = '', modelo = ''
+    if (fijado && fijado !== 'auto') {
+      const ms = await bridge.models(fijado).catch(() => [] as string[])
+      if (ms.length) { proveedor = fijado; modelo = modeloInicial(ms, ps.find((p) => p.id === fijado)?.defaultModel, leer(`esme:modelo:${fijado}`)) }
+    } else if (ps.some((p) => p.hasKey || p.local)) {
+      proveedor = 'auto'
+    } else {
+      for (const p of ordenMotores(ps, null)) {
+        const ms = await bridge.models(p.id).catch(() => [] as string[])
+        if (ms.length) { proveedor = p.id; modelo = modeloInicial(ms, p.defaultModel, leer(`esme:modelo:${p.id}`)); break }
+      }
     }
     if (!proveedor) { setRespuesta({ pregunta: q, texto: '', pasos: [], fin: true, error: 'Ningún motor responde ahora. Conecta uno en Ajustes.' }); return }
     setRespuesta({ pregunta: q, texto: '', pasos: [], fin: false }); setTexto('')

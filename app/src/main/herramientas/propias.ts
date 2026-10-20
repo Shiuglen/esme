@@ -10,7 +10,7 @@ import type { Resultado } from './web'
 export type Paso =
   | { fase: 'llama'; id: string; nombre: string; args: unknown }
   | { fase: 'pide'; id: string; nombre: string; args: unknown }
-  | { fase: 'resultado'; id: string; nombre: string; resumen: string }
+  | { fase: 'resultado'; id: string; nombre: string; resumen: string; args?: unknown }
   | { fase: 'error'; id: string; nombre: string; error: string }
 export type Respuesta = 'una' | 'siempre' | 'no'
 

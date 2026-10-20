@@ -19,6 +19,9 @@ let presupuesto: Presupuesto = PRESUPUESTO_DEFECTO
 let archivoPresupuesto = ''
 let estadoPrevio: Evaluacion['estado'] = 'ok'
 
+/** Los proveedores del catálogo (models.dev), con sus modelos: el router los usa para elegir motor. */
+export const catalogoProveedores = async (): Promise<ProveedorCatalogo[]> => { await catalogo!.catch(() => undefined); return proveedores }
+
 const precio = (p: string, m: string) => buscarPrecio(proveedores, p, m)
 const estado = () => calcularEstado(registro!, precio, presupuesto, Date.now())
 const emitir = (canal: string, dato: unknown) => { for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(canal, dato) }
