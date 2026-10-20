@@ -1,0 +1,117 @@
+{
+ "tareas": 7,
+ "estados": {
+  "lista": 2,
+  "error": 3,
+  "trabajando": 1,
+  "parada": 1
+ },
+ "veredictos": {
+  "total": 5,
+  "positivos": 3,
+  "negativos": 2
+ },
+ "porDia": [
+  {
+   "dia": "2026-05-09",
+   "positivos": 0,
+   "negativos": 1,
+   "aciertos": 0.0
+  },
+  {
+   "dia": "2026-05-10",
+   "positivos": 3,
+   "negativos": 1,
+   "aciertos": 0.75
+  }
+ ],
+ "porMotor": [
+  {
+   "motor": "opencode",
+   "tareas": 3,
+   "terminadas": 1,
+   "error": 2,
+   "parada": 0,
+   "trabajando": 0,
+   "herramientas": 19,
+   "tokens": 1360,
+   "coste": 0.0128,
+   "ficheros": 3,
+   "veredictos": 2,
+   "aciertos": 1,
+   "aciertosPorTarea": 0.333,
+   "herramientasPorTarea": 6.3,
+   "tokensPorTarea": 453,
+   "costePorTarea": 0.004267
+  },
+  {
+   "motor": "qwen-code",
+   "tareas": 2,
+   "terminadas": 0,
+   "error": 0,
+   "parada": 1,
+   "trabajando": 1,
+   "herramientas": 7,
+   "tokens": 365,
+   "coste": 0.001,
+   "ficheros": 1,
+   "veredictos": 1,
+   "aciertos": 1,
+   "aciertosPorTarea": 0.5,
+   "herramientasPorTarea": 3.5,
+   "tokensPorTarea": 183,
+   "costePorTarea": 0.0005
+  },
+  {
+   "motor": "desconocido",
+   "tareas": 1,
+   "terminadas": 1,
+   "error": 0,
+   "parada": 0,
+   "trabajando": 0,
+   "herramientas": 1,
+   "tokens": 0,
+   "coste": 0.0,
+   "ficheros": 0,
+   "veredictos": 0,
+   "aciertos": 0,
+   "aciertosPorTarea": 0.0,
+   "herramientasPorTarea": 1.0,
+   "tokensPorTarea": 0,
+   "costePorTarea": 0.0
+  },
+  {
+   "motor": "claude-code",
+   "tareas": 1,
+   "terminadas": 0,
+   "error": 1,
+   "parada": 0,
+   "trabajando": 0,
+   "herramientas": 2,
+   "tokens": 25,
+   "coste": 0.0,
+   "ficheros": 0,
+   "veredictos": 0,
+   "aciertos": 0,
+   "aciertosPorTarea": 0.0,
+   "herramientasPorTarea": 2.0,
+   "tokensPorTarea": 25,
+   "costePorTarea": 0.0
+  }
+ ],
+ "fallos": [
+  {
+   "mensaje": "Internal error",
+   "veces": 2
+  },
+  {
+   "mensaje": "Authentication required",
+   "veces": 1
+  }
+ ],
+ "costeDelAcierto": {
+  "tareas": 2,
+  "tokens": 1550,
+  "coste": 0.0133
+ }
+}
