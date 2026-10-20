@@ -85,7 +85,10 @@ contextBridge.exposeInMainWorld('daimon', {
   },
   tienda: {
     deseos: () => ipcRenderer.invoke('tienda:deseos'),
-    colores: (url: string) => ipcRenderer.invoke('tienda:colores', url), catalogo: () => ipcRenderer.invoke('tienda:catalogo') },
+    colores: (url: string) => ipcRenderer.invoke('tienda:colores', url),
+    paletas: () => ipcRenderer.invoke('tienda:paletas'),
+    mirar: (urls: string[]) => ipcRenderer.invoke('tienda:mirar', urls),
+    onPaleta: (fn: (p: { url: string; colores: string[]; titulo: string }) => void) => on('tienda:paleta', (e) => fn(e as { url: string; colores: string[]; titulo: string })), catalogo: () => ipcRenderer.invoke('tienda:catalogo') },
   hilos: { lista: () => ipcRenderer.invoke('hilos:lista'), leer: (id: string) => ipcRenderer.invoke('hilos:leer', id), guardar: (h: unknown) => ipcRenderer.invoke('hilos:guardar', h),
     borrar: (id: string) => ipcRenderer.invoke('hilos:borrar', id), buscar: (q: string) => ipcRenderer.invoke('hilos:buscar', q), nuevoId: () => ipcRenderer.invoke('hilos:nuevoId') },
   licencia: { estado: () => ipcRenderer.invoke('licencia:estado'), activar: (c: string) => ipcRenderer.invoke('licencia:activar', c), quitar: () => ipcRenderer.invoke('licencia:quitar') },

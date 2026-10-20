@@ -17,6 +17,7 @@ export function TiendaHerramientas({ pieles }: { pieles?: Pieles } = {}) {
   const [error, setError] = useState<string | null>(null)
   const [conectadas, setConectadas] = useState<ConectadaVista[]>([])
   const [deseos, setDeseos] = useState<Deseo[]>([])
+  const [paletas, setPaletas] = useState<Record<string, { colores: string[]; titulo: string }>>({})
   const [notaDeseos, setNotaDeseos] = useState<string | null>(null)
   // la piel hecha con una referencia: se prueba en vivo y, si te gusta, te la quedas
   const [vestida, setVestida] = useState<{ deseo: Deseo; piel: Piel; acento: string; fondo: string } | null>(null)
@@ -36,7 +37,17 @@ export function TiendaHerramientas({ pieles }: { pieles?: Pieles } = {}) {
   const recargar = () => void bridge.herramientas.conectadas().then(setConectadas)
   useEffect(recargar, [])
   // lo que guardaste es tu lista de deseos: cada deseo se busca en el registro y se puede conectar
-  useEffect(() => { void bridge.tienda.deseos().then((r) => { if (r.ok) setDeseos(r.deseos); else setNotaDeseos(r.error) }).catch(() => setNotaDeseos('No pude leer lo que guardaste.')) }, [])
+  useEffect(() => {
+    void bridge.tienda.deseos().then((r) => {
+      if (!r.ok) { setNotaDeseos(r.error); return }
+      setDeseos(r.deseos)
+      // las referencias se van viendo a trozos: sus colores llegan solos y la lista se va pintando
+      const refs = r.deseos.filter((d) => d.destino.startsWith('http') && !d.destino.includes('x.com')).map((d) => d.destino)
+      if (refs.length) void bridge.tienda.mirar(refs)
+    }).catch(() => setNotaDeseos('No pude leer lo que guardaste.'))
+  }, [])
+  // una paleta nueva: se pinta sin preguntar
+  useEffect(() => bridge.tienda.onPaleta((p) => setPaletas((v) => ({ ...v, [p.url]: { colores: p.colores, titulo: p.titulo } }))), [])
   // se busca al dejar de teclear; sin texto, las destacadas (las oficiales de empresas conocidas)
   useEffect(() => {
     let vivo = true
@@ -58,6 +69,11 @@ export function TiendaHerramientas({ pieles }: { pieles?: Pieles } = {}) {
           <ul className="m-0 grid list-none gap-2 p-0">
             {deseos.map((d) => (
               <li key={d.destino} className="vidrio flex flex-wrap items-center gap-3 rounded-3 border px-4 py-3">
+                {paletas[d.destino] && (
+                  <span aria-hidden className="flex shrink-0 overflow-hidden rounded-3 border border-linea">
+                    {paletas[d.destino].colores.slice(0, 5).map((c, k) => <span key={k} className="h-8 w-3" style={{ background: c }} />)}
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="m-0 truncate text-[14px] text-texto">{d.herramienta ? d.herramienta : d.dominio}</p>
                   <p className="m-0 line-clamp-1 text-[12px] text-texto-3">
