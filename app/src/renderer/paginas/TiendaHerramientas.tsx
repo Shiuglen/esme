@@ -1,20 +1,37 @@
 // La Tienda, paso 2 (docs/superpowers/specs/2026-10-18-manos.md): herramientas MCP del registro oficial. Buscas,
 // conectas (tus claves van al llavero), Esme la prueba de verdad y desde ese momento la usan la conversación y el
 // Taller, siempre con permiso. Arriba, lo que ya tienes conectado; abajo, cómo busca Esme en internet.
-import { Cloud, Globe, Hammer, Laptop, Plug, Search, Trash2 } from 'lucide-react'
+import { Cloud, Globe, Hammer, Laptop, Palette, Plug, Search, Trash2 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { bridge, type ConectadaVista, type Deseo, type Ficha } from '../lib/bridge'
+import { pielDeColores } from '../tinta/deriva'
+import type { Piel } from '../tinta/piel'
+import type { Pieles } from './Apariencia'
 import { cn } from '../lib/cn'
 
-export function TiendaHerramientas() {
+export function TiendaHerramientas({ pieles }: { pieles?: Pieles } = {}) {
   const [q, setQ] = useState('')
   const [fichas, setFichas] = useState<Ficha[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [conectadas, setConectadas] = useState<ConectadaVista[]>([])
   const [deseos, setDeseos] = useState<Deseo[]>([])
   const [notaDeseos, setNotaDeseos] = useState<string | null>(null)
+  // la piel hecha con una referencia: se prueba en vivo y, si te gusta, te la quedas
+  const [vestida, setVestida] = useState<{ deseo: Deseo; piel: Piel; acento: string; fondo: string } | null>(null)
+  const [derivando, setDerivando] = useState<string | null>(null)
+
+  /** De una web guardada, una piel: se leen sus colores y se hacen los de Esme. */
+  const vestirReferencia = async (d: Deseo) => {
+    setDerivando(d.destino)
+    const r = await bridge.tienda.colores(d.destino)
+    if (!r.ok) { setNotaDeseos(r.error); setDerivando(null); return }
+    const p = pielDeColores(r.colores, { nombre: `Veste ${d.dominio}` })
+    if (!p.ok) { setNotaDeseos(p.errores[0] ?? 'con esos colores no hay una piel'); setDerivando(null); return }
+    setVestida({ deseo: d, piel: p.piel, acento: p.acento, fondo: p.fondo })
+    setDerivando(null)
+  }
   const [abierta, setAbierta] = useState<string | null>(null)
   const recargar = () => void bridge.herramientas.conectadas().then(setConectadas)
   useEffect(recargar, [])
@@ -53,6 +70,12 @@ export function TiendaHerramientas() {
                     <Search className="size-3.5" strokeWidth={1.75} />Buscar en el registro
                   </button>
                 )}
+                {d.destino.startsWith('http') && (
+                  <button type="button" onClick={() => void vestirReferencia(d)} disabled={derivando === d.destino}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-linea px-3 text-[12.5px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto disabled:opacity-50">
+                    <Palette className="size-3.5" strokeWidth={1.75} />{derivando === d.destino ? 'Mirando sus colores…' : 'Veste esto'}
+                  </button>
+                )}
                 {d.post && (
                   <a href={d.post} target="_blank" rel="noreferrer" className="text-[12.5px] text-texto-3 underline decoration-linea underline-offset-2 hover:text-texto">El post</a>
                 )}
@@ -61,6 +84,40 @@ export function TiendaHerramientas() {
           </ul>
         </section>
       )}
+      {vestida && (() => {
+        const c = vestida.piel.color
+        const tinte = c.tipo === 'libre'
+          ? { fondo: c.noche.fondo, superficie: c.noche.superficie, texto: c.noche.texto, acento: c.noche.acento }
+          : { fondo: vestida.fondo, superficie: vestida.fondo, texto: vestida.fondo, acento: vestida.acento }
+        return (
+        <section className="vidrio grid gap-3 rounded-4 border p-5">
+          <h3 className="m-0 text-[15px] font-medium text-texto">La piel de {vestida.deseo.dominio}</h3>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex overflow-hidden rounded-3 border border-linea">
+              <span className="size-12" style={{ background: tinte.fondo }} title="fondo de noche" />
+              <span className="size-12" style={{ background: tinte.superficie }} title="superficie" />
+              <span className="size-12" style={{ background: tinte.acento }} title="acento" />
+              <span className="size-12" style={{ background: tinte.texto }} title="texto" />
+            </div>
+            <p className="m-0 max-w-[46ch] text-[13px] leading-5 text-texto-2">
+              Esos son los colores que usa <span className="text-texto">{vestida.deseo.dominio}</span>. Con ellos te he hecho una piel: pruébala puesta y, si te gusta, quédatela.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {pieles && (
+              <>
+                <button type="button" onClick={() => pieles.ensayar(vestida.piel)}
+                  className="inline-flex h-9 items-center rounded-full border border-linea px-4 text-[13px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">Probar en vivo</button>
+                <button type="button" onClick={() => { pieles.vestir(vestida.piel); toast.success(`Ahora vestes «${vestida.piel.nombre}»`) }}
+                  className="inline-flex h-9 items-center rounded-full bg-acento px-4 text-[13px] font-medium text-sobre-acento">Quedármela</button>
+              </>
+            )}
+            <button type="button" onClick={() => setVestida(null)}
+              className="inline-flex h-9 items-center rounded-full px-3 text-[13px] text-texto-3 transition-colors hover:text-texto">Cerrar</button>
+          </div>
+        </section>
+        )
+      })()}
       {conectadas.length > 0 && (
         <section className="grid gap-3">
           <h2 className="m-0 text-[15px] font-medium text-texto">Conectadas · Esme y tu equipo ya las usan</h2>

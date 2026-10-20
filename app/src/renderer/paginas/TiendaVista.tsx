@@ -77,7 +77,7 @@ export function Tienda({ tema, pieles }: { tema: Tema; pieles: Pieles }) {
         {seccion === 'skills'
           ? <div id="panel-skills" role="tabpanel" aria-labelledby="tab-skills"><TiendaSkills /></div>
           : seccion === 'herramientas'
-            ? <div id="panel-herramientas" role="tabpanel" aria-labelledby="tab-herramientas"><TiendaHerramientas /></div>
+            ? <div id="panel-herramientas" role="tabpanel" aria-labelledby="tab-herramientas"><TiendaHerramientas pieles={pieles} /></div>
             : <div id="panel-disenos" role="tabpanel" aria-labelledby="tab-disenos" className="grid gap-6">
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex h-10 w-[320px] max-w-full items-center gap-2 rounded-full border border-linea px-3.5 focus-within:border-foco">

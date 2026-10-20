@@ -79,7 +79,8 @@ contextBridge.exposeInMainWorld('daimon', {
   },
   motores: { detectar: () => ipcRenderer.invoke('motores:detectar') },
   tienda: {
-    deseos: () => ipcRenderer.invoke('tienda:deseos'), catalogo: () => ipcRenderer.invoke('tienda:catalogo') },
+    deseos: () => ipcRenderer.invoke('tienda:deseos'),
+    colores: (url: string) => ipcRenderer.invoke('tienda:colores', url), catalogo: () => ipcRenderer.invoke('tienda:catalogo') },
   hilos: { lista: () => ipcRenderer.invoke('hilos:lista'), leer: (id: string) => ipcRenderer.invoke('hilos:leer', id), guardar: (h: unknown) => ipcRenderer.invoke('hilos:guardar', h),
     borrar: (id: string) => ipcRenderer.invoke('hilos:borrar', id), buscar: (q: string) => ipcRenderer.invoke('hilos:buscar', q), nuevoId: () => ipcRenderer.invoke('hilos:nuevoId') },
   licencia: { estado: () => ipcRenderer.invoke('licencia:estado'), activar: (c: string) => ipcRenderer.invoke('licencia:activar', c), quitar: () => ipcRenderer.invoke('licencia:quitar') },

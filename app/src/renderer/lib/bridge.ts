@@ -118,6 +118,7 @@ type ElectronApi = {
   tienda: {
     catalogo(): Promise<RespuestaCatalogo>
     deseos(): Promise<{ ok: true; deseos: Deseo[] } | { ok: false; error: string }>
+    colores(url: string): Promise<{ ok: true; colores: string[]; titulo: string } | { ok: false; error: string }>
   }
   hilos: { lista(): Promise<ResumenHilo[]>; leer(id: string): Promise<Hilo | null>; guardar(h: Hilo): Promise<boolean>; borrar(id: string): Promise<boolean>; buscar(q: string): Promise<(ResumenHilo & { trozo: string })[]>; nuevoId(): Promise<string> }
   licencia: { estado(): Promise<EstadoPlan>; activar(c: string): Promise<{ ok: boolean; motivo?: string; estado: EstadoPlan }>; quitar(): Promise<EstadoPlan> }
@@ -300,6 +301,7 @@ export const bridge = {
   tienda: {
     catalogo: async (): Promise<RespuestaCatalogo> => (isElectron() ? window.daimon!.tienda.catalogo() : { productos: [], origen: 'ninguno' }),
     deseos: async (): Promise<{ ok: true; deseos: Deseo[] } | { ok: false; error: string }> => (isElectron() ? window.daimon!.tienda.deseos() : { ok: false, error: 'Solo en la app de escritorio' }),
+    colores: async (url: string): Promise<{ ok: true; colores: string[]; titulo: string } | { ok: false; error: string }> => (isElectron() ? window.daimon!.tienda.colores(url) : { ok: false, error: 'Solo en la app de escritorio' }),
   },
   hilos: {
     lista: async (): Promise<ResumenHilo[]> => (isElectron() ? window.daimon!.hilos.lista() : []),

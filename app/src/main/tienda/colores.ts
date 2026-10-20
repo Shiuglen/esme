@@ -38,6 +38,17 @@ export function coloresDe(html: string, max = 14): string[] {
   return [...cuenta.entries()].sort((a, b) => b[1] - a[1]).slice(0, max).map(([c]) => c)
 }
 
+/** Las hojas de estilo que enlaza la página: muchas webs esconden sus colores ahí, no en el HTML. */
+function hojasDe(html: string, base: string): string[] {
+  const out: string[] = []
+  for (const m of html.matchAll(/<link[^>]+rel=["']stylesheet["'][^>]*>/gi)) {
+    const href = m[0].match(/href=["']([^"']+)["']/i)?.[1]
+    if (!href) continue
+    try { out.push(new URL(href, base).toString()) } catch { /* href raro */ }
+  }
+  return out.slice(0, 3)
+}
+
 export type ResultadoColores = { ok: true; colores: string[]; titulo: string } | { ok: false; error: string }
 
 /** Los colores de una página: se la pide al proceso principal (la ventana no sale a internet). */
@@ -46,7 +57,16 @@ export async function coloresDeUrl(url: string, f: typeof fetch = fetch): Promis
     const r = await f(url, { redirect: 'follow', signal: AbortSignal.timeout(12_000), headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Esme/1.0)' } })
     if (!r.ok) return { ok: false, error: `esa página respondió ${r.status}` }
     const html = await r.text()
-    const colores = coloresDe(html)
+    let colores = coloresDe(html)
+    // si la página no dice sus colores, están en su CSS: se sigue el enlace
+    if (colores.length < 3) {
+      for (const h of hojasDe(html, url)) {
+        try {
+          const c = await f(h, { signal: AbortSignal.timeout(8000), headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Esme/1.0)' } })
+          if (c.ok) colores = [...new Set([...colores, ...coloresDe(await c.text())])]
+        } catch { /* esa hoja no se deja leer: seguimos con lo que haya */ }
+      }
+    }
     if (!colores.length) return { ok: false, error: 'esa página no dice qué colores usa' }
     const titulo = html.match(/<title[^>]*>([^<]{1,80})<\/title>/i)?.[1]?.trim() ?? new URL(url).hostname
     return { ok: true, colores, titulo }

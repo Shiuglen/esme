@@ -8,6 +8,7 @@ import type { BrainInfo } from '../brain-process'
 import { ClienteCerebro } from '../mente/cliente'
 import { verificarCatalogo, type Producto } from './catalogo'
 import { deseosDe, type Deseo } from './deseos'
+import { coloresDeUrl } from './colores'
 
 export const URL_CATALOGO = 'https://raw.githubusercontent.com/Shiuglen/esme-tienda/main/catalogo.json'
 const copia = () => join(app.getPath('userData'), 'tienda-catalogo.json')
@@ -29,6 +30,12 @@ export async function catalogo(): Promise<RespuestaCatalogo> {
 
 export function registerTienda(o: { brainInfo: () => BrainInfo | null } = { brainInfo: () => null }) {
   ipcMain.handle('tienda:catalogo', () => catalogo())
+  // Los colores de una referencia: de una web guardada sale una piel que te puedes poner.
+  ipcMain.handle('tienda:colores', async (_e, url: unknown): Promise<{ ok: true; colores: string[]; titulo: string } | { ok: false; error: string }> => {
+    const u = String(url ?? '')
+    if (!/^https?:\/\//i.test(u)) return { ok: false, error: 'eso no es una dirección web' }
+    return coloresDeUrl(u)
+  })
   // Lo que guardaste en X: tu lista de deseos. La Tienda la cumple: cada deseo se puede buscar en el registro.
   ipcMain.handle('tienda:deseos', async (): Promise<{ ok: true; deseos: Deseo[] } | { ok: false; error: string }> => {
     const i = o.brainInfo()
