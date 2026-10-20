@@ -8,6 +8,7 @@ import type { SeccionId } from '../shell/secciones'
 import type { TareaTaller } from '../lib/bridge'
 import { Detalle, type Pestana } from '../taller/Detalle'
 import { FilaMotor } from '../taller/FilaMotor'
+import { useRumbo } from './Rumbo'
 import { TintaVista, tintaDeTarea } from '../marca/PuntoVista'
 import { actividadActual } from '../taller/linea'
 import { NuevaTarea } from '../taller/NuevaTarea'
@@ -33,6 +34,9 @@ function useAhora(cada: number) {
 
 export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<typeof useTaller>; foco: { id: string; n: number } | null; onIr(id: SeccionId): void }) {
   const muelle = useMuelle({ stiffness: 420, damping: 38 })
+  // el rumbo: para saber qué objetivo sirve cada tarea (los ids son de la mente; aquí van sus palabras)
+  const { rumbo } = useRumbo()
+  const objetivosDe = Object.fromEntries((rumbo?.objetivos ?? []).map((o) => [o.id, o.texto]))
   const [seleccion, setSeleccion] = useState<string | null>(null)
   const [motorVisto, setMotorVisto] = useState<string | null>(null)
   const [motorPedido, setMotorPedido] = useState<{ id: string; n: number } | null>(null)   // pulsar un agente de la sala filtra la fila por él
@@ -188,7 +192,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
                       {b.items.map((x) => (
                         <motion.div key={x.id} layout initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0, marginTop: 0 }}
                           transition={muelle}>
-                          <FilaMotor t={x} login={login(x.motor)} ahora={ahora} inicioTurno={tl.inicioTurno.get(x.id)} haciendo={actividadActual(tl.lineas[x.id] ?? [])}
+                          <FilaMotor t={x} login={login(x.motor)} ahora={ahora} inicioTurno={tl.inicioTurno.get(x.id)} haciendo={actividadActual(tl.lineas[x.id] ?? [])} objetivo={objetivosDe[x.objetivo ?? '']}
                             elegida={x.id === seleccion} resaltada={x.id === resaltada} onElegir={elegir} onResaltar={setResaltada}
                             onReencarnar={() => void reincarna(x)} onAplicar={() => tl.aplicar(x.id, () => void tl.deshacer(x.id))} onParar={() => void tl.parar(x.id)} />
                         </motion.div>

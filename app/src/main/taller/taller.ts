@@ -29,6 +29,7 @@ export type Tarea = {
   arena?: string   // las tareas que compiten con el mismo encargo comparten este id
   rol?: string     // el oficio del motor en esa arena (constructor, revisor, probador…)
   acceso?: Acceso   // cuánto puede hacer sin preguntarte (taller/acceso.ts); las antiguas, sin campo, preguntan todo
+  objetivo?: string   // el objetivo del rumbo al que sirve esta tarea (id del objetivo en la mente)
 }
 export type MotorElegido = { id: string; nombre: string; comando: string; args: string[]; env?: Record<string, string>; entrarCon?: string }
 export type SesionMotor = { preguntar(texto: string): Promise<string>; cancelar(): Promise<void>; cerrar(): void; configurar(id: string, valor: string): Promise<void> }
@@ -166,7 +167,7 @@ export class Taller {
     }
   }
 
-  crear(p: { motor: MotorElegido; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: Acceso; rol?: Rol }): Tarea {
+  crear(p: { motor: MotorElegido; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: Acceso; rol?: Rol; objetivo?: string }): Tarea {
     let id = nuevoId()
     while (this.registros.has(id)) id = nuevoId()
     const titulo = (p.texto.split('\n').find((l) => l.trim()) ?? '').trim().slice(0, 120)
@@ -176,7 +177,7 @@ export class Taller {
       ...(p.rol ? { rol: p.rol.nombre } : {}),
       estado: 'preparando', copia: null, inicio: this.ahora(), turnos: 0, herramientas: 0, cambios: null,
       uso: { entrada: 0, salida: 0, pensamiento: 0 }, permiso: null, actividad: new Array(CUBOS).fill(0), actividadMs: 0, opciones: [], modelo: null,
-      acceso: p.acceso ?? 'ediciones' }
+      acceso: p.acceso ?? 'ediciones', ...(p.objetivo ? { objetivo: p.objetivo } : {}) }
     tarea.actividadMs = finCubo(tarea.inicio)
     const r = this.registroNuevo(tarea, false)
     r.motor = p.motor; r.config = { ...p.config }

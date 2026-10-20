@@ -1,6 +1,6 @@
 // Pedir una tarea: qué quieres, con qué motor y modelo, y sobre qué carpeta. Esme monta una copia aislada y el motor trabaja ahí.
 // Recuerda tu motor, tu carpeta y tus opciones por motor; si el motor trae un modelo lento o de pago, propone uno gratis.
-import { LayoutTemplate as ILayoutTemplate, Rocket as IRocket, Plus as IPlus, FlaskConical as IFlaskConical, Wrench as IWrench, ScanSearch as IScanSearch, ShieldCheck as IShieldCheck, PackageCheck as IPackageCheck, BookOpen as IBookOpen, FileText as IFileText, Shuffle as IShuffle, Languages as ILanguages, Gauge as IGauge, Accessibility as IAccessibility, Sparkles as ISparkles, type LucideIcon } from 'lucide-react'
+import { LayoutTemplate as ILayoutTemplate, Rocket as IRocket, Plus as IPlus, FlaskConical as IFlaskConical, Wrench as IWrench, ScanSearch as IScanSearch, ShieldCheck as IShieldCheck, PackageCheck as IPackageCheck, BookOpen as IBookOpen, FileText as IFileText, Shuffle as IShuffle, Languages as ILanguages, Gauge as IGauge, Accessibility as IAccessibility, Sparkles as ISparkles, type LucideIcon, Target } from 'lucide-react'
 import { CATEGORIAS, RECETAS } from './recetas'
 import { CalendarClock, CornerDownLeft, Dices, Folder, FolderPlus, ShieldCheck, Sparkles, Swords, X } from 'lucide-react'
 import { cuandoDe, fraseCuando, type OpcionCuando } from './cuando'
@@ -19,7 +19,7 @@ import { useMuelle } from '../tinta/movimiento'
 const leer = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(`esme:taller:${k}`); return v === null ? d : (JSON.parse(v) as T) } catch { return d } }
 const guardar = (k: string, v: unknown) => { try { localStorage.setItem(`esme:taller:${k}`, JSON.stringify(v)) } catch { /* sin almacenamiento */ } }
 
-type Peticion = { motor: string; carpeta: string | null; texto: string; config: Record<string, string>; arena?: string; acceso?: AccesoTarea; rol?: string }
+type Peticion = { motor: string; carpeta: string | null; texto: string; config: Record<string, string>; arena?: string; acceso?: AccesoTarea; rol?: string; objetivo?: string }
 const AUTO = 'auto'
 const nuevoId = () => Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('')
 const corto = (e: Eleccion) => nombreValor({ id: e.modelo, nombre: e.modeloNombre })
@@ -82,6 +82,10 @@ export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores
     if (actual) guardar(`config:${actual.id}`, { ...leer<Record<string, string>>(`config:${actual.id}`, {}), [id]: v })
   }
   const elegirCarpeta = async () => { const c = await bridge.taller.carpeta(); if (c) { setCarpeta(c); guardar('carpeta', c) } }
+  // el objetivo del rumbo al que sirve este encargo (si hay rumbo; si no, se trabaja sin él)
+  const [objetivos, setObjetivos] = useState<{ id: string; texto: string }[]>([])
+  useEffect(() => { void bridge.mente.rumbo().then((r) => setObjetivos(r.objetivos.filter((o) => o.estado === 'activo').map((o) => ({ id: o.id, texto: o.texto })))).catch(() => setObjetivos([])) }, [])
+  const [objetivo, setObjetivo] = useState('')
   const listo = auto || arena ? todas !== null && candidatos.length > 0 : !!actual && opciones !== null
   const empezar = async () => {
     const q = texto.trim()
@@ -92,15 +96,15 @@ export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores
       const id = nuevoId()
       const elegidos = oficios.length ? oficios : roles.slice(0, 2).map((r) => r.id)
       peticiones = rivales.map((r, i) => ({ motor: r.motor, carpeta, texto: q, config: { model: r.modelo }, arena: id, acceso,
-        ...(elegidos.length ? { rol: elegidos[i % elegidos.length] } : {}) }))
+        ...(elegidos.length ? { rol: elegidos[i % elegidos.length] } : {}), ...(objetivo ? { objetivo } : {}) }))
     } else if (auto) {
       const e = elegir(candidatos, veredictos)!
-      peticiones = [{ motor: e.motor, carpeta, texto: q, config: { model: e.modelo }, acceso }]
+      peticiones = [{ motor: e.motor, carpeta, texto: q, config: { model: e.modelo }, acceso, ...(objetivo ? { objetivo } : {}) }]
       toast(`Esme eligió ${e.motorNombre} con ${corto(e)}`, { description: e.motivo })
     } else {
       // Lo que ves es lo que se usa: se envía siempre el valor mostrado de cada selector (el motor puede cambiarlo al abrir).
       const elegida = Object.fromEntries((opciones ?? []).filter((o) => o.id === 'model' || o.id === 'mode').map((o) => [o.id, config[o.id] ?? o.actual]))
-      peticiones = [{ motor: actual!.id, carpeta, texto: q, config: { ...config, ...elegida }, acceso }]
+      peticiones = [{ motor: actual!.id, carpeta, texto: q, config: { ...config, ...elegida }, acceso, ...(objetivo ? { objetivo } : {}) }]
     }
     if (regla && peticiones[0]) {
       // programado: la agenda lo lanzará a su hora como una tarea normal
@@ -185,6 +189,18 @@ export function NuevaTarea({ motores, noListos = new Map(), onCrear, onIrMotores
               {acceso === 'ediciones' ? 'Lee y edita en su copia; pregunta antes de ejecutar o salir a la red' : acceso === 'preguntar' ? 'Te pregunta cada paso' : 'No pregunta nada: también ejecuta órdenes'}
             </span>
           </div>
+          {objetivos.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-linea px-3 py-2 text-[12.5px]">
+              <Target className="size-3.5 shrink-0 text-texto-3" strokeWidth={1.5} aria-hidden />
+              <label htmlFor="objetivo-taller" className="text-texto-3">Para</label>
+              <select id="objetivo-taller" value={objetivo} onChange={(e) => setObjetivo(e.target.value)}
+                className="h-7 min-w-0 max-w-[320px] flex-1 rounded-full border border-linea bg-s1/50 px-2.5 text-[12.5px] text-texto-2 outline-none focus:border-foco">
+                <option value="">Sin objetivo (trabajo suelto)</option>
+                {objetivos.map((o) => <option key={o.id} value={o.id}>{o.texto}</option>)}
+              </select>
+              <span className="text-texto-3">de tu rumbo</span>
+            </div>
+          )}
           {!arena && (
             <div role="radiogroup" aria-label="Cuándo" className="flex flex-wrap items-center gap-1.5 border-t border-linea px-3 py-2 text-[12.5px]">
               <CalendarClock className="mr-0.5 size-3.5 text-texto-3" strokeWidth={1.5} aria-hidden />

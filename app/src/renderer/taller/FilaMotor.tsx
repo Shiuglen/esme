@@ -1,6 +1,6 @@
 // Una fila del Taller por tarea, con densidad de HUD: motor y modelo, estado, la cifra grande (el tiempo), la micrográfica,
 // qué hace ahora mismo, sus métricas si hablan y las acciones rápidas de su estado (aplica, reencarna o para) al pasar el foco.
-import { Check, RefreshCcw, Square, Swords, type LucideIcon } from 'lucide-react'
+import { Check, RefreshCcw, Square, Swords, type LucideIcon, Target } from 'lucide-react'
 import type { TareaTaller } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { fmtTokens, fmtUSD } from '../chat/formatos'
@@ -32,8 +32,9 @@ const modeloCorto = (m: string | null) => nombreDeModelo(m) || null
 const coste = (c: TareaTaller['uso']['coste']) => (!c ? null : c.moneda === 'USD' ? fmtUSD(c.cantidad) : `${c.cantidad.toFixed(2)} ${c.moneda}`)
 const segundos = (ms?: number) => (ms === undefined ? '—' : ms < 10_000 ? `${(ms / 1000).toFixed(1).replace('.', ',')} s` : `${Math.round(ms / 1000)} s`)
 
-export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida, resaltada, onElegir, onResaltar, onReencarnar, onAplicar, onParar }: {
+export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida, resaltada, objetivo, onElegir, onResaltar, onReencarnar, onAplicar, onParar }: {
   t: TareaTaller; login?: string; ahora: number; inicioTurno?: number; haciendo: string | null; elegida: boolean; resaltada: boolean
+  objetivo?: string   // el texto del objetivo del rumbo (el id no se le enseña a nadie)
   onElegir(id: string): void; onResaltar(id: string | null): void; onReencarnar(): void; onAplicar(): void; onParar(): void
 }) {
   const enMarcha = activa(t)
@@ -84,6 +85,9 @@ export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida
         <TintaVista motor={t.motor} px={plegada ? 22 : 30} estado={tintaDeTarea(t.estado)} />
         <span className="shrink-0 whitespace-nowrap text-[13px] font-medium text-texto">{t.motorNombre}</span>
         {t.rol && <span title="Su oficio en la arena" className="shrink-0 whitespace-nowrap rounded-full border border-linea-fuerte/60 px-1.5 py-px text-[11px] text-texto-3">{t.rol}</span>}
+        {t.objetivo && objetivo && <span title="El objetivo de tu rumbo al que sirve" className="inline-flex h-5 max-w-[180px] shrink-0 items-center gap-1 rounded-full border border-acento/40 px-1.5 text-[11px] text-acento">
+          <Target className="size-3 shrink-0" strokeWidth={1.75} /><span className="truncate">{objetivo}</span>
+        </span>}
         {t.modelo && <span className="min-w-0 truncate text-[12px] text-texto-3" title={t.modelo}>{modeloCorto(t.modelo)}</span>}
         <PastillaEstado estado={t.estado} />
         {t.aplicada && <Sello lado={16} giro={giroSello(t.id)} titulo="Aprobada por ti" />}

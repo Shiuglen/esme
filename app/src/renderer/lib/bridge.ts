@@ -355,7 +355,7 @@ export const bridge = {
     onInstalacion: (fn: (p: { id: string; trozo?: string; listo?: boolean }) => void): (() => void) => (isElectron() ? window.daimon!.taller.onInstalacion(fn) : () => {}),
     lista: async (): Promise<TareaTaller[]> => (isElectron() ? window.daimon!.taller.lista() : []),
     eventos: async (id: string): Promise<EventoTaller[]> => (isElectron() ? window.daimon!.taller.eventos(id) : []),
-    crear: async (p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: AccesoTarea; rol?: string }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }> =>
+    crear: async (p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: AccesoTarea; rol?: string; objetivo?: string }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }> =>
       (isElectron() ? window.daimon!.taller.crear(p) : SOLO_ESCRITORIO),
     seguir: async (id: string, texto: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.seguir(id, texto) : SOLO_ESCRITORIO),
     responder: async (id: string, opcion: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.responder(id, opcion) : SOLO_ESCRITORIO),
