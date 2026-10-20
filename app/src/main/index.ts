@@ -15,6 +15,7 @@ import { keys } from './keys'
 import { registerLicencia } from './licencia/ipc'
 import { registerHilos } from './hilos/ipc'
 import { registerTienda } from './tienda/ipc'
+import { registerPieles } from './pieles/propias'
 import { cerrarHerramientas, registerHerramientas } from './herramientas/ipc'
 import { registerForja } from './forja-ipc'
 import { registrarLanzador } from './lanzador/ventana'
@@ -123,6 +124,7 @@ function registerIpc() {
   registerLicencia()
   registerHilos()
   registerTienda({ brainInfo: () => brain.info })
+  registerPieles()
   registerHerramientas({ python: { python: RUTAS.python, extraPython: RUTAS.extraPython } })
   registerSkills()
   registerForja()

@@ -78,6 +78,11 @@ contextBridge.exposeInMainWorld('daimon', {
     onAlerta: (fn: (e: unknown) => void) => on('uso:alerta', (e) => fn(e)),
   },
   motores: { detectar: () => ipcRenderer.invoke('motores:detectar') },
+  pieles: {
+    listar: () => ipcRenderer.invoke('pieles:listar'),
+    guardar: (piel: unknown, o: unknown) => ipcRenderer.invoke('pieles:guardar', piel, o),
+    borrar: (id: string) => ipcRenderer.invoke('pieles:borrar', id),
+  },
   tienda: {
     deseos: () => ipcRenderer.invoke('tienda:deseos'),
     colores: (url: string) => ipcRenderer.invoke('tienda:colores', url), catalogo: () => ipcRenderer.invoke('tienda:catalogo') },

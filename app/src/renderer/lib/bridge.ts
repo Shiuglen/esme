@@ -68,6 +68,8 @@ export type Memoria = { id: string; text: string; source: string; kind: string; 
 export type InstalarMotor = { ok: true; nombre: string } | { ok: false; error: string }
 export type OrigenCatalogo = { origen: 'red' | 'cache' | 'semilla'; fecha: number }
 export type Deseo = { autor: string; texto: string; post: string; destino: string; dominio: string; herramienta: string }
+export type OrigenPiel = { tipo: 'referencia'; url: string; dominio: string } | { tipo: 'propia' } | null
+export type PielPropia = { id: string; nombre: string; creada: number; origen: OrigenPiel; piel: Record<string, unknown> }
 
 type ElectronApi = {
   brain: { info(): Promise<BrainInfo>; onChange(fn: (i: BrainInfo) => void): () => void }
@@ -115,6 +117,11 @@ type ElectronApi = {
     onConsumo(fn: (c: ConsumoConCoste) => void): () => void; onAlerta(fn: (e: EstadoUso['evaluacion']) => void): () => void
   }
   motores: { detectar(): Promise<MotorDetectado[]> }
+  pieles: {
+    listar(): Promise<PielPropia[]>
+    guardar(piel: unknown, o: { nombre: string; origen?: OrigenPiel | null }): Promise<{ ok: true; piel: PielPropia } | { ok: false; error: string }>
+    borrar(id: string): Promise<{ ok: boolean; error?: string }>
+  }
   tienda: {
     catalogo(): Promise<RespuestaCatalogo>
     deseos(): Promise<{ ok: true; deseos: Deseo[] } | { ok: false; error: string }>
@@ -298,6 +305,12 @@ export const bridge = {
     onAlerta: (fn: (e: EstadoUso['evaluacion']) => void): (() => void) => (isElectron() ? window.daimon!.uso.onAlerta(fn) : () => {}),
   },
   motores: { detectar: async (): Promise<MotorDetectado[]> => (isElectron() ? window.daimon!.motores.detectar() : []) },
+  pieles: {
+    listar: async (): Promise<PielPropia[]> => (isElectron() ? window.daimon!.pieles.listar() : []),
+    guardar: async (piel: unknown, o: { nombre: string; origen?: OrigenPiel | null }): Promise<{ ok: true; piel: PielPropia } | { ok: false; error: string }> =>
+      (isElectron() ? window.daimon!.pieles.guardar(piel, o) : { ok: false, error: 'Solo en la app de escritorio' }),
+    borrar: async (id: string): Promise<{ ok: boolean; error?: string }> => (isElectron() ? window.daimon!.pieles.borrar(id) : { ok: false, error: 'Solo en la app de escritorio' }),
+  },
   tienda: {
     catalogo: async (): Promise<RespuestaCatalogo> => (isElectron() ? window.daimon!.tienda.catalogo() : { productos: [], origen: 'ninguno' }),
     deseos: async (): Promise<{ ok: true; deseos: Deseo[] } | { ok: false; error: string }> => (isElectron() ? window.daimon!.tienda.deseos() : { ok: false, error: 'Solo en la app de escritorio' }),

@@ -110,6 +110,8 @@ export function TiendaHerramientas({ pieles }: { pieles?: Pieles } = {}) {
                   className="inline-flex h-9 items-center rounded-full border border-linea px-4 text-[13px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">Probar en vivo</button>
                 <button type="button" onClick={() => { pieles.vestir(vestida.piel); toast.success(`Ahora vestes «${vestida.piel.nombre}»`) }}
                   className="inline-flex h-9 items-center rounded-full bg-acento px-4 text-[13px] font-medium text-sobre-acento">Quedármela</button>
+                <button type="button" onClick={() => { void bridge.pieles.guardar(vestida.piel, { nombre: vestida.piel.nombre, origen: { tipo: 'referencia', url: vestida.deseo.destino, dominio: vestida.deseo.dominio } }).then((r) => toast(r.ok ? 'Guardada en tus pieles (Apariencia → Tus pieles).' : r.error)) }}
+                  className="inline-flex h-9 items-center rounded-full border border-linea px-4 text-[13px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">Guardarla</button>
               </>
             )}
             <button type="button" onClick={() => setVestida(null)}

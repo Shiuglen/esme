@@ -1,7 +1,7 @@
 // El vestidor (Ajustes › Apariencia): aquí la persona cambia Esme entera. Arriba, la piel que lleva con deshacer, rehacer y
 // restablecer; luego las pieles de casa, cada una pintada con sus propios colores y su letra; y abajo cada capa de la piel
 // para afinarla. Los deslizadores ensayan en vivo y solo se guarda en el historial lo que sueltas.
-import { LoaderCircle, Moon, Redo2, RotateCcw, Sparkles, Sun, Undo2 } from 'lucide-react'
+import { LoaderCircle, Moon, Redo2, RotateCcw, Sparkles, Sun, Trash2, Undo2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { toast } from 'sonner'
@@ -14,8 +14,9 @@ import type { ModoSonido } from '../tinta/estado'
 import { codigoAPiel, pielACodigo } from '../tinta/compartir'
 import { disenarPiel } from '../tinta/disenar'
 import { cn } from '../lib/cn'
+import { bridge, type PielPropia } from '../lib/bridge'
 import { paletaPropia } from '../tinta/estilo-propio'
-import { LETRAS, PIEL_BASE, revisarContraste, variablesDePiel, type Base, type Caracter, type LetraId, type Movimiento, type Piel } from '../tinta/piel'
+import { LETRAS, PIEL_BASE, revisarContraste, variablesDePiel, type Base, type Caracter, type LetraId, type Movimiento, type Piel, validarPiel } from '../tinta/piel'
 import { PIELES_CASA } from '../tinta/pieles-casa'
 import { cargarLetra } from '../tinta/vestir'
 
@@ -55,6 +56,52 @@ export function muestra(p: Piel, tema: Tema): Muestra {
 }
 const igual = (a: Piel, b: Piel) => JSON.stringify(a) === JSON.stringify(b)
 const radio = (p: Piel, base: number) => `${Math.round(base * p.forma.radio)}px`
+
+/**
+ * Tus pieles: las que te haces o derivas de una referencia. Viven en tu equipo (un fichero en tu carpeta de datos),
+ * y de cada una se guarda de dónde salió: una piel sin origen no se puede volver a hacer.
+ */
+function TusPieles({ pieles, tema }: { pieles: Pieles; tema: Tema }) {
+  const [propias, setPropias] = useState<PielPropia[]>([])
+  const [vistas, setVistas] = useState<PielPropia[]>([])
+  useEffect(() => { void bridge.pieles.listar().then(setPropias) }, [])
+  // de las guardadas solo valen las que la app reconoce como pieles
+  useEffect(() => {
+    const sanas = propias.flatMap((p) => { const v = validarPiel(p.piel); return v.ok ? [{ ...p, piel: v.piel } as PielPropia & { piel: Piel }] : [] })
+    setVistas(sanas)
+  }, [propias])
+  if (!vistas.length) return null
+  return (
+    <section className="grid gap-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="m-0 text-[15px] font-medium text-texto">Tus pieles</h2>
+        <span className="text-[12px] text-texto-3">{vistas.length} en tu colección</span>
+      </div>
+      <div role="list" aria-label="Tus pieles" className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
+        {vistas.map((p) => {
+          const piel = p.piel as Piel
+          const m = muestra(piel, tema)
+          return (
+            <div role="listitem" key={p.id} className="grid gap-1.5">
+              <Tarjeta p={piel} tema={tema} puesta={piel.nombre === p.nombre} onVestir={() => pieles.vestir(piel)} />
+              <div className="flex items-center gap-1.5 px-1">
+                {p.origen?.tipo === 'referencia' ? (
+                  <a href={p.origen.url} target="_blank" rel="noreferrer" className="truncate text-[11px] text-texto-3 underline decoration-linea underline-offset-2 hover:text-texto">de {p.origen.dominio}</a>
+                ) : <span className="text-[11px] text-texto-3">tuya</span>}
+                <button type="button" onClick={() => { void navigator.clipboard?.writeText(pielACodigo(piel)); toast.success('Código copiado: cualquiera puede pegarlo en su Esme.') }}
+                  className="ml-auto inline-flex h-6 items-center rounded-full px-2 text-[11px] text-texto-3 transition-colors hover:bg-s2 hover:text-texto">Compartir</button>
+                <button type="button" onClick={() => { void bridge.pieles.borrar(p.id).then(() => void bridge.pieles.listar().then(setPropias)) }}
+                  aria-label={`Borrar ${p.nombre}`} className="grid size-6 place-items-center rounded-full text-texto-3 transition-colors hover:bg-s2 hover:text-peligro">
+                  <Trash2 className="size-3.5" strokeWidth={1.75} />
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
 
 function Tarjeta({ p, tema, puesta, onVestir }: { p: Piel; tema: Tema; puesta: boolean; onVestir(): void }) {
   const m = muestra(p, tema), t = LETRAS[p.letra.titulos], x = LETRAS[p.letra.texto]
@@ -245,6 +292,8 @@ export function Apariencia({ tema, onTema, pieles }: { tema: Tema; onTema(t: Tem
       <p className="m-0 max-w-[62ch] text-sm leading-6 text-texto-2">Esme no tiene un diseño: tiene pieles. Vístela con una de casa o cámbiale cada capa; todo se ve al momento y cualquier cambio se puede deshacer. Si algo deja de leerse bien, te lo digo antes de que te canse la vista.</p>
 
       <Pidesela pieles={pieles} />
+
+      <TusPieles pieles={pieles} tema={tema} />
 
       <div role="list" aria-label="Pieles de casa" className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
         {PIELES_CASA.map((c) => <div role="listitem" key={c.nombre}><Tarjeta p={c} tema={tema} puesta={p.nombre === c.nombre && igual(p, c)} onVestir={() => pieles.vestir(c)} /></div>)}
