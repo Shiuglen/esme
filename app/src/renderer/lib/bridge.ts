@@ -102,6 +102,8 @@ type ElectronApi = {
     memoria(id: string): Promise<ResultadoMente<Memoria>>
     oir(pcm: ArrayBuffer, idioma: string): Promise<ResultadoMente<{ texto: string }>>
     decir(texto: string): Promise<ResultadoMente<ArrayBuffer>>
+    /** Copia al portapapeles la entrada de tu mente para otra IA (el token no vuelve a la ventana). */
+    copiarEntrada(): Promise<{ ok: boolean; error?: string }>
     eventos(): Promise<ResultadoTaller>; eventosParar(): Promise<ResultadoTaller>
     onEvento(fn: (e: unknown) => void): () => void
   }
@@ -220,6 +222,7 @@ export const bridge = {
     memoria: async (id: string) => dato(isElectron() ? window.daimon!.mente.memoria(id) : datoWeb((c) => c.memoria(id))),
     oir: async (pcm: ArrayBuffer, idioma: string) => dato(isElectron() ? window.daimon!.mente.oir(pcm, idioma) : datoWeb((c) => c.oir(pcm, idioma))),
     decir: async (texto: string) => dato(isElectron() ? window.daimon!.mente.decir(texto) : datoWeb((c) => c.decir(texto))),
+    copiarEntrada: async () => (isElectron() ? window.daimon!.mente.copiarEntrada() : { ok: false, error: 'Solo en la app de escritorio.' }),
     eventos: async () => (isElectron() ? window.daimon!.mente.eventos() : (clienteMente() ? { ok: true } : { ok: false, error: 'No hay conexión con la mente.' })),
     eventosParar: async () => (isElectron() ? window.daimon!.mente.eventosParar() : (pararEventosWeb(), { ok: true })),
     onEvento: (fn: (e: unknown) => void) => (isElectron() ? window.daimon!.mente.onEvento(fn) : eventosWeb(fn)),

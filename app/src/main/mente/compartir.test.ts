@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { AGENTES, conEsme, conectar, desconectar, estaConectado, sinEsme } from './compartir'
+import { AGENTES, conEsme, conectar, desconectar, entradaParaCopiar, estaConectado, sinEsme } from './compartir'
 
 const U = 'http://127.0.0.1:47321/mcp', T = 'tok'
 const ag = (id: string) => AGENTES.find((a) => a.id === id)!
@@ -61,5 +61,18 @@ describe('en disco', () => {
     conectar(a, home, U, T); writeFileSync(f, '{roto')
     expect(() => conectar(a, home, U, T)).toThrow(/no es JSON/)
     expect(readFileSync(f, 'utf8')).toBe('{roto')
+  })
+})
+
+describe('la entrada para dársela a otra IA', () => {
+  it('es la forma que aceptan los clientes MCP, con la palabra y la url', () => {
+    const texto = entradaParaCopiar('http://127.0.0.1:47321', 'secreto')
+    const j = JSON.parse(texto)
+    expect(j.mcpServers.esme).toMatchObject({ type: 'http', url: 'http://127.0.0.1:47321/mcp' })
+    expect(j.mcpServers.esme.headers.Authorization).toBe('Bearer secreto')
+  })
+  it('no se cuela nada más: ni la llave fuera de las cabeceras', () => {
+    const j = JSON.parse(entradaParaCopiar('http://x', 'secreto'))
+    expect(JSON.stringify(j).match(/secreto/g)).toHaveLength(1)
   })
 })

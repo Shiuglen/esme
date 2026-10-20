@@ -1,9 +1,10 @@
 // La puerta, del lado de la app: el renderer NO habla con el cerebro (que es Python). Pide por IPC y el proceso
 // principal habla con el cerebro por la puerta (`mente/cliente.ts`). Así el token de la mente no sale del proceso
 // principal: la ventana es la parte menos de fiar de la casa y no necesita la llave de la memoria.
-import { ipcMain } from 'electron'
+import { clipboard, ipcMain } from 'electron'
 import type { BrainInfo } from '../brain-process'
 import { ClienteCerebro } from './cliente'
+import { entradaParaCopiar } from './compartir'
 
 export type Resultado<T> = { ok: true; dato: T } | { ok: false; error: string }
 
@@ -56,4 +57,13 @@ export function registerMente(o: Opciones) {
     return { ok: true }
   })
   ipcMain.handle('mente:eventos:parar', () => { lector?.abort(); lector = null; return { ok: true } })
+
+  // La entrada de tu mente para dársela a otra IA. El token **no** vuelve al renderer:
+  // se compone aquí y va al portapapeles; la ventana sólo se entera de que se copió.
+  ipcMain.handle('mente:copiarEntrada', () => {
+    const i = o.brainInfo()
+    if (!i) return { ok: false, error: 'La mente no está disponible ahora mismo.' }
+    clipboard.writeText(entradaParaCopiar(i.url, i.token))
+    return { ok: true }
+  })
 }

@@ -71,6 +71,20 @@ function escribir(f: string, j: Json, copia: boolean) {
 
 export function conectar(a: Agente, home: string, url: string, token: string) { const f = join(home, a.fichero); escribir(f, conEsme(leer(f), a, url, token), true) }
 export function desconectar(a: Agente, home: string) { const f = join(home, a.fichero); if (existsSync(f)) escribir(f, sinEsme(leer(f), a), false) }
+
+/**
+ * La entrada de tu mente, en texto, para dársela a otra IA (o a otra persona).
+ *
+ * **El token no vuelve al renderer:** esto se compone en el proceso principal y va
+ * directamente al portapapeles. La ventana sólo sabe que se copió.
+ *
+ * La forma es la de Claude Code (`type: "http"`), que es la que más clientes aceptan;
+ * los demás cambian dos palabras (la tabla está en el propio texto).
+ */
+export function entradaParaCopiar(url: string, token: string): string {
+  const entrada = { type: 'http', url: `${url}/mcp`, headers: { Authorization: `Bearer ${token}` } }
+  return JSON.stringify({ mcpServers: { esme: entrada } }, null, 2)
+}
 /** Qué agentes tienes (su carpeta existe) y en cuáles ya está tu mente. */
 export function estados(home: string) {
   return AGENTES.map((a) => {

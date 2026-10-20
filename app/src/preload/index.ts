@@ -33,6 +33,7 @@ contextBridge.exposeInMainWorld('daimon', {
     memoria: (id: string) => ipcRenderer.invoke('mente:memoria', id),
     oir: (pcm: ArrayBuffer, idioma: string) => ipcRenderer.invoke('mente:oir', pcm, idioma),
     decir: (texto: string) => ipcRenderer.invoke('mente:decir', texto),
+    copiarEntrada: () => ipcRenderer.invoke('mente:copiarEntrada'),
     eventos: () => ipcRenderer.invoke('mente:eventos'),
     eventosParar: () => ipcRenderer.invoke('mente:eventos:parar'),
     onEvento: (fn: (e: unknown) => void) => on('mente:evento', fn),

@@ -321,6 +321,12 @@ function MenteCompartida() {
   const [agentes, setAgentes] = useState<AgenteMente[] | null>(null)
   const recargar = () => void bridge.mente.agentes().then(setAgentes)
   useEffect(recargar, [])
+  // La entrada se compone en el proceso principal (el token no vuelve a la ventana) y va al portapapeles.
+  const copiar = async () => {
+    const r = await bridge.mente.copiarEntrada()
+    if (r.ok) toast.success('Entrada copiada', { description: 'Pégala en la configuración MCP de la otra IA.' })
+    else toast.error(r.error ?? 'No pude copiarla.')
+  }
   const cambiar = async (a: AgenteMente) => {
     const r = await bridge.mente.conectar(a.id, !a.conectado)
     if (!r.ok) { toast.error(r.error); return }
@@ -331,6 +337,13 @@ function MenteCompartida() {
     <section className="vidrio grid gap-3 rounded-4 border p-5">
       <h3 className="m-0 text-sm font-semibold">Tu mente en tus otras IAs</h3>
       <p className="m-0 max-w-[640px] text-[13px] leading-5 text-texto-2">Los agentes que usas fuera de Esme pueden recordar con tu mente en vez de con ficheros .md: lo que aprende uno lo saben todos. Solo funciona en este equipo (127.0.0.1) y con tu token.</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => void copiar()}
+          className="rounded-full border border-linea px-3 py-1.5 text-[12.5px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">
+          Copiar la entrada para otra IA
+        </button>
+        <span className="text-[12px] text-texto-3">La pegas en la configuración MCP de la otra IA y ya recuerda contigo.</span>
+      </div>
       <ul className="m-0 grid list-none gap-2 p-0">
         {(agentes ?? []).map((a) => (
           <li key={a.id} className="flex items-center gap-3">
