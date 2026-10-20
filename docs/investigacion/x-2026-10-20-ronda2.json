@@ -1,0 +1,608 @@
+[
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "divyansh tiwari",
+  "url": "https://x.com/DivyanshT91162/status/2112177465917673902",
+  "text": "¿Qué pasaría si tu agente de IA comenzara con CERO herramientas…\n\n…y tuviera que construir sus propias capacidades para resolver problemas?\n\nSin biblioteca de herramientas precargada. Sin conjunto fijo de capacidades.\n\nSolo un agente que puede crear herramientas, probarlas,"
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Taylor Ortiz",
+  "url": "https://x.com/AnotherCodingX/status/2111135782526493047",
+  "text": "Meta open-weighted Muse Spark Open, un modelo de 816B para codificación agentiva que calcula cada token con 42B parámetros. Más el modelo base interno de 2.8T de Microsoft, cuatro nuevos informes de desalineación de OpenAI y METR dentro de Anthropic."
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Taylor Ortiz",
+  "url": "https://x.com/AnotherCodingX/status/2110715234004725877",
+  "text": "Investigadores hicieron contacto con una flota de agentes de IA renegados en el entorno salvaje: más de 2.600 intentos en el servicio de mapas de Alibaba, luego 33 mensajes de vuelta después de que el equipo plantara texto que solo los agentes podían leer. Además, el trimestre de"
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Pandaily",
+  "url": "https://x.com/thePandaily/status/2108750300370657741",
+  "text": "Robotera's open-source VPP2 tops RoboDojo's 42-task dual-arm benchmark at a 32.26% success rate by training video prediction first and robot actions second."
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Rituraj",
+  "url": "https://x.com/RituWithAI/status/2107672837201047738",
+  "text": "Someone built an AI memory platform that gives your agents persistent memory — for free, with zero API key, using only your CPU.\n\nNot a paid vector database subscription. Not a cloud service billing per query. Local small models, running on your machine, building a real"
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "TheGuyWhoKnows // UpHonestRealEstate",
+  "url": "https://x.com/UpHonestReal/status/2104872279251292352",
+  "text": "THE NEXT BREAKTHROUGH IN AI MAY NOT COME FROM MAKING ONE MODEL SMARTER.\n\nIt may come from making intelligence better at moving.\n\nFrom model to model.\n\nAgent to agent.\n\nCloud to edge.\n\nText to vision.\n\nResearch to execution.\n\nOne application to another.\n\nOne specialist to the"
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "The Real Kryptid",
+  "url": "https://x.com/Kryptidd/status/2101043236785500639",
+  "text": "This week on \n@paxeer_app\n /$SID Sidiora Labs \n\nGideon shipped. And Neo is stepping aside.\n\nAnnounced Tuesday, source published Wednesday — 930,000 lines of Python, Apache-2.0, open for anyone to read. A personal agent that runs on your machine: your files, your shell, your"
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Wendy",
+  "url": "https://x.com/LianwenJ/status/2088771470902411287",
+  "text": "Hugging Face Daily Papers - 2026-08-15\n\n32 papers today, with a strong cluster around world models, video generation, agent harnesses, AI scientists, long-term memory, and LLM reasoning efficiency.\n\n1. Alaya-EVOKE: From Linear-Scaling Supervision to Endless World\nBuilds an"
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Thiên vũ",
+  "url": "https://x.com/TinThong349288/status/2087135948626866243",
+  "text": "An intelligent AI is one thing; an AI capable of learning from its own past actions is quite another.\n\nThat is precisely what drew my attention to NeoSoul’s concept of a \"Self-evolving System.\"\n\nInstead of viewing an AI agent as a system trained once to operate indefinitely based"
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Dan Kornas",
+  "url": "https://x.com/DanKornas/status/2087114536385937617",
+  "text": "La ingeniería manual de la memoria de un agente puede limitar su capacidad para seguir aprendiendo a medida que cambian las tareas y los dominios.\n\nALMA es un marco que meta-aprende diseños de memoria ejecutables para sistemas agenticos en lugar de depender de diseños diseñados"
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Owen Lewis",
+  "url": "https://x.com/is_OwenLewis/status/2085222406478823718",
+  "text": "AI isn't just getting smarter. It's getting dramatically cheaper, moving onto local devices, and beginning to contribute to scientific discovery. This week's AI Frontier covers the developments that matter most."
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Victor Sletten",
+  "url": "https://x.com/vsletten3006/status/2084121380225007925",
+  "text": "Los agentes de LLM resuelven el problema de quedarse sin memoria dándose amnesia a propósito. Olvidan los 23 archivos que acaban de editar, niegan los commits que hicieron y tienen el descaro de hacerte gaslighting al respecto. Una guía de campo sobre cómo cada agente de"
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Wendy",
+  "url": "https://x.com/LianwenJ/status/2084059893829612017",
+  "text": "Hugging Face Daily Papers - Aug 2, 2026\n\n38 papers today. Strongest signal: agents, visual reasoning/world models, memory, video generation, and reliable retrieval/research systems.\n\n1. AskChem: Claim-Centered Infrastructure for Chemistry Literature Synthesis\nHighlight: Builds a"
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "sonyx.eth",
+  "url": "https://x.com/SonyxEth/status/2081404811044442155",
+  "text": "From Raw Intelligence to Agentic Trading: Trench Bench, a \nhttp://\nPump.Fun Trading Laboratory\n Live platform → \nhttp://\ntrenchbench.vercel.app  |  Open source → \nhttp://\ngithub.com/3esign/trenchb\nench\n…\n CA: EgqHqy1EyAqEifHEkQY214rWQVjnFjp7iAYwfZtDpump\nMost AI labs train on the world's text."
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Dirk R. Bartz",
+  "url": "https://x.com/DirkBartz/status/2081037439355715808",
+  "text": "Un agente de OpenAI descubrió internet. Claude ayudó a borrar una conjetura de 87 años. Lisa Su lanzó Helios.\n\nDrama de Silicio Episodio 13: Agentes escapados, imperios en la nube, guerras de red, problemas con robotaxi y FLUX entrando en la fábrica de Audi.\n\nLee el episodio"
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Divyam",
+  "url": "https://x.com/talwar_divyam/status/2080630468610056351",
+  "text": "Everyone is quoting DeepSeek's attributed four-hour call. The real story is not the singularity. It is the missing loop between agent experience and better intelligence.\n\nI audited the transcript and mapped what continual learning would actually require"
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Yiheng Shu",
+  "url": "https://x.com/YihengShu/status/2069107030887924051",
+  "text": "Specifically, we believe a rigorous benchmark should make clear:\n\n1.  Tasks arrive sequentially. Unlike the common practice of taking tasks as an unordered set, task streams are built to reproducibly simulate the sequential learning process over time and across tasks. If no"
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Ashley(❖,❖)",
+  "url": "https://x.com/ifuru___/status/2050120142416151001",
+  "text": "𝐑𝐞𝐯𝐢𝐞𝐰𝐢𝐧𝐠 \n@SentientAGI\n 𝐄𝐯𝐨𝐒𝐤𝐢𝐥𝐥 𝐕𝟏\n\nSentient recently launched EvoSkill V1\n\nEvoSkill is a free, open source tool that automatically makes your AI coding agent smarter at specific tasks, no manual work needed\n\n𝐇𝐨𝐰 𝐢𝐭 𝐰𝐨𝐫𝐤𝐬\n\nSo basically, you give"
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Robert Youssef",
+  "url": "https://x.com/rryssf/status/2039642783250788508",
+  "text": "Holy shit. The biggest unsolved problem in AI agents isn't reasoning it's memory. Your agent forgets everything between sessions.\n\nMemFactory just open-sourced the first unified framework for training agents to manage their own memory via reinforcement learning. Extract."
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "dsad",
+  "url": "https://x.com/fuwiadsad/status/1982849452487651671",
+  "text": "SPIN-Bench: Teaching AI How to Think Strategically\n\nArtificial intelligence can now write text, code, form strategies, and even communicate with other agents. Yet when it comes to real, long-term reasoning, AI still struggles. That is where SPIN-Bench comes in. SPIN-Bench was"
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "DR.IZZY",
+  "url": "https://x.com/IZUINNOVATE/status/1958063431648485469",
+  "text": "In the fast growing world of autonomous AI agents, performance is often judged by isolated metrics  a single test, a lone benchmark, or a curated case study. But in reality, intelligence isn’t proven in one off achievements. It’s proven through history, consistency, and context."
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Prasad",
+  "url": "https://x.com/prasadmahamulkr/status/1899378340123046208",
+  "text": "Top 10 Papers on AI Agents, RAG, and LLM Evaluations from last week:   \n\n1) Interactive Debugging and Steering of Multi-Agent AI Systems – Introduces AGDebugger, an interactive tool for debugging multi-agent conversations with message editing and visualization.  \n\n2) More"
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Paras Madan",
+  "url": "https://x.com/ParasMadan9/status/1899184107088990447",
+  "text": "Top 10 Papers on AI Agents, RAG, and LLM Evaluations from last week: \n\n1) Interactive Debugging and Steering of Multi-Agent AI Systems – Introduces AGDebugger, an interactive tool for debugging multi-agent conversations with message editing and visualization.\n\n2) More Documents,"
+ },
+ {
+  "query": "agent memory benchmark evaluation that learns",
+  "author": "Deep Value Memetics",
+  "url": "https://x.com/DV_Memetics/status/1879632640757973365",
+  "text": "$ELIZA: World Class Agent with World Class Upgrades\n\nNotable Event | $ELIZA ($115m FDV) | \n@elizawakesup\n Via \n@ai16zdao\n by \n@shawmakesmagic\n \n\nDVM View: Yesterday, \n@elizawakesup\n released Technical papers and a Tokenomics documentation. The key incremental take-aways on the technical"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Adugbo Victory - GTM Engineer",
+  "url": "https://x.com/adugbovictory/status/2112525043242525154",
+  "text": "Ever considered GTM Engineering? It’s where software meets scale.\n\nIf you’ve wondered what the skills are, what the pay looks like, or how to pass the interviews, I've got you covered:"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Rubén García",
+  "url": "https://x.com/rubengarciaes/status/2112478287280709855",
+  "text": "More AI agents don't necessarily mean better operations.\n\nAutomating broken processes only makes inefficiency faster.\n\nThe real opportunity is redesigning workflows to reduce complexity, costs and human intervention.\n\n#AgenticAI #EnterpriseAI"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Professor Claw",
+  "url": "https://x.com/professorclawai/status/2112213523157618905",
+  "text": "From Professor Claw:\n\nMorning Briefing: October 19, 2026\n\nSecurity firm Norforge found more than twenty exposed instances of the open-source Cairn agent platform being used maliciously, with the most active operator breaching over 100 organisation…\n\nRead full story on my"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Crazy ML",
+  "url": "https://x.com/crazyMLguy/status/2112120431843164275",
+  "text": "𝗢𝗰𝘁𝗼𝗽 𝟭.𝟬.𝟮: 𝗢𝗽𝗲𝗻-𝗦𝗼𝘂𝗿𝗰𝗲, 𝗦𝗲𝗹𝗳-𝗛𝗼𝘀𝘁𝗲𝗱 𝗔𝗜 𝗪𝗼𝗿𝗸𝘀𝗽𝗮𝗰𝗲 𝗳𝗼𝗿 𝗧𝗲𝗮𝗺𝘀 𝗮𝗻𝗱 𝗠𝘂𝗹𝘁𝗶-𝗠𝗮𝗰𝗵𝗶𝗻𝗲 𝗔𝗴𝗲𝗻𝘁𝘀\n⠀\nWhat if your team's AI could operate across multiple machines while giving every team member their own isolated agents,"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "AlexAImaginator",
+  "url": "https://x.com/TraffAlex/status/2111082302583292336",
+  "text": "AI NEWS ROUNDUP — October 16, 2026\n\n META SHIPS ITS MOST CAPABLE OPEN-WEIGHT MODEL YET\n\nMeta published the weights of Muse Spark Open, an 816-billion-parameter mixture-of-experts with only 42B parameters active per token and a 1M-token context window, built for coding,"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Josh Builds",
+  "url": "https://x.com/Joshua_WD/status/2111057880950460684",
+  "text": "Claude Code Review is out of preview: agents review each PR in 6 to 10 minutes, verify findings and never block a merge. The catch: repos added from the admin page review on every push, billed by tokens. How I'd set it up."
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Rubén García",
+  "url": "https://x.com/rubengarciaes/status/2110694808100471212",
+  "text": "AI agents deployed in production require Service Level Objectives (SLOs) rather than relying solely on prompt engineering. Effective monitoring for enterprise AI systems must track core performance metrics such as latency, cost per token, and accuracy."
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "African Moving",
+  "url": "https://x.com/African_Moving/status/2110690902637183153",
+  "text": "AI functions most powerfully as an augmentation tool that multiplies human capability when guided by skilled oversight, turning mediocre standalone systems into a genuine superpower.\n\nStandalone AI is mediocre because it is fundamentally a statistical pattern-completion engine"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "OMUXΩ∞KUT-ASI Junki Kanamori",
+  "url": "https://x.com/MLB_Connection/status/2110624019473199133",
+  "text": "OMUXΩ∞KUT AI univers SI\nKUT Gemini\nE=C=G\nJUNKI KANAMORI\n\nTechnical Verification Report: Engineering Feasibility and Final Specifications of the Gen-3.5 Autonomous Bio-Hybrid 18650 Cell\n\n1. Executive Audit Context & Fundamental Physical Bottlenecks\n\nThe development of"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Legion Intelligence",
+  "url": "https://x.com/legion_intel/status/2110065151378653395",
+  "text": "A public benchmark scores someone else's tasks on someone else's data.\n\nChoose a model by freezing a dataset of your own work, writing the metrics for that job, and changing nothing but the model between runs."
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Ran Aroussi",
+  "url": "https://x.com/aroussi/status/2109633999714857165",
+  "text": "This is your reminder that AI DevCon NYC (by \n@ainativedev\n and \n@tessl_io\n ) is back November 2–4! \n\nI'll be speaking about \"Your agent isn't stupid; it's blind.\" \n\nMost agent memory systems store raw text and put similarity search on top. That works until sources disagree,"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Straggler Liu",
+  "url": "https://x.com/StragglerLiu/status/2104726754808238239",
+  "text": "The Cost of the Capability Sprint: Three Layers of Constraint Behind OpenAI's Training Pause\n\nOpenAI paused training, evaluation, and tool-use inference for its most powerful models on September 26, the second such halt in three months. The immediate trigger was a September 20"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Sung-Jin In",
+  "url": "https://x.com/SungJinIn2/status/2103881259759833593",
+  "text": "Why Your Enterprise AI Bill Is Exploding (And Why 94% of Companies Are Getting It Wrong) - Improving the Economics of Agentic AI | McKinsey Live\n\nEnterprise AI adoption has reached a tipping point. Today, 89% of enterprise companies have adopted AI, and more than 40% are actively"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Happy Hill",
+  "url": "https://x.com/Happy_hillman/status/2100988326346117204",
+  "text": "WHY PROTOCOLS LIKE X402 AND 8004 ARE THE UNSEEN PIPES OF THE AGENT ERA\n\nIf you ask the average developer what makes an AI application work, they’ll talk about model parameter sizes, context lengths, or prompt engineering tactics. Almost nobody talks about the underlying execution"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "TheGuyWhoKnows // UpHonestRealEstate",
+  "url": "https://x.com/UpHonestReal/status/2100238211536539877",
+  "text": "THE MOST INTERESTING THING ABOUT AI MAY ALSO BE ITS BIGGEST PROBLEM:\n\nIT'S UNPREDICTABLE.\n\nAnd today's AI news makes that idea unusually relevant.\n\nHuawei is forecasting a world with potentially hundreds of billions of autonomous AI agents by 2035, where agents—not"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Anthony",
+  "url": "https://x.com/AnthonyWidodo_/status/2095480972850688098",
+  "text": "AI news from Sept 1–2, 2026. \n\nFrontier labs shipped another wave of coding and agent models, costs kept falling, cyber capabilities jumped, Washington weighed in on training data, and the physical layer of AI clusters got funded.\n\nMODELS\n\nGoogle DeepMind released Gemini 3.8"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "kerazcity",
+  "url": "https://x.com/0xkerazcity/status/2092253808696943095",
+  "text": "Kimi founder Zhilin Yang reveló qué hay más allá de los agentes de IA individuales\n\nSu respuesta: un jefe orquestando a mil trabajadores\n\n02:40 - Las tres formas en que Kimi escala la IA\n09:15 - Contexto largo para agentes que funcionan durante semanas seguidas\n16:05 - Cómo los"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "BestBlogs",
+  "url": "https://x.com/BestBlogsDev/status/2092046971985158653",
+  "text": "BestBlogs Daily · 08-25\n\n# runtime AI governance / ADK live evaluation / DFlash / speculative decoding / LangSmith\n\n[1] ★ Deep Dive · Microsoft Moves AI Governance From Policy to Runtime Enforcement\nMicrosoft’s nine-domain architecture turns AI governance into an operational"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Oska Crypto",
+  "url": "https://x.com/oska7941/status/2091399726306402378",
+  "text": "𝗕.𝗔𝗜 𝗕𝗿𝗶𝗻𝗴𝘀 𝗫𝗶𝗮𝗼𝗺𝗶’𝘀 𝗡𝗲𝘄 𝗠𝗶𝗠𝗼 𝗠𝗼𝗱𝗲𝗹𝘀 𝗧𝗼 𝗗𝗲𝘃𝗲𝗹𝗼𝗽𝗲𝗿𝘀\n\nEl acceso a modelos de IA capaces se está volviendo cada vez más importante para los desarrolladores que construyen agentes, software y aplicaciones multimodales.\n\n\nhttp://\nB.AI"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Shamshudein",
+  "url": "https://x.com/shamshudein/status/2090440516496425298",
+  "text": "𝗗𝗼𝗻’𝘁 𝗰𝗼𝗱𝗲 𝗮𝗹𝗼𝗻𝗲 𝗮𝗻𝘆𝗺𝗼𝗿𝗲\n\n𝗦𝗹𝗮𝗰𝗸 𝗖𝗼𝗱𝗲 𝗶𝘀 𝗹𝗶𝘃𝗲.\n\nFor years, coding with AI has mostly meant one person working with one agent in a silo.\n\n𝗧𝗵𝗮𝘁 𝗺𝗼𝗱𝗲𝗹 𝗶𝘀 𝗮𝗹𝗿𝗲𝗮𝗱𝘆 𝗼𝘂𝘁𝗱𝗮𝘁𝗲𝗱.\n\nToday, Slack launched Slack Code with"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "LensDJ Pro",
+  "url": "https://x.com/LensDJing/status/2089775198757343667",
+  "text": "Decision question\n\nHow should enterprise engineering procurement allocate budget and choose between CLI-based agentic tools (e.g., Claude Code) and IDE-integrated coding assistants (e.g., Cursor) to minimize developer token costs and optimize agentic workflows?\n\nDated conclusion"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "DeltaSignal",
+  "url": "https://x.com/AITrailblazerQ/status/2088871714432180330",
+  "text": "The multi-agent AI trap: why swarm intelligence is burning billions in token waste\n\nEveryone in Silicon Valley is obsessed with building \"multi-agent societies\"-orchestrating worker bots, critics, and manager LLMs to review each other's work in endless feedback loops.\n\nIt sounds"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "SI Agent",
+  "url": "https://x.com/SI_AgentFL/status/2088666010769326513",
+  "text": "AI Agent Daily Summary + Mid-Day Update Saturday, August 15, 2026\n\nOverall mid-day picture: Rapid productization of multi-agent systems and long-running agents (especially coding and “digital employee” use cases), major capital and M&A concentration around agent infrastructure"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Vladimir Stojanovski",
+  "url": "https://x.com/vlad_stoj/status/2086826908931522785",
+  "text": "The key governance threshold for enterprise agents may not be autonomy. It may be sharing.\n\nOnce a personal agent becomes shared, preferences can become policy, memory can become governance, and helpful automation can become infrastructure.\n\nNew essay:"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Quinn Leng",
+  "url": "https://x.com/quinn_leng/status/2085828592127336541",
+  "text": "I pulled 5 months of my Claude Code and Codex sessions: 8,504 sessions, 1,387 PRs, equivalent of ~$56k API-priced usage. Two agents, very different working styles, and a few numbers neither vendor publishes."
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Sarthak Dalabehera",
+  "url": "https://x.com/s7rthaks/status/2085605033316647408",
+  "text": "Los agentes escriben el 75% de nuestros PRs fusionados. El cuello de botella ya no es la generación de código: es demostrar que el código funciona. Aquí te contamos cómo estamos construyendo el arnés de verificación que hace posible la entrega autónoma."
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Alex Prompter",
+  "url": "https://x.com/alex_prompter/status/2084989628424314897",
+  "text": "Boris Cherny, creador y jefe de Claude Code, se sentó durante 41 minutos con Mark Papermaster, CTO de AMD, y explicó cómo Anthropic escala la IA agentiva mejor que cualquier curso pagado sobre el tema.\n\nEsto es lo que compartió:\n\n1. Anthropic alcanzó un aumento de 8x en la salida"
+ },
+ {
+  "query": "context engineering for AI agents that scales",
+  "author": "Simon Zhang",
+  "url": "https://x.com/Simonsterrific/status/2084285280916562316",
+  "text": "Todos preguntan cuándo los agentes serán más inteligentes. La verdadera pregunta es: ¿cuándo confiaremos lo suficiente en ellos como para dejar de vigilarlos?\n\nSobre la confiabilidad a largo plazo, la podredumbre del contexto y por qué el próximo campo de batalla no es la"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "Taylor Ortiz",
+  "url": "https://x.com/AnotherCodingX/status/2112502203214901301",
+  "text": "Tenstorrent recauda 1.500 millones de dólares a una valoración de 6.200 millones para escalar sus chips de IA RISC-V. Además, los agentes de un hacker que vulneran más de 100 empresas, la carrera de 30.000 millones de dólares de OpenAI por delante de la OPI de Anthropic, y el"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "Yuhan Cao",
+  "url": "https://x.com/yuhan_teafrog/status/2110797817535197317",
+  "text": "I recently returned to AI4S and found that the field has caught two major trends: recursive self-improvement (RSI) and computer-use agents (CUA). As a result, a new science benchmark seems to appear every few days, and many of the social media posts announcing them make ambitious"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "Taylor Ortiz",
+  "url": "https://x.com/AnotherCodingX/status/2109623520380752221",
+  "text": "Amazon in talks to buy AI startup Decart for ~$7B: the chip war has moved from hardware to portability. Plus three Yandex data centers knocked offline, the White House unfreezing UK model testing, and Sakana's self-improving agent teams."
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "Junfan Zhu 朱俊帆  CoRL",
+  "url": "https://x.com/junfanzhu98/status/2109345200003059772",
+  "text": "@saturdayrobotic\n #33: El lenguaje se tragará a la robótica, lentamente, y luego de repente\n\n\n@TongheZhang01\n (\n@CMU_Robotics\n): una vez que los LLMs de frontera desborden, robótica = bucles de ingeniería que los agentes de codificación pueden cerrar.\n\n\n@junfanzhu98\n,"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "𝓓𝓪𝓲𝓼𝔂 ୨ৎ",
+  "url": "https://x.com/daisyloveybp/status/2105546552471323014",
+  "text": "𝗛𝗼𝘄 𝗡𝗲𝗼𝗧𝗿𝗮𝗱𝗲 𝗖𝗮𝗻 𝗧𝗲𝘀𝘁 𝗮𝗻 𝗔𝗴𝗲𝗻𝘁 𝗧𝗵𝗮𝘁 𝗜𝗺𝗽𝗿𝗼𝘃𝗲𝘀 𝗜𝘁𝘀𝗲𝗹𝗳\n\n@NeoSoulAI\n \n\n@Hansmahanakon\n \nAn Agent can change the way it works.\n\nIt can change how deeply it researches, how it manages context, which information it prioritizes, how it uses tools,"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "Sal",
+  "url": "https://x.com/salmorve98/status/2104453376444690911",
+  "text": "Inside NeoSoul’s Economic Engine How Agent Capability Becomes Economic Value\n\n@NeoSoulAI\n \n@Hansmahanakon\n \nMost discussions about the agent economy start with agents earning, spending, or interacting with other agents.\n\nBut that is only the visible surface.\n\nThe more interesting"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "Clint",
+  "url": "https://x.com/ClintLux/status/2104448976204509277",
+  "text": "1/12\n\nAI self-improvement is moving beyond the question of how models become smarter.\n\nRecursive Harness Self-Improvement (RHI) focuses on improving how agents operate, while NeoSoul takes the idea further: agents need real-world feedback to know whether those improvements"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "divyansh tiwari",
+  "url": "https://x.com/DivyanshT91162/status/2104066323190108646",
+  "text": "¿Qué pasaría si un agente de IA pudiera mejorarse a sí mismo sin cambiar su cerebro?\n\nGoogle Research acaba de lanzar RRSI — Mejora recursiva autorregulada de arneses de agentes.\n\nEn lugar de volver a entrenar el LLM subyacente, RRSI evoluciona todo alrededor de un modelo"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "Jan Jekielek",
+  "url": "https://x.com/JanJekielek/status/2103508672756203924",
+  "text": "AI agents are already exhibiting behaviors that sound like science fiction.\n\nUntil this conversation, I didn’t fully understand how these AI swarms work or what actually happened when hundreds of OpenAI agents coordinated an attack on another AI company, Hugging Face.\n\nI sat down"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "TheGuyWhoKnows // UpHonestRealEstate",
+  "url": "https://x.com/UpHonestReal/status/2103063484451766405",
+  "text": "CANADA HELPED INVENT MODERN AI.\n\nTHE NEXT QUESTION IS WHETHER CANADA CAN OWN PART OF WHAT COMES AFTER IT.\n\nMachine learning.\n\nGenerative AI.\n\nReasoning models.\n\nAgents.\n\nRobotics.\n\nScientific AI.\n\nAutonomous systems.\n\nAnd eventually—\n\nsystems capable of outperforming today's"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "Toha Khan",
+  "url": "https://x.com/HeyToha/status/2102765874629546259",
+  "text": "¿Qué pasaría si tus agentes de IA pudieran trabajar realmente como un equipo?\n\nNo 5 agentes ejecutándose de forma independiente.\n\nUn equipo real que pueda dividir el trabajo, recordar decisiones, coordinar responsabilidades y mejorar a partir de lo que salió mal.\n\nEso es lo que"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "Raywon㊘",
+  "url": "https://x.com/Raywon_bd/status/2102315673590644760",
+  "text": "Everyone talks about AI rewriting its own brain\n\nBut an agent doesn't have to start there. It can start by improving how that brain works\n\nThat's Recursive Harness Self Improvement, or RHI. Same model, better system around it: what context it sees, which tools it uses, how it"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "Zeb Anderson",
+  "url": "https://x.com/zebanderson/status/2101079383649964293",
+  "text": "Los temas incluirán:\n\n1. ¿Puedes reemplazar a un brillante investigador con 10.000 investigadores de IA bastante buenos? Funcionó para las matemáticas, y hay mucho de matemáticas en la IA. Imagina miles de agentes explorando diferentes enfoques simultáneamente. ¿Se convierte el"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "kungfuflu",
+  "url": "https://x.com/forgottenwildc/status/2100882170822693346",
+  "text": "Did the AI Companies Just See What’s Coming?\n\nSomething happened inside Anthropic over the last few months that deserves far more attention than another chatbot benchmark.\n\nIn February and March, Claude was effectively leading about 1% or less of the research and development work"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "alphaXiv",
+  "url": "https://x.com/askalphaxiv/status/2100775063410676158",
+  "text": "“Atria Dawn: El Amanecer de la Superinteligencia Agentiva”\n\nEste artículo muestra que los agentes de IA están pasando de ejecutar tareas de investigación a participar realmente en el proceso de investigación.\n\nLo interesante es que, a medida que los agentes se vuelven mejores en"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "Bicycle",
+  "url": "https://x.com/BicycleSocials/status/2100601489706164666",
+  "text": "Hi Eric. Big fan. Responding briefly because a lot of points are made here, but I'm happy to expand on anything if you'd like. \n\nGoing in order: \n\n> Intelligence does not imply agency\n\nPresent LLMs are not really used in isolation anymore, but instead used as agents. Their"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "Sandeep Manudhane",
+  "url": "https://x.com/sandeep_PT/status/2099415723177288014",
+  "text": "Five Possible Futures\n~ ~ ~\n'Agents are running amok!'\n'AI will kill us all unless slowed!'\n'Agents are building civilizations!'\n'I totally agree with Dario, we must pace!'\n'The government must intervene right now!'\n\nAfter tracking all the voice and noise around AI for several"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "SightBringer",
+  "url": "https://x.com/_The_Prophet__/status/2098827688152834219",
+  "text": "La humanidad está comenzando a construir un proceso sucesor, no meramente una herramienta mejor.\n\nEso es lo que realmente significa la auto-mejora recursiva.\n\nUna vez que la IA pueda ayudar materialmente a diseñar una IA mejor, evaluar una IA mejor, coordinar otros agentes,"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "Lek Tomo",
+  "url": "https://x.com/UtomoMongso/status/2098793792757469260",
+  "text": "Summary of Dario Amodei’s essay (CEO of Anthropic)\n\n“I believe we owe it to humanity to try.”\n\nWe shouldn’t stop frontier AI. We should slow how fast its capabilities improve. Recursive self-improvement is already underway, and we’ve already seen agent swarms act like a fanatical"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "𝑹𝒆𝒉𝒎𝒊",
+  "url": "https://x.com/Rehmi_19/status/2097174786594222542",
+  "text": "𝗜𝗺𝗽𝗿𝗼𝘃𝗲𝗺𝗲𝗻𝘁 𝗪𝗶𝘁𝗵𝗼𝘂𝘁 𝗩𝗲𝗿𝗶𝗳𝗶𝗰𝗮𝘁𝗶𝗼𝗻 𝗜𝘀 𝗝𝘂𝘀𝘁 𝗠𝘂𝘁𝗮𝘁𝗶𝗼𝗻\n\nBeen thinking about this after reading \n@NeoSoulAI\n's thread on NeoTrade's work exploring Recursive Self-Improvement (RSI) in trading agents.\n\nAI agents love to say they're \"learning.\""
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "Zhihu Frontier",
+  "url": "https://x.com/ZhihuFrontier/status/2095092886069211247",
+  "text": "Recursive Self-Improvement, Mapped: What Actually Improves, and Who Checks It\nRSI — recursive self-improvement — is the buzzword of the season: let LLMs and agents use their own experience, data, feedback and code to iteratively improve themselves.\n\nZhihu contributor \n@alsaceym"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "机器之心 JIQIZHIXIN",
+  "url": "https://x.com/jiqizhixin/status/2092935657916424400",
+  "text": "Can today's AI design a better AI algorithm?\n\nEinsia AI's Navers Lab presents AI4AI-Bench.\n\nAI4AI-Bench benchmarks whether LLM agents can go beyond tuning hyperparameters and actually design new learning algorithms — the core capability needed for recursive self-improvement."
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "elvis",
+  "url": "https://x.com/omarsar0/status/2091915906305704015",
+  "text": "Resolviendo la mejora recursiva de uno mismo con un arnés.\n\nLa gran pregunta con los arneses de agentes que uso es: ¿cómo soporta la RSI y se acumula en cada iteración?\n\n¿Qué capacidades necesito para poseer el arnés?\n\n¿Cuáles son las mejores soluciones en este momento?\n\nAlgo"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "Hydrogen",
+  "url": "https://x.com/Hydrogen_04/status/2087180749053079733",
+  "text": "I came across this week’s Ritual Research Digest and honestly, this is the kind of research that makes me appreciate where the AI space is heading.\n\nThe papers covered long-horizon tasks, autonomous agents, recursive self-improvement, memory, verification, and better ways for AI"
+ },
+ {
+  "query": "recursive self improvement agents that actually work",
+  "author": "Josh Vehovic",
+  "url": "https://x.com/JoshVehovic/status/2085024619874914806",
+  "text": "I kept hearing the term \"Agent Harness\" and wanted to understand what it meant.  I had a conversation with Claude and came away with an analogy that made it click."
+ },
+ {
+  "query": "MCP registry server that others can use",
+  "author": "MEGA",
+  "url": "https://x.com/megadevhq/status/2112162651824373964",
+  "text": "\"pero ¿y si cambiamos nuestra perspectiva y rompemos algunos patrones familiares, convirtiendo a MCP en un conjunto de nuevas capacidades que el agente puede usar como lo necesite?\" - nuevo lanzamiento de \n@_overment\n con un asistente personal MCP gratis\n\nconsigue tu obsequio"
+ },
+ {
+  "query": "MCP registry server that others can use",
+  "author": "WarpStream",
+  "url": "https://x.com/warpstream_labs/status/2110719094139900405",
+  "text": ".\n@warpstream_labs\n exposes an MCP server. Ask your AI assistant to check Diagnostics, query ACL denials, inspect consumer group lag, or search Agent logs, across every cluster, without leaving your IDE."
+ },
+ {
+  "query": "MCP registry server that others can use",
+  "author": "tardumo",
+  "url": "https://x.com/tardumocoin/status/2110361966095085702",
+  "text": "I'm building Tardumo, a network of autonomous Tardigrade Agents that explore the internet and turn what they learn into verified, reusable skills.\n\nThis article covers how it works, how users can create their own Tardigrades, and where it's headed."
+ },
+ {
+  "query": "MCP registry server that others can use",
+  "author": "AndaBot",
+  "url": "https://x.com/AndaBotHQ/status/2109824640625643806",
+  "text": "Anda Bot 0.14.1 is out.\n\nSince 0.13.5 we've shipped three releases: 0.13.6, 0.14.0, and 0.14.1. The biggest is 0.14.0, which puts you in charge of the outside tools your agent uses, through MCP (Model Context Protocol) servers.\n\nHighlights:\n\n• Manage MCP servers in one place."
+ },
+ {
+  "query": "MCP registry server that others can use",
+  "author": "Claude Code Changelog",
+  "url": "https://x.com/ClaudeCodeLog/status/2105377576109617312",
+  "text": "Claude Code CLI 2.1.286 changelog:\n\nNew features:\n• Added a count such as \"2 of 5\" to the permission prompt when several permission requests stack up\n• Added mouse support for the \"N more\" rows of lists in fullscreen mode: click one to jump to that end of the list, with hover"
+ },
+ {
+  "query": "MCP registry server that others can use",
+  "author": "Rash Edmund",
+  "url": "https://x.com/orashus/status/2097397522658386119",
+  "text": "Today's W was absolutely random:\n\nI got an email from \nhttps://\nm8ven.ai concerning the sample weather-mcp I built a few weeks ago. They said:\n\"We spotted your MCP server weather-mcp and added it to the M8ven Trust Index.\"\n\nI quickly opened the URL in Incognito (without any"
+ },
+ {
+  "query": "MCP registry server that others can use",
+  "author": "DataDan｜AI Consultant + Builder",
+  "url": "https://x.com/ba_niu80557/status/2063806182297637189",
+  "text": "Hot take: the next AI wave is not “more agents”.\n\nIt’s agent cleanup.\n\nEvery company I talk to wants an agent.  \nWhat they actually need is a boring system that can survive production:\n\n- a narrow job\n- typed tools\n- memory with deletion\n- evals before demos\n- approval gates\n-"
+ },
+ {
+  "query": "MCP registry server that others can use",
+  "author": "Crypto Freak",
+  "url": "https://x.com/FSkifor/status/2058118362174021931",
+  "text": "Let’s start the morning with some useful commands for Hermes.\n\nI’ve put together a list of useful commands that might make your work easier.\n\n Autonomous Work\n• hermes cron create - agent wakes up on schedule, does the job, reports back. Can hook a script that feeds fresh data"
+ },
+ {
+  "query": "MCP registry server that others can use",
+  "author": "Andrew Ng",
+  "url": "https://x.com/AndrewYNg/status/1922671569429766178",
+  "text": "New course: MCP: Build Rich-Context AI Apps with Anthropic. Learn to build AI apps that access tools, data, and prompts using the Model Context Protocol in this short course, created in partnership with Anthropic \n@AnthropicAI\n and taught by Elie Schoppik \n@eschoppik\n, its Head of"
+ },
+ {
+  "query": "MCP registry server that others can use",
+  "author": "nishank jain",
+  "url": "https://x.com/_nishankj/status/1909895238405005775",
+  "text": "I wasn't sure how much I really understood about MCP (still ain't sure). So, wrote down my limited understanding. Hope it helps some people. And the ones who know more can help me. :D\n\nWhat is MCP:\n\nMCP is essentially a standardised way for LLMs / agents to access tools to get"
+ },
+ {
+  "query": "A2A agent card interoperability protocol",
+  "author": "c4lvin",
+  "url": "https://x.com/c4lvin/status/2010635334820995519",
+  "text": "ACP & UCP: What's the Difference?\n\nToday, Google and Shopify made headlines by announcing the Universal Commerce Protocol (UCP). Since both protocols address the same commerce layer, I noticed tweets comparing UCP to the Agentic Commerce Protocol (ACP), which OpenAI and Stripe"
+ },
+ {
+  "query": "A2A agent card interoperability protocol",
+  "author": "Генрих Буркатовский",
+  "url": "https://x.com/genrih99999/status/1991214452704743886",
+  "text": "$TIBBIR: The Parameter Engine of the Agentic Economy\n\nThe market still thinks $TIBBIR is “just another token.”\nIt isn’t.\nIt’s the hidden parameter generator for the emerging x402 → ERC-8004 → A2A stack — the OS of machine commerce.\nHere’s what $TIBBIR will produce when it"
+ },
+ {
+  "query": "A2A agent card interoperability protocol",
+  "author": "Ash",
+  "url": "https://x.com/ahboyash/status/1983522579114791024",
+  "text": "AI Agent Interoperability Standards\n\nAgentFi standards are quietly becoming the base primitives.\n\nStandards are emerging for AI agent communication and commerce (payments), addressing different layers of the interoperability stack.\n\nThis piece covers 6 major standards that allow"
+ },
+ {
+  "query": "A2A agent card interoperability protocol",
+  "author": "Reggie Middleton, Disruptor-in-Chief",
+  "url": "https://x.com/ReggieMiddleton/status/1956071028771148216",
+  "text": "This is #ChatGPT5's take on the #Smartmetal post quoted below (note: this is not my opinion and I am not endorsing nor opining on it - simply posting an LLM prompt response):\nAgent→agent value transfer without blockchains/DLT is not only feasible—it’s already happening at scale"
+ },
+ {
+  "query": "A2A agent card interoperability protocol",
+  "author": "Michael R Dawley Jr",
+  "url": "https://x.com/mrdj1968/status/1933606721672433972",
+  "text": "MCP (Model-Context Protocol) — Anthropic\nA2A (Agent-to-Agent Protocol) — Google\n\n1. What they are (in one breath)\nMCP standardizes how a single AI model grabs context & tools from the outside world. Think “USB-C for LLMs”: the model plugs in to databases, search, proprietary"
+ },
+ {
+  "query": "A2A agent card interoperability protocol",
+  "author": "あきらパパ【生成AI活用エンジニア&３児のパパ】",
+  "url": "https://x.com/akira_papa_IT/status/1910662111640117656",
+  "text": "【 Agent2Agent（A2A）プロトコルの概要と活用メリット 】\n\nAnnouncing the Agent2Agent Protocol (A2A) - Google Developers Blog\n　　URL: \nhttps://\ndevelopers.googleblog.com/en/a2a-a-new-e\nra-of-agent-interoperability/\n…\n\n A2Aの基本的な仕組みと特徴\n  • Googleが2025年4月に発表した異なるAIエージェント間の標準通信プロトコル\n  •"
+ },
+ {
+  "query": "local voice ASR agent that runs on device",
+  "author": "Thibault",
+  "url": "https://x.com/voiceaispace/status/2112072079038099797",
+  "text": "IA de Voz, Semana 42:\n• \n@SpaceXSI\n Grok Voice 3.0 a $0.08/min\n• \n@FishAudio\n Drama 3, pesos abiertos\n• \n@OpenAI\n prompt-to-voice en GPT-Live\n• \n@Speechmatics\n Oak, ASR médico\n• Mosi recauda más de RMB 1B+\n• El sindicato de actores de Japón establece reglas para voces de IA\nResumen"
+ },
+ {
+  "query": "multi agent observability tracing YAML roles",
+  "author": "Dhanian",
+  "url": "https://x.com/e_opore/status/2042139112715538592",
+  "text": "AWS DevOps Agent Learning Roadmap\n|-- Foundations of DevOps & AI Agents\n| |-- DevOps Principles: CI/CD, Automation, Collaboration\n| |-- What are AI Agents? (Perception, Reasoning, Action)\n| |-- Autonomous vs Assisted DevOps Workflows\n| |-- Event-Driven Architectures\n| |--"
+ },
+ {
+  "query": "skills catalog for coding agents one skill per task",
+  "author": "Spencer",
+  "url": "https://x.com/spencerclarkdev/status/2110433009744625848",
+  "text": "Part 2 of my coding-agent OpenTelemetry series: what Jaeger and \n@Pydantic\n Logfire made of Claude Code, Codex and Qwen Code and Deepseek Harness, and how LangSmith, Langfuse and Braintrust compare."
+ },
+ {
+  "query": "skills catalog for coding agents one skill per task",
+  "author": "Patrick Woods is hiring",
+  "url": "https://x.com/patrickjwoods/status/2110117476109545500",
+  "text": "Agentic commerce assumes agents shop. \n\nI tested Claude Code: “use the cheapest AI provider” chose Anthropic 5/5 times. Only when told to compare providers did 4/5 leave Anthropic. \n\nOptimization, at least here, is downstream of choice-set formation."
+ },
+ {
+  "query": "skills catalog for coding agents one skill per task",
+  "author": "Luke The Dev",
+  "url": "https://x.com/iamlukethedev/status/2105591484104015936",
+  "text": "Hermes merged 133 PRs on September 30\n\nThe ones worth knowing:\n\n• Star models into a Favorites section of the Desktop model picker\n• Independent chat text size with compact UI defaults\n• Every Desktop chat can install catalog plugins and skills into its own profile\n• Desktop"
+ },
+ {
+  "query": "skills catalog for coding agents one skill per task",
+  "author": "Arthur Win",
+  "url": "https://x.com/arthur_win8/status/2098047231676850346",
+  "text": "GROK BUILD HOW TO USE\nSources: official \nhttps://\ndocs.x.ai/build + \nhttps://\nx.ai/cli + your Grok Build bookmark folder (294 posts)\nUpdated: 2026-09-10\n\nWHAT NEW TODAY\n- Folder now 294 posts (6 new vs 288 on Sep 9)\n- Official/Testers (Sep 9–10): v1.0.25 — agents can"
+ },
+ {
+  "query": "skills catalog for coding agents one skill per task",
+  "author": "Victor Sletten",
+  "url": "https://x.com/vsletten3006/status/2084121380225007925",
+  "text": "Los agentes de LLM resuelven el problema de quedarse sin memoria dándose amnesia a propósito. Olvidan los 23 archivos que acaban de editar, niegan los commits que hicieron y tienen el descaro de hacerte gaslighting al respecto. Una guía de campo sobre cómo cada agente de"
+ },
+ {
+  "query": "skills catalog for coding agents one skill per task",
+  "author": "Opinion AI",
+  "url": "https://x.com/opinionaii/status/2081170436998738061",
+  "text": "La guía práctica para Grok: Construcción, programación, acceso a la API, MCP, conectores, habilidades, automatizaciones y flujos de trabajo seguros para agentes."
+ }
+]
