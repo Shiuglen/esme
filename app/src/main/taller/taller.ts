@@ -1,6 +1,6 @@
 // Runtime del Taller: tareas con motores ACP, cada una en su copia aislada, con permisos, uso, cambios y persistencia.
 import type { McpServer } from '@agentclientprotocol/sdk'
-import { randomBytes } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { appendFileSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -11,7 +11,8 @@ import { leeCurva } from './curva-io'
 import type { Curva } from './curva'
 import { errorDelProveedor, esTemporal, sesionMuerta } from './fallos'
 import { esNegativaTexto } from './negativa'
-import { encargoRelevo, planParlamento, podarEvidencia, veredictoDe, type Evidencia, type FinParlamento, type Relevo } from './parlamento'
+import { encargoRelevo, planParlamento, podarEvidencia, veredictoDe, type Evidencia, type FinParlamento, type Paso, type Relevo } from './parlamento'
+import { anotaActa, firmaDe, parDeFirma, type ActaRelevo } from './acta'
 import { leeRoles, textoConRol, type Rol } from './roles'
 import { deltaDeUso, type Estado } from './uso'
 import { otroModeloGratis } from './gratis'
@@ -222,23 +223,47 @@ export class Taller {
     const ids: string[] = []
     let evidencia: Evidencia | undefined
     let resumen = ''
+    const relevos: ActaRelevo[] = []
+    // El acta se dicta en TODA salida, también la temprana: el comité dice hasta dónde llegó.
+    // Sin el par o sin disco, el veredicto vive igual (el acta es memoria, no permiso).
+    const relevosDe = (paso: Paso, estado: 'lista' | 'error'): ActaRelevo => ({ orden: paso.orden, rol: paso.rol, motor: paso.motor, estado })
+    const cierra = (fin: Omit<FinParlamento, 'acta'>): FinParlamento => {
+      try {
+        const acta = firmaDe({ version: 1, emitido: this.ahora(), encargoSha256: createHash('sha256').update(p.texto).digest('hex'),
+          estado: fin.estado, frase: fin.frase, relevos: relevos.map((r) => ({ ...r })) }, parDeFirma(this.dir).privada)
+        anotaActa(this.dir, acta)
+        // la mente aprende del comité entero: los estados finales de los relevos acaban de moverse
+        void this.aprenderEquipo()
+        return { ...fin, acta: true }
+      } catch { return { ...fin, acta: false } }
+    }
     for (const paso of plan) {
       const motor = (await this.resolverMotor?.(paso.motor).catch(() => null)) ?? null
-      if (!motor) return { ids, estado: 'tumbado', frase: `El parlamento no llegó: falta el motor del relevo ${paso.orden} (${paso.motor}).`, error: `motor «${paso.motor}» no disponible` }
+      if (!motor) {
+        relevos.push(relevosDe(paso, 'error'))
+        return cierra({ ids, estado: 'tumbado', frase: `El parlamento no llegó: falta el motor del relevo ${paso.orden} (${paso.motor}).`, error: `motor «${paso.motor}» no disponible` })
+      }
       // El oficio del paso va cosido por encargoRelevo en el texto (NO por el campo rol de crear:
       // lo duplicaría con la evidencia; estos relevos se distinguen por su arena «parlamento»).
       const t = this.crear({ motor, carpeta: p.carpeta, texto: encargoRelevo(paso, evidencia), arena: 'parlamento', acceso: p.acceso ?? 'ediciones' })
       ids.push(t.id)
       const seAcabo = await this.esperarFin(t.id)
-      if (seAcabo === 'cerrado') return { ids, estado: 'tumbado', frase: 'El taller se cerró con el parlamento a mitad de camino.', error: 'taller cerrado' }
+      if (seAcabo === 'cerrado') {
+        relevos.push(relevosDe(paso, 'error'))
+        return cierra({ ids, estado: 'tumbado', frase: 'El taller se cerró con el parlamento a mitad de camino.', error: 'taller cerrado' })
+      }
       const tarea = this.lista().find((x) => x.id === t.id)
       resumen = this.registros.get(t.id)?.textoUltimo ?? resumen
-      if (!tarea) return { ids, estado: 'tumbado', frase: `El relevo ${paso.orden} se descartó con el testigo en la mano.` }
+      if (!tarea) {
+        relevos.push(relevosDe(paso, 'error'))
+        return cierra({ ids, estado: 'tumbado', frase: `El relevo ${paso.orden} se descartó con el testigo en la mano.` })
+      }
+      relevos.push(relevosDe(paso, tarea.estado === 'error' ? 'error' : 'lista'))
       if (tarea.estado === 'error') {
-        return { ids, estado: 'tumbado', frase: `El parlamento no llegó en el relevo ${paso.orden} de ${plan.length}: ${tarea.error ?? 'algo falló'}`, error: tarea.error }
+        return cierra({ ids, estado: 'tumbado', frase: `El parlamento no llegó en el relevo ${paso.orden} de ${plan.length}: ${tarea.error ?? 'algo falló'}`, error: tarea.error })
       }
       if (tarea.estado === 'parada') {
-        return { ids, estado: 'tumbado', frase: `El parlamento se paró en el relevo ${paso.orden} de ${plan.length}, de tu mano.` }
+        return cierra({ ids, estado: 'tumbado', frase: `El parlamento se paró en el relevo ${paso.orden} de ${plan.length}, de tu mano.` })
       }
       evidencia = podarEvidencia({
         resumen,
@@ -246,7 +271,7 @@ export class Taller {
       })
     }
     const veredicto = veredictoDe({ resumen })
-    return { ids, estado: veredicto.estado, frase: veredicto.frase }
+    return cierra({ ids, estado: veredicto.estado, frase: veredicto.frase })
   }
 
   /** Espera a que un relevo salga de los estados activos; la vigilancia de 30 min ya mata al motor

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Taller, type AbrirSesion, type Anoto, type MotorElegido, type OperacionesCopia, type SesionMotor, type Tarea } from './taller'
+import { actaValida, leeActas, parDeFirma } from './acta'
 import type { EventoMotor } from '../motores/sesion-acp'
 import type { Cambios } from './copias'
 
@@ -138,6 +139,39 @@ describe('Taller', () => {
       expect(fin.estado).toBe('tumbado')
       expect(fin.frase).toContain('falta el motor del relevo 2')
       expect(fin.ids).toHaveLength(1)
+    })
+
+    it('el veredicto queda en el acta firmada del taller, verificable línea a línea', async () => {
+      const s = sesiones(async (o, _texto, n) => {
+        o.alEvento({ tipo: 'texto', texto: ['Cambié el reloj del taller.', 'Vi que el orden está bien.', 'Las 3 pruebas pasan.'][n] ?? '' })
+        return 'end_turn'
+      })
+      const taller = crear(s.abrir, copiasFalsas().ops, { resolverMotor: resolverBien })
+      const fin = await taller.parlamentar({ texto: 'Arregla el reloj', carpeta: '/proyecto', relevos: rr })
+      expect(fin.acta).toBe(true)
+      const { publica } = parDeFirma(dir)
+      const diario = leeActas(dir)
+      expect(diario).toHaveLength(1)
+      expect(actaValida(diario[0], publica)).toBe(true)
+      expect(diario[0].estado).toBe('probado')
+      expect(diario[0].firma.signed_by).toBe('taller')
+      expect(diario[0].relevos.map((r) => r.estado)).toEqual(['lista', 'lista', 'lista'])
+    })
+
+    it('un parlamento tumbado también firma su acta, hasta donde llegó', async () => {
+      let llamada = 0
+      const s = sesiones(async (o) => { if (++llamada === 2) o.alEvento({ tipo: 'texto', texto: 'No puedo hacer eso.' }); return 'end_turn' })
+      const taller = crear(s.abrir, copiasFalsas().ops, { resolverMotor: async () => mm('falso', 'Falso') })
+      const fin = await taller.parlamentar({ texto: 'Arregla el reloj', carpeta: '/proyecto', relevos: rr })
+      expect(fin.acta).toBe(true)
+      const { publica } = parDeFirma(dir)
+      const diario = leeActas(dir)
+      expect(actaValida(diario[0], publica)).toBe(true)
+      expect(diario[0].estado).toBe('tumbado')
+      expect(diario[0].relevos).toEqual([
+        { orden: 1, rol: 'constructor', motor: 'falso-a', estado: 'lista' },
+        { orden: 2, rol: 'revisor', motor: 'falso-b', estado: 'error' },
+      ])
     })
   })
 

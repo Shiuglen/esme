@@ -9,8 +9,9 @@ import type { Rol } from './roles'
 export type Relevo = { rol: string; motor: string }
 
 /** Cómo acabó el parlamento entero: los ids de los relevos en orden, el estado del veredicto
- *  y la frase humana. `error` trae el motivo si el comité no llegó al final. */
-export type FinParlamento = { ids: string[]; estado: 'probado' | 'dudoso' | 'tumbado'; frase: string; error?: string }
+ *  y la frase humana. `error` trae el motivo si el comité no llegó al final. `acta` dice si el
+ *  veredicto quedó firmado en el diario del taller (actas-parlamento.jsonl). */
+export type FinParlamento = { ids: string[]; estado: 'probado' | 'dudoso' | 'tumbado'; frase: string; error?: string; acta?: boolean }
 
 /** Un paso del plan: el oficio del relevo, el motor que lo lleva y el encargo de base. */
 export type Paso = {

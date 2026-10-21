@@ -34,8 +34,14 @@
 //               eliges el motor de cada relevo (pre-llenado con los que sí pueden), el encargo sale
 //               LIMPIO del oficio viejo de la tarea (baseDe) y sobre la copia donde falló. El
 //               cierre (probado/dudoso/tumbado) queda escrito en la puerta cuando vuelve.
-//   [ ] Fase 4: la firma — el veredicto final se guarda firmado (Ed25519, como la Tienda) en
-//               resultados/, y la mente lo aprende como una lección del equipo.
+//   [x] Fase 4 (21 oct, noche): el acta firmada — `main/taller/acta.ts`: el Taller tiene su par
+//               Ed25519 en su carpeta (firma-taller.pem, 0600; NO es la estirpe de la Tienda, es
+//               el acto interno del taller), firma el veredicto con el formato de la casa
+//               (canónico + cuerpo de orden fijo + huella sha256) y lo anota en el diario
+//               `actas-parlamento.jsonl`, verificable línea a línea (`actaValida`). TODA salida
+//               firma (también las tumbadas: el acta dice hasta dónde llegó) y avisa a la mente
+//               (aprenderEquipo con los estados frescos de los relevos). El arco del parlamento
+//               está cerrado: instinto → radar → comité → acta → mente.
 //
 // Reglas (las de la casa, sin excepción):
 //   - el creador elige quién lleva cada relevo (los que sí pueden, nunca a ciegas)
