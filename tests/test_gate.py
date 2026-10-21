@@ -149,6 +149,18 @@ def test_sesion_dice_quien_mas_esta_trabajando(tmp_path, monkeypatch):
     assert len(companeros()) == 2
 
 
+def test_el_pack_respeta_el_presupuesto(tmp_path):
+    """El pack entero (rumbo + contexto + compañeros + protocolo) cabe en el presupuesto."""
+    from daimon.sesion import pack_de_arranque
+    from daimon.tokens import count
+    h = _home(tmp_path)
+    for i in range(40):
+        remember_tool(h, f"recuerdo {i} sobre el tema del zorro y la luna")
+    for presupuesto in (120, 300, 800):
+        pack = pack_de_arranque(h, "zorro y luna", budget=presupuesto)
+        assert count(pack) <= presupuesto, f"el pack se pasó: {count(pack)} > {presupuesto}"
+
+
 def test_el_asunto_del_commit_se_lee_del_objeto(tmp_path):
     """El mensaje del commit sale del objeto de git, no de un fichero que se queda viejo."""
     import zlib

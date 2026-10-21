@@ -48,6 +48,10 @@ COMO_USARLA = (
     "Pide `motor` con tu nombre: la mente guarda qué contexto le sirve a cada IA y lo aprendido "
     "sobrevive al reinicio."
 )
+# Cuando el presupuesto es corto, el protocolo entero no cabe: este dice lo mismo en una línea.
+COMO_USARLA_CORTO = (
+    "Usa `recall` antes de investigar, `remember` para lo que debe durar y `feedback` al terminar."
+)
 
 
 def _rumbo_texto(home: Home) -> str:
@@ -75,6 +79,17 @@ def _rumbo_texto(home: Home) -> str:
 # sesión sería gastar un proceso por nada.
 
 ESTADOS_VIVOS = ("trabajando", "preparando", "esperando")
+MAX_IDS = 12          # los ids que se citan: los que el agente puede devolver con «feedback»
+
+
+def _linea_ids(ids: list[str]) -> str:
+    """La línea de ids citados. Acotada: con cuarenta recuerdos, la lista se comía el presupuesto."""
+    if not ids:
+        return "[recuerdos: —]"
+    head = ", ".join(ids[:MAX_IDS])
+    if len(ids) > MAX_IDS:
+        return f"[recuerdos: {head} (+{len(ids) - MAX_IDS} más)]"
+    return f"[recuerdos: {head}]"
 
 
 def _directorio_taller() -> Path:
@@ -221,27 +236,56 @@ def pack_de_arranque(home: Home, tarea: str, budget: int = 0, motor: str | None 
 
     `budget` son tokens de contexto (0 = el presupuesto de la mente). El contexto se compone con el
     mismo motor que el resto de la mente, así que cada IA recibe lo que a esa IA le sirve.
-    """
-    if budget is None or budget <= 0:
-        budget = int(home.config.get("presupuesto", 4000))
-    bloques: list[str] = []
 
-    rumbo = _rumbo_texto(home)
-    if rumbo:
-        bloques.append(f"[rumbo] {rumbo}")
+    **El pack se ajusta al presupuesto, no al revés.** El orden de prioridad es: primero el
+    protocolo (sin él el agente no sabe usarla), luego el **contexto** (es lo que va a usar), y
+    sólo si sobra sitio, el rumbo y los compañeros. Si no cabe todo, se cae lo que menos pesa: el
+    agent no paga con su ventana los metadatos que le ahorran trabajo.
+    """
+    from .tokens import count
+
+    if not budget or budget <= 0:
+        budget = int(home.config.get("presupuesto", 4000))
 
     consulta = (tarea or "").strip()
-    if consulta:
-        texto, _, ids = home.thalamus.compose(consulta, budget, motor=motor)
-        if texto:
-            bloques.append(f"[contexto de tu tarea]\n{texto}\n[recuerdos: {', '.join(ids)}]")
-        else:
-            bloques.append("[contexto de tu tarea] la mente no sabe nada de esto todavía: "
-                           "trabaja con lo que ve y guarda lo que aprendas con `remember`.")
+    protocolo = f"[protocolo] {COMO_USARLA}"
+    if count(protocolo) > budget // 3:
+        protocolo = f"[protocolo] {COMO_USARLA_CORTO}"
 
+    rumbo = f"[rumbo] {_rumbo_texto(home)}" if _rumbo_texto(home) else ""
     companeros_txt = _companeros_texto(yo)
-    if companeros_txt:
-        bloques.append(companeros_txt)
 
-    bloques.append(f"[protocolo] {COMO_USARLA}")
+    # El contexto manda: se queda con lo que dejan el protocolo y el resto, y se mide después.
+    extras = count(rumbo) + count(companeros_txt)
+    disponible = budget - count(protocolo)
+    if extras and disponible > extras * 2:
+        disponible -= extras
+        meter_extras = True
+    else:
+        meter_extras = False      # no caben: el contexto vale más que los metadatos
+
+    texto = ids = ""
+    for intento in range(4):
+        if not consulta or disponible <= 0:
+            break
+        texto, usados, ids = home.thalamus.compose(consulta, disponible, motor=motor)
+        if not texto:
+            break
+        linea_ids = _linea_ids(ids)
+        sobra = (count(texto) + count(linea_ids) + count("[contexto de tu tarea]\n")) - disponible
+        if sobra <= 0:
+            break
+        disponible = max(0, disponible - sobra)
+
+    bloques: list[str] = []
+    if rumbo and meter_extras:
+        bloques.append(rumbo)
+    if texto:
+        bloques.append(f"[contexto de tu tarea]\n{texto}\n{_linea_ids(ids)}")
+    elif consulta:
+        bloques.append("[contexto de tu tarea] la mente no sabe nada de esto todavía: "
+                       "trabaja con lo que ve y guarda lo que aprendas con `remember`.")
+    if companeros_txt and meter_extras:
+        bloques.append(companeros_txt)
+    bloques.append(protocolo)
     return "\n\n".join(bloques)
