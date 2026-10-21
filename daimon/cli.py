@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 from .ingest import collect
@@ -168,7 +169,37 @@ def serve(home_path: Path, port: int = 0, token: str | None = None) -> None:
     server.run(sockets=[sock])
 
 
+def rea_shell_cmd(resto: list[str]) -> int:
+    """`daimon rea-shell <lo que sea>`: el presupuesto de la casa para cualquier comando de REA.
+
+    Se resuelve a mano, y no con argparse, porque lo que sigue son las opciones **de REA**
+    (`--format json`, `--allowed-origins ...`): argparse no debe confundirlas con las nuestras.
+    """
+    import sys as _sys
+    from . import rea as rea_mod
+    timeout = 900
+    while resto and resto[0].startswith("--timeout"):
+        opcion = resto.pop(0)
+        if "=" in opcion:
+            timeout = int(opcion.split("=", 1)[1])
+        elif resto:
+            timeout = int(resto.pop(0))
+        else:
+            break
+    if resto and resto[0] == "--":
+        resto.pop(0)
+    rc, salida, err = rea_mod.correr(rea_mod.comando_rea() + resto, timeout=timeout)
+    if salida:
+        print(salida, end="" if salida.endswith("\n") else "\n")
+    if err.strip():
+        print(err, file=_sys.stderr, end="" if err.endswith("\n") else "\n")
+    return rc
+
+
 def main(argv: list[str] | None = None) -> None:
+    args = list(sys.argv[1:] if argv is None else argv)
+    if args and args[0] == "rea-shell":
+        raise SystemExit(rea_shell_cmd(args[1:]))
     ap = argparse.ArgumentParser(prog="daimon", description="Sistema cognitivo Daimon")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("ingest", help="absorbe fuentes (.md, sesiones .jsonl) en la memoria")

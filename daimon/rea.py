@@ -189,6 +189,43 @@ def _analizar_bajo_candado(ruta: str | Path, *, timeout: int, nodos: int) -> dic
     return _mirar(ruta, timeout=timeout, nodos=nodos)
 
 
+def correr(command: list[str], *, timeout: int = TIMEOUT) -> tuple[int, str, str]:
+    """Un comando de REA cualquiera, con el presupuesto de la casa puesto.
+
+    El espejo protege las puertas de Esme (la app, el servidor, el MCP, la terminal). Esto
+    protege las de fuera: un `rea` a pelo, desde un script o desde otra sesión, es exactamente
+    lo que se comió la memoria el 21-oct. Mismos topes, mismo cerrojo, mismo final.
+    """
+    with _candado():
+        hay, porque = presupuesto.hay_suelo()
+        if not hay:
+            raise ErrorRea(f"no se puede mirar ahora: {porque}")
+        tope = presupuesto.tope_memoria()
+        ent = entorno_rea()
+        with tempfile.TemporaryDirectory(prefix="rea-shell-") as tmp:
+            salida = Path(tmp) / "salida.txt"
+            errores = Path(tmp) / "errores.txt"
+            with salida.open("wb") as f_out, errores.open("wb") as f_err:
+                try:
+                    proc = subprocess.Popen(command, stdout=f_out, stderr=f_err, stdin=subprocess.DEVNULL,
+                                            env=ent, start_new_session=True)
+                except FileNotFoundError:
+                    raise ErrorRea(f"no se encontró el comando: {command[0]}") from None
+                with presupuesto.Vigilante(proc.pid, tope) as vigila:
+                    try:
+                        proc.wait(timeout=timeout)
+                    except subprocess.TimeoutExpired:
+                        presupuesto.mata_todo(proc.pid, vigila.vistos)
+                        proc.wait(timeout=15)
+                        raise ErrorRea(f"el comando tardó más de {timeout} s y se paró") from None
+                    if vigila.excedido:
+                        presupuesto.mata_todo(proc.pid, vigila.vistos)
+                        raise ErrorRea(f"el comando pasó de {tope // (1024 * 1024)} MiB de memoria y se paró")
+            return (proc.returncode,
+                    salida.read_text(encoding="utf-8", errors="replace"),
+                    errores.read_text(encoding="utf-8", errors="replace"))
+
+
 def _mirar(ruta: Path, *, timeout: int, nodos: int) -> dict:
     """El análisis, con el gobernador puesto. La salida va a disco: la memoria no se toca."""
     cmd = comando_rea() + plan_de(ruta, nodos=nodos_segun_memoria(nodos))

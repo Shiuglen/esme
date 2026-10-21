@@ -360,6 +360,25 @@ def test_la_comparacion_de_dos_binarios_no_habla_de_canales():
     assert "0x1000" in texto and "0x2000" in texto
 
 
+def test_correr_le_pone_el_presupuesto_a_cualquier_comando_de_rea():
+    """El `rea` a pelo es lo que se comió la memoria: por eso hay una puerta con presupuesto."""
+    rc, salida, err = rea.correr(["echo", "hola"], timeout=30)
+    assert rc == 0
+    assert salida.strip() == "hola"
+    assert err == ""
+
+
+def test_correr_no_empieza_si_la_maquina_no_tiene_memoria(monkeypatch):
+    monkeypatch.setattr(rea.presupuesto, "hay_suelo", lambda: (False, "no hay memoria"))
+    with pytest.raises(rea.ErrorRea, match="no hay memoria"):
+        rea.correr(["echo", "hola"], timeout=30)
+
+
+def test_correr_para_al_grupo_entero_cuando_se_pasa_de_tiempo():
+    with pytest.raises(rea.ErrorRea, match="tardó más"):
+        rea.correr(["sleep", "30"], timeout=1)
+
+
 # ── la absorción ───────────────────────────────────────────────────────────────────────────────
 
 def test_ingerir_deja_el_conocimiento_con_su_procedencia(tmp_path):

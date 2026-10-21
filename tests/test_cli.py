@@ -216,3 +216,35 @@ def test_init_crea_la_mente_y_no_toca_nada_que_existiera(tmp_path, capsys):
     init_cmd(home, sin_modelo=True)
     assert (home / "config.json").read_text(encoding="utf-8") == antes
     assert "Ya hay una mente" in capsys.readouterr().out
+
+
+def test_rea_shell_pasa_las_opciones_de_rea_sin_que_argparse_se_meta(monkeypatch):
+    """Lo que sigue son las opciones **de REA** (`--format json`): argparse no las debe tocar."""
+    from daimon import cli
+    from daimon import rea as rea_mod
+    llamado = {}
+
+    def falso(command, **kwargs):
+        llamado["command"] = command
+        return (0, "salida", "")
+
+    monkeypatch.setattr(rea_mod, "correr", falso)
+    assert cli.rea_shell_cmd(["--format", "json", "analyze", "algo.asar"]) == 0
+    # el comando de REA va tal cual, con sus opciones y sin que argparse se entrometa
+    assert llamado["command"][-4:] == ["--format", "json", "analyze", "algo.asar"]
+
+
+def test_rea_shell_acepta_el_separador_y_el_fin_de_tiempo(monkeypatch):
+    from daimon import cli
+    from daimon import rea as rea_mod
+    llamado = {}
+
+    def falso(command, **kwargs):
+        llamado["command"] = command
+        llamado["timeout"] = kwargs.get("timeout")
+        return (0, "", "")
+
+    monkeypatch.setattr(rea_mod, "correr", falso)
+    cli.rea_shell_cmd(["--timeout=30", "--", "analyze", "algo.asar"])
+    assert llamado["timeout"] == 30
+    assert llamado["command"][-2:] == ["analyze", "algo.asar"]
