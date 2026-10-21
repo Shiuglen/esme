@@ -66,7 +66,19 @@ function manosPara(to: WebContents, req: ChatRequest, ac: AbortController, d: De
     verEquipo: equipoParaChat,
     encargar: encargarDesdeChat,
     programar: programarDesdeChat,
-    forjar: forjarDesdeChat,
+    forjar: (necesidad, o) => forjarDesdeChat(necesidad, { ...o, mente: d.brainInfo() }),
+    // El espejo: REA mira el programa y lo que vio entra en la memoria de la mente.
+    absorberPrograma: async (ruta, motivo) => {
+      const i = d.brainInfo()
+      if (!i) throw new Error('La memoria no está disponible ahora mismo.')
+      return new ClienteCerebro(i).absorberPrograma(ruta, motivo ?? '')
+    },
+    // Qué cambió entre dos versiones: el espejo lo sabe porque guardó cada una.
+    compararProgramas: async (ruta, contra) => {
+      const i = d.brainInfo()
+      if (!i) throw new Error('La memoria no está disponible ahora mismo.')
+      return new ClienteCerebro(i).compararProgramas(ruta, contra ?? '')
+    },
     usarSkill: (nombre, fichero) => usarSkill(app.getPath('userData'), nombre, fichero),
     // la clave de Brave vive en el llavero como la de cualquier proveedor
     buscarWeb: (q) => buscarWeb(q, { brave: keys.get('brave'), searxng: cfg.searxng }),

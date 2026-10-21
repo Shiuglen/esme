@@ -137,7 +137,7 @@ function registerIpc() {
   registerPieles()
   registerHerramientas({ python: { python: RUTAS.python, extraPython: RUTAS.extraPython } })
   registerSkills()
-  registerForja()
+  registerForja({ brainInfo: () => brain.info })
   // tu mente para todas tus IAs: se registra en la configuración de cada agente que uses fuera de Esme
   ipcMain.handle('mente:agentes', () => estadosMente(homedir()))
   ipcMain.handle('mente:conectar', (_e, id: unknown, conectada: unknown) => {

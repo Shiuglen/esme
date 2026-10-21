@@ -27,6 +27,53 @@ def test_sueño_cli(tmp_path):
     assert salida["personas"] >= 1 and salida["energia"] > 0
 
 
+def test_rea_cli_absorbe_un_programa(tmp_path, monkeypatch):
+    """El espejo a mano, para un script o un cron: igual que la herramienta del agente."""
+    import json, io, contextlib
+    from daimon import rea as rea_mod
+    monkeypatch.setattr(rea_mod, "analizar", lambda ruta, **k: {
+        "evidence_id": "ev1", "subject": {"name": "app", "local_path": "/tmp/app"},
+        "normalized_result": {"summary": {"ipc": {"literal_channels": 1}}, "graph": {"nodes": []},
+                              "semantic_graph": {"nodes": [], "unknowns": []}}})
+    home = tmp_path / "mente"
+    home.mkdir()
+    (home / "config.json").write_text('{"encoder": "hash:32"}', encoding="utf-8")   # el codificador de verdad tarda 20 s
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        main(["rea", "--home", str(home), "--motivo", "curiosidad", "/tmp/app"])
+    r = json.loads(buf.getvalue())
+    assert r["added"] > 0 and r["fuente"].startswith("rea:")
+
+
+def test_rea_compara_cli(tmp_path, monkeypatch):
+    """La comparación a mano: dos absorciones y la pregunta «qué cambió»."""
+    import json, io, contextlib
+    from daimon import rea as rea_mod
+    base = {"evidence_id": "ev1", "subject": {"name": "app", "local_path": "/tmp/app"},
+            "normalized_result": {"summary": {"ipc": {"literal_channels": 1}}, "graph": {"nodes": [
+                {"kind": "ipc-channel", "observations": [
+                    {"label": "hilos:buscar", "properties": {"channel": "hilos:buscar", "mode": "handle"}, "evidence": {}}]}]},
+                "semantic_graph": {"nodes": [], "unknowns": []}}}
+    otro = json.loads(json.dumps(base))
+    otro["normalized_result"]["graph"]["nodes"].append({"kind": "ipc-channel", "observations": [
+        {"label": "canal:nuevo", "properties": {"channel": "canal:nuevo", "mode": "handle"}, "evidence": {}}]})
+    Absorption = []
+    monkeypatch.setattr(rea_mod, "analizar", lambda ruta, **k: Absorption.pop(0))
+    home = tmp_path / "mente"
+    home.mkdir()
+    (home / "config.json").write_text('{"encoder": "hash:32"}', encoding="utf-8")
+    Absorption.extend([base, otro])
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        main(["rea", "--home", str(home), "/tmp/app"])
+    Absorption.extend([base, otro])
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        main(["rea-compara", "--home", str(home), "/tmp/app"])
+    r = json.loads(buf.getvalue())
+    assert r["added"] > 0 and "`canal:nuevo`" in r["texto"]
+
+
 def test_ingest_x_cli(tmp_path):
     import json, io, contextlib
     homepage = tmp_path / "mente"

@@ -59,6 +59,9 @@ export const RUTAS = {
   feedback: '/feedback',
   olvido: '/forget',
   ingesta: '/ingest',
+  rea: '/rea/absorber',
+  reaRecuerdos: '/rea/recuerdos',
+  reaComparar: '/rea/comparar',
   sueno: '/sueño',
   orquestacion: '/orquesta',
   atlas: '/atlas',
@@ -167,6 +170,34 @@ export class ClienteCerebro {
   /** Absorber fuentes (md, jsonl, código) como recuerdos con procedencia. */
   async ingerir(paths: string[]): Promise<{ added: number; memories: number }> {
     return this.llamar<{ added: number; memories: number }>(RUTAS.ingesta, { method: 'POST', body: JSON.stringify({ paths }) })
+  }
+
+  /**
+   * El espejo: REA mira un programa y lo que vio entra en la memoria de la mente.
+   * Tarda lo que tarda REA (un minuto, o varios si el programa es grande): por eso el reloj es largo.
+   */
+  async absorberPrograma(ruta: string, motivo = ''): Promise<{
+    ok: boolean
+    added?: number
+    memories?: number
+    informe?: string
+    fuente?: string
+    canales?: number
+    funciones?: number
+    desconocidos?: number
+    error?: string
+  }> {
+    return this.llamar(RUTAS.rea, { method: 'POST', body: JSON.stringify({ ruta, motivo }) }, 900_000)
+  }
+
+  /** Qué cambió entre dos versiones de un programa (lo que el espejo guardó de cada una). */
+  async compararProgramas(ruta: string, contra = ''): Promise<{ ok: boolean; added?: number; informe?: string; fuente?: string; texto?: string; error?: string }> {
+    return this.llamar(RUTAS.reaComparar, { method: 'POST', body: JSON.stringify({ ruta, contra }) }, 900_000)
+  }
+
+  /** Lo que la mente ya sabe de un programa (si está, ya se miró antes con el espejo). */
+  async recuerdosDePrograma(ruta: string): Promise<{ ok: boolean; fuente?: string; recuerdos?: string[]; error?: string }> {
+    return this.llamar(RUTAS.reaRecuerdos, { method: 'POST', body: JSON.stringify({ ruta }) })
   }
 
   /** La mente duerme: destila y guarda. */

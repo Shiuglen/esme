@@ -100,6 +100,45 @@ def test_ingest_usa_sistema_inmune(ctx, tmp_path):
     assert n == 1 and not any("Secreto" in e.text for e in home.hippo.events())
 
 
+def test_lo_que_la_mente_sabe_de_un_programa(ctx):
+    """La puerta del «recrear»: lo que el espejo dejó de un programa, preguntado por su ruta."""
+    from daimon import rea as rea_mod
+    c, _, home = ctx
+    programa = "/tmp/app/out/main"
+    rea_mod.ingerir(home, {"evidence_id": "ev1", "subject": {"name": "main", "local_path": programa},
+                           "normalized_result": {"summary": {"ipc": {"literal_channels": 1}}, "graph": {"nodes": []},
+                                                 "semantic_graph": {"nodes": [], "unknowns": []}}},
+                    programa, motivo="prueba")
+    r = c.post("/rea/recuerdos", json={"ruta": programa}, headers=H).json()
+    assert r["ok"] and r["fuente"].startswith("rea:")
+    assert r["recuerdos"] and any("canales IPC" in t for t in r["recuerdos"])
+    # un programa que la mente no conoce: vacío, pero sin error
+    vacio = c.post("/rea/recuerdos", json={"ruta": "/otro/programa"}, headers=H).json()
+    assert vacio["ok"] and vacio["recuerdos"] == []
+    assert c.post("/rea/recuerdos", json={}, headers=H).status_code == 400
+
+
+def test_comparar_dos_versiones(ctx):
+    """La puerta del «qué cambió»: dos absorciones del mismo programa y la comparación."""
+    from daimon import rea as rea_mod
+    c, _, home = ctx
+    programa = "/tmp/app/out/main"
+    base = {"evidence_id": "ev1", "subject": {"name": "main", "local_path": programa},
+            "normalized_result": {"summary": {"ipc": {"literal_channels": 1}}, "graph": {"nodes": [
+                {"kind": "ipc-channel", "observations": [
+                    {"label": "hilos:buscar", "properties": {"channel": "hilos:buscar", "mode": "handle"}, "evidence": {}}]}]},
+                "semantic_graph": {"nodes": [], "unknowns": []}}}
+    otro = json.loads(json.dumps(base))
+    otro["normalized_result"]["graph"]["nodes"].append({"kind": "ipc-channel", "observations": [
+        {"label": "canal:nuevo", "properties": {"channel": "canal:nuevo", "mode": "handle"}, "evidence": {}}]})
+    rea_mod.ingerir(home, base, programa, motivo="A")
+    rea_mod.ingerir(home, otro, programa, motivo="B")
+    r = c.post("/rea/comparar", json={"ruta": programa}, headers=H).json()
+    assert r["ok"] and "`canal:nuevo`" in r["texto"]
+    assert any(e.source.startswith("rea:comparacion:") for e in home.hippo.events())
+    assert c.post("/rea/comparar", json={}, headers=H).status_code == 400
+
+
 def test_mcp_lista_herramientas(ctx):
     c, _, _ = ctx
     hdr = {**H, "Accept": "application/json, text/event-stream", "Content-Type": "application/json"}
@@ -131,6 +170,25 @@ def test_memorias_traemos_muchas_por_defecto(ctx):
 def test_el_historial_vivo_guarda_muchos_eventos(ctx):
     c, bus, _ = ctx
     assert bus.history.maxlen == 2000
+
+
+def test_la_cola_del_lector_no_crece_sin_limite():
+    """Un lector lento no puede hacer crecer al cerebro: lo que no cabe, se suelta lo viejo."""
+    import asyncio
+
+    from daimon.server import EventBus
+
+    async def va():
+        bus = EventBus(keep=10, cola=5)
+        q: asyncio.Queue = asyncio.Queue(maxsize=bus.cola_max)
+        bus._subs.add(q)
+        for i in range(50):
+            bus._encolar(q, {"n": i})
+        return q
+
+    q = asyncio.run(va())
+    assert q.qsize() == 5                      # no crece: el tope manda
+    assert q.get_nowait()["n"] == 45          # y se queda con lo último, que es lo que interesa
 
 
 def test_el_texto_que_habla_no_se_recorta(ctx_voz):

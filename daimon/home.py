@@ -10,6 +10,8 @@ from .lens import Lens, hash_encoder, model2vec_encoder, ollama_encoder, onnx_en
 
 # Modelos de Ollama que la Lente propia sabe correr sin Ollama (mismo modelo, motor propio)
 PROPIOS = {"embeddinggemma": "embeddinggemma-300m"}
+# La reserva de ONNX Runtime que el cerebro se aguanta por defecto. Se mide en `scripts/medir_lente.py`.
+RESERVA_POR_DEFECTO = "sin-arena"
 from .lexical import BM25
 from .thalamus import Thalamus
 
@@ -22,13 +24,16 @@ def encoder_from_config(cfg: dict):
     # «pip install daimon-esme» trae todo lo necesario para arrancar. Antes era model2vec, que
     # es un extra opcional: el paquete publicado se caía al arrancar (`ModuleNotFoundError`).
     name = cfg.get("encoder", "onnx:embeddinggemma-300m")
+    # Lo que ONNX Runtime se guarda a sí mismo. La reserva por defecto de ONNX grows por potencias de
+    # dos y tras absorber deja al cerebro con 1,5 GB de los suyos: se mide en `scripts/medir_lente.py`.
+    reserva = cfg.get("reserva", RESERVA_POR_DEFECTO)
     if name.startswith("onnx:"):
-        return onnx_encoder(name.split(":", 1)[1])
+        return onnx_encoder(name.split(":", 1)[1], reserva=reserva)
     if name.startswith("ollama:"):
         modelo = name.split(":", 1)[1]
         propio = PROPIOS.get(modelo.split(":")[0])
         if propio and (ruta_modelo(propio) / "tokenizer.json").exists():
-            return onnx_encoder(propio)                   # la red no depende de Ollama
+            return onnx_encoder(propio, reserva=reserva)    # la red no depende de Ollama
         return ollama_encoder(modelo)
     if name.startswith("hash:"):
         return hash_encoder(int(name.split(":", 1)[1]))

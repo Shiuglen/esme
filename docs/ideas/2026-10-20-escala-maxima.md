@@ -192,6 +192,28 @@ backends se instalan; y **no pide root**. Sus herramientas MCP son exactamente l
 para copiarlas: riesgo legal y contradice que Esme sea original. REA se usa sobre lo propio, sobre
 lo del usuario con permiso, y para forense del propio equipo. Nada de OSINT de terceros, ni claves
 expuestas, ni hackeo.
+**Hecho (21-oct): el espejo deja de ser un informe y pasa a ser una capacidad de agente.**
+`daimon/rea.py` convierte la evidencia de REA en un informe con sus luces (módulos, funciones,
+superficie IPC, ventanas) y sus sombras (lo que no se pudo ver, con su razón; los límites que
+declara REA, con sus palabras), y ese informe **entra en la memoria** como recuerdos con
+procedencia (`rea:<programa>`), cada uno con el título de su apartado para que la mente lo encuentre.
+Lo llaman **cualquier agente**: la herramienta MCP `esme_absorbe_programa` (Claude Code, Codex,
+Cline…), la herramienta de la conversación `absorber_programa` (que **pregunta antes de mirar**) y
+el oficio **«Espejo»** del Taller. Medido contra la app real: 91,3 s de análisis, 179 recuerdos
+nuevos, y las preguntas sobre el programa se responden en 0,3 s. Detalle:
+`docs/resultados/2026-10-21-el-espejo.md`.
+**Medido (21-oct), el número:** el banco del espejo (misma mente, mismas preguntas, mismo
+presupuesto; lo único que cambia es si el programa se ha mirado) da **0,0000 sin mirar · 0,9815
+mirando**, con **la mitad de contexto** (490 tokens frente a 982). Las preguntas y su oro se
+derivan de la evidencia de REA, así que no hay juez ni modelo en medio. Detalle:
+`docs/resultados/2026-10-21-banco-del-espejo.md`.
+**Queda.** Comparar dos versiones de un programa (que cambió entre dos builds); meter un segundo
+programa en el banco para que el número no sea el de una sola app; y un botón en la interfaz para
+mirar un programa y ver el informe con sus luces y sus sombras.
+**Hecho (21-oct, el bucle): absorber → recrear.** Cuando pides una herramienta nueva, el encargo
+al equipo lleva **lo que la mente sabe**: de la necesidad (la búsqueda de siempre) y, si el encargo
+nombra la ruta de un programa, **todo** el conocimiento que el espejo dejó de él (puerta
+`/rea/recuerdos`; 179 recuerdos para la app real). Quien va a recrear deja de adivinar: recibe.
 
 ### Palanca 7 — Skills que nacen del uso
 **Idea.** Ya existe el patrón «una skill por cuenco» (investigar, escribir, web, PDF, codificar,

@@ -129,7 +129,7 @@ def _contexto_del_modelo(carpeta: Path, por_defecto: int) -> int:
 
 def onnx_encoder(nombre: str = "embeddinggemma-300m", variante: str = "model_quantized", hilos: int | None = None,
                  tokens_por_lote: int = 2048, max_tokens: int = 8192, cache: int = 4096,
-                 inactividad: float | None = 60) -> tuple[Encoder, int]:
+                 inactividad: float | None = 60, reserva: str = "normal") -> tuple[Encoder, int]:
     """La Lente propia: el modelo corre dentro del cerebro con ONNX Runtime (CPU), sin Ollama ni servidores aparte.
     Agrupa por longitud y llena cada lote hasta un presupuesto de tokens (no rellena en balde), usa la mitad de
     los núcleos para no acaparar el equipo y recuerda lo ya codificado (los textos repetidos no se recalculan).
@@ -148,6 +148,18 @@ def onnx_encoder(nombre: str = "embeddinggemma-300m", variante: str = "model_qua
     so = ort.SessionOptions()
     so.intra_op_num_threads = hilos or max(1, (os.cpu_count() or 2) // 2)
     so.inter_op_num_threads = 1
+    # `reserva` decide cuánto guarda ONNX Runtime de su lado: "normal" (el suyo, que crece por potencias de dos),
+    # "justa" (crece lo que se le pide) o "sin-arena" (nada reservado). Se mide con `scripts/medir_lente.py`.
+    if reserva == "sin-arena":
+        so.enable_cpu_mem_arena = False
+    elif reserva == "entorno":
+        # ONNX Runtime usa los apuntadores del sistema (malloc/free) en vez de los suyos:
+        # lo que suelta vuelve al sistema en vez de quedarse en su reserva.
+        so.add_session_config_entry("session.use_env_allocators", "1")
+    elif reserva == "justa":
+        # La arena sigue existiendo, pero crece lo que se le pide y no por potencias de dos:
+        # es lo que dispara la reserva de más de un gigabyte al absorber.
+        so.add_session_config_entry("arena_extend_strategy", "kSameAsRequested")
     estado: dict = {"sesion": None, "reloj": None, "ultimo": time.monotonic()}
     cerrojo = threading.RLock()
 

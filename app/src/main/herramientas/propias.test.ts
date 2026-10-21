@@ -53,6 +53,32 @@ describe('las herramientas propias de Esme', () => {
   })
 })
 
+describe('el espejo: entender un programa', () => {
+  it('pregunta antes de mirar un programa y, con permiso, lo absorbe', async () => {
+    const absorberPrograma = vi.fn(async () => ({ ok: true, added: 12, memories: 30, informe: '/x/rea/main.md', fuente: 'rea:main-abc', canales: 122, funciones: 1267, desconocidos: 11608 }))
+    const m = manos({ absorberPrograma }); const h = herramientasPropias(m)
+    expect(await ejecutar(h, 'absorber_programa', { ruta: '/home/x/out/main', motivo: 'curiosidad' })).toMatch(/ya es conocimiento/i)
+    expect(m.preguntar).toHaveBeenCalled()          // ingeniería inversa no es libre
+    expect(absorberPrograma).toHaveBeenCalledWith('/home/x/out/main', 'curiosidad')
+  })
+  it('comparar dos versiones devuelve el «qué cambió»', async () => {
+    const compararProgramas = vi.fn(async () => ({ ok: true, added: 5, informe: '/x/c.md', fuente: 'rea:comparacion:a~b', texto: 'Canales nuevos: `nuevo:2026`' }))
+    const m = manos({ compararProgramas }); const h = herramientasPropias(m)
+    expect(await ejecutar(h, 'comparar_programas', { ruta: '/app/out' })).toMatch(/nuevo:2026/)
+    expect(compararProgramas).toHaveBeenCalledWith('/app/out', '')
+  })
+  it('sin permiso no se mira nada', async () => {
+    const absorberPrograma = vi.fn(async () => ({ ok: true }))
+    const m = manos({ absorberPrograma, preguntar: vi.fn(async () => 'no' as const) }); const h = herramientasPropias(m)
+    expect(await ejecutar(h, 'absorber_programa', { ruta: '/home/x/out/main' })).toMatch(/no dio permiso/i)
+    expect(absorberPrograma).not.toHaveBeenCalled()
+  })
+  it('si el espejo no está, el modelo lo sabe', async () => {
+    const m = manos(); const h = herramientasPropias(m)
+    expect(await ejecutar(h, 'absorber_programa', { ruta: '/x' })).toMatch(/no está disponible/i)
+  })
+})
+
 describe('la Forja desde la conversación', () => {
   it('forjar una herramienta pide permiso y encarga al equipo lo que falta', async () => {
     const m = manos(); const h = herramientasPropias(m)

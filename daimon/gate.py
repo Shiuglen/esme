@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import threading
 from datetime import datetime, timezone
 
@@ -149,5 +150,47 @@ def build_server(home: Home, lock: threading.Lock | None = None, on_event=None):
     def escribir_en_la_pagina(objetivo: str, valor: str) -> str:
         """Rellena un campo de la página abierta en el navegador de Esme (por su nombre o su marcador)."""
         return en_palabras(ClienteNavegador().escribir(objetivo, valor))
+
+    # ── El espejo: entender un programa y que la mente lo sepa ─────────────────────────────────
+    # REA (ingeniería inversa, MIT) mira un programa y devuelve lo que vio con su evidencia.
+    # Aquí ese conocimiento entra en la memoria: el programa deja de ser una caja negra para
+    # cualquier agente que hable con Daimon, y el análisis se repite solo cuando el programa cambia.
+    # Regla de la casa: sólo lo propio, lo del usuario con permiso o el forense del equipo.
+    from . import rea as rea_mod
+
+    @mcp.tool()
+    def esme_absorbe_programa(ruta: str, motivo: str = "") -> str:
+        """Analiza un programa con REA y deja en la memoria de Daimon lo que vio de él.
+
+        Devuelve los módulos, las funciones, la superficie (canales IPC, ventanas) y, lo más
+        importante, **lo que no se pudo ver**. Desde ese momento puedes preguntarle a la mente
+        cómo funciona ese programa.
+
+        Sólo sobre software propio, el del usuario con permiso o el forense del equipo: nunca
+        para copiar apps de terceros. Escribe el motivo: queda junto al conocimiento."""
+        try:
+            evidencia = rea_mod.analizar(ruta)
+        except rea_mod.ErrorRea as e:
+            return f"REA no pudo analizar el programa: {e}"
+        with lock:
+            r = rea_mod.ingerir(home, evidencia, ruta, motivo=motivo)
+        return json.dumps(r, ensure_ascii=False)
+
+    @mcp.tool()
+    def esme_compara_programas(ruta: str, contra: str = "") -> str:
+        """Compara dos versiones de un programa y deja en la memoria lo que cambió entre ellas.
+
+        Sin «contra», compara la versión actual del programa con la anterior que la mente tiene
+        guardada (lo que cambia al recompilar). Con «contra», compara dos programas o dos
+        compilaciones distintas. Devuelve los canales nuevos, los que se fueron, las funciones que
+        aparecieron o desaparecieron y las medidas de cada versión."""
+        try:
+            # Lo lento (analizar) va fuera del cerrojo; lo rápido (escribir) dentro.
+            texto, clave = rea_mod.comparar_versiones(home, ruta, contra=contra or None)
+        except rea_mod.ErrorRea as e:
+            return f"REA no pudo comparar los programas: {e}"
+        with lock:
+            r = rea_mod.ingerir_comparacion(home, texto, clave)
+        return json.dumps(r, ensure_ascii=False)
 
     return mcp

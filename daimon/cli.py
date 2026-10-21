@@ -25,6 +25,27 @@ def recall_cmd(home_path: Path, query: str, budget: int = 0, motor: str | None =
     return recall_tool(Home(home_path), query, budget, motor)
 
 
+def rea_cmd(home_path: Path, ruta: str, motivo: str = "", encoder=None) -> dict:
+    """El espejo desde la terminal: REA mira un programa y la mente se queda con lo que vio.
+
+    Es lo mismo que hace la herramienta `esme_absorbe_programa`, sin servidor: para un script, un
+    cron o tu propio terminal.
+    """
+    from .home import Home
+    from . import rea as rea_mod
+    return rea_mod.absorber(Home(home_path, encoder=encoder), ruta, motivo=motivo)
+
+
+def rea_compara_cmd(home_path: Path, ruta: str, contra: str | None = None, encoder=None) -> dict:
+    """Qué cambió entre dos versiones de un programa: el texto y las cuentas."""
+    from .home import Home
+    from . import rea as rea_mod
+    home = Home(home_path, encoder=encoder)
+    texto, clave = rea_mod.comparar_versiones(home, ruta, contra=contra)
+    r = rea_mod.ingerir_comparacion(home, texto, clave)
+    return {**r, "texto": texto}
+
+
 def remember_cmd(home_path: Path, text: str, kind: str = "note") -> str:
     """Guarda un recuerdo y devuelve su id (lo mismo que hace la herramienta `remember`)."""
     from .gate import remember_tool
@@ -181,6 +202,14 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--sin-modelo", action="store_true", help="no baja la lente (si ya la tienes en otro sitio)")
     p = sub.add_parser("modelos", help="baja o comprueba la lente (el modelo que codifica el texto)")
     p.add_argument("--nombre", default="embeddinggemma-300m")
+    p = sub.add_parser("rea-compara", help="qué cambió entre dos versiones de un programa")
+    p.add_argument("--home", default="data/mente_v2")
+    p.add_argument("--contra", default=None, help="el otro programa o build (por defecto: la versión anterior)")
+    p.add_argument("ruta", help="la carpeta o el .asar del programa")
+    p = sub.add_parser("rea", help="el espejo: REA mira un programa y la mente se queda con lo que vio")
+    p.add_argument("--home", default="data/mente_v2")
+    p.add_argument("--motivo", default="", help="por qué se mira: queda junto al conocimiento")
+    p.add_argument("ruta", help="la carpeta o el .asar del programa")
     a = ap.parse_args(argv)
 
     if a.cmd == "init":
@@ -217,6 +246,14 @@ def main(argv: list[str] | None = None) -> None:
         cosecha = json.loads(Path(a.cosecha).read_text(encoding="utf-8"))
         n = Home(Path(a.home)).ingest(eventos_de_x(cosecha))
         print(f"recuerdos nuevos de X: {n}")
+    elif a.cmd == "rea-compara":
+        from .home import Home
+        r = rea_compara_cmd(Path(a.home), a.ruta, a.contra)
+        print(json.dumps(r, ensure_ascii=False, indent=1))
+    elif a.cmd == "rea":
+        from .home import Home
+        r = rea_cmd(Path(a.home), a.ruta, a.motivo)
+        print(json.dumps(r, ensure_ascii=False, indent=1))
     elif a.cmd == "bench-mine":
         from .bench.items import mine_user_questions
         cands = mine_user_questions([Path(s) for s in a.sessions])

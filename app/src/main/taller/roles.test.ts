@@ -11,6 +11,12 @@ describe('los oficios del equipo', () => {
     expect(leeRoles(dir).map((r) => r.id)).toContain('constructor')
   })
 
+  it('el espejo está entre los de casa: mirar por dentro es un oficio', () => {
+    expect(ROLES_POR_DEFECTO.map((r) => r.id)).toContain('espejo')
+    const espejo = ROLES_POR_DEFECTO.find((r) => r.id === 'espejo')!
+    expect(espejo.instruccion).toMatch(/evidencia/i)
+  })
+
   it('si el creador pone los suyos, los suyos mandan', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'roles-'))
     await writeFile(join(dir, 'roles.json'), JSON.stringify([{ id: 'cocinero', nombre: 'Cocinero', instruccion: 'Cocina.' }]), 'utf8')

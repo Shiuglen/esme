@@ -18,6 +18,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 
+from . import rea as rea_mod
 from . import rumbo as rumbo_mod
 from .atlas import atlas_for
 from .gate import build_server, feedback_tool, remember_tool
@@ -30,9 +31,13 @@ ORIGINS = {"http://localhost:5173", "http://127.0.0.1:5173", "app://daimon"}
 class EventBus:
     """Eventos de la mente (quién recordó qué) para el Atlas en vivo; seguro entre hilos."""
 
-    def __init__(self, keep: int = 2000):
+    def __init__(self, keep: int = 2000, cola: int = 200):
         # 2000 eventos en vivo: la app puede mirar atrás sin quedarse sin historial
         self.history: deque[dict] = deque(maxlen=keep)
+        # La cola de cada lector también tiene tope: si el lector va lento (la ventana ocupada),
+        # lo que se acumule son recuerdos enteros y el cerebro crece sin que nadie lo pida.
+        # En un feed en vivo interesa lo último, no lo completo: se suelta lo más viejo.
+        self.cola_max = cola
         self._subs: set[asyncio.Queue] = set()
         self._loop: asyncio.AbstractEventLoop | None = None
 
@@ -41,11 +46,20 @@ class EventBus:
         loop = self._loop
         for q in list(self._subs):
             if loop and loop.is_running():
-                loop.call_soon_threadsafe(q.put_nowait, ev)
+                loop.call_soon_threadsafe(self._encolar, q, ev)
+
+    def _encolar(self, q: asyncio.Queue, ev: dict) -> None:
+        """Mete el evento en la cola del lector, soltando lo viejo si ya no cabe."""
+        if q.full():
+            try:
+                q.get_nowait()
+            except asyncio.QueueEmpty:
+                pass
+        q.put_nowait(ev)
 
     async def stream(self):
         self._loop = asyncio.get_running_loop()
-        q: asyncio.Queue = asyncio.Queue()
+        q: asyncio.Queue = asyncio.Queue(maxsize=self.cola_max)
         self._subs.add(q)
         try:
             yield "retry: 2000\n\n"
@@ -192,6 +206,52 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
         added = await locked(lambda: home.ingest(eventos))()
         bus.publish({"type": "ingest-x", "added": added})
         return JSONResponse({"added": added, "memories": len(home.hippo)})
+
+    @mcp.custom_route("/rea/absorber", methods=["POST"])
+    async def rea_absorber(req: Request):
+        """El espejo: REA mira un programa y lo que vio entra en la memoria de la mente."""
+        b = await req.json()
+        ruta = b.get("ruta")
+        if not isinstance(ruta, str) or not ruta.strip():
+            return JSONResponse({"ok": False, "error": "falta la ruta del programa"}, status_code=400)
+        try:
+            evidencia = await run_in_threadpool(rea_mod.analizar, ruta.strip())
+        except rea_mod.ErrorRea as e:
+            return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+        r = await locked(lambda: rea_mod.ingerir(home, evidencia, ruta.strip(), motivo=b.get("motivo", "")))()
+        bus.publish({"type": "rea", **r})
+        return JSONResponse({"ok": True, **r})
+
+    @mcp.custom_route("/rea/recuerdos", methods=["POST"])
+    async def rea_recuerdos(req: Request):
+        """Lo que la mente ya sabe de un programa: los recuerdos de su informe.
+
+        Es la puerta del «recrear»: quien va a rehacer una pieza de un programa pide aquí lo que
+        de él se sabe, en vez de adivinarlo.
+        """
+        b = await req.json()
+        ruta = b.get("ruta")
+        if not isinstance(ruta, str) or not ruta.strip():
+            return JSONResponse({"ok": False, "error": "falta la ruta del programa"}, status_code=400)
+        fuente = rea_mod.fuente_de(ruta.strip())
+        evs = await locked(home.hippo.por_fuente)(fuente, 300)
+        return JSONResponse({"ok": True, "fuente": fuente, "recuerdos": [e.text for e in evs]})
+
+    @mcp.custom_route("/rea/comparar", methods=["POST"])
+    async def rea_comparar(req: Request):
+        """Qué cambió entre dos versiones: se compara lo guardado (sin volver a analizar)."""
+        b = await req.json()
+        ruta = b.get("ruta")
+        if not isinstance(ruta, str) or not ruta.strip():
+            return JSONResponse({"ok": False, "error": "falta la ruta del programa"}, status_code=400)
+        contra = b.get("contra") if isinstance(b.get("contra"), str) and b.get("contra").strip() else None
+        try:
+            texto, clave = await run_in_threadpool(rea_mod.comparar_versiones, home, ruta.strip(), contra=contra)
+        except rea_mod.ErrorRea as e:
+            return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+        r = await locked(lambda: rea_mod.ingerir_comparacion(home, texto, clave))()
+        bus.publish({"type": "rea", **r})
+        return JSONResponse({"ok": True, **r, "texto": texto})
 
     @mcp.custom_route("/rumbo", methods=["GET"])
     async def rumbo(_: Request):

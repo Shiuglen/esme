@@ -6,9 +6,14 @@ import { join } from 'node:path'
 import type { PythonEsme } from './lanzar-mcp'
 import type { Ficha } from './registro-mcp'
 
-export function encargoDeForja(necesidad: string, slug: string, py?: PythonEsme): string {
+export function encargoDeForja(necesidad: string, slug: string, py?: PythonEsme, contexto?: string): string {
   // el python del sistema no tiene mcp: el agente prueba con el de Esme o se queda en bucle (pasó el 18-oct)
   const probar = py ? `${py.extraPython ? `PYTHONPATH=${py.extraPython} PYTHONNOUSERSITE=1 ` : ''}${py.python} -c "import herramienta"` : 'python3 -c "import herramienta"'
+  // Lo que la mente ya sabe: el agente no debe inventar lo que Esme ya tiene en la memoria (por
+  // ejemplo, cómo funciona el programa que hay que recrear).
+  const sabe = contexto?.trim()
+    ? `\n\nLo que la mente de Esme ya sabe de esto (úsalo; no lo repitas y no inventes lo que aquí está dicho):\n${contexto.trim()}\n`
+    : ''
   return `Crea una herramienta MCP para Esme que sirva para: ${necesidad}
 
 Requisitos (obligatorios):
@@ -20,11 +25,19 @@ Requisitos (obligatorios):
 - Errores claros: si algo falla, devuelve un mensaje que explique qué pasó en vez de lanzar excepciones crudas.
 - Antes de terminar, prueba que se importa sin errores con esta orden exacta (no uses el python del sistema, que no tiene mcp; no instales nada): ${probar}
 - Si la prueba falla dos veces por lo mismo, para y explica qué pasa en vez de insistir.
-Nombre corto de la herramienta: "${slug}".`
+Nombre corto de la herramienta: "${slug}".${sabe}`
 }
 
 const PALABRAS_VACIAS = new Set(['con', 'del', 'de', 'la', 'el', 'los', 'las', 'que', 'para', 'por', 'una', 'un', 'en', 'y', 'o', 'a', 'mi', 'mis', 'su', 'sus', 'al',
   'herramienta', 'herramientas', 'sirva', 'reciba', 'recibe', 'dada', 'dado', 'quiero', 'necesito', 'calcule', 'devuelva', 'diga', 'haga', 'pueda', 'aaaa', 'mm', 'dd'])
+
+/** Las rutas que se nombran en un encargo: de dónde puede ser el programa que hay que recrear. */
+export function rutasDe(texto: string): string[] {
+  const fuera: string[] = []
+  for (const m of texto.matchAll(/(?:^|\s)((?:\/[\w.@-]+){2,})/g)) fuera.push(m[1])
+  return [...new Set(fuera)].slice(0, 3)
+}
+
 export function slugDeForja(necesidad: string, existentes: string[]): string {
   // si ya es un nombre corto (dias_hasta), se respeta tal cual
   if (/^[a-z][a-z0-9_]{2,19}$/.test(necesidad)) { let s = necesidad, n = 2; while (existentes.includes(s)) s = `${necesidad}_${n++}`; return s }

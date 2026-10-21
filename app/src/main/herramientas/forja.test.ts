@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { avisosDe, encargoDeForja, instalarForjada, slugDeForja } from './forja'
+import { avisosDe, encargoDeForja, instalarForjada, rutasDe, slugDeForja } from './forja'
 
 describe('el encargo de la Forja', () => {
   it('pide un solo fichero Python con MCPServer (mcp 2.x; FastMCP ya no existe), solo con lo que ya trae Esme, y la necesidad tal cual', () => {
@@ -21,12 +21,27 @@ describe('el encargo de la Forja', () => {
     expect(e).toMatch(/no uses el python del sistema/i)
     expect(encargoDeForja('x'.repeat(20), 'd', { python: '/venv/bin/python3', extraPython: null })).toContain('/venv/bin/python3 -c "import herramienta"')
   })
+  it('lleva lo que la mente ya sabe, para que el agente no invente lo que ya está en su memoria', () => {
+    const e = encargoDeForja('recrea el canal hilos:buscar', 'hilos', undefined, 'La superficie: los canales IPC. | `hilos:buscar` | handle | literal | index.js:8523 |')
+    expect(e).toMatch(/Lo que la mente de Esme ya sabe/)
+    expect(e).toContain('`hilos:buscar`')
+  })
+  it('sin contexto, el encargo es el de siempre', () => {
+    const e = encargoDeForja('convertir divisas', 'divisas')
+    expect(e).not.toMatch(/Lo que la mente de Esme ya sabe/)
+    expect(encargoDeForja('convertir divisas', 'divisas', undefined, '   ')).not.toMatch(/Lo que la mente de Esme ya sabe/)
+  })
   it('el nombre corto sale de la necesidad, sin choques con las que ya tienes', () => {
     expect(slugDeForja('Convertir divisas con el cambio del BCE', [])).toBe('convertir_divisas')
     expect(slugDeForja('Convertir divisas con el cambio del BCE', ['convertir_divisas'])).toBe('convertir_divisas_2')
     expect(slugDeForja('¿¡!?', [])).toBe('forjada')
     expect(slugDeForja('Una herramienta que, reciba una fecha en formato AAAA-MM-DD', [])).toBe('fecha_formato')
     expect(slugDeForja('dias_hasta', [])).toBe('dias_hasta')
+  })
+  it('sabe qué programa nombra el encargo (para pedirle a la mente lo que sabe de él)', () => {
+    expect(rutasDe('recrea el mecanismo de /home/sakai/Daimon/app/out/main')).toEqual(['/home/sakai/Daimon/app/out/main'])
+    expect(rutasDe('mira /tmp/a y /tmp/b')).toEqual(['/tmp/a', '/tmp/b'])
+    expect(rutasDe('no hay ninguna ruta aquí')).toEqual([])
   })
 })
 
