@@ -1,0 +1,85 @@
+{
+ "evidencia": "ev_554313b25b7fa94e796da5a70d758ff01192e3fa37f0605c785c647677c13e79",
+ "programa": "/home/sakai/Applications/estudio-rea/deska-1.32.asar",
+ "resumen": {
+  "browser_windows": 3,
+  "explicit_web_preferences": 20,
+  "preload_entrypoints": 0,
+  "context_bridge_apis": 0,
+  "exposed_api_members": 0,
+  "ipc": {
+   "operations": 0,
+   "literal_channels": 0,
+   "dynamic_channel_operations": 0,
+   "renderer_transmissions": 0,
+   "renderer_listeners": 0,
+   "main_handlers": 0,
+   "paired_renderer_transmissions": 0,
+   "ambiguous_renderer_transmissions": 0,
+   "unpaired_literal_renderer_transmissions": 0
+  },
+  "sender_validation_observations": 8,
+  "utility_processes": 1,
+  "resolved_utility_entrypoints": 1,
+  "native_addon_bindings": 0,
+  "resolved_native_addon_bindings": 0
+ },
+ "estadisticas": {
+  "relevant_files": 18860,
+  "nested_asar_containers": 0,
+  "text_bytes_read": 4133300,
+  "invalid_utf8_files": 0,
+  "parsed_javascript_files": 5,
+  "skipped_javascript_files": 0,
+  "visited_ast_nodes": 550253,
+  "findings": 623,
+  "modules": 75,
+  "parse_failures": 0
+ },
+ "canales": {},
+ "ventanas": [
+  {
+   "sitio": "dist/main/index.js:70866",
+   "prefs": [
+    "contextIsolation=True",
+    "nodeIntegration=False",
+    "sandbox=True",
+    "webSecurity=True"
+   ]
+  },
+  {
+   "sitio": "dist/main/index.js:71158",
+   "prefs": [
+    "[spread@2977461]=electron.app.isPackaged ? {} : { additionalArguments: [UNPACKAGED_ARG] }",
+    "[spread@2978136]=process.env.DESKA_E2E === \"1\" ? { backgroundThrottling: false } : {}",
+    "contextIsolation=True",
+    "enableBlinkFeatures=BlockingFocusWithoutUserActivation",
+    "nodeIntegration=False",
+    "preload=../preload/index.js",
+    "sandbox=!disableRendererSandbox()",
+    "webSecurity=True",
+    "webviewTag=True"
+   ]
+  },
+  {
+   "sitio": "dist/main/index.js:61143",
+   "prefs": [
+    "[spread@2623218]=electron.app.isPackaged ? {} : { additionalArguments: [UNPACKAGED_ARG] }",
+    "backgroundThrottling=False",
+    "contextIsolation=True",
+    "nodeIntegration=False",
+    "preload=../preload/index.js",
+    "sandbox=True",
+    "webSecurity=True"
+   ]
+  }
+ ],
+ "ficheros": {
+  "dist/main/index.js": {
+   "funciones": 9629,
+   "nodos": 20000
+  }
+ },
+ "funciones": {},
+ "desconocidos": 100000
+}
