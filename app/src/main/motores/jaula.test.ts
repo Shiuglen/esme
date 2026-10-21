@@ -39,6 +39,29 @@ describe('la jaula', () => {
     expect(r.env.HOME).toBe('/home/x')
   })
 
+  it('la bookkeeping de las herramientas no es una credencial: la jaula no puede romper al motor', () => {
+    // El caso real (21-oct): la app arrancada desde npm traía 22 variables npm_* y la jaula se las
+    // tragaba todas. `npm_config_cache`, `npm_execpath` o `npm_lifecycle_event` no son llaves:
+    // tragárselas rompe cualquier tarea que haga `npm install`.
+    const env = {
+      PATH: '/usr/bin', HOME: '/home/x',
+      npm_config_cache: '/home/x/.npm', npm_config_registry: 'https://registry.npmjs.org',
+      npm_execpath: '/usr/bin/npm', npm_lifecycle_event: 'install', npm_package_name: 'algo',
+      npm_command: 'install',
+    }
+    const r = enjaular(env)
+    expect(r.ocultas).toEqual([])
+    expect(r.env.npm_config_registry).toBe('https://registry.npmjs.org')
+    expect(r.env.npm_execpath).toBe('/usr/bin/npm')
+    expect(r.env.npm_lifecycle_event).toBe('install')
+  })
+
+  it('las llaves de npm sí se esconden', () => {
+    const r = enjaular({ PATH: '/bin', NPM_TOKEN: 'n', NODE_AUTH_TOKEN: 'n2', HF_TOKEN: 'h' })
+    expect(r.ocultas).toEqual(['HF_TOKEN', 'NODE_AUTH_TOKEN', 'NPM_TOKEN'])
+    expect(r.env.NPM_TOKEN).toBeUndefined()
+  })
+
   it('las credenciales que ya no están no cuentan', () => {
     expect(credencialesEn({ PATH: '/bin', ANTHROPIC_API_KEY: undefined })).toEqual([])
   })

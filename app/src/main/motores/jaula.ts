@@ -17,13 +17,20 @@
 // y las que **la tarea declara**. El resto del entorno (PATH, HOME, el idioma, las herramientas)
 // pasa intacto: la jaula no debe romper al motor.
 
-/** Nombres que tienen forma de credencial. */
+/** Nombres que tienen forma de credencial.
+ *
+ * Ojo con los prefijos: `NPM_`, `HF_` o `GH_` a secas se tragaban también la **bookkeeping** de las
+ * herramientas (`npm_config_cache`, `npm_execpath`, `npm_lifecycle_event`, `HF_HOME`…), que no es
+ * credencial ninguna y sí rompe al motor: una tarea que hace `npm install` deja de encontrar su
+ * registro. Por eso los prefijos van con lo que sí es llave. */
 const CREDENCIAL: RegExp[] = [
   /_API_?KEY$/i, /_TOKEN$/i, /_SECRET$/i, /_PASSWORD$/i, /_PASSWD$/i, /_CREDENTIALS?$/i,
   /_ACCESS_?KEY/i, /_PRIVATE_?KEY$/i, /_SESSION_?TOKEN$/i, /_AUTH$/i, /_BEARER$/i,
-  /^AWS_/, /^AZURE_/, /^GOOGLE_/, /^GCP_/, /^GH_/, /^GITHUB_/, /^NPM_/, /^OPENAI_/,
-  /^ANTHROPIC_/, /^XAI_/, /^MISTRAL_/, /^GEMINI_/, /^GOOGLE_/, /^COHERE_/, /^GROQ_/,
-  /^KIMI_/, /^DEEPSEEK_/, /^HF_/, /^HUGGINGFACE/,
+  /^AWS_/, /^AZURE_/, /^GOOGLE_/, /^GCP_/, /^GITHUB_/, /^OPENAI_/,
+  /^ANTHROPIC_/, /^XAI_/, /^MISTRAL_/, /^GEMINI_/, /^COHERE_/, /^GROQ_/,
+  /^KIMI_/, /^DEEPSEEK_/,
+  /^NPM_TOKEN$/i, /^NODE_AUTH_TOKEN$/i,                      // las llaves de npm
+  /^GH_[A-Z_]*TOKEN$/i, /^HF_TOKEN$/i, /^HUGGING(FACE)?_HUB_TOKEN$/i,
 ]
 
 /** ¿Este nombre parece el de una credencial? */
