@@ -209,6 +209,21 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
         bus.publish({"type": "rea", **r})
         return JSONResponse({"ok": True, **r})
 
+    @mcp.custom_route("/rea/recuerdos", methods=["POST"])
+    async def rea_recuerdos(req: Request):
+        """Lo que la mente ya sabe de un programa: los recuerdos de su informe.
+
+        Es la puerta del «recrear»: quien va a rehacer una pieza de un programa pide aquí lo que
+        de él se sabe, en vez de adivinarlo.
+        """
+        b = await req.json()
+        ruta = b.get("ruta")
+        if not isinstance(ruta, str) or not ruta.strip():
+            return JSONResponse({"ok": False, "error": "falta la ruta del programa"}, status_code=400)
+        fuente = rea_mod.fuente_de(ruta.strip())
+        evs = await locked(home.hippo.por_fuente)(fuente, 300)
+        return JSONResponse({"ok": True, "fuente": fuente, "recuerdos": [e.text for e in evs]})
+
     @mcp.custom_route("/rumbo", methods=["GET"])
     async def rumbo(_: Request):
         """Para qué trabaja esta mente: los pilares y los objetivos."""

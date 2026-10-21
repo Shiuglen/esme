@@ -66,7 +66,7 @@ function manosPara(to: WebContents, req: ChatRequest, ac: AbortController, d: De
     verEquipo: equipoParaChat,
     encargar: encargarDesdeChat,
     programar: programarDesdeChat,
-    forjar: forjarDesdeChat,
+    forjar: (necesidad, o) => forjarDesdeChat(necesidad, { ...o, mente: d.brainInfo() }),
     // El espejo: REA mira el programa y lo que vio entra en la memoria de la mente.
     absorberPrograma: async (ruta, motivo) => {
       const i = d.brainInfo()

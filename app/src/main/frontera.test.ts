@@ -20,7 +20,7 @@ const ficheros = (dir: string): string[] =>
   })
 
 // Las rutas del cerebro. Si aparecen fuera de la puerta, alguien ha abierto una puerta de más.
-const RUTAS_CEREBRO = ['/health', '/memories', '/recall', '/remember', '/feedback', '/forget', '/ingest', '/ingest-x', '/equipo', '/sueño', '/repeticiones', '/orquesta', '/atlas', '/voz/oir', '/voz/decir', '/events', '/rumbo', '/memory/']
+const RUTAS_CEREBRO = ['/health', '/memories', '/recall', '/remember', '/feedback', '/forget', '/ingest', '/ingest-x', '/equipo', '/sueño', '/repeticiones', '/orquesta', '/atlas', '/voz/oir', '/voz/decir', '/events', '/rumbo', '/memory/', '/rea/absorber']
 
 const RELATIVO_A_PUERTA = (f: string) => relative(SRC, f).endsWith(PUERTA)
 

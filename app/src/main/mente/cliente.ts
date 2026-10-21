@@ -47,6 +47,7 @@ export const RUTAS = {
   olvido: '/forget',
   ingesta: '/ingest',
   rea: '/rea/absorber',
+  reaRecuerdos: '/rea/recuerdos',
   sueno: '/sueño',
   orquestacion: '/orquesta',
   atlas: '/atlas',
@@ -162,6 +163,11 @@ export class ClienteCerebro {
     error?: string
   }> {
     return this.llamar(RUTAS.rea, { method: 'POST', body: JSON.stringify({ ruta, motivo }) }, 900_000)
+  }
+
+  /** Lo que la mente ya sabe de un programa (si está, ya se miró antes con el espejo). */
+  async recuerdosDePrograma(ruta: string): Promise<{ ok: boolean; fuente?: string; recuerdos?: string[]; error?: string }> {
+    return this.llamar(RUTAS.reaRecuerdos, { method: 'POST', body: JSON.stringify({ ruta }) })
   }
 
   /** La mente duerme: destila y guarda. */

@@ -387,7 +387,7 @@ def _eventos_del_informe(texto: str, fuente: str, ts: str) -> list[Event]:
     return eventos
 
 
-def _slug(ruta: str | Path) -> str:
+def clave_de(ruta: str | Path) -> str:
     """Un nombre estable por programa: si se reanaliza, la mente actualiza en vez de duplicar."""
     ruta = Path(ruta).expanduser()
     marca = hashlib.sha1(str(ruta.resolve() if ruta.exists() else ruta).encode()).hexdigest()[:6]
@@ -395,15 +395,20 @@ def _slug(ruta: str | Path) -> str:
     return f"{nombre}-{marca}"
 
 
+def fuente_de(ruta: str | Path) -> str:
+    """La procedencia en la memoria de un programa: la misma con la que se absorbe."""
+    return f"rea:{clave_de(ruta)}"
+
+
 def ingerir(home, evidencia: dict, ruta: str | Path, *, motivo: str = "") -> dict:
     """Escribe el informe junto a la mente y lo deja dentro como recuerdos con procedencia."""
     texto = informe(evidencia, motivo=motivo)
-    clave = _slug(ruta)
+    clave = clave_de(ruta)
     carpeta = Path(home.path) / "rea"
     carpeta.mkdir(parents=True, exist_ok=True)
     destino = carpeta / f"{clave}-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}.md"
     destino.write_text(texto, encoding="utf-8")
-    fuente = f"rea:{clave}"     # la procedencia es el programa, no la ruta del fichero
+    fuente = fuente_de(ruta)          # la procedencia es el programa, no la ruta del fichero
     eventos = _eventos_del_informe(texto, fuente, datetime.now(timezone.utc).isoformat())
     nuevos = home.ingest(eventos)
     nr = evidencia.get("normalized_result") or {}
