@@ -15,7 +15,8 @@ const ventanaFalsa = (estado: unknown) => {
 
 /** La ventana falsa devuelve lo mismo para el estado y para las acciones: así el guion de clic
  *  (que pregunta por `ok`) y el de estado (que pregunta por la página) ven algo coherente. */
-const ventanaCompleta = () => ventanaFalsa({ ok: true, donde: 'Ir', url: 'https://x.com', titulo: 'X', texto: 'hola', botones: ['Ir'] })
+const ventanaCompleta = () => ventanaFalsa({ ok: true, donde: 'Ir', url: 'https://x.com', titulo: 'X', texto: 'hola', botones: ['Ir'],
+  elementos: [{ n: 1, rol: 'boton', etiqueta: 'Ir' }] })
 
 describe('la puerta del navegador', () => {
   it('abre, lee, pulsa y escribe: con el token y sólo desde el token', async () => {
@@ -30,7 +31,7 @@ describe('la puerta del navegador', () => {
       const abrir = await llamar('/abrir', { url: 'https://x.com' })
       expect(abrir.codigo).toBe(200)
       expect(abrir.cuerpo.titulo).toBe('X')
-      expect(abrir.cuerpo.acciones).toEqual(['clic en «Ir»'])
+      expect(abrir.cuerpo.acciones).toEqual(['n1 [botón] Ir'])
 
       const estado = await llamar('/estado', {})
       expect(estado.codigo).toBe(200)

@@ -53,8 +53,9 @@ def agent_card(url_base: str, version: str = VERSION) -> dict:
             {
                 "id": "navegador",
                 "name": "Navegador de Esme",
-                "description": ("Abre la web de verdad (con JavaScript y formularios), te devuelve lo que hay: el texto, "
-                                "los botones, los campos y las acciones posibles, y puede pulsar y rellenar por ti. "
+                "description": ("Abre la web de verdad (con JavaScript y formularios), te devuelve lo que hay: el texto "
+                                "y el mapa de lo que se puede tocar, cada cosa con su número (n7). Pulsas y rellenas "
+                                "por número o por texto, y bajas la mirada cuando hay más página debajo. "
                                 "Es el navegador de la app, servido por la mente: cualquier agente que hable con Esme "
                                 "puede usarlo."),
                 "tags": ["web", "navegador", "herramientas"],
@@ -62,7 +63,7 @@ def agent_card(url_base: str, version: str = VERSION) -> dict:
                     "Abre la página de las noticias y dime qué hay.",
                     "Busca en esa web el precio y vuelve con la cifra.",
                 ],
-                "x-esme": {"herramientas": ["navegar", "clic_en_la_pagina", "escribir_en_la_pagina"]},
+                "x-esme": {"herramientas": ["navegar", "clic_en_la_pagina", "escribir_en_la_pagina", "bajar_la_mira"]},
             },
             {
                 "id": "sueno",

@@ -52,6 +52,10 @@ export async function servirNavegador(nav: Navegador, token: string): Promise<Se
         const r = await nav.escribir(objetivo, valor)
         return json(res, 200, { ok: r.ok, donde: r.donde, url: r.estado.url, titulo: r.estado.titulo, texto: r.estado.texto, acciones: accionesDe(r.estado) })
       }
+      if (ruta === '/scroll') {
+        const e = await nav.scroll(datos.abajo !== false)
+        return json(res, 200, { url: e.url, titulo: e.titulo, texto: e.texto, acciones: accionesDe(e) })
+      }
       json(res, 404, { error: 'No sé hacer eso.' })
     } catch (e) {
       json(res, 400, { error: e instanceof Error ? e.message : String(e) })

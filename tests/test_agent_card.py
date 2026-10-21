@@ -44,7 +44,7 @@ def test_la_tarjeta_anuncia_el_navegador_que_existe(tmp_path):
     habilidades = {s["id"]: s for s in card["skills"]}
     assert "navegador" in habilidades
     herramientas = habilidades["navegador"]["x-esme"]["herramientas"]
-    assert herramientas == ["navegar", "clic_en_la_pagina", "escribir_en_la_pagina"]
+    assert herramientas == ["navegar", "clic_en_la_pagina", "escribir_en_la_pagina", "bajar_la_mira"]
     # y el servidor MCP las expone de verdad
     srv = build_server(Home(tmp_path))
     nombres = {t.name for t in asyncio.run(srv.list_tools())}

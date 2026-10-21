@@ -16,7 +16,7 @@ describe('el circuito entero: la mente habla con el navegador de la app', () => 
   it.skipIf(!existsSync(PY))('el cliente del cerebro abre la puerta de la app y lee la página', async () => {
     const v: Ventana = {
       loadURL: async () => {},
-      executeJavaScript: async () => ({ url: 'https://x.com', titulo: 'X', texto: 'hola mundo', botones: ['Ir'] }),
+      executeJavaScript: async () => ({ url: 'https://x.com', titulo: 'X', texto: 'hola mundo', botones: ['Ir'], elementos: [{ n: 1, rol: 'boton', etiqueta: 'Ir' }] }),
       isDestroyed: () => false,
       close: () => {},
       url: () => 'https://x.com/',
@@ -32,7 +32,7 @@ print(en_palabras(ClienteNavegador().abrir("https://x.com")))
 `], { ...process.env, ESME_NAVEGADOR_URL: puerta.url, ESME_NAVEGADOR_TOKEN: 'tok' })
       expect(salida).toContain('Página: X')
       expect(salida).toContain('hola mundo')
-      expect(salida).toContain('clic en «Ir»')
+      expect(salida).toContain('n1 [botón] Ir')
     } finally { puerta.cerrar() }
   })
 })

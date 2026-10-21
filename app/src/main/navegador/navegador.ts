@@ -1,7 +1,7 @@
 // El navegador: la ventana que se abre, se usa y se cierra. La ventana se fabrica (así esto se
 // puede probar sin Electron) y se cierra sola cuando pasa un rato sin usarla: en reposo Esme no
 // consume memoria ni navegador abierto.
-import { GUION_CLIC, GUION_ESCRIBIR, GUION_ESTADO, normaliza, urlValida, type EstadoPagina } from './estado'
+import { GUION_CLIC, GUION_ESCRIBIR, GUION_ESTADO, GUION_SCROLL, normaliza, urlValida, type EstadoPagina } from './estado'
 
 /** Lo mínimo de una ventana que el navegador necesita. */
 export type Ventana = {
@@ -55,6 +55,13 @@ export class Navegador {
     const v = this.ventana()
     const r = (await v.executeJavaScript(GUION_ESCRIBIR(objetivo, valor))) as { ok?: boolean; donde?: string } | null
     return { ok: !!r?.ok, donde: r?.donde ?? '', estado: await this.estado() }
+  }
+
+  /** Baja (o sube) la mirada casi una pantalla entera y devuelve lo que hay en lo nuevo. */
+  async scroll(abajo = true): Promise<EstadoPagina> {
+    const v = this.ventana()
+    await v.executeJavaScript(GUION_SCROLL(abajo))
+    return this.estado()
   }
 
   /** Cierra la ventana: la deja cerrada aunque esté a medias. */
