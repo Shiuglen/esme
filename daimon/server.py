@@ -18,6 +18,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 
+from . import rea as rea_mod
 from . import rumbo as rumbo_mod
 from .atlas import atlas_for
 from .gate import build_server, feedback_tool, remember_tool
@@ -192,6 +193,21 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
         added = await locked(lambda: home.ingest(eventos))()
         bus.publish({"type": "ingest-x", "added": added})
         return JSONResponse({"added": added, "memories": len(home.hippo)})
+
+    @mcp.custom_route("/rea/absorber", methods=["POST"])
+    async def rea_absorber(req: Request):
+        """El espejo: REA mira un programa y lo que vio entra en la memoria de la mente."""
+        b = await req.json()
+        ruta = b.get("ruta")
+        if not isinstance(ruta, str) or not ruta.strip():
+            return JSONResponse({"ok": False, "error": "falta la ruta del programa"}, status_code=400)
+        try:
+            evidencia = await run_in_threadpool(rea_mod.analizar, ruta.strip())
+        except rea_mod.ErrorRea as e:
+            return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+        r = await locked(lambda: rea_mod.ingerir(home, evidencia, ruta.strip(), motivo=b.get("motivo", "")))()
+        bus.publish({"type": "rea", **r})
+        return JSONResponse({"ok": True, **r})
 
     @mcp.custom_route("/rumbo", methods=["GET"])
     async def rumbo(_: Request):

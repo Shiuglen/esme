@@ -20,6 +20,11 @@ export type Manos = {
   encargar(encargo: string, agente?: string): Promise<{ id: string; titulo: string; agente: string }>
   programar(p: Pick<NuevoProgramado, 'texto' | 'cuando'> & { agente?: string }): Promise<{ ok: true } | { ok: false; error: string }> | { ok: true } | { ok: false; error: string }
   forjar(necesidad: string, o: { nombre?: string; agente?: string }): Promise<{ tarea: string; herramienta: string; agente: string; siguiente: string }>
+  /**
+   * El espejo: REA (ingeniería inversa) mira un programa y lo que vio queda en la memoria de Esme.
+   * Sólo software propio o del usuario con permiso: nunca para copiar apps de terceros.
+   */
+  absorberPrograma?(ruta: string, motivo?: string): Promise<{ ok: boolean; added?: number; memories?: number; informe?: string; fuente?: string; canales?: number; funciones?: number; desconocidos?: number; error?: string }>
   usarSkill?(nombre: string, fichero?: string): { instrucciones: string; ficheros: string[] }
   buscarWeb(consulta: string): Promise<{ fuente: string; resultados: Resultado[] }>
   leerWeb(url: string): Promise<{ titulo: string; texto: string; url: string }>
@@ -152,6 +157,23 @@ export function herramientasPropias(m: Manos): ToolSet {
       description: 'La Forja: cuando ninguna herramienta disponible sirve para lo que el usuario necesita, encarga a un agente del Taller que fabrique una nueva (un servidor MCP en Python). El usuario la revisa e instala desde el Taller; después la podrás usar. Describe la necesidad con detalle: qué entra, qué sale y de dónde salen los datos.',
       inputSchema: z.object({ necesidad: z.string().min(15).max(4000), nombre: z.string().regex(/^[a-z][a-z0-9_]{2,19}$/).optional().describe('nombre corto en minúsculas con guiones bajos, p. ej. dias_hasta'), agente: z.string().optional() }),
       execute: g('forjar_herramienta', ({ necesidad, nombre, agente }: { necesidad: string; nombre?: string; agente?: string }) => m.forjar(necesidad, { ...(nombre ? { nombre } : {}), ...(agente ? { agente } : {}) })),
+    }),
+    absorber_programa: tool({
+      description: 'El espejo: analiza un programa (una app de Electron o JavaScript) con REA, ingeniería inversa, y deja en la memoria de Esme '
+        + 'lo que vio de él: los módulos, las funciones, la superficie (canales IPC, ventanas) y, lo más importante, lo que NO se pudo ver. '
+        + 'Úsala cuando necesites entender cómo funciona un programa antes de tocarlo o de recrear una parte suya. '
+        + 'Sólo software propio o del usuario con permiso: nunca para copiar apps de terceros. Tarda (un minuto o más).',
+      inputSchema: z.object({
+        ruta: z.string().min(1).max(600).describe('la carpeta o el .asar del programa'),
+        motivo: z.string().max(400).optional().describe('por qué se mira: queda junto al conocimiento'),
+      }),
+      execute: g('absorber_programa', async ({ ruta, motivo }: { ruta: string; motivo?: string }) => {
+        if (!m.absorberPrograma) return 'El espejo no está disponible ahora mismo.'
+        const r = await m.absorberPrograma(ruta, motivo ?? '')
+        if (!r.ok) return `No se pudo absorber el programa: ${r.error ?? 'razón desconocida'}`
+        return `El programa ya es conocimiento de Esme: ${r.canales ?? 0} canales IPC, ${r.funciones ?? 0} funciones, `
+          + `${r.desconocidos ?? 0} cosas que no se pudo ver. Informe en ${r.informe}.`
+      }),
     }),
     ...(m.usarSkill ? { usar_skill: tool({
       description: 'Carga una skill instalada por el usuario (sus instrucciones completas, o un fichero suyo) cuando la tarea encaja con su descripción. Después, síguela.',

@@ -33,6 +33,11 @@ export const ROLES_POR_DEFECTO: Rol[] = [
     nombre: 'Explorador',
     instruccion: 'Eres quien explora. Antes de tocar nada, entérate de cómo está hecho el proyecto: dónde vive lo que hay que cambiar, qué convenciones se siguen y qué riesgos hay. Luego informa.',
   },
+  {
+    id: 'espejo',
+    nombre: 'Espejo',
+    instruccion: 'Eres quien mira por dentro. Antes de proponer nada, entérate de cómo funciona de verdad: usa la ingeniería inversa (la herramienta de absorber el programa) para ver los módulos, las funciones y la superficie del programa, y cuenta qué es y qué NO se puede ver. Cada conclusión con su evidencia; lo incierto, dicho como incierto.',
+  },
 ]
 
 const rolValido = (x: unknown): x is Rol =>

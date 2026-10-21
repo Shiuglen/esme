@@ -42,6 +42,19 @@ describe('la puerta al cerebro', () => {
     ])
   })
 
+  it('el espejo se pide con su ruta y su motivo', async () => {
+    let vista: { url: string; init: RequestInit } | null = null
+    const http = (async (url: string, init: RequestInit) => {
+      vista = { url, init }
+      return respuesta({ ok: true, added: 12, memories: 30, informe: '/x.md', fuente: 'rea:main-abc123', canales: 122, funciones: 1267, desconocidos: 11608 })
+    }) as unknown as typeof fetch
+    const r = await new ClienteCerebro(info, http).absorberPrograma('/home/x/out/main', 'curiosidad')
+    expect(vista!.url).toBe(`http://127.0.0.1:47321${RUTAS.rea}`)
+    expect(JSON.parse(vista!.init.body as string)).toEqual({ ruta: '/home/x/out/main', motivo: 'curiosidad' })
+    expect(r.ok).toBe(true)
+    expect(r.canales).toBe(122)
+  })
+
   it('un fallo del cerebro es un fallo con la misma forma', async () => {
     const http = (async () => respuesta({ error: 'no existe' }, false, 404)) as unknown as typeof fetch
     const e = await new ClienteCerebro(info, http).salud().catch((x) => x)

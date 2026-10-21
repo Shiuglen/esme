@@ -192,6 +192,19 @@ backends se instalan; y **no pide root**. Sus herramientas MCP son exactamente l
 para copiarlas: riesgo legal y contradice que Esme sea original. REA se usa sobre lo propio, sobre
 lo del usuario con permiso, y para forense del propio equipo. Nada de OSINT de terceros, ni claves
 expuestas, ni hackeo.
+**Hecho (21-oct): el espejo deja de ser un informe y pasa a ser una capacidad de agente.**
+`daimon/rea.py` convierte la evidencia de REA en un informe con sus luces (módulos, funciones,
+superficie IPC, ventanas) y sus sombras (lo que no se pudo ver, con su razón; los límites que
+declara REA, con sus palabras), y ese informe **entra en la memoria** como recuerdos con
+procedencia (`rea:<programa>`), cada uno con el título de su apartado para que la mente lo encuentre.
+Lo llaman **cualquier agente**: la herramienta MCP `esme_absorbe_programa` (Claude Code, Codex,
+Cline…), la herramienta de la conversación `absorber_programa` (que **pregunta antes de mirar**) y
+el oficio **«Espejo»** del Taller. Medido contra la app real: 91,3 s de análisis, 179 recuerdos
+nuevos, y las preguntas sobre el programa se responden en 0,3 s. Detalle:
+`docs/resultados/2026-10-21-el-espejo.md`.
+**Queda.** Que la Forja pida a la mente lo que sabe del programa que quiere recrear (el bucle
+absorber → recrear, explícito); comparar dos versiones de un programa; y una pregunta nueva en
+el banco del examen que mida esto con un número.
 
 ### Palanca 7 — Skills que nacen del uso
 **Idea.** Ya existe el patrón «una skill por cuenco» (investigar, escribir, web, PDF, codificar,
