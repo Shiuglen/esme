@@ -125,11 +125,13 @@ export function Mando({ onSeccion, presencia = 'orbe', sitio = { izquierda: 240,
       <div className="absolute top-[20%] grid w-[min(600px,44%)] content-start gap-5" style={{ left: Math.max(sitio.izquierda, 96) + 24 }}>
         <div className="grid gap-3">
           <p className="m-0 text-[13px] tracking-[0.02em] text-texto-3">{fechaLarga(new Date())}</p>
-          <h1 className="m-0 flex flex-wrap items-baseline font-display text-[clamp(52px,5.6vw,88px)] leading-[0.95] font-normal tracking-[-0.025em] text-texto italic">
+          {/* El saludo y la presencia son una sola línea: antes la presencia se caía a la línea siguiente
+              y quedaba un hexágono suelto en medio de la pantalla, como un resto. */}
+          <h1 className="m-0 flex flex-nowrap items-baseline whitespace-nowrap font-display text-[clamp(46px,5.2vw,78px)] leading-[0.95] font-normal tracking-[-0.025em] text-texto italic">
             <Saludo texto={saludo()} pieza={piezas.saludo} />
             {presencia === 'ninguna' ? '.' : (
               <button type="button" onClick={hablar} aria-pressed={escuchando} aria-label={escuchando ? 'Dejar de escuchar' : 'Hablar con Esme (manos libres)'}
-                className="ml-[0.05em] rounded-full not-italic outline-none focus-visible:ring-2 focus-visible:ring-acento">
+                className="ml-[0.04em] shrink-0 rounded-full not-italic outline-none focus-visible:ring-2 focus-visible:ring-acento">
                 {visible && <Presencia tipo={presencia} estado={estado} nivelTu={nivel} nivelElla={nivelVoz} px={30} tam="0.34em" className="punto-final text-acento" />}
               </button>
             )}
