@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { bridge, type EventoTaller, type MotorTaller, type ResultadoTaller, type TareaTaller, type AccesoTarea } from '../lib/bridge'
 import { aplicar, plegar, type ItemLinea } from './linea'
+import { Cola, type Entrada } from './cola'
 import { activa } from './vista'
 
 type Llegado = { n: number; e: EventoTaller }
@@ -16,20 +17,24 @@ export function useTaller() {
   const aplicados = useRef(new Map<string, number>())          // el siguiente n que espera cada tarea
   const pendientes = useRef(new Map<string, Llegado[]>())      // llegados mientras se carga su historial
   const cargando = useRef(new Set<string>())
-  const cola = useRef<{ id: string; e: EventoTaller }[]>([])
-  const fotograma = useRef(0)
+  const cola = useRef<Cola<EventoTaller> | null>(null)
   const inicioTurno = useRef(new Map<string, number>())
 
-  const vaciar = useCallback(() => {
-    fotograma.current = 0
-    const lote = cola.current
-    cola.current = []
-    if (lote.length) setLineas((prev) => { const sig = { ...prev }; for (const { id, e } of lote) sig[id] = aplicar(sig[id] ?? [], e); return sig })
+  // La cola vive fuera del estado: el estado guarda lo pintado, la cola lo que todavía no se pintó.
+  const vaciar = useCallback((lote: Entrada<EventoTaller>[]) => {
+    setLineas((prev) => { const sig = { ...prev }; for (const { id, e } of lote) sig[id] = aplicar(sig[id] ?? [], e); return sig })
   }, [])
   const encolar = useCallback((id: string, e: EventoTaller) => {
     if (e.tipo === 'usuario') inicioTurno.current.set(id, Date.now())
-    cola.current.push({ id, e })
-    if (!fotograma.current) fotograma.current = requestAnimationFrame(vaciar)
+    if (!cola.current) {
+      cola.current = new Cola<EventoTaller>({
+        fotograma: (t) => requestAnimationFrame(t),
+        reloj: (t, ms) => window.setTimeout(t, ms),
+        cancelarFotograma: (i) => cancelAnimationFrame(i),
+        cancelarReloj: (i) => clearTimeout(i),
+      }, vaciar)
+    }
+    cola.current.meter(id, e)
   }, [vaciar])
 
   const cargar = useCallback(async (id: string) => {
@@ -39,7 +44,7 @@ export function useTaller() {
       const hist = await bridge.taller.eventos(id)
       const resto = (pendientes.current.get(id) ?? []).filter((p) => p.n >= hist.length).sort((a, b) => a.n - b.n)
       pendientes.current.delete(id)
-      cola.current = cola.current.filter((x) => x.id !== id)       // lo encolado ya viene en el historial
+      cola.current?.quitar(id)                            // lo encolado ya viene en el historial
       aplicados.current.set(id, resto.length ? resto[resto.length - 1].n + 1 : hist.length)
       for (const p of resto) if (p.e.tipo === 'usuario') inicioTurno.current.set(id, Date.now())
       setLineas((prev) => ({ ...prev, [id]: resto.reduce((l, p) => aplicar(l, p.e), plegar(hist)) }))
@@ -78,7 +83,7 @@ export function useTaller() {
       }),
       bridge.taller.onEvento(recibir),
     ]
-    return () => { offs.forEach((o) => o()); cancelAnimationFrame(fotograma.current); fotograma.current = 0 }
+    return () => { offs.forEach((o) => o()); cola.current?.soltar(); cola.current = null }
   }, [cargar, recibir])
 
   // Solo en desarrollo: inyectar tareas de muestra para revisar la vista en todos sus estados.

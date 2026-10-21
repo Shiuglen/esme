@@ -604,9 +604,27 @@ def ingerir(home, evidencia: dict, ruta: str | Path, *, motivo: str = "") -> dic
     }
 
 
+def _soltar_memoria() -> None:
+    """Lo que se suelta vuelve al sistema.
+
+    La evidencia de REA son decenas de megabytes de objetos de Python. Al soltarlos, glibc se los
+    queda en el montón y el cerebro sigue ocupándolos hasta que otro hilo los pida: por eso, después
+    de absorber, el proceso Pesaba un gigabyte más sin estar haciendo nada.
+    """
+    import gc
+    gc.collect()
+    from .lens import _devolver_memoria
+    _devolver_memoria()
+
+
 def absorber(home, ruta: str | Path, *, motivo: str = "", timeout: int = TIMEOUT) -> dict:
     """El camino entero: REA mira el programa y la mente se queda con lo que vio."""
-    return ingerir(home, analizar(ruta, timeout=timeout), ruta, motivo=motivo)
+    evidencia = analizar(ruta, timeout=timeout)
+    try:
+        return ingerir(home, evidencia, ruta, motivo=motivo)
+    finally:
+        del evidencia
+        _soltar_memoria()
 
 
 def version_guardada(home, ruta: str | Path) -> dict | None:
@@ -644,8 +662,10 @@ def comparar_versiones(home, ruta: str | Path, *, contra: str | Path | None = No
         vb_list = versiones(home, contra)
         if not va_list:
             va_list = [reducir(analizar(ruta, timeout=timeout))]
+            _soltar_memoria()
         if not vb_list:
             vb_list = [reducir(analizar(contra, timeout=timeout))]
+            _soltar_memoria()
         va, vb = va_list[0], vb_list[0]
         etiqueta_a = nombre_a or f"{Path(ruta).name} (antes)"
         etiqueta_b = nombre_b or f"{Path(contra).name} (después)"
@@ -656,6 +676,7 @@ def comparar_versiones(home, ruta: str | Path, *, contra: str | Path | None = No
         else:
             # Sólo había una versión guardada: se mira el programa otra vez (ya cambió en disco).
             vb = reducir(analizar(ruta, timeout=timeout))
+            _soltar_memoria()
             va = va_list[0] if va_list else vb
         etiqueta_a = nombre_a or "la versión anterior"
         etiqueta_b = nombre_b or "la versión nueva"
