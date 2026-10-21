@@ -370,3 +370,12 @@ En pie desde el 19-oct, por decisión del creador: **la ingeniería inversa est�
 - **Verificado**: 209 tests verdes (kit) · el pack vivo nombra al otro agente con su commit correcto · el cerrojo se comporta (espera, avisa, sale con 75, entra cuando el otro suelta).
 - **Cola abierta**: el **número** que falta — «dos agentes juntos rinden más que dos solos» (mismo tipo de examen que el resto: si no mejora, no entra) · el **Taller sigue siendo un singleton de proceso** (`app/src/main/ipc-taller.ts:29`): con dos tareas funciona, con muchas habría que mirar si serializa algo que no debería · la regla del creador de «una sola sesión a la vez» **no se toca**: dos tareas distintas conviven, dos sesiones sobre el mismo código no.
 
+## El pack se ajusta al presupuesto (20 oct 2026, tarde)
+
+- **El fallo que encontró el test**: el pack de arranque **se salía del presupuesto**: con 120 tokens gastaba **206**. Dos causas: lo fijo (rumbo, compañeros, protocolo) se **sumaba** en vez de restar, y la línea de ids citaba los 40 recuerdos y se comía el contexto.
+- **Arreglado ✅**: el pack se arma **por prioridad**: primero el protocolo (sin él el agente no sabe usarla), luego el **contexto** (que es lo que va a usar) y sólo si sobra sitio el rumbo y los compañeros. Los ids se acotan a 12 (+«N más») y se cuentan; con presupuesto corto el protocolo entra en su versión de una línea.
+- **Medido en la mente viva**: el pack pesa **3.872 tokens con presupuesto de 4.000**, con las cuatro secciones dentro (rumbo, contexto, compañeros, protocolo).
+- **Purga del modelo local, y lo queascadea**: al borrar los modelos LLM también se fue **el contestador del examen** (`scripts/prueba0.py:35`: `ANSWERER = "qwen3.5-abliterated-truthful:9b-local"`, que era el GGUF de 5,6 GB de `~/.local/share/llama-models`) y **Ollama no tiene ni un modelo en disco** (`~/.local/share/ollama` no existe). → **El examen (el instrumento de la regla madre) necesita un modelo local que ya no está.** Es una decisión del creador: recuperar el 9B (5,6 GB) o medir con un modelo remoto (cambia la línea base y gasta cuota) o no medir. Lo que **no** depende del modelo es el hit-rate de recuperación, que se mide sin LLM.
+- **La mente viva no depende de Ollama ✅**: la config dice `"encoder": "ollama:embeddinggemma"`, pero `daimon/home.py:12` lo mapea a la **Lente ONNX local** (`embeddinggemma-300m`) — por eso la mente siguió viva tras la purga (y por eso la Lente se conservó).
+- **Puertas**: 211 tests verdes (kit) · pack dentro del presupuesto en producción.
+
