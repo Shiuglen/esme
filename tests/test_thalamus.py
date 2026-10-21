@@ -88,6 +88,33 @@ def test_compose_corte_adaptativo(tmp_path):
     assert cut[0] == full[0]
 
 
+def test_el_suelo_no_deja_a_la_mente_ciega(tmp_path):
+    """Un corte muy cerrado no puede dejar el contexto con un solo trozo.
+
+    Medido en el banco del espejo: con el corte solo, la pregunta sobre el programa se quedaba
+    con 35 tokens de 1500 y el acierto caía a 0,00; con el suelo, el contexto se llenaba y el
+    acierto llegaba a 1,00. El corte puede quitar ruido, pero no puede dejar a la mente ciega."""
+    th = _setup(tmp_path, _corpus())
+    th.max_drop = 0.0                     # el corte más cerrado posible: sólo el mejor
+    _, tokens_sin, ids_sin = th.compose("tema3 detalle", 1500)
+    th.min_candidatos = 8
+    _, tokens_con, ids_con = th.compose("tema3 detalle", 1500)
+    assert len(ids_sin) == 1
+    assert len(ids_con) >= 8
+    assert tokens_con > tokens_sin
+    assert ids_con[0] == ids_sin[0]       # el mejor sigue siendo el mejor
+
+
+def test_el_suelo_no_añade_cuando_el_corte_no_corta(tmp_path):
+    """Si el corte deja material de sobra, el suelo no inventa nada: sólo es un seguro."""
+    th = _setup(tmp_path, _corpus())
+    _, tokens_antes, ids_antes = th.compose("tema3 detalle", 1500)
+    th.min_candidatos = 8
+    _, tokens_despues, ids_despues = th.compose("tema3 detalle", 1500)
+    assert ids_antes == ids_despues
+    assert tokens_antes == tokens_despues
+
+
 def test_no_se_abstiene_ante_pregunta_ajena(tmp_path):
     """Antes devolvía "" y el agente se quedaba parado sin poder hacer nada.
 

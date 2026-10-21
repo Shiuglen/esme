@@ -57,7 +57,9 @@ class Home:
         # candidatos (k), tope de recuerdos (max_items, None = sin tope) y vida de la recencia.
         self.thalamus = Thalamus(self.hippo, BM25(self.hippo.events()),
                                  mmr_lambda=self.config.get("mmr_lambda", 0.7),
-                                 max_drop=self.config.get("max_drop"), min_dense=self.config.get("min_dense"),
+                                 max_drop=self.config.get("max_drop"),
+                                 min_candidatos=int(self.config.get("min_candidatos", 20)),
+                                 min_dense=self.config.get("min_dense"),
                                  k=int(self.config.get("k", 40)),
                                  max_items=self.config.get("max_items"),
                                  hops=int(self.config.get("hops", 2)),

@@ -64,6 +64,8 @@ def _fit(home: Home, items: list[Item], with_para: bool) -> Thalamus:
     # larga desplazaba el balance de los pesos y costaba 0,012 de exactitud).
     th = Thalamus(home.hippo, home.thalamus.bm25, mmr_lambda=1.0,
                   min_dense=home.config.get("min_dense"),
+                  max_drop=home.config.get("max_drop"),
+                  min_candidatos=int(home.config.get("min_candidatos", 20)),
                   k=int(home.config.get("k", 40)),
                   k_cola=int(home.config.get("k_cola", 120)),
                   hops=int(home.config.get("hops", 2)),
@@ -127,6 +129,7 @@ def build_variants():
         """Un tálamo con la configuración de la casa (los mismos k, saltos y recencia que la app)."""
         return Thalamus(home.hippo, bm, mmr_lambda=1.0, max_drop=max_drop,
                         min_dense=home.thalamus.min_dense,
+                        min_candidatos=int(home.config.get("min_candidatos", 20)),
                         k=int(home.config.get("k", 40)),
                         k_cola=int(home.config.get("k_cola", 120)),
                         hops=int(home.config.get("hops", 2)),
