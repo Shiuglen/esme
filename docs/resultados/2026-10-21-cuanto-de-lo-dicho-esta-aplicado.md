@@ -20,6 +20,8 @@
 | 10 | **La memoria no se llena de boilerplate** | `daimon/ingest.py` | 59 → 44 trozos; la puerta es por fuente |
 | 11 | **El checkpoint por turno** (el hueco que tenía MonoCode, MIT) | `app/src/main/taller/copias.ts`, `taller.ts` | 3 pruebas: el punto es un commit; volver **sólo** toca la copia |
 | 12 | **La jaula: el agente ya no hereda tus credenciales** | `app/src/main/motores/jaula.ts`, `sesion-acp.ts`, `pty-host.ts`, `taller.ts` | 8 pruebas: se esconden las que tienen forma de credencial; **pasan** las llaves del motor y las que la tarea declara; PATH y HOME intactos |
+| 13 | **El veredicto envejece (la skill con caducidad)** | `app/src/main/skills/veredicto.ts`, `ipc.ts` | 2 pruebas: a los 90 días se marca caducado y **sigue valiendo** («el juez pone el listón, nunca lo quita») |
+| 14 | **La presión de recursos se ve** (lo que faltó cuando la app murió de memoria) | `app/src/main/uso/presion.ts`, `chat.ts` | 5 pruebas: los roles, la suma, el aviso del swap · y la herramienta `ver_presion` en manos del agente |
 
 ## 2. Ya estaba aplicado (y el estudio se equivocó)
 
@@ -34,11 +36,11 @@
 |---|---|---|---|
 | 14 | ~~**La jaula: la credencial a petición**~~ | **Hecha** (fila 12). Queda el botón en la interfaz para declararlas | SPACE (Perplexity, Apache 2.0) · `@Arindam_1729` (`--pass-env`) · Deska 1.37 (cuentas aisladas) |
 | 15 | **El coste por petición** | El Taller anota el uso **por turno**; lo que falta es por petición y que se pueda consultar | Deska (`recordTokenUsage`) |
-| 16 | **La skill con dueño y con caducidad** | El veredicto se firma y **no caduca**; tampoco hay dueño | `@mem0ai` (skill drift) · `@KanikaBK` (revisar permisos cada mes) |
+| 16 | ~~**La skill con dueño y con caducidad**~~ | **La caducidad, hecha** (fila 13). Queda el *dueño*: el catálogo ya trae `autor` y el veredicto, `firmante`; falta juntarlos en la vista | `@mem0ai` (skill drift) · `@KanikaBK` (revisar permisos cada mes) |
 | 17 | **Los permisos se re-preguntan al cambiar** | La Tienda compara huellas (ya está); falta **preguntar** cuando una skill trae permisos nuevos | Deska 1.33: «an update adding one asks again» |
 | 18 | **El manifiesto habla el formato de plugin** | El manifiesto es propio; el estándar es el de Google/MS/OpenAI/Cursor/Vercel | `@akshay_pachaar` |
 | 19 | **El worktree con dueño** | Hay worktree por tarea, pero no se sabe **quién** lo tiene ni se evita el choque | Deska (`worktreeInUse`, `worktreeUsedByAnotherTask`) |
-| 20 | **La presión de recursos, a la vista** | El Taller no tiene ni un medidor; y lo que se suelta bajo presión debería ser **la transcripción**, no el historial | MonoCode 0.15 (`Resource pressure`) |
+| 20 | ~~**La presión de recursos, a la vista**~~ | **Hecha** (fila 14): el medidor y la herramienta `ver_presion`. Queda la vista de proceso con los botones de parar | MonoCode 0.15 (`Resource pressure`) |
 | 21 | **La sesión propia por página embebida** | El Ojo y el navegador comparten sesión | Deska (`embedSessionFor`) |
 | 22 | **El inbox por demanda** | No hay bandeja que ordene por «te necesitan» | MonoCode y Deska lo tienen abierto; en X, `@mr_r0b0t` |
 | 23 | **Publicar en el registro MCP** | El código y las dos entradas están hechas y validadas | **Faltan las dos cuentas del creador** — no es un límite técnico |
