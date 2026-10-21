@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { bridge, type EventoTaller, type MotorTaller, type ResultadoTaller, type TareaTaller, type AccesoTarea } from '../lib/bridge'
-import { aplicar, plegar, type ItemLinea } from './linea'
+import { aplicar, aplicarLote, plegar, type ItemLinea } from './linea'
 import { Cola, type Entrada } from './cola'
 import { activa } from './vista'
 
@@ -22,7 +22,19 @@ export function useTaller() {
 
   // La cola vive fuera del estado: el estado guarda lo pintado, la cola lo que todavía no se pintó.
   const vaciar = useCallback((lote: Entrada<EventoTaller>[]) => {
-    setLineas((prev) => { const sig = { ...prev }; for (const { id, e } of lote) sig[id] = aplicar(sig[id] ?? [], e); return sig })
+    // Por tarea, y en un solo lote: aplicar evento a evento copiaba la línea entera cada vez
+    // (78.000 eventos × 17.000 elementos = mil millones de copias: 2,7 GB de montón y un núcleo).
+    const porTarea = new Map<string, EventoTaller[]>()
+    for (const { id, e } of lote) {
+      const losDeEsta = porTarea.get(id)
+      if (losDeEsta) losDeEsta.push(e)
+      else porTarea.set(id, [e])
+    }
+    setLineas((prev) => {
+      const sig = { ...prev }
+      for (const [id, eventos] of porTarea) sig[id] = aplicarLote(sig[id] ?? [], eventos)
+      return sig
+    })
   }, [])
   const encolar = useCallback((id: string, e: EventoTaller) => {
     if (e.tipo === 'usuario') inicioTurno.current.set(id, Date.now())
@@ -47,7 +59,7 @@ export function useTaller() {
       cola.current?.quitar(id)                            // lo encolado ya viene en el historial
       aplicados.current.set(id, resto.length ? resto[resto.length - 1].n + 1 : hist.length)
       for (const p of resto) if (p.e.tipo === 'usuario') inicioTurno.current.set(id, Date.now())
-      setLineas((prev) => ({ ...prev, [id]: resto.reduce((l, p) => aplicar(l, p.e), plegar(hist)) }))
+      setLineas((prev) => ({ ...prev, [id]: aplicarLote(plegar(hist), resto.map((p) => p.e)) }))
     } finally { cargando.current.delete(id) }
   }, [])
 

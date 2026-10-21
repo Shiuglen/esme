@@ -16,40 +16,81 @@ export type ItemLinea =
   | { tipo: 'aprobado'; clave: string; titulo: string }
   | { tipo: 'herencia'; clave: string; tokens: number; recuerdos: number }
 
-const cambiar = (l: ItemLinea[], i: number, nuevo: ItemLinea) => { const c = l.slice(); c[i] = nuevo; return c }
+/** El índice de las herramientas por su id: sin él, cada evento recorre la línea entera. */
+type Indice = Map<string, number>
 
-export function aplicar(l: ItemLinea[], e: Evento): ItemLinea[] {
-  const ultimo = l[l.length - 1]
+function indiceDe(l: ItemLinea[]): Indice {
+  const m: Indice = new Map()
+  for (let i = 0; i < l.length; i++) {
+    const x = l[i]
+    if (x.tipo === 'herramienta') m.set(x.id, i)
+  }
+  return m
+}
+
+/** Aplica un evento **en el sitio** (muta `c`).
+ *
+ * Existe aparte de `aplicar` por una razón medida: una sesión larga trae decenas de miles de
+ * eventos (78.134 en la del 21-oct: 16.746 de herramientas y 53.657 de pensamiento), y la línea
+ * llega a 17.000 elementos. Copiar la línea entera por cada evento son mil millones de copias:
+ * el renderer se comía 2,7 GB de montón de JavaScript y un núcleo entero de CPU. Con el lote se
+ * copia **una vez** y cada evento se aplica en el sitio. */
+function aplicarEn(c: ItemLinea[], e: Evento, indice?: Indice): void {
+  const ultimo = c[c.length - 1]
   switch (e.tipo) {
-    case 'uso': case 'contexto': return l
+    case 'uso': case 'contexto': return
     case 'texto': case 'pensamiento':
-      if (ultimo?.tipo === e.tipo) return cambiar(l, l.length - 1, { ...ultimo, texto: ultimo.texto + e.texto })
-      return [...l, { tipo: e.tipo, clave: `${e.tipo}-${l.length}`, texto: e.texto }]
+      if (ultimo?.tipo === e.tipo) { c[c.length - 1] = { ...ultimo, texto: ultimo.texto + e.texto }; return }
+      c.push({ tipo: e.tipo, clave: `${e.tipo}-${c.length}`, texto: e.texto })
+      return
     case 'herramienta': {
-      const i = l.findIndex((x) => x.tipo === 'herramienta' && x.id === e.id)
-      if (i < 0) return [...l, { tipo: 'herramienta', clave: `h-${e.id}`, id: e.id, titulo: e.titulo ?? '', estado: e.estado ?? 'pending',
-        ...(e.clase ? { clase: e.clase } : {}), ...(e.nombre ? { nombre: e.nombre } : {}), ...(e.rutas ? { rutas: e.rutas } : {}),
-        ...(e.detalle ? { detalle: e.detalle } : {}), ...(e.diff ? { diff: e.diff } : {}) }]
-      const p = l[i] as Extract<ItemLinea, { tipo: 'herramienta' }>
-      return cambiar(l, i, { ...p, titulo: e.titulo || p.titulo, estado: e.estado ?? p.estado, clase: e.clase ?? p.clase, nombre: e.nombre ?? p.nombre,
-        rutas: e.rutas ?? p.rutas, detalle: e.detalle ?? p.detalle, diff: e.diff ?? p.diff })
+      const i = indice ? (indice.get(e.id) ?? -1) : c.findIndex((x) => x.tipo === 'herramienta' && x.id === e.id)
+      if (i < 0) {
+        c.push({ tipo: 'herramienta', clave: `h-${e.id}`, id: e.id, titulo: e.titulo ?? '', estado: e.estado ?? 'pending',
+          ...(e.clase ? { clase: e.clase } : {}), ...(e.nombre ? { nombre: e.nombre } : {}), ...(e.rutas ? { rutas: e.rutas } : {}),
+          ...(e.detalle ? { detalle: e.detalle } : {}), ...(e.diff ? { diff: e.diff } : {}) })
+        indice?.set(e.id, c.length - 1)
+        return
+      }
+      const p = c[i] as Extract<ItemLinea, { tipo: 'herramienta' }>
+      c[i] = { ...p, titulo: e.titulo || p.titulo, estado: e.estado ?? p.estado, clase: e.clase ?? p.clase, nombre: e.nombre ?? p.nombre,
+        rutas: e.rutas ?? p.rutas, detalle: e.detalle ?? p.detalle, diff: e.diff ?? p.diff }
+      return
     }
     case 'plan': {
-      const turno = l.map((x) => x.tipo).lastIndexOf('usuario')
-      const i = l.findLastIndex((x, k) => k > turno && x.tipo === 'plan')
-      return i < 0 ? [...l, { tipo: 'plan', clave: `plan-${l.length}`, pasos: e.pasos }] : cambiar(l, i, { ...(l[i] as Extract<ItemLinea, { tipo: 'plan' }>), pasos: e.pasos })
+      const turno = c.map((x) => x.tipo).lastIndexOf('usuario')
+      const i = c.findLastIndex((x, k) => k > turno && x.tipo === 'plan')
+      if (i < 0) { c.push({ tipo: 'plan', clave: `plan-${c.length}`, pasos: e.pasos }); return }
+      c[i] = { ...(c[i] as Extract<ItemLinea, { tipo: 'plan' }>), pasos: e.pasos }
+      return
     }
-    case 'usuario': return [...l, { tipo: 'usuario', clave: `usuario-${l.length}`, texto: e.texto }]
-    case 'fin': return [...l, { tipo: 'fin', clave: `fin-${l.length}`, motivo: e.motivo, ms: e.ms }]
-    case 'fallo': return [...l, { tipo: 'fallo', clave: `fallo-${l.length}`, mensaje: e.mensaje }]
-    case 'reintento': return [...l, { tipo: 'reintento', clave: `reintento-${l.length}`, ms: e.ms, motivo: e.motivo }]
-    case 'aprobado': return [...l, { tipo: 'aprobado', clave: `aprobado-${l.length}`, titulo: e.titulo }]
-    case 'herencia': return [...l, { tipo: 'herencia', clave: `herencia-${l.length}`, tokens: e.tokens, recuerdos: e.recuerdos }]
-    default: return l
+    case 'usuario': c.push({ tipo: 'usuario', clave: `usuario-${c.length}`, texto: e.texto }); return
+    case 'fin': c.push({ tipo: 'fin', clave: `fin-${c.length}`, motivo: e.motivo, ms: e.ms }); return
+    case 'fallo': c.push({ tipo: 'fallo', clave: `fallo-${c.length}`, mensaje: e.mensaje }); return
+    case 'reintento': c.push({ tipo: 'reintento', clave: `reintento-${c.length}`, ms: e.ms, motivo: e.motivo }); return
+    case 'aprobado': c.push({ tipo: 'aprobado', clave: `aprobado-${c.length}`, titulo: e.titulo }); return
+    case 'herencia': c.push({ tipo: 'herencia', clave: `herencia-${c.length}`, tokens: e.tokens, recuerdos: e.recuerdos }); return
+    default: return
   }
 }
 
-export const plegar = (eventos: Evento[]) => eventos.reduce(aplicar, [] as ItemLinea[])
+export function aplicar(l: ItemLinea[], e: Evento): ItemLinea[] {
+  if (e.tipo === 'uso' || e.tipo === 'contexto') return l   // nada que aplicar: la misma línea
+  const c = l.slice()
+  aplicarEn(c, e, indiceDe(c))
+  return c
+}
+
+/** Aplica **muchos** eventos de una vez: una sola copia de la línea y, en el sitio, cada evento. */
+export function aplicarLote(l: ItemLinea[], eventos: Evento[]): ItemLinea[] {
+  if (!eventos.length) return l
+  const c = l.slice()
+  const indice = indiceDe(c)
+  for (const e of eventos) aplicarEn(c, e, indice)
+  return c
+}
+
+export const plegar = (eventos: Evento[]) => aplicarLote([] as ItemLinea[], eventos)
 
 /** Lo que hace el motor ahora mismo, en una línea; null si el turno ya acabó o aún no hay nada. */
 export function actividadActual(l: ItemLinea[]): string | null {

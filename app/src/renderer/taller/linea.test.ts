@@ -1,5 +1,46 @@
 import { describe, expect, it } from 'vitest'
-import { actividadActual, aplicar, describirHerramienta, plegar, type Evento, type ItemLinea } from './linea'
+import { actividadActual, aplicar, aplicarLote, describirHerramienta, plegar, type Evento, type ItemLinea } from './linea'
+
+describe('aplicarLote', () => {
+  it('da lo mismo que aplicar evento a evento', () => {
+    const eventos: Evento[] = [
+      { tipo: 'usuario', texto: 'hazlo' },
+      { tipo: 'pensamiento', texto: 'pien' }, { tipo: 'pensamiento', texto: 'so' },
+      { tipo: 'herramienta', id: 't1', titulo: 'Leer a.ts', estado: 'pending', clase: 'read' },
+      { tipo: 'texto', texto: 'Ho' }, { tipo: 'texto', texto: 'la' },
+      { tipo: 'herramienta', id: 't1', estado: 'completed', detalle: 'el fichero' },
+      { tipo: 'plan', pasos: [{ texto: 'uno', estado: 'pending' }] },
+      { tipo: 'fin', motivo: 'hecho', ms: 12 },
+    ]
+    const unoAUno = eventos.reduce((l, e) => aplicar(l, e), [] as ItemLinea[])
+    expect(aplicarLote([] as ItemLinea[], eventos)).toEqual(unoAUno)
+  })
+
+  it('no toca la línea que le dan (copia antes de aplicar)', () => {
+    const antes: ItemLinea[] = [{ tipo: 'usuario', clave: 'u', texto: 'a' }]
+    const l = aplicarLote(antes, [{ tipo: 'texto', texto: 'b' }])
+    expect(antes).toHaveLength(1)
+    expect(l).toHaveLength(2)
+  })
+
+  it('con miles de eventos, el lote es mucho más rápido que ir de uno en uno', () => {
+    // La sesión real del 21-oct: 78.134 eventos y una línea de 17.000 elementos.
+    const eventos: Evento[] = []
+    for (let i = 0; i < 20000; i++) eventos.push({ tipo: 'pensamiento', texto: 'p' })
+    for (let i = 0; i < 5000; i++) eventos.push({ tipo: 'herramienta', id: `t${i}`, titulo: 'x', estado: 'completed' })
+
+    const t0 = performance.now()
+    aplicarLote([] as ItemLinea[], eventos)
+    const lote = performance.now() - t0
+
+    const t1 = performance.now()
+    eventos.reduce((l, e) => aplicar(l, e), [] as ItemLinea[])
+    const unoAUno = performance.now() - t1
+
+    expect(lote).toBeLessThan(unoAUno)      // el lote no puede ser más lento
+    expect(unoAUno / Math.max(lote, 0.01)).toBeGreaterThan(5)   // y tiene que ganar por mucho
+  })
+})
 
 describe('plegar', () => {
   it('une los trozos de texto seguidos y separa por tipo', () => {

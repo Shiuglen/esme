@@ -172,6 +172,25 @@ def test_el_historial_vivo_guarda_muchos_eventos(ctx):
     assert bus.history.maxlen == 2000
 
 
+def test_la_cola_del_lector_no_crece_sin_limite():
+    """Un lector lento no puede hacer crecer al cerebro: lo que no cabe, se suelta lo viejo."""
+    import asyncio
+
+    from daimon.server import EventBus
+
+    async def va():
+        bus = EventBus(keep=10, cola=5)
+        q: asyncio.Queue = asyncio.Queue(maxsize=bus.cola_max)
+        bus._subs.add(q)
+        for i in range(50):
+            bus._encolar(q, {"n": i})
+        return q
+
+    q = asyncio.run(va())
+    assert q.qsize() == 5                      # no crece: el tope manda
+    assert q.get_nowait()["n"] == 45          # y se queda con lo último, que es lo que interesa
+
+
 def test_el_texto_que_habla_no_se_recorta(ctx_voz):
     c, _, _, voz = ctx_voz
     largo = "palabra" * 800     # 6 400 caracteres: antes se cortaban a 4 000

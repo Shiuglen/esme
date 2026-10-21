@@ -31,9 +31,13 @@ ORIGINS = {"http://localhost:5173", "http://127.0.0.1:5173", "app://daimon"}
 class EventBus:
     """Eventos de la mente (quién recordó qué) para el Atlas en vivo; seguro entre hilos."""
 
-    def __init__(self, keep: int = 2000):
+    def __init__(self, keep: int = 2000, cola: int = 200):
         # 2000 eventos en vivo: la app puede mirar atrás sin quedarse sin historial
         self.history: deque[dict] = deque(maxlen=keep)
+        # La cola de cada lector también tiene tope: si el lector va lento (la ventana ocupada),
+        # lo que se acumule son recuerdos enteros y el cerebro crece sin que nadie lo pida.
+        # En un feed en vivo interesa lo último, no lo completo: se suelta lo más viejo.
+        self.cola_max = cola
         self._subs: set[asyncio.Queue] = set()
         self._loop: asyncio.AbstractEventLoop | None = None
 
@@ -42,11 +46,20 @@ class EventBus:
         loop = self._loop
         for q in list(self._subs):
             if loop and loop.is_running():
-                loop.call_soon_threadsafe(q.put_nowait, ev)
+                loop.call_soon_threadsafe(self._encolar, q, ev)
+
+    def _encolar(self, q: asyncio.Queue, ev: dict) -> None:
+        """Mete el evento en la cola del lector, soltando lo viejo si ya no cabe."""
+        if q.full():
+            try:
+                q.get_nowait()
+            except asyncio.QueueEmpty:
+                pass
+        q.put_nowait(ev)
 
     async def stream(self):
         self._loop = asyncio.get_running_loop()
-        q: asyncio.Queue = asyncio.Queue()
+        q: asyncio.Queue = asyncio.Queue(maxsize=self.cola_max)
         self._subs.add(q)
         try:
             yield "retry: 2000\n\n"

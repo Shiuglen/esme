@@ -29,11 +29,11 @@ TOTAL               10      4890 M   11.50 %
 **4.890 M** para una app que, según su propio manual, debe pesar «prácticamente nada». El swap
 lleno es la consecuencia, no la causa.
 
-Y el detalle que duele: **el renderer no baja nunca**. El cerebro sí (711 M cuando lleva un rato
-sin que nadie le pida nada, porque sueltan la lente tras 60 s), pero el renderer se queda en
-2,7 GB **con la app abierta y quieta**, y además gasta un 8 % de CPU en hacerlo.
+Y el detalle que duele: **el renderer no baja nunca**. El cerebro sí (217 M cuando lleva un rato
+sin que nadie le pida nada, porque suelta la lente tras 60 s), pero el renderer se queda en
+**2,7 GB con la app abierta y quieta**, y además gasta un 8 % de CPU en hacerlo.
 
-## 2. De dónde viene la memoria del renderer
+## 2. El renderer: 2,77 GB de montón de JavaScript
 
 Con `/proc/<pid>/smaps_rollup` se ve que no es «la app es grande»:
 
@@ -44,33 +44,60 @@ Pss_Anon:  2768632 kB      ← 2,77 GB de montón de JavaScript
 Y en el mapa de memoria, casi todo son bloques `[anon:v8]`: 895 MB, 507 MB, 395 MB, 174 MB… Es un
 **montón de JavaScript que crece**, no una foto, ni un vídeo, ni la caché de un vídeo.
 
-### 2.1 La cola que crecía sin límite
+### 2.1 La causa: copiar la línea entera por cada evento
 
-La causa está en `app/src/renderer/taller/useTaller.ts`: los eventos del agente (que son, entre
-otros, la salida de cada herramienta) llegan uno a uno y se meten en una cola que se drena **una
-vez por fotograma**:
+El Taller pliega la ráfaga de eventos del motor en la línea de tiempo que se pinta. La función que
+lo hace (`app/src/renderer/taller/linea.ts`) **copiaba la línea entera en cada evento**:
+
+```ts
+const i = l.findIndex((x) => x.tipo === 'herramienta' && x.id === e.id)
+if (i < 0) return [...l, { ... }]
+```
+
+Con la sesión real del 21-oct: **78.134 eventos** (16.746 de herramientas, 53.657 de pensamiento) y
+una línea de **9.007 elementos**. Aplicarlos de uno en uno son **78.134 × 9.007 = 700 millones de
+copias**. Medido sobre el registro real:
+
+| | tiempo | elementos |
+|---|---|---|
+| **uno a uno** (como estaba) | **13.586 ms** | 9.007 |
+| **en lote** (como ahora) | **23 ms** | 9.007 |
+| | **579× más rápido** | idéntico |
+
+**13,6 segundos de CPU por un solo vaciado.** Y como la línea se volcaba en cada ráfaga de eventos,
+ahí estaba el núcleo quemado y los 2,77 GB: cada copia es basura que V8 tiene que recoger, y el
+montón crece paraucolectarla.
+
+### 2.2 La segunda causa: la cola que crecía sin límite
+
+Los eventos llegaban uno a uno a una cola que se drenaba **una vez por fotograma**:
 
 ```ts
 cola.current.push({ id, e })
 if (!fotograma.current) fotograma.current = requestAnimationFrame(vaciar)
 ```
 
-**`requestAnimationFrame` no dispara cuando la ventana está oculta**, tapada o minimizada. Si
-taller está en segundo plano —que es lo normal mientras se trabaja en otra cosa— la cola **crecía
-sin límite**: cada evento de cada tarea se quedaba esperando a un fotograma que no llegaba.
+**`requestAnimationFrame` no dispara cuando la ventana está oculta**, tapada o minimizada. Con el
+taller en segundo plano —que es lo normal mientras se trabaja en otra cosa— la cola **crecía sin
+límite**: cada evento de cada tarea se quedaba esperando a un fotograma que no llegaba.
 
 La prueba está en el disco: el registro de la sesión viva pesa **12 MB** en JSONL
-(`~/.config/daimon-app/taller/qxntxkie.jsonl`), y el taller entero, **305 MB**. Todo eso vive en
-el estado de React del renderer.
+(`~/.config/daimon-app/taller/qxntxkie.jsonl`), y el taller entero, **305 MB**.
 
-## 3. De dónde viene la memoria del cerebro
+## 3. El cerebro: la reserva de ONNX Runtime
 
-El cerebro guarda la lente (el codificador) dentro del proceso. En reposo, con el modelo cargado,
-son ~360 MB. Pero **tras absorber** el mismo proceso pesaba **1,5 GB más**, y el propio código lo
-confesaba (`daimon/lens.py`): *«~1,5 GB tras absorber, por la reserva de ONNX Runtime»*.
+El cerebro guarda la lente (el codificador) dentro del proceso. Medido con la herramienta nueva
+(`scripts/medir_cerebro.py`), **trozo a trozo**:
 
-Medido con la herramienta nueva (`scripts/medir_lente.py`, que mide **el código de producción**,
-no una imitación):
+| trozo | RSS |
+|---|---|
+| python + numpy | +17 M |
+| **el codificador (modelo cargado)** | **+318 M** |
+| la mente (hipocampo, tálamo, léxico) | +19 M |
+| **total arrancando** | **369 M** |
+
+Y al codificar (como al absorber un programa), el proceso se dispara. Con la segunda herramienta
+(`scripts/medir_lente.py`, que mide **el código de producción**, no una imitación):
 
 | variante | tras codificar | delta | codificar (mínimo de 3) |
 |---|---|---|---|
@@ -79,7 +106,7 @@ no una imitación):
 | **`sin-arena`** | **670 M** | **638 M** | **41,66 s** |
 
 El culpable es la **reserva del allocator de ONNX Runtime**: crece por potencias de dos y no
-devuelve lo que sobra. Tres formas de montarlo, dos conclusions:
+devuelve lo que sobra. Tres formas de montarlo, tres conclusiones:
 
 - **La arena no es del tamaño del lote**: da lo mismo con lotes de 2048, 1024 y 512 tokens.
 - **Que la arena crezca «justo»** (`kSameAsRequested`) **no cambia nada**: 1526 M, igual.
@@ -87,43 +114,44 @@ devuelve lo que sobra. Tres formas de montarlo, dos conclusions:
   (el +8 % es el mínimo de tres medidas alternadas; en la primera medición salía +52 %, que era
   ruido del equipo ocupado).
 
-Y el round-trip: sin arena, **lo que ONNX suelta vuelve al sistema**. Con arena, se queda.
+Y el ciclo completo del cerebro, que es lo que de verdad pasa:
+
+| reserva | arrancar | **pico** | reposo |
+|---|---|---|---|
+| normal | 369 M | **1568 M** | 217 M |
+| **sin-arena** | 369 M | **719 M** | 216 M |
+
+**El pico se reduce a la mitad sin coste en reposo.** Y el round-trip: sin arena, lo que ONNX suelta
+vuelve al sistema.
+
+### 3.1 La cola de los lectores del cerebro
+
+El bus de eventos (el Atlas en vivo) guarda 2.000 eventos en su historial —acotado— pero la cola
+de cada lector era **sin límite**: si la ventana iba lenta (que iba), se acumulaban **recuerdos
+enteros** (hasta 1.500 tokens cada uno) sin que nadie los pidiera. Ahora la cola tiene tope (200) y
+suelta lo viejo: en un feed en vivo interesa lo último, no lo completo.
 
 ## 4. Lo que se ha hecho
 
-### 4.1 La cola del Taller deja de crecer sin límite
+| | |
+|---|---|
+| **La línea se aplica en lote** (`linea.ts`) | una sola copia por lote y cada evento en el sitio, con índice de herramientas: **579×** más rápido sobre el registro real |
+| **La cola del Taller tiene tres reglas** (`cola.ts`) | fotograma · **reloj de respaldo** si la ventana está oculta (250 ms) · **tope de 2.000** |
+| **El cerebro no guarda la reserva de ONNX** (`lens.py`, `home.py`) | `reserva` en la configuración de la mente, `sin-arena` por defecto: el pico de 1568 M a **719 M** |
+| **Lo que se suelta, vuelve al sistema** (`rea.py`) | tras absorber o comparar: `gc.collect()` + `malloc_trim(0)` |
+| **La cola de los lectores tiene tope** (`server.py`) | 200 eventos; lo que no cabe, se suelta lo viejo |
 
-`app/src/renderer/taller/cola.ts` (nuevo, con sus pruebas): la cola tiene tres reglas.
-
-1. Se suelta en cuanto llega el fotograma.
-2. **Si el fotograma no llega, lo suelta un reloj** (250 ms): una ventana oculta no da fotogramas,
-   pero sí tiempo.
-3. **La cola nunca pasa del tope** (2000 eventos): si lo pasa, se suelta ya.
-
-La lógica sale del hook a un módulo con pruebas (`cola.test.ts`), porque lo que se comprueba no es
-la forma del código sino el comportamiento: *«la suelta aunque no llegue ningún fotograma»*,
-*«no crece sin límite»*.
-
-### 4.2 El cerebro no guarda la reserva de ONNX
-
-`daimon/lens.py`: `onnx_encoder` acepta `reserva` (`normal`, `entorno`, `sin-arena`) y
-`daimon/home.py` la lee de la configuración de la mente (`config.json`), con **`sin-arena` por
-defecto**. 856 M menos en el proceso que sostiene la memoria.
-
-### 4.3 Lo que se suelta, vuelve al sistema
-
-La evidencia de REA son decenas de megabytes de objetos de Python. Al soltarlos, glibc se los
-queda en el montón y el cerebro seguía ocupándolos **sin estar haciendo nada**. Ahora, tras
-absorber o comparar, se llama a `gc.collect()` y a `malloc_trim(0)`: lo que se suelta, vuelve al
-sistema (`daimon/rea.py`, `_soltar_memoria`).
+Las tres reglas de la cola y el lote salen a módulos con pruebas (`cola.test.ts`, `linea.test.ts`),
+porque lo que se comprueba no es la forma del código sino el comportamiento: *«la suelta aunque no
+llegue ningún fotograma»*, *«no crece sin límite»*, *«el lote da lo mismo que ir de uno en uno»*.
 
 ## 5. Lo que no se ha podido medir
 
 - **El arreglo del renderer no está medido en la app en marcha**: medirlo exigiría reiniciar la app,
   y la app es el padre del agente que está haciendo esta sesión (reiniciarla se lleva la sesión por
-  delante). Lo que sí está es la **causa** medida (`smaps_rollup`, 2,77 GB de `[anon:v8]`), el
-  **mecanismo** leído en el código (la cola que sólo se drena con fotogramas) y el **comportamiento
-  nuevo** probado (`cola.test.ts`).
+  delante). Lo que sí está es la **causa** medida (`smaps_rollup`, 2,77 GB de `[anon:v8]`; el
+  registro real, 78.134 eventos), el **cambio** medido sobre ese registro real (13.586 ms → 23 ms) y
+  el **comportamiento** probado.
 - **La primera medición del tiempo fue engañosa** (+52 % para `sin-arena`): el equipo estaba
   ocupado. La cifra honesta es +8 %, y sale de alternar las variantes y quedarse con la más rápida.
   Sin eso, se habría descartado una mejora de 856 M por un número inventado.
@@ -133,6 +161,7 @@ sistema (`daimon/rea.py`, `_soltar_memoria`).
 | | |
 |---|---|
 | `scripts/medir_lente.py` | la reserva de ONNX: memoria y tiempo, por variante, sobre el código real |
+| `scripts/medir_cerebro.py` | la memoria del cerebro, trozo a trozo, y su ciclo: arrancar → pico → reposo |
 | `scripts/medir_reposo.py` | lo que Esme consume cuando no hace nada (ya existía) |
 
-Las dos se pueden volver a correr: un número que no se puede repetir no es un número.
+Las tres se pueden volver a correr: un número que no se puede repetir no es un número.
