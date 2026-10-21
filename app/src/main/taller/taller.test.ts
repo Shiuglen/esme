@@ -71,6 +71,44 @@ describe('Taller', () => {
     expect(emisiones.filter((e) => e.canal === 'evento').every((e) => e.dato.id === tarea.id)).toBe(true)
   })
 
+  it('dos tareas trabajan a la vez: cada una con su copia, su motor y sus eventos', async () => {
+    // La promesa del contrato: dos tareas pueden estar «trabajando» al mismo tiempo. Aquí se
+    // comprueba que de verdad conviven (ninguna espera a la otra) y que no se pisan: cada una
+    // con su copia, su sesión y sus eventos.
+    const dentro: string[] = []
+    let soltar!: () => void
+    const puerta = new Promise<void>((r) => { soltar = r })
+    const cwds: string[] = []
+    const s = sesiones(async (o, texto) => {
+      cwds.push(o.cwd)
+      dentro.push(texto)
+      if (dentro.length >= 2) soltar()
+      await puerta          // ninguna termina hasta que las dos están dentro del motor
+      return 'end_turn'
+    })
+    const { ops } = copiasFalsas()
+    const taller = crear(s.abrir, ops)
+    const a = taller.crear({ motor, carpeta: '/proyecto', texto: 'Arregla el examen' })
+    const b = taller.crear({ motor, carpeta: '/proyecto', texto: 'Revisa la Tienda' })
+    await vi.waitFor(() => expect(dentro.length).toBe(2), { timeout: 3000 })
+    await esperar(a.id, 'lista')
+    await esperar(b.id, 'lista')
+    // cada tarea con su copia y su motor
+    expect(new Set(cwds).size).toBe(2)
+    expect(cwds).toContain(join(dir, 'copias', a.id))
+    expect(cwds).toContain(join(dir, 'copias', b.id))
+    // y los eventos no se mezclan: cada uno lleva su id
+    const eventos = emisiones.filter((e) => e.canal === 'evento')
+    expect(eventos.every((e) => [a.id, b.id].includes(e.dato.id))).toBe(true)
+    expect(eventos.filter((e) => e.dato.id === a.id).length).toBeGreaterThan(0)
+    expect(eventos.filter((e) => e.dato.id === b.id).length).toBeGreaterThan(0)
+    const evA = await taller.eventos(a.id)
+    const evB = await taller.eventos(b.id)
+    expect(evA.map((e) => (e as any).texto).filter(Boolean)).toContain('Arregla el examen')
+    expect(evB.map((e) => (e as any).texto).filter(Boolean)).toContain('Revisa la Tienda')
+    expect(evA.map((e) => (e as any).texto).filter(Boolean)).not.toContain('Revisa la Tienda')
+  })
+
   it('el primer turno hereda lo que la mente sabe del encargo; los siguientes ya lo tienen', async () => {
     const vistos: string[] = []
     const s = sesiones(async (_o, texto) => { vistos.push(texto); return 'end_turn' })

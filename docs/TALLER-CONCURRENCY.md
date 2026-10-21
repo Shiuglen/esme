@@ -79,6 +79,18 @@ mente no sabe qué le sirve a cada IA y la herencia se queda a medias.
 - **El Taller sigue siendo un singleton de proceso** (`app/src/main/ipc-taller.ts:29`): el motor de
   cada tarea es su propio proceso, pero la app tiene una sola instancia del Taller. Con dos tareas
   vivas funciona; con muchas habría que mirar si la app serializa algo que no debería.
+  - **Mirado (20-oct, noche): no serializa lo que no debe** ✅. Cada tarea tiene su motor (proceso
+    propio), su copia, su sesión y sus eventos; lo que comparten son cosas sin estado o por tarea:
+    el cliente de la mente (HTTP sin cola), el emisor (cada evento va **con su id de tarea** y el
+    renderer lo guarda en su propio buffer), el vigilante del silencio (por tarea) y el guardado
+    del estado entero. Se probó lo único que podía chocar: **8 `git worktree add` a la vez sobre el
+    mismo repo** → sin una sola colisión (git se aparta solo).
+  - **Lo que sí crece con las tareas**: el guardado del estado entero (un `tareas.json` por tic) y
+    el abanico de eventos a **todas** las ventanas (cada ventana recibe todos los eventos y
+    descarta los de tareas que no conoce): O(tareas × ventanas). Barato, pero es lo primero que
+    molestaría con muchas tareas a la vez.
+  - **Ahora hay un test** (`app/src/main/taller/taller.test.ts`): dos tareas trabajando a la vez,
+    cada una con su copia y su motor, sin pisarse. La promesa del contrato no tenía test.
 - **La "una sola sesión a la vez"** sigue siendo la regla del creador (17-oct): este documento no la
   cambia. Dos agentes **con tareas distintas** sí conviven; dos sesiones sobre **el mismo** código,
   no.
