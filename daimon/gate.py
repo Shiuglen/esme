@@ -151,6 +151,13 @@ def build_server(home: Home, lock: threading.Lock | None = None, on_event=None):
         """Rellena un campo de la página abierta en el navegador de Esme (por su nombre o su marcador)."""
         return en_palabras(ClienteNavegador().escribir(objetivo, valor))
 
+    @mcp.tool()
+    def bajar_la_mira(direccion: str = "abajo") -> str:
+        """Baja (o sube) la mirada en la página abierta en el navegador de Esme, casi una pantalla
+        entera. Úsala cuando el mapa de la página no muestra el botón o el campo que buscas: hay
+        más página debajo. Devuelve el texto nuevo y sus números."""
+        return en_palabras(ClienteNavegador().bajar(direccion != "arriba"))
+
     # ── El espejo: entender un programa y que la mente lo sepa ─────────────────────────────────
     # REA (ingeniería inversa, MIT) mira un programa y devuelve lo que vio con su evidencia.
     # Aquí ese conocimiento entra en la memoria: el programa deja de ser una caja negra para

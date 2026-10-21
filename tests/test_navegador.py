@@ -106,6 +106,13 @@ def test_por_http_de_verdad_con_la_puerta_de_la_app():
         assert visto["cuerpo"] == {"url": "https://x.com"}
         assert r["titulo"] == "X"
         assert "clic en «Ir»" in en_palabras(r)
+
+        # la mirada: baja y sube, y la puerta recibe la dirección
+        c.bajar(True)
+        assert visto["ruta"] == "/scroll"
+        assert visto["cuerpo"] == {"abajo": True}
+        c.bajar(False)
+        assert visto["cuerpo"] == {"abajo": False}
     finally:
         srv.shutdown()
         srv.server_close()

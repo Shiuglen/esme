@@ -68,6 +68,9 @@ class ClienteNavegador:
     def escribir(self, objetivo: str, valor: str) -> dict:
         return self._llama("/escribir", {"objetivo": objetivo, "valor": valor})
 
+    def bajar(self, abajo: bool = True) -> dict:
+        return self._llama("/scroll", {"abajo": abajo})
+
 
 def en_palabras(r: dict) -> str:
     """Lo que la herramienta MCP devuelve: la página, en texto, con sus acciones posibles."""

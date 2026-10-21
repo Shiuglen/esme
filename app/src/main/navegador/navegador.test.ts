@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { GUION_CLIC, GUION_ESCRIBIR, GUION_ESTADO, accionesDe, normaliza, urlValida } from './estado'
+import { GUION_CLIC, GUION_ESCRIBIR, GUION_ESTADO, GUION_SCROLL, accionesDe, normaliza, resumen, urlValida } from './estado'
 import { Navegador, type Ventana } from './navegador'
 
 describe('lo que el agente ve de una página', () => {
@@ -21,10 +21,40 @@ describe('lo que el agente ve de una página', () => {
     expect(e.enlaces).toEqual([])
   })
 
-  it('el espacio de acciones: lo que se puede hacer ahora mismo', () => {
+  it('el espacio de acciones: lo que se puede hacer ahora mismo, POR NÚMEROS', () => {
     const e = normaliza({ url: 'https://x.com', botones: ['Publicar'], campos: [{ nombre: 'q', marcador: 'Buscar' }],
-      enlaces: [{ texto: 'Perfil', url: 'https://x.com/p' }] })
-    expect(accionesDe(e)).toEqual(['clic en «Publicar»', 'escribir en «Buscar»', 'abrir https://x.com/p'])
+      enlaces: [{ texto: 'Perfil', url: 'https://x.com/p' }],
+      elementos: [
+        { n: 1, rol: 'boton', etiqueta: 'Publicar' },
+        { n: 2, rol: 'campo', etiqueta: 'Buscar', tipo: 'text', marcador: 'q' },
+        { n: 3, rol: 'enlace', etiqueta: 'Perfil', url: 'https://x.com/p' },
+        { n: 4, rol: 'campo', etiqueta: 'Faena', tipo: 'select', opciones: ['comer', 'dormir'] },
+        { n: 5, rol: 'campo', tipo: 'checkbox', marcado: false },
+      ] })
+    expect(accionesDe(e)).toEqual([
+      'n1 [botón] Publicar',
+      'n2 [campo] Buscar (text)',
+      'n3 [enlace] Perfil',
+      'n4 [campo] Faena (select · comer / dormir)',
+      'n5 [campo] (sin etiqueta) (checkbox · sin marcar)',
+    ])
+  })
+
+  it('el mapa del resumen: números y estados, sin enlaces mudos ni desbordes', () => {
+    const r = resumen(normaliza({
+      titulo: 'X', url: 'https://x.com', texto: 'cuerpo',
+      vista: { y: 1200, alto: 3400, v: 700 },
+      elementos: [
+        { n: 1, rol: 'enlace', etiqueta: '', url: 'https://x.com/solo' },
+        { n: 2, rol: 'campo', tipo: 'checkbox', marcado: true, marcador: 'acepto' },
+        { n: 3, rol: 'campo', tipo: 'select', etiqueta: 'Faena', marcador: 'faena', opciones: ['comer', 'dormir', 'criar'] },
+      ],
+    }))
+    expect(r).toContain('Vista: 56 % de la página')
+    expect(r).toContain('n1 [enlace] https://x.com/solo')
+    expect(r).toContain('n2 [campo] acepto (checkbox · marcado)')
+    expect(r).toContain('n3 [campo] Faena (select · comer / dormir / criar)')
+    expect(r).toContain('Lo que se puede tocar, por números')
   })
 
   it('sólo direcciones de la web: ni ficheros ni javascript:', () => {
@@ -39,6 +69,26 @@ describe('lo que el agente ve de una página', () => {
     expect(GUION_CLIC('Cerrar"; alert(1); "')).toContain('Cerrar\\"; alert(1); \\"')
     expect(GUION_ESCRIBIR('hola', 'a"b')).toContain('a\\"b')
     expect(GUION_ESTADO).toContain('location.href')
+  })
+
+  it('la moneda nueva: los números corren por la misma lista el mapa, el clic y la escritura', () => {
+    // la MISMA enumeración (VIVOS, visibles, en orden) garantiza que n7 sea el mismo elemento
+    // arriba en el mapa y abajo cuando se pulsa — y quien pone texto sigue funcionando igual
+    expect(GUION_ESTADO).toContain('for (const e of VIVOS)')
+    expect(GUION_CLIC('n7')).toContain('numeroDe(objetivo)')
+    expect(GUION_CLIC('n7')).toContain('VIVOS[porNumero - 1]')
+    expect(GUION_CLIC('Enviar')).toContain('norm(objetivo)')
+    expect(GUION_ESCRIBIR('n3', 'hola')).toContain('VIVOS[porNumero - 1]')
+    // un número que señala un botón no se deja escribir: se niega, no adivina
+    expect(GUION_ESCRIBIR('n2', 'texto')).toContain("['INPUT', 'TEXTAREA', 'SELECT'].indexOf(fila.tagName) >= 0")
+    expect(GUION_CLIC('n7')).toContain("e.click()")
+  })
+
+  it('el guion de la mirada: baja o sube casi una pantalla, y el estado cuenta dónde quedó', () => {
+    expect(GUION_SCROLL(true)).toContain('window.innerHeight * 0.85) * (1)')
+    expect(GUION_SCROLL(false)).toContain('window.innerHeight * 0.85) * (-1)')
+    expect(GUION_ESTADO).toContain('window.scrollY')
+    expect(GUION_ESTADO).toContain('scrollHeight')
   })
 })
 
@@ -81,6 +131,17 @@ describe('el navegador', () => {
     const w = await n.escribir('Buscar', 'hola')
     expect(w.ok).toBe(true)
     expect(v.llamadas.some((c) => c.includes('Buscar'))).toBe(true)
+  })
+
+  it('la mirada: baja la página y el estado que vuelve es el nuevo', async () => {
+    const v = ventanaFalsa({ url: 'https://x.com', titulo: 'X', texto: 'lo de más abajo',
+      vista: { y: 1200, alto: 3400, v: 700 }, elementos: [{ n: 4, rol: 'boton', etiqueta: 'Leer más' }] })
+    const n = new Navegador(() => v)
+    await n.abrir('https://x.com')
+    const e = await n.scroll(true)
+    expect(v.llamadas.some((c) => c.includes('window.innerHeight * 0.85'))).toBe(true)
+    expect(e.vista?.y).toBe(1200)
+    expect(e.elementos.map((x) => x.etiqueta)).toEqual(['Leer más'])
   })
 
   it('se cierra sola si nadie la usa: en reposo no hay navegador abierto', async () => {
