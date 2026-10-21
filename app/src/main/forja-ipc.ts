@@ -33,13 +33,29 @@ async function loQueSabe(mente: Mente | null, necesidad: string): Promise<string
  * Lo que la mente sabe de un programa concreto: sin esto, el encargo depende de que la búsqueda
  * acierte; con esto, el que va a recrear recibe el conocimiento del programa, sí o sí.
  */
+/**
+ * Lo que el encargo le dice al agente de un programa concreto.
+ *
+ * Si la mente lo conoce, se le da lo que sabe. Si **no** lo conoce, antes esto se callaba y el
+ * agente se ponía a adivinar; ahora se lo dice: **míralo primero** con la herramienta del espejo.
+ * Eso separa recrear de adivinar, y es el bucle entero (absorber → recrear).
+ */
+export function textoDePrograma(ruta: string, recuerdos: string[] | undefined): string {
+  if (recuerdos?.length) {
+    return `Lo que Esme sabe de ${ruta} (${recuerdos.length} recuerdos):\n${recuerdos.join('\n')}`
+  }
+  return `${ruta} todavía NO es conocimiento de Esme: antes de nada, míralo con la herramienta del espejo `
+    + `(esme_absorbe_programa, motivo: «para recrearlo») y trabaja con lo que sepas de él. `
+    + `Si no lo puedes mirar, dilo y sigue con lo que tengas.`
+}
+
 async function loQueSabeDe(mente: Mente | null, necesidad: string): Promise<string> {
   if (!mente) return ''
   const trozos: string[] = []
   for (const ruta of rutasDe(necesidad)) {
     try {
       const r = await new ClienteCerebro(mente).recuerdosDePrograma(ruta)
-      if (r.ok && r.recuerdos?.length) trozos.push(`Lo que Esme sabe de ${ruta} (${r.recuerdos.length} recuerdos):\n${r.recuerdos.join('\n')}`)
+      trozos.push(textoDePrograma(ruta, r.ok ? r.recuerdos : undefined))
     } catch { /* ese programa no está (o la mente no está): se sigue sin él */ }
   }
   return trozos.join('\n\n')

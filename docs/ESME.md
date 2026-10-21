@@ -449,3 +449,55 @@ En pie desde el 19-oct, por decisión del creador: **la ingeniería inversa est�
 - **Puertas**: en esta copia (rama `instinto-negativa`), 141 ficheros de prueba, **915 verdes (3 nuevas)**: la negativa acaba en error con la sesión cerrada; la negativa no se confunde con un fallo técnico; los que sí pueden excluyen al que se negó y a los caídos y explican por qué. Typecheck limpio.
 - **Cola abierta**: las negativas que llegan como **texto** con `end_turn` («no puedo hacer eso») siguen contando como éxito — falta el detector por texto, conservador (último mensaje corto + frases propias de negativa, con el modelo eligiendo si dudar); y traer esto a casa coordinado: la fusión con el espejo de casa se hizo al traer (el roce de `bridge.ts` quedó atendido por la otra sesión, que lo commitó).
 - **Y el paso 2, la mitad que faltaba ✅**: la negativa que el motor cuenta **con palabras** y acaba `end_turn` seguía pasando por éxito (OpenCode casi nunca emite el `refusal` del ACP). Nuevo `main/taller/negativa.ts`: conservador por decisión — sólo acusa si el MENSAJE FINAL del turno es breve (≤ 400) y dice claramente que no hará el encargo (español e inglés: «no puedo hacerlo/cumplir/ayudar», «I can't...», «I must decline»...). Un «no puedo ejecutar el binario por permisos» es palabra distinta y no se acusa; un mensaje largo no se acusa (suele venir con el trabajo hecho). El runtime junta los trozos del ACP (`agent_message_chunk`) y suelta lo acumulado al pensar/usar una herramienta: manda lo ÚLTIMO que dijo. **8 nuevas pruebas** (el detector y su camino completo en el runtime: estado, frase, sesión cerrada).
+
+## El banco del espejo escalado: tres programas, dos formas (21 oct 2026, tarde)
+
+- **El número que faltaba, por fin general**: el banco del espejo medía **una app de Electron**
+  (0,0000 sin mirar · 0,9815 mirando). Un número de un solo programa es una anécdota, y el espejo
+  ya no era sólo de apps. Ahora `scripts/banco_rea.py` corre sobre **varios programas**, hace las
+  preguntas **según la forma de la evidencia** y da una fila por programa y una de conjunto:
+  | Programa | Forma | Sin mirar | Con el espejo |
+  |---|---|---|---|
+  | `app/out` (la app de Esme) | Electron | 0,0000 | 0,8148 |
+  | `libffmpeg.so` (de Esme) | nativo | 0,0000 | **1,0000** |
+  | `ollama` (el servidor de modelos) | nativo | 0,0000 | **1,0000** |
+  | **Conjunto (14 preguntas)** | | **0,0000** | **0,9206** |
+  La evidencia se guarda, así que repetir la medición no vuelve a pagar el análisis.
+- **El binario valía 0,08 y ahora vale 1,00**, y no era culpa del binario: se absorbía perfecto
+  (57 recuerdos en la mente) y luego **no se encontraba**. Cuatro causas, todas en cómo el informe
+  se vuelve conocimiento: (1) **los hechos estaban en la tabla y las tablas se trocean por filas** —
+  la pregunta recuperaba el apartado correcto y sus hechos no estaban en ese trozo: ahora cada
+  apartado lleva **su frase con los hechos** y la tabla debajo; (2) **el apartado no nombraba al
+  programa** —la pregunta lleva el nombre de X y un apartado que no lo lleva no se parece a la
+  pregunta: ahora cada apartado del binario lo nombra; (3) **los números no coincidían** («3198
+  procedimientos» contra «3.198»): ahora el banco **busca los hechos en el informe**, y si un
+  hecho no está, la pregunta no se hace; (4) **el apartado de límites eran 1.700 caracteres** y no
+  lo recuperaba nadie: ahora lleva un resumen en su línea y el detalle debajo.
+- **En las apps Electron no se tocó nada de eso**: se midió y el número no se movió (0,9815 antes y
+  después), así que no entró. Regla de la casa: si el número no mejora, la mejora no entra.
+- **El reloj del motor era un muro**: con el binario de 27 MB de `ollama`, REA contestaba «Ghidra
+  did not finish importing and analyzing the target within its 330000 ms startup deadline» — el
+  motor no fallaba, **se quedaba sin tiempo**. El espejo le da ahora un plazo que **cabe con el
+  objetivo** (un minuto más por cada 4 MiB, hasta 20 minutos) y el fin de tiempo global se pone
+  por encima. Con eso, `ollama` se analysa entero.
+- **El número de la app es inestable, y está dicho**: 0,8148 hoy, 0,9815 el 21-oct **con el mismo
+  código** (comprobado: con el código original el número es el de hoy; lo que se movió fue el
+  entorno). La causa está vista: la pregunta «¿qué funciones de *out* se llaman más?» se lleva un
+  recuerdo **viejo** de la mente («persona Funciones…») en vez del trozo con las funciones del
+  programa — con 1.500 tokens de presupuesto y 5.768 recuerdos, los recuerdos antiguos y cortos se
+  llevan la pregunta y el conocimiento nuevo se queda fuera. Se probaron tres arreglos (unir las
+  funciones en un trozo, decir en el título cuáles son, quitar la tabla de funciones) y **ninguno
+  movió el número**, así que ninguno entró. **La palanca que queda**: cuando la pregunta nombra un
+  programa, su conocimiento tiene que ganar al recuerdo temático.
+- **El encargo avisa de lo que falta mirar**: si la mente no conoce el programa del que habla un
+  encargo de la Forja, el encargo se lo dice al agente («míralo primero con la herramienta del
+  espejo»). Recrear deja de ser adivinar. Y en el banco, los hechos que se comprueban están
+  **verificados contra el informe**: si un hecho no está en la memoria, la pregunta no se hace.
+- **Puertas**: 286 de Python verdes (+10) · 949 de la app verdes (+3) · typecheck limpio · y las
+  pruebas ya no se pisan con el cerrojo de la máquina (`tests/conftest.py` le da a cada una el
+  suyo: si hay un análisis de verdad en marcha, las pruebas ya no fallan sin motivo).
+- **Cola abierta**: la palanca de arriba (el conocimiento de un programa gana al recuerdo
+  temático) · el número de la app, que hay que poder comparar entre días (hoy depende del estado
+  del entorno: la mente y el modelo) · meter el banco del espejo en el examen general (`prueba0`),
+  que ya tiene su pregunta pero no su número en la corrida · y el espejo para **webs** (el REA
+  tiene `analyze-web-bundle` con el navegador, y el espejo no lo expone todavía).

@@ -42,6 +42,25 @@ def _evidencia() -> dict:
     }
 
 
+def _evidencia_nativa() -> dict:
+    """La forma de un binario: lo que devuelve REA con su motor nativo."""
+    return {
+        "evidence_id": "ev_bin",
+        "subject": {"name": "programa", "local_path": "/usr/bin/programa", "format": "elf",
+                    "architecture": "x86_64", "digest": {"sha256": "b" * 64}},
+        "analysis_profile": {"provider": {"id": "rea-workflow", "name": "REA composed investigation workflow",
+                                          "version": "1"},
+                             "parameters": {"upstream_analysis_profile": {
+                                 "provider": {"id": "ghidra", "name": "Ghidra", "version": "12.1.4"}}}},
+        "operation": "binary_overview",
+        "normalized_result": {"image_base": "0x100000", "segment_count": 33, "procedure_count": 3198,
+                              "string_count": 4976, "document": "el texto del motor",
+                              "segments": [{"name": ".text", "start": "0x100000", "end": "0x100350",
+                                            "length": 848, "address_space": "ram"}]},
+        "limitations": ["Derived by an REA composed workflow."],
+    }
+
+
 def _home(tmp_path, name="mente"):
     return Home(tmp_path / name, encoder=fake_encoder(32))
 
@@ -87,3 +106,46 @@ def test_el_banco_se_guarda(tmp_path):
     destino = tmp_path / "filas.jsonl"
     banco.guarda([{"item_id": "x", "espejo_recall": 1.0}], destino)
     assert json.loads(destino.read_text(encoding="utf-8").strip())["item_id"] == "x"
+
+
+# ── el banco también pregunta por los binarios ─────────────────────────────────────────────────
+
+def test_el_banco_pregunta_por_un_binario():
+    """El instrumento se escala con el espejo: si el espejo mira cualquier programa, el banco
+    tiene que saber preguntar por cualquier programa."""
+    preguntas = banco.preguntas(_evidencia_nativa(), "programa")
+    assert preguntas, "un binario también da preguntas"
+    textos = " ".join(p.question for p in preguntas)
+    assert "formato" in textos.lower()
+    assert "segmentos" in textos.lower()
+
+
+def test_los_hechos_que_se_miden_estan_de_verdad_en_el_informe():
+    """El número del banco sólo vale si lo que se comprueba está en la memoria de verdad."""
+    from daimon import rea as rea_mod
+    ev = _evidencia_nativa()
+    informe = rea_mod.informe(ev)
+    for item in banco.preguntas(ev, "programa"):
+        assert item.evidence, f"la pregunta «{item.question}» no tiene hechos que comprobar"
+        for hecho in item.evidence:
+            assert hecho[:60] in informe, f"«{hecho}» no está en el informe"
+
+
+def test_los_hechos_que_se_miden_estan_en_el_informe_de_una_app():
+    from daimon import rea as rea_mod
+    ev = _evidencia()
+    informe = rea_mod.informe(ev)
+    for item in banco.preguntas(ev, "app"):
+        for hecho in item.evidence:
+            assert hecho[:60] in informe, f"«{hecho}» no está en el informe"
+
+
+def test_el_informe_nativo_nombra_al_programa_en_cada_apartado():
+    """La pregunta lleva el nombre del programa: si el apartado no lo lleva, no se parece a la
+    pregunta, y la memoria lo tiene pero no lo devuelve (así se perdió el banco: 0,08)."""
+    from daimon import rea as rea_mod
+    informe = rea_mod.informe(_evidencia_nativa(), motivo="prueba")
+    apartados = [l for l in informe.splitlines() if l.startswith("## ")]
+    assert apartados
+    for apartado in apartados:
+        assert "programa" in apartado, f"el apartado «{apartado}» no nombra al programa"
