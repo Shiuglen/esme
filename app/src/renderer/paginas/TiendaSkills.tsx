@@ -1,7 +1,7 @@
 // La Tienda › Skills: instrucciones de experto para Esme y para tus agentes (Claude Code, OpenCode, Qwen, Cline, Codex,
 // Gemini…), desde el repositorio de su autor y fijadas a la versión que Esme revisó. Antes de instalar ves todo: lo que dice,
 // sus ficheros y las alertas calculadas en tu equipo. Los scripts quedan fuera salvo que los pidas.
-import { AlertTriangle, Check, FileCode2, FileText, Search, ShieldCheck, Trash2, X } from 'lucide-react'
+import { AlertTriangle, BadgeCheck, Check, FileCode2, FileText, Search, ShieldCheck, Trash2, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { Markdown } from '../chat/Markdown'
@@ -11,16 +11,27 @@ import { coincide } from '../shell/paleta-buscar'
 import type { VeredictoSkill } from '../../main/skills/veredicto'
 
 const NIVEL = { alto: 'text-peligro', medio: 'text-atencion', aviso: 'text-texto-3' } as const
-const SELLO = { ok: { texto: 'juzgada ✓', clase: 'text-acento' }, aviso: { texto: 'juzgada ⚠', clase: 'text-atencion' }, fuera: { texto: 'fuera ✗', clase: 'text-peligro' } } as const
+// El sello del juez: una etiqueta, no un adverbio suelto. Sin fondo ni borde: 55 sellos pintados
+// harían un ruido de feria; el color basta para distinguir juzgada / con avisos / fuera.
+const SELLO = {
+  ok: { texto: 'juzgada', clase: 'text-acento', Icono: BadgeCheck },
+  aviso: { texto: 'con avisos', clase: 'text-atencion', Icono: AlertTriangle },
+  fuera: { texto: 'fuera', clase: 'text-peligro', Icono: X },
+} as const
 const ORIGEN = { red: 'de la red', copia: 'de la copia local', empaquetado: 'el que viaja con la app', ninguno: 'ninguno' } as const
 const kb = (n: number) => (n < 1024 ? `${n} B` : `${(n / 1024).toLocaleString('es-ES', { maximumFractionDigits: 1 })} KB`)
 const autor = (repo: string) => repo.split('/')[0]
 
 /** El sello del juez: lo que firmó, con su motivo a un hover. Sin veredicto: sin medir. */
 function SelloVeredicto({ v }: { v: VeredictoSkill | null }) {
-  if (!v) return <span className="shrink-0 text-texto-3">sin medir</span>
+  if (!v) return <span className="shrink-0 text-[11.5px] text-texto-3">sin medir</span>
   const s = SELLO[v.nivel]
-  return <span title={v.causa} className={cn('shrink-0', s.clase)}>{s.texto}</span>
+  return (
+    <span title={v.causa} className={cn('inline-flex shrink-0 items-center gap-1 text-[11.5px] leading-none', s.clase)}>
+      <s.Icono className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
+      {s.texto}
+    </span>
+  )
 }
 
 export function TiendaSkills() {
@@ -49,49 +60,58 @@ export function TiendaSkills() {
           ))}
         </div>
       </div>
+      {/* Una sola línea de estado: cuántos, cuántas instaladas y de dónde salió el juicio. Nada de tres frases. */}
       <p className="m-0 text-[12.5px] text-texto-3">
-        {datos ? `${datos.skills.length} skills revisadas${instaladas ? ` · ${instaladas} instaladas` : ''} · cada una viene del repositorio de su autor, fijada a la versión revisada` : 'Cargando el catálogo…'}
+        {!datos ? 'Cargando el catálogo…' : (
+          <>
+            <span className="tabular-nums">{datos.skills.length}</span> skills
+            {instaladas > 0 && <> · <span className="tabular-nums">{instaladas}</span> instaladas</>}
+            {' · '}
+            {datos.veredicto.aplica
+              ? <>juzgadas y firmadas por el juez ({ORIGEN[datos.veredicto.origen]})</>
+              : datos.veredicto.origen === 'ninguno'
+                ? 'sin veredicto del juez: se ofrece lo que hay, sin juicio'
+                : 'el veredicto del juez es de otro catálogo: aquí no aplica'}
+            {datos.veredicto.aviso && <> · {datos.veredicto.aviso}</>}
+          </>
+        )}
       </p>
-      {datos && (
-        <p className="m-0 text-[12.5px] text-texto-3">
-          {datos.veredicto.aplica
-            ? `Juzgadas y firmadas por el juez (${ORIGEN[datos.veredicto.origen]}).`
-            : datos.veredicto.origen === 'ninguno'
-              ? 'Sin veredicto del juez: se ofrece lo que hay, sin juicio.'
-              : 'El veredicto del juez es de otro catálogo: aquí no aplica.'}
-          {datos.veredicto.aviso ? ` ${datos.veredicto.aviso}` : ''}
-        </p>
-      )}
 
       <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-px overflow-hidden rounded-3 border border-linea bg-linea p-0">
         {visibles.map((s) => (
           <li key={s.id} className="bg-[var(--hoja)]">
-            <button type="button" onClick={() => setAbierta(s)} className="grid h-full w-full content-start gap-2 p-4 text-left transition-colors hover:bg-s1/60">
-              <span className="flex items-baseline gap-2">
-                <span className="font-display text-[19px] leading-tight text-texto italic">{s.nombre}</span>
-                {s.instalada && <span className="ml-auto inline-flex items-center gap-1 text-[11.5px] text-acento"><Check className="size-3" />instalada</span>}
+            <button type="button" onClick={() => setAbierta(s)}
+              className="grid h-full w-full content-start gap-2.5 p-4 text-left transition-colors hover:bg-s1/60 focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-foco">
+              <span className="flex items-start justify-between gap-3">
+                <span className="font-display text-[19px] leading-tight text-balance text-texto italic">{s.nombre}</span>
+                <SelloVeredicto v={s.veredicto} />
               </span>
-              <span className="line-clamp-2 text-[13px] leading-5 text-texto-2">{s.descripcionEs}</span>
-              <span className="flex items-center gap-2 text-[11.5px] text-texto-3">
-                <span className="truncate">{autor(s.repo)} · {s.licencia} · {s.grupo}{s.tieneScripts ? ' · trae scripts' : ''}</span>
+              <span className="line-clamp-2 text-[13px] leading-5 text-pretty text-texto-2">{s.descripcionEs}</span>
+              {/* Los hechos, debajo de una línea: autor · licencia · grupo · scripts · lo que ocupa */}
+              <span className="mt-auto flex items-center gap-x-2 border-t border-linea pt-2.5 text-[11.5px] text-texto-3">
+                <span className="truncate">{autor(s.repo)} · {s.licencia} · {s.grupo}</span>
+                {s.tieneScripts && <span className="shrink-0 text-atencion" title="Trae scripts ejecutables: hay que pedirlos">scripts</span>}
+                {s.instalada && <span className="inline-flex shrink-0 items-center gap-1 text-acento"><Check className="size-3" />instalada</span>}
                 {s.veredicto?.medidas.tokens != null && (
-                  <span className="shrink-0" title="Lo que ocupa su SKILL.md en el contexto, medido y firmado por el juez">
-                    ~{s.veredicto.medidas.tokens.toLocaleString('es-ES')} tokens
+                  <span className="ml-auto shrink-0 tabular-nums" title="Lo que ocupa su SKILL.md en el contexto, medido y firmado por el juez">
+                    ≈{s.veredicto.medidas.tokens.toLocaleString('es-ES')} tokens
                   </span>
                 )}
-                <SelloVeredicto v={s.veredicto} />
               </span>
             </button>
           </li>
         ))}
         {datos && !visibles.length && (
-          <li className="col-span-full grid justify-items-center gap-3 bg-[var(--hoja)] p-10 text-center">
-            <p className="m-0 max-w-[40ch] text-[13.5px] leading-6 text-texto-2">
-              {q.trim() ? `Nada con «${q.trim()}». Prueba con otras palabras.` : 'No hay skills en este grupo todavía. Vuelve cuando el catálogo crece.'}
+          <li className="col-span-full grid justify-items-center gap-3 bg-[var(--hoja)] p-12 text-center">
+            <p className="m-0 max-w-[42ch] text-[14px] leading-6 text-balance text-texto-2">
+              {q.trim() ? `Nada con «${q.trim()}».` : 'No hay skills en este grupo todavía.'}
             </p>
-            {q.trim() && (
+            {q.trim() ? (
               <button type="button" onClick={() => setQ('')}
                 className="inline-flex h-9 items-center rounded-full border border-linea px-4 text-[13px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">Quitar la búsqueda</button>
+            ) : (
+              <button type="button" onClick={() => setGrupo('Todas')}
+                className="inline-flex h-9 items-center rounded-full border border-linea px-4 text-[13px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">Ver todas las skills</button>
             )}
           </li>
         )}
@@ -148,14 +168,21 @@ function Ficha({ skill: s, agentes, onCerrar, onCambio }: { skill: SkillCatalogo
           <p className="m-0 text-[14.5px] text-texto-2">{s.descripcionEs}</p>
           <p className="m-0 text-[12px] text-texto-3" title="Esto es lo que lee el modelo para decidir cuándo usarla">«{s.descripcion}»</p>
           <p className="m-0 text-[11.5px] text-texto-3">{s.repo}/{s.ruta} · versión {s.commit.slice(0, 7)} revisada el {s.revisadoEl} · {s.licencia} · {s.ficheros} ficheros, {kb(s.bytes)}</p>
-          <p className="m-0 text-[11.5px] text-texto-3">
-            {s.veredicto
-              ? <>Juzgada y firmada por el juez: {s.veredicto.causa}.</>
-              : <>Sin medir: el juez todavía no dictó sobre esta skill.</>}
-          </p>
-          {s.veredicto?.medidas.tokens != null && (
-            <p className="m-0 text-[11.5px] text-texto-3">Su SKILL.md ocupa ~{s.veredicto.medidas.tokens.toLocaleString('es-ES')} tokens de contexto cada vez que entra.</p>
-          )}
+          {/* El veredicto, como un bloque: el sello, el motivo y lo que ocupa */}
+          <div className="mt-1.5 grid gap-1 rounded-2 border border-linea bg-s1/40 px-3 py-2.5">
+            <span className="flex items-center gap-2">
+              <SelloVeredicto v={s.veredicto} />
+              <span className="text-[12px] text-texto-2">
+                {s.veredicto ? 'el juez lo firmó' : 'el juez todavía no ha dictado sobre esta skill'}
+              </span>
+              {s.veredicto?.medidas.tokens != null && (
+                <span className="ml-auto shrink-0 text-[11.5px] tabular-nums text-texto-3">
+                  ≈{s.veredicto.medidas.tokens.toLocaleString('es-ES')} tokens de contexto
+                </span>
+              )}
+            </span>
+            {s.veredicto && <p className="m-0 text-[12px] leading-5 text-texto-3">{s.veredicto.causa}</p>}
+          </div>
         </header>
 
         <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_260px] gap-0 overflow-hidden">
