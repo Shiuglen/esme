@@ -39,6 +39,9 @@ MD_FILES = [Path.home() / ".claude/CLAUDE.md",
             Path.home() / ".claude/projects/-home-sakai-Sakoi/memory/sakoi-estado-migracion.md"]
 MAIN = ["ia_sola", "md", "bm25", "bm25_1000", "rag_denso_eg", "contexto_largo", "daimon", "sesion"]
 ABLATIONS = ["daimon_sin_corte", "daimon_solo_original"]
+# los programas del banco del espejo (los que hay en esta máquina): el número del espejo también
+# entra en la corrida del examen
+PROGRAMAS_DEL_ESPEJO = ["/home/sakai/Daimon/app/out", "/opt/OpenCode/libffmpeg.so", "/usr/local/bin/ollama"]
 
 
 def _para() -> dict[str, str]:
@@ -372,6 +375,42 @@ def _nota_repetibilidad(d) -> list[str]:
             cierre]
 
 
+def cmd_banco(a):
+    """El banco del espejo, dentro de la corrida del examen.
+
+    El examen mide lo que la mente sabe de la vida del creador; el banco del espejo mide si lo
+    que la mente mira de un programa lo retiene. Son dos números distintos y **los dos cuentan**:
+    aquí el del espejo entra en la corrida (con su huella: con qué montaje se midió), para que un
+    número sin contexto no se pueda comparar con otro de otro día."""
+    import importlib.util
+
+    from daimon.bench.rea import resumen as resumen_filas
+
+    spec = importlib.util.spec_from_file_location("banco_rea", ROOT / "scripts/banco_rea.py")
+    br = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(br)
+    programas = [Path(p) for p in (a.programa or PROGRAMAS_DEL_ESPEJO)]
+    faltan = [str(p) for p in programas if not p.exists()]
+    if faltan:
+        print(f"estos programas no están aquí y se miden aparte: {', '.join(faltan)}", flush=True)
+    programas = [p for p in programas if p.exists()]
+    if not programas:
+        print("no hay ningún programa que mirar", flush=True)
+        return 1
+    todos, filas, huella = br.medir(Path(a.home), ROOT / "data/bench/evidencia", programas, a.budget)
+    if not todos:
+        print("no hay ningún programa que mirar", flush=True)
+        return 1
+    conjunto = resumen_filas(filas)
+    RUNS.mkdir(parents=True, exist_ok=True)
+    out = RUNS / "banco.json"
+    out.write_text(json.dumps({"programas": todos, "conjunto": conjunto, "huella": huella},
+                              ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"el espejo: {conjunto['espejo_recall']:.4f} en {conjunto['preguntas']} preguntas "
+          f"({conjunto['espejo_tokens']:.0f} tokens) → {out}")
+    return 0
+
+
 def cmd_report(a):
     d = _dir(a.set)
     rows = [json.loads(l) for l in (d / "scored.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
@@ -397,6 +436,9 @@ if __name__ == "__main__":
     p.add_argument("--limite", type=int, default=0, help="sólo los primeros N ítems (prueba rápida)")
     for c in ("judge", "report"):
         p = sp.add_parser(c); p.add_argument("--set", choices=["original", "parafrasis"], required=True)
+    p = sp.add_parser("banco"); p.add_argument("--home", default=str(DATA / "mente_v2"))
+    p.add_argument("--programa", nargs="*", default=None, help="los programas a medir (por defecto, los del espejo)")
+    p.add_argument("--budget", type=int, default=BUDGET)
     a = ap.parse_args()
     {"train": cmd_train, "retrieval": cmd_retrieval, "contexts": cmd_contexts, "answer": cmd_answer,
-     "repeticion": cmd_repeticion, "judge": cmd_judge, "report": cmd_report}[a.cmd](a)
+     "repeticion": cmd_repeticion, "judge": cmd_judge, "report": cmd_report, "banco": cmd_banco}[a.cmd](a)
