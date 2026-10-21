@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { encargoRelevo, planParlamento, podarEvidencia, veredictoDe } from './parlamento'
+import { baseDe, encargoRelevo, planParlamento, podarEvidencia, veredictoDe } from './parlamento'
 import { ROLES_POR_DEFECTO } from './roles'
 
 const cronistas = ROLES_POR_DEFECTO
@@ -23,6 +23,16 @@ describe('planParlamento — el plan del comité', () => {
   })
   it('un oficio desconocido detiene el plan: no se inventa', () => {
     expect(planParlamento('algo', [{ rol: 'brujo', motor: 'opencode' }, ...relevos], cronistas)).toEqual([])
+  })
+})
+
+describe('baseDe — el encargo limpio de una tarea vieja', () => {
+  const oficio = ROLES_POR_DEFECTO[0].instruccion
+  it('un texto de tarea con oficio suelta el oficio y devuelve lo que se pidió', () => {
+    expect(baseDe(`${oficio}\n\nEncargo:\nArregla el reloj`)).toBe('Arregla el reloj')
+  })
+  it('un texto sencillo queda tal cual', () => {
+    expect(baseDe('Arregla el reloj')).toBe('Arregla el reloj')
   })
 })
 

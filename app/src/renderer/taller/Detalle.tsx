@@ -25,6 +25,55 @@ import { SelectorOpcion } from './Opciones'
 import { activa, barrasDe, duracion, explicarError, motivoFin } from './vista'
 import { BarrasActividad } from './Micrografica'
 import { VENTANA, ventanaDe, visiblesDe } from './ventana'
+import type { ResultadoParlamento, Rol } from '../lib/bridge'
+import type { Relevo } from '../../main/taller/parlamento'
+
+/** La puerta del parlamento: tres oficios se pasan el testigo, tú eliges qué motor lleva cada uno
+ *  (pre-llenado con los que sí pueden). Los relevos entran a la fila como tareas reales y el
+ *  veredicto vuelve aquí cuando el comité termina. */
+function ParlamentoPuerta({ oficios, candidatos, onArmar }: { oficios: Rol[]; candidatos: Eleccion[]; onArmar(relevos: Relevo[]): Promise<ResultadoParlamento> }) {
+  const [elegidos, setElegidos] = useState<string[]>([])
+  const [armando, setArmando] = useState(false)
+  const [cierre, setCierre] = useState<ResultadoParlamento | null>(null)
+  // los motores que sí pueden, sin dobles (con lo que han demostrado); si no hay, la puerta no se arma
+  const unicos = Array.from(new Map(candidatos.map((e) => [e.motor, e])).values())
+  useEffect(() => {
+    const motores = unicos.map((e) => e.motor)
+    setElegidos((v) => (v.length ? v : oficios.slice(0, 3).map((_, i) => motores[i % Math.max(1, motores.length)] ?? '')))
+  }, [oficios, candidatos])   // eslint-disable-line react-hooks/exhaustive-deps
+  if (!oficios.length || !unicos.length) return null
+  if (cierre) {
+    const frase = 'estado' in cierre ? cierre.frase : cierre.error
+    return <p role="status" className="mt-2 text-xs text-texto-2">{frase}</p>
+  }
+  const armar = async () => {
+    setArmando(true)
+    try { setCierre(await onArmar(oficios.slice(0, 3).map((o, i) => ({ rol: o.id, motor: elegidos[i] ?? '' })))) }
+    finally { setArmando(false) }
+  }
+  return (
+    <div className="mt-2.5 rounded-2 border border-linea/60 bg-s1/40 p-2.5">
+      <p className="text-xs text-texto-3">O armar el parlamento: tres oficios se pasan el testigo y el último firma el veredicto.</p>
+      <div className="mt-2 flex flex-col gap-1.5">
+        {oficios.slice(0, 3).map((o, i) => (
+          <label key={o.id} className="grid grid-cols-[88px_minmax(0,1fr)_minmax(0,1.4fr)] items-center gap-2 text-xs">
+            <span className="text-texto-2">{o.nombre}</span>
+            <span className="truncate text-texto-3">relevo {i + 1}</span>
+            <select value={elegidos[i] ?? ''} disabled={armando} onChange={(e) => setElegidos((v) => v.map((x, j) => (j === i ? e.target.value : x)))}
+              className="h-7 rounded-2 border border-linea bg-s2 px-2 text-[12.5px] text-texto">
+              {unicos.map((c) => <option key={c.motor} value={c.motor}>{c.motorNombre}</option>)}
+            </select>
+          </label>
+        ))}
+      </div>
+      <button type="button" onClick={() => void armar()} disabled={armando || elegidos.some((m) => !m)}
+        className="mt-2 inline-flex h-8 items-center gap-1.5 rounded-full bg-acento px-3.5 text-[13px] font-medium text-sobre-acento disabled:opacity-50">
+        {armando ? 'Armando el comité…' : 'Armar el parlamento'}
+      </button>
+      {armando && <p className="mt-1.5 text-xs text-texto-3">Los relevos entran a la fila como tareas de arena «parlamento»: los ves en vivo.</p>}
+    </div>
+  )
+}
 
 const ICONO_CLASE: Record<string, LucideIcon> = {
   read: Eye, edit: PencilLine, delete: Trash2, move: MoveRight, search: Search, execute: SquareTerminal, think: Brain, fetch: Globe,
@@ -33,7 +82,7 @@ const PERMISO: Record<string, string> = { allow_once: 'Permitir', allow_always: 
 
 
 export type Pestana = 'vivo' | 'revision' | 'previa' | 'arena'
-export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, onDescartar, onAbrir, onConfigurar, onTerminal, revision, onPestana, arena, pedida, onReencarnar, onDeshacerTurno, pueden, onReencarnarCon, ahora = Date.now() }: {
+export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, onDescartar, onAbrir, onConfigurar, onTerminal, revision, onPestana, arena, pedida, onReencarnar, onDeshacerTurno, pueden, onReencarnarCon, oficios, onParlamentar, ahora = Date.now() }: {
   ahora?: number
   t: TareaTaller; linea: ItemLinea[] | undefined; login?: string; onTerminal(): void; revision: AccionesRevision; onPestana?(p: Pestana): void
   arena?: Omit<React.ComponentProps<typeof Arena>, 'actual'>; pedida?: { p: Pestana; n: number } | null
@@ -41,6 +90,7 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
   onDeshacerTurno(): Promise<boolean> | void
   onConfigurar(opcion: string, valor: string): void
   pueden?: Eleccion[]; onReencarnarCon?(e: Eleccion): void
+  oficios?: Rol[]; onParlamentar?(relevos: Relevo[]): Promise<ResultadoParlamento>   // el parlamento: la puerta sólo se instala en el error de negativa
 }) {
   const muelle = useMuelle({ stiffness: 500, damping: 40 })
   const [pestana, setPestana] = useState<Pestana>(t.arena ? 'arena' : 'vivo')
@@ -159,6 +209,9 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
                   ))}
                 </div>
               </div>
+            )}
+            {x.tipo === 'negativa' && oficios && onParlamentar && (
+              <ParlamentoPuerta oficios={oficios} candidatos={pueden ?? []} onArmar={onParlamentar} />
             )}
           </div>
         )

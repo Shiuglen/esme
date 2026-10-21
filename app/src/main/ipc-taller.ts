@@ -89,6 +89,17 @@ async function buscarIndice(raiz: string): Promise<string | null> {
 const cacheOpciones = new Map<string, OpcionConfig[]>()
 const textoCorto = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 200
 
+// El parlamento: encargo con sustancia, carpeta real (o null) y de 2 a 5 relevos, cada uno con su
+// oficio y su motor (nombres cortos; la verdad de los oficios la comprueba el plan en el runtime).
+function parlamentoValido(p: unknown): p is { texto: string; carpeta: string | null; relevos: { rol: string; motor: string }[]; acceso?: unknown } {
+  if (!p || typeof p !== 'object') return false
+  const x = p as { texto?: unknown; carpeta?: unknown; relevos?: unknown; acceso?: unknown }
+  if (!textoValido(x.texto)) return false
+  if (!(x.carpeta === null || (typeof x.carpeta === 'string' && x.carpeta.length > 0))) return false
+  if (!Array.isArray(x.relevos) || x.relevos.length < 2 || x.relevos.length > 5) return false
+  return x.relevos.every((r) => !!r && typeof r === 'object' && typeof (r as { rol?: unknown }).rol === 'string' && textoCorto((r as { rol: string }).rol) && typeof (r as { motor?: unknown }).motor === 'string' && textoCorto((r as { motor: string }).motor))
+}
+
 // config: objeto plano de hasta 10 claves con valores string cortos; undefined si no es válido.
 function configValida(v: unknown): Record<string, string> | undefined | null {
   if (v === undefined || v === null) return undefined
@@ -310,6 +321,13 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
   })
   ipcMain.handle('taller:roles', () => t.roles())
   ipcMain.handle('taller:seguir', (_e, id: unknown, texto: unknown) => (idValido(id) && textoValido(texto) ? accion(() => t.seguir(id, texto)) : entrada))
+  // El parlamento: relevos reales de 2 a 5, cada uno con su oficio y su motor (la elección la hace el creador).
+  ipcMain.handle('taller:parlamentar', async (_e, p: unknown) => {
+    if (!parlamentoValido(p)) return entrada
+    try {
+      return await t.parlamentar({ texto: p.texto, carpeta: p.carpeta, relevos: p.relevos, ...(accesoValido(p.acceso) ? { acceso: p.acceso } : {}) })
+    } catch (e) { return { ok: false, error: mensaje(e) } }
+  })
   ipcMain.handle('taller:parar', (_e, id: unknown) => (idValido(id) ? accion(() => t.parar(id)) : entrada))
   ipcMain.handle('taller:descartar', (_e, id: unknown) => (idValido(id) ? accion(() => { cerrarVista(id); return t.descartar(id) }) : entrada))
   ipcMain.handle('taller:configurar', (_e, id: unknown, opcion: unknown, valor: unknown) =>

@@ -28,14 +28,17 @@
 //                     Sin tocar el runtime: la lógica del comité se probara sola.
 //   [ ] Fase 2: Taller.parlamentar(tarea, albaces) — encola los relevo encadenados (cada uno con
 //               su tarea real y su veredicto) y el ítem del taller muestra «Parlamento en curso».
-//   [ ] Fase 3: la puerta en el Detalle (botón «Parlamento…» cuando estado=error) + la página que
-//               muestra el relevo vivo (quién tiene el testigo y qué dijo el anterior).
+//   [x] Fase 3 (21 oct, tarde): la puerta viva — handler `taller:parlamentar` (validación de 2..5
+//               relevos con oficio+motor), preload+bridge (`ResultadoParlamento`), y en el Detalle
+//               la puerta «Armar el parlamento» dentro del aviso de negativa: tres oficios, tú
+//               eliges el motor de cada relevo (pre-llenado con los que sí pueden), el encargo sale
+//               LIMPIO del oficio viejo de la tarea (baseDe) y sobre la copia donde falló. El
+//               cierre (probado/dudoso/tumbado) queda escrito en la puerta cuando vuelve.
 //   [ ] Fase 4: la firma — el veredicto final se guarda firmado (Ed25519, como la Tienda) en
 //               resultados/, y la mente lo aprende como una lección del equipo.
 //
 // Reglas (las de la casa, sin excepción):
 //   - el creador elige quién lleva cada relevo (los que sí pueden, nunca a ciegas)
-//   - cada relevo se puede parar en vivo; parar el parlamento no rompe las tareas ya hechas
-//   - si un relevo se niega o se muere, el parlamento NO rellena el hueco solo: te lo enseña y
+//   - cada relevo se puede parar en vivo; parar el parlamento no rompe las tareas ya hechas//   - si un relevo se niega o se muere, el parlamento NO rellena el hueco solo: te lo enseña y
 //     espera tu mano (el instinto ya acusa la negativa; aquí no se reintenta a escondidas)
 //   - el coste de cada relevo se cuenta en su tarea (el uso ya se anota por tarea)

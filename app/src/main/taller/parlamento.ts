@@ -28,6 +28,13 @@ export type Evidencia = {
   caido?: string          // si el relevo falló o se negó: la frase humana del error (t.error)
 }
 
+/** El encargo de base: si el texto traía un oficio delante (textoConRol), se lo quita — cada relevo
+ *  pone el suyo; el encargo original no debe llegar dos veces disfrazado. */
+export const baseDe = (texto: string): string => {
+  const inicia = texto.indexOf('\n\nEncargo:\n')
+  return inicia >= 0 ? texto.slice(inicia + '\n\nEncargo:\n'.length) : texto
+}
+
 /** El plan del comité. Un relevo solo es una tarea, no un parlamento: hace falta de dos en adelante,
  *  todo rol conocido y encargo con sustancia; si algo no cumple, no hay parlamento (y mañana se ve). */
 export function planParlamento(encargo: string, relevos: Relevo[], roles: Rol[]): Paso[] {

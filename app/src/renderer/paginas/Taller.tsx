@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import type { SeccionId } from '../shell/secciones'
-import { bridge, type TareaTaller, type OpcionMotor, type VeredictoTaller } from '../lib/bridge'
+import { bridge, type TareaTaller, type OpcionMotor, type VeredictoTaller, type Rol, type ResultadoParlamento } from '../lib/bridge'
 import { Detalle, type Pestana } from '../taller/Detalle'
 import { FilaMotor } from '../taller/FilaMotor'
 import { useRumbo } from './Rumbo'
@@ -16,6 +16,8 @@ import { Terminales } from '../taller/Terminales'
 import type { useTaller } from '../taller/useTaller'
 import { activa, archivable, ESTADOS, explicarError, listosPara } from '../taller/vista'
 import { caidosDe, fallosDe, noListos, puedenHacer, type Eleccion } from '../taller/eleccion'
+import { baseDe } from '../../main/taller/parlamento'
+import type { Relevo } from '../../main/taller/parlamento'   // el relevo del comité (el tipo vive con su lógica)
 import { cn } from '../lib/cn'
 import { useMuelle } from '../tinta/movimiento'
 import { ofrece, TIPO_AGENTE, type PeticionDeAgente } from '../lib/peticiones'
@@ -127,6 +129,18 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
     for (const x of rivales) if (x.id !== id) await tl.descartar(x.id)
     setSeleccion(id); setPedida((v) => ({ p: 'revision', n: (v?.n ?? 0) + 1 }))
   }
+  // los oficios del comité (los del creador si puso los suyos): para la puerta del parlamento
+  const [oficios, setOficios] = useState<Rol[]>([])
+  useEffect(() => {
+    if (!negada) return
+    let vivo = true
+    void bridge.taller.roles().then((rs) => { if (vivo && rs.length) setOficios(rs) })
+    return () => { vivo = false }
+  }, [negada])
+  // el parlamento se arma desde el detalle; su encargo es el BASE de la tarea (sin el oficio que ya traía:
+  // cada relevo pone el suyo) y trabaja en la MISMA copia donde la tarea falló
+  const parlamentar = async (tarea: TareaTaller, relevos: Relevo[]): Promise<ResultadoParlamento> =>
+    bridge.taller.parlamentar({ texto: baseDe(tarea.texto), carpeta: tarea.carpeta, relevos })
   const sinListo = useMemo(() => noListos(tl.tareas), [tl.tareas])
   // lo que ya falló sin que el creador etiquete nada: el router lo tiene en cuenta al elegir
   const fallos = useMemo(() => fallosDe(tl.tareas), [tl.tareas])
@@ -267,6 +281,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
                   onParar={() => void tl.parar(t.id)} onDescartar={() => void tl.descartar(t.id)} onAbrir={() => tl.abrir(t.id)} onReencarnar={() => void reincarna(t)}
                   onDeshacerTurno={() => tl.deshacerUltimoTurno(t.id)}
                   pueden={pueden} onReencarnarCon={(e) => { if (t) void reencarnarCon(t, e) }}
+                  oficios={oficios} onParlamentar={(rs) => parlamentar(t, rs)}
                   onConfigurar={(o, v) => void tl.configurar(t.id, o, v)} />
               ) : (
                 <NuevaTarea motores={tl.motores} noListos={sinListo} fallos={fallos} motorPedido={motorPedido} onIrMotores={() => onIr('ajustes')}
@@ -300,6 +315,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
             onParar={() => void tl.parar(t.id)} onDescartar={() => void tl.descartar(t.id)} onAbrir={() => tl.abrir(t.id)} onReencarnar={() => void reincarna(t)}
             onDeshacerTurno={() => tl.deshacerUltimoTurno(t.id)}
             pueden={pueden} onReencarnarCon={(e) => { if (t) void reencarnarCon(t, e) }}
+            oficios={oficios} onParlamentar={(rs) => parlamentar(t, rs)}
             onConfigurar={(o, v) => void tl.configurar(t.id, o, v)} />
         </BottomSheet>
       )}
