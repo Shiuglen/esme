@@ -61,6 +61,12 @@ describe('el espejo: entender un programa', () => {
     expect(m.preguntar).toHaveBeenCalled()          // ingeniería inversa no es libre
     expect(absorberPrograma).toHaveBeenCalledWith('/home/x/out/main', 'curiosidad')
   })
+  it('comparar dos versiones devuelve el «qué cambió»', async () => {
+    const compararProgramas = vi.fn(async () => ({ ok: true, added: 5, informe: '/x/c.md', fuente: 'rea:comparacion:a~b', texto: 'Canales nuevos: `nuevo:2026`' }))
+    const m = manos({ compararProgramas }); const h = herramientasPropias(m)
+    expect(await ejecutar(h, 'comparar_programas', { ruta: '/app/out' })).toMatch(/nuevo:2026/)
+    expect(compararProgramas).toHaveBeenCalledWith('/app/out', '')
+  })
   it('sin permiso no se mira nada', async () => {
     const absorberPrograma = vi.fn(async () => ({ ok: true }))
     const m = manos({ absorberPrograma, preguntar: vi.fn(async () => 'no' as const) }); const h = herramientasPropias(m)

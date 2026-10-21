@@ -224,6 +224,22 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
         evs = await locked(home.hippo.por_fuente)(fuente, 300)
         return JSONResponse({"ok": True, "fuente": fuente, "recuerdos": [e.text for e in evs]})
 
+    @mcp.custom_route("/rea/comparar", methods=["POST"])
+    async def rea_comparar(req: Request):
+        """Qué cambió entre dos versiones: se compara lo guardado (sin volver a analizar)."""
+        b = await req.json()
+        ruta = b.get("ruta")
+        if not isinstance(ruta, str) or not ruta.strip():
+            return JSONResponse({"ok": False, "error": "falta la ruta del programa"}, status_code=400)
+        contra = b.get("contra") if isinstance(b.get("contra"), str) and b.get("contra").strip() else None
+        try:
+            texto, clave = await run_in_threadpool(rea_mod.comparar_versiones, home, ruta.strip(), contra=contra)
+        except rea_mod.ErrorRea as e:
+            return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+        r = await locked(lambda: rea_mod.ingerir_comparacion(home, texto, clave))()
+        bus.publish({"type": "rea", **r})
+        return JSONResponse({"ok": True, **r, "texto": texto})
+
     @mcp.custom_route("/rumbo", methods=["GET"])
     async def rumbo(_: Request):
         """Para qué trabaja esta mente: los pilares y los objetivos."""

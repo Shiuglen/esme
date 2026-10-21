@@ -48,6 +48,7 @@ export const RUTAS = {
   ingesta: '/ingest',
   rea: '/rea/absorber',
   reaRecuerdos: '/rea/recuerdos',
+  reaComparar: '/rea/comparar',
   sueno: '/sueño',
   orquestacion: '/orquesta',
   atlas: '/atlas',
@@ -163,6 +164,11 @@ export class ClienteCerebro {
     error?: string
   }> {
     return this.llamar(RUTAS.rea, { method: 'POST', body: JSON.stringify({ ruta, motivo }) }, 900_000)
+  }
+
+  /** Qué cambió entre dos versiones de un programa (lo que el espejo guardó de cada una). */
+  async compararProgramas(ruta: string, contra = ''): Promise<{ ok: boolean; added?: number; informe?: string; fuente?: string; texto?: string; error?: string }> {
+    return this.llamar(RUTAS.reaComparar, { method: 'POST', body: JSON.stringify({ ruta, contra }) }, 900_000)
   }
 
   /** Lo que la mente ya sabe de un programa (si está, ya se miró antes con el espejo). */

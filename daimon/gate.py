@@ -148,4 +148,21 @@ def build_server(home: Home, lock: threading.Lock | None = None, on_event=None):
             r = rea_mod.ingerir(home, evidencia, ruta, motivo=motivo)
         return json.dumps(r, ensure_ascii=False)
 
+    @mcp.tool()
+    def esme_compara_programas(ruta: str, contra: str = "") -> str:
+        """Compara dos versiones de un programa y deja en la memoria lo que cambió entre ellas.
+
+        Sin «contra», compara la versión actual del programa con la anterior que la mente tiene
+        guardada (lo que cambia al recompilar). Con «contra», compara dos programas o dos
+        compilaciones distintas. Devuelve los canales nuevos, los que se fueron, las funciones que
+        aparecieron o desaparecieron y las medidas de cada versión."""
+        try:
+            # Lo lento (analizar) va fuera del cerrojo; lo rápido (escribir) dentro.
+            texto, clave = rea_mod.comparar_versiones(home, ruta, contra=contra or None)
+        except rea_mod.ErrorRea as e:
+            return f"REA no pudo comparar los programas: {e}"
+        with lock:
+            r = rea_mod.ingerir_comparacion(home, texto, clave)
+        return json.dumps(r, ensure_ascii=False)
+
     return mcp

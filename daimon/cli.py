@@ -36,6 +36,16 @@ def rea_cmd(home_path: Path, ruta: str, motivo: str = "", encoder=None) -> dict:
     return rea_mod.absorber(Home(home_path, encoder=encoder), ruta, motivo=motivo)
 
 
+def rea_compara_cmd(home_path: Path, ruta: str, contra: str | None = None, encoder=None) -> dict:
+    """Qué cambió entre dos versiones de un programa: el texto y las cuentas."""
+    from .home import Home
+    from . import rea as rea_mod
+    home = Home(home_path, encoder=encoder)
+    texto, clave = rea_mod.comparar_versiones(home, ruta, contra=contra)
+    r = rea_mod.ingerir_comparacion(home, texto, clave)
+    return {**r, "texto": texto}
+
+
 def remember_cmd(home_path: Path, text: str, kind: str = "note") -> str:
     """Guarda un recuerdo y devuelve su id (lo mismo que hace la herramienta `remember`)."""
     from .gate import remember_tool
@@ -120,6 +130,10 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("ingest-x", help="absorbe tu X: una cosecha json de FYP, bookmarks o búsquedas")
     p.add_argument("--home", default="data/mente_v2")
     p.add_argument("cosecha")
+    p = sub.add_parser("rea-compara", help="qué cambió entre dos versiones de un programa")
+    p.add_argument("--home", default="data/mente_v2")
+    p.add_argument("--contra", default=None, help="el otro programa o build (por defecto: la versión anterior)")
+    p.add_argument("ruta", help="la carpeta o el .asar del programa")
     p = sub.add_parser("rea", help="el espejo: REA mira un programa y la mente se queda con lo que vio")
     p.add_argument("--home", default="data/mente_v2")
     p.add_argument("--motivo", default="", help="por qué se mira: queda junto al conocimiento")
@@ -148,6 +162,10 @@ def main(argv: list[str] | None = None) -> None:
         cosecha = json.loads(Path(a.cosecha).read_text(encoding="utf-8"))
         n = Home(Path(a.home)).ingest(eventos_de_x(cosecha))
         print(f"recuerdos nuevos de X: {n}")
+    elif a.cmd == "rea-compara":
+        from .home import Home
+        r = rea_compara_cmd(Path(a.home), a.ruta, a.contra)
+        print(json.dumps(r, ensure_ascii=False, indent=1))
     elif a.cmd == "rea":
         from .home import Home
         r = rea_cmd(Path(a.home), a.ruta, a.motivo)

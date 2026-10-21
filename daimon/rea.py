@@ -441,6 +441,126 @@ def _eventos_del_informe(texto: str, fuente: str, ts: str) -> list[Event]:
     return eventos
 
 
+def reducir(evidencia: dict) -> dict:
+    """Lo justo de una versión para compararla con otra.
+
+    La evidencia entera pesa decenas de megabytes (el grafo semántico es el grueso) y la mente no
+    la necesita: para decir qué cambió bastan la superficie, los ficheros y las funciones. Esto es
+    lo que se guarda en disco: unos pocos kilobytes por programa.
+    """
+    nr = evidencia.get("normalized_result") or {}
+    grafo = nr.get("graph") or {}
+    semantico = nr.get("semantic_graph") or {}
+    funciones = _funciones(semantico)
+    mas_llamadas = _mas_llamadas(semantico, funciones)
+    return {
+        "evidencia": evidencia.get("evidence_id"),
+        "programa": (evidencia.get("subject") or {}).get("local_path"),
+        "resumen": nr.get("summary") or {},
+        "estadisticas": nr.get("statistics") or {},
+        "canales": {c["canal"]: c["sitio"] for c in _canales(grafo)},
+        "ventanas": [{"sitio": v["sitio"], "prefs": v["prefs"]} for v in _ventanas(grafo)],
+        "ficheros": {c["fichero"]: {"funciones": c["funciones"], "nodos": c["nodos"]} for c in _ficheros(semantico)},
+        "funciones": {f["nombre"]: f"{f['fichero']}:{f['linea']}" for f in mas_llamadas},
+        "desconocidos": len(semantico.get("unknowns") or []),
+    }
+
+
+def _firmas(ventanas: list[dict]) -> dict[str, list[str]]:
+    """Cada ventana por sus preferencias: es lo que sobrevive a una compilación."""
+    salida: dict[str, list[str]] = {}
+    for v in ventanas:
+        salida.setdefault(", ".join(sorted(v.get("prefs") or [])), []).append(v.get("sitio") or "")
+    return salida
+
+
+def comparar(a: dict, b: dict, nombre_a: str = "la versión anterior", nombre_b: str = "la versión nueva") -> str:
+    """Qué cambió entre dos versiones del mismo programa, en palabras y con números."""
+    ca, cb = set(a.get("canales") or {}), set(b.get("canales") or {})
+    nuevos, fuera = sorted(cb - ca), sorted(ca - cb)
+    fa, fb = set(a.get("ficheros") or {}), set(b.get("ficheros") or {})
+    fn_a, fn_b = set(a.get("funciones") or {}), set(b.get("funciones") or {})
+    fnuevas, ffuera = sorted(fn_b - fn_a), sorted(fn_a - fn_b)
+    va, vb = _firmas(a.get("ventanas") or []), _firmas(b.get("ventanas") or [])
+    ventanas_nuevas = sorted(set(vb) - set(va))
+    ventanas_fuera = sorted(set(va) - set(vb))
+    sa, sb = a.get("estadisticas") or {}, b.get("estadisticas") or {}
+
+    L: list[str] = []
+    L.append(f"# Qué cambió entre {nombre_a} y {nombre_b}")
+    L.append("")
+    L.append(f"> Comparación hecha con las dos versiones reducidas (lo que el espejo guardó de cada "
+             f"una). {nombre_a}: {a.get('programa') or '?'} · {nombre_b}: {b.get('programa') or '?'}")
+    L.append("")
+    L.append("## En una frase")
+    L.append("")
+    L.append(
+        f"**{_p(len(nuevos), 'canal nuevo', 'canales nuevos')}**, "
+        f"**{_p(len(fuera), 'canal que se fue', 'canales que se fueron')}**, "
+        f"**{_p(len(fnuevas), 'función nueva', 'funciones nuevas')}**, "
+        f"**{_p(len(ffuera), 'función que desapareció', 'funciones que desaparecieron')}**, "
+        f"**{_p(len(ventanas_nuevas), 'ventana con preferencias nuevas', 'ventanas con preferencias nuevas')}** y "
+        f"{_p(len(fb - fa), 'fichero que aparece o desaparece', 'ficheros que aparecen o desaparecen')}."
+    )
+    L.append("")
+    L.append("## Los canales IPC")
+    L.append("")
+    L.append(f"Antes: {len(ca)} · ahora: {len(cb)}")
+    L.append("")
+    if nuevos:
+        L.append("Canales nuevos: " + ", ".join(f"`{c}`" for c in nuevos) + ".")
+        L.append("")
+    if fuera:
+        L.append("Canales que ya no están: " + ", ".join(f"`{c}`" for c in fuera) + ".")
+        L.append("")
+    if not nuevos and not fuera:
+        L.append("Ningún canal cambió.")
+        L.append("")
+
+    L.append("## Las funciones")
+    L.append("")
+    if fnuevas:
+        L.append("Funciones nuevas: " + ", ".join(f"`{f}`" for f in fnuevas[:40]) + ".")
+        L.append("")
+    if ffuera:
+        L.append("Funciones que se fueron: " + ", ".join(f"`{f}`" for f in ffuera[:40]) + ".")
+        L.append("")
+    if not fnuevas and not ffuera:
+        L.append("Ninguna función cambió de nombre (con nombres minificados, esto no dice nada: "
+                 "el minificador renombra en cada compilación).")
+        L.append("")
+
+    L.append("## Las ventanas")
+    L.append("")
+    if ventanas_nuevas:
+        L.append("Ventanas con preferencias que no estaban: " + "; ".join(ventanas_nuevas) + ".")
+        L.append("")
+    if ventanas_fuera:
+        L.append("Ventanas que ya no están: " + "; ".join(ventanas_fuera) + ".")
+        L.append("")
+    if not ventanas_nuevas and not ventanas_fuera:
+        L.append("Las ventanas siguen con las mismas preferencias.")
+        L.append("")
+
+    L.append("## Los ficheros y las medidas")
+    L.append("")
+    L.append(f"Ficheros: antes {len(fa)} · ahora {len(fb)} · nuevos: "
+             f"{', '.join(sorted(fb - fa)) or 'ninguno'} · fuera: {', '.join(sorted(fa - fb)) or 'ninguno'}.")
+    L.append("")
+    L.append(f"Ficheros JavaScript analizados: antes {sa.get('parsed_javascript_files', 0)} · "
+             f"ahora {sb.get('parsed_javascript_files', 0)} · "
+             f"hallazgos: antes {sa.get('findings', 0)} · ahora {sb.get('findings', 0)} · "
+             f"nodos de AST: antes {sa.get('visited_ast_nodes', 0)} · ahora {sb.get('visited_ast_nodes', 0)}.")
+    L.append("")
+    return "\n".join(L) + "\n"
+
+
+def _sello() -> str:
+    """La marca de tiempo del archivo: con milisegundos, porque dos absorciones seguidas
+    (o una comparación) no pueden acabar en el mismo fichero."""
+    return datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")[:-3]
+
+
 def clave_de(ruta: str | Path) -> str:
     """Un nombre estable por programa: si se reanaliza, la mente actualiza en vez de duplicar."""
     ruta = Path(ruta).expanduser()
@@ -460,8 +580,12 @@ def ingerir(home, evidencia: dict, ruta: str | Path, *, motivo: str = "") -> dic
     clave = clave_de(ruta)
     carpeta = Path(home.path) / "rea"
     carpeta.mkdir(parents=True, exist_ok=True)
-    destino = carpeta / f"{clave}-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}.md"
+    sello = _sello()
+    destino = carpeta / f"{clave}-{sello}.md"
     destino.write_text(texto, encoding="utf-8")
+    # La versión reducida al lado: es lo que permite comparar dos builds sin volver a analizarlos.
+    version = carpeta / f"{clave}-{sello}.json"
+    version.write_text(json.dumps(reducir(evidencia), ensure_ascii=False, indent=1), encoding="utf-8")
     fuente = fuente_de(ruta)          # la procedencia es el programa, no la ruta del fichero
     eventos = _eventos_del_informe(texto, fuente, datetime.now(timezone.utc).isoformat())
     nuevos = home.ingest(eventos)
@@ -470,6 +594,7 @@ def ingerir(home, evidencia: dict, ruta: str | Path, *, motivo: str = "") -> dic
         "added": nuevos,
         "memories": len(home.hippo),
         "informe": str(destino),
+        "version": str(version),
         "fuente": fuente,
         "evidencia": evidencia.get("evidence_id"),
         "programa": (evidencia.get("subject") or {}).get("local_path"),
@@ -482,3 +607,83 @@ def ingerir(home, evidencia: dict, ruta: str | Path, *, motivo: str = "") -> dic
 def absorber(home, ruta: str | Path, *, motivo: str = "", timeout: int = TIMEOUT) -> dict:
     """El camino entero: REA mira el programa y la mente se queda con lo que vio."""
     return ingerir(home, analizar(ruta, timeout=timeout), ruta, motivo=motivo)
+
+
+def version_guardada(home, ruta: str | Path) -> dict | None:
+    """La versión reducida más reciente de un programa ya mirado (si está guardada)."""
+    vs = versiones(home, ruta)
+    return vs[0] if vs else None
+
+
+def versiones(home, ruta: str | Path) -> list[dict]:
+    """Todas las versiones guardadas de un programa, de la más reciente a la más antigua.
+
+    Cada absorción deja su versión; por eso se puede preguntar «qué cambió desde la última vez».
+    """
+    carpeta = Path(home.path) / "rea"
+    if not carpeta.exists():
+        return []
+    clave = clave_de(ruta)
+    salida = []
+    for f in sorted(carpeta.glob(f"{clave}-*.json"), reverse=True):   # el sello va en el nombre: el orden es el del tiempo
+        try:
+            salida.append(json.loads(f.read_text(encoding="utf-8")))
+        except (json.JSONDecodeError, OSError):
+            continue
+    return salida
+
+
+def comparar_versiones(home, ruta: str | Path, *, contra: str | Path | None = None, nombre_a: str = "",
+                       nombre_b: str = "", timeout: int = TIMEOUT) -> tuple[str, str]:
+    """La comparación sin escribir en la mente: devuelve el texto y la clave.
+
+    Separada a propósito: lo lento (analizar) va fuera del cerrojo y lo rápido (escribir) dentro.
+    """
+    va_list = versiones(home, ruta)
+    if contra is not None:
+        vb_list = versiones(home, contra)
+        if not va_list:
+            va_list = [reducir(analizar(ruta, timeout=timeout))]
+        if not vb_list:
+            vb_list = [reducir(analizar(contra, timeout=timeout))]
+        va, vb = va_list[0], vb_list[0]
+        etiqueta_a = nombre_a or f"{Path(ruta).name} (antes)"
+        etiqueta_b = nombre_b or f"{Path(contra).name} (después)"
+        clave = f"{clave_de(ruta)}~{clave_de(contra)}"
+    else:
+        if len(va_list) >= 2:
+            vb, va = va_list[0], va_list[1]
+        else:
+            # Sólo había una versión guardada: se mira el programa otra vez (ya cambió en disco).
+            vb = reducir(analizar(ruta, timeout=timeout))
+            va = va_list[0] if va_list else vb
+        etiqueta_a = nombre_a or "la versión anterior"
+        etiqueta_b = nombre_b or "la versión nueva"
+        clave = f"{clave_de(ruta)}~ahora"
+    return comparar(va, vb, etiqueta_a, etiqueta_b), clave
+
+
+def ingerir_comparacion(home, texto: str, clave: str) -> dict:
+    """El «qué cambió» entra en la memoria, con su procedencia."""
+    carpeta = Path(home.path) / "rea"
+    carpeta.mkdir(parents=True, exist_ok=True)
+    destino = carpeta / f"comparacion-{clave}-{_sello()}.md"
+    destino.write_text(texto, encoding="utf-8")
+    fuente = f"rea:comparacion:{clave}"
+    eventos = _eventos_del_informe(texto, fuente, datetime.now(timezone.utc).isoformat())
+    nuevos = home.ingest(eventos)
+    return {"added": nuevos, "informe": str(destino), "fuente": fuente}
+
+
+def comparar_programas(home, ruta: str | Path, *, contra: str | Path | None = None, nombre_a: str = "",
+                       nombre_b: str = "", timeout: int = TIMEOUT) -> dict:
+    """Compara dos versiones de un programa y deja el «qué cambió» en la memoria.
+
+    Sin `contra`: la versión nueva contra la anterior del mismo programa (si sólo hay una guardada,
+    se mira el programa otra vez y se compara con la que había: el programa ya cambió en disco).
+    Con `contra`: la última versión de cada uno de los dos programas.
+    """
+    texto, clave = comparar_versiones(home, ruta, contra=contra, nombre_a=nombre_a, nombre_b=nombre_b,
+                                      timeout=timeout)
+    r = ingerir_comparacion(home, texto, clave)
+    return {**r, "antes": nombre_a or "la versión anterior", "despues": nombre_b or "la versión nueva"}

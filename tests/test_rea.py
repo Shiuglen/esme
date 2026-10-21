@@ -221,6 +221,38 @@ def test_cada_recuerdo_sabe_de_que_apartado_viene(tmp_path):
     assert any("hilos:buscar" in t and "La superficie" in t for t in textos)
 
 
+def test_una_version_reducida_al_lado_del_informe(tmp_path):
+    """Cada absorción deja su versión: sin eso no se puede comparar dos builds."""
+    h = _home(tmp_path)
+    r = rea.ingerir(h, _evidencia(), "/tmp/app/out/main", motivo="versión A")
+    version = Path(r["version"])
+    assert version.exists()
+    guardado = json.loads(version.read_text(encoding="utf-8"))
+    assert guardado["canales"] and "hilos:buscar" in guardado["canales"]
+    assert guardado["programa"] == "/tmp/app/out/main"
+
+
+def test_comparar_dos_versiones_dice_que_cambio(tmp_path):
+    h = _home(tmp_path)
+    ev_a = _evidencia()
+    ev_b = json.loads(json.dumps(ev_a))
+    # la versión B tiene un canal más
+    nodos = ev_b["normalized_result"]["graph"]["nodes"]
+    nodos.append({"kind": "ipc-channel", "node_id": "nuevo", "observations": [
+        {"label": "canal:nuevo", "properties": {"channel": "canal:nuevo", "mode": "handle", "resolution": "literal"},
+         "evidence": {}}]})
+    rea.ingerir(h, ev_a, "/tmp/app/out/main", motivo="A")
+    rea.ingerir(h, ev_b, "/tmp/app/out/main", motivo="B")
+    assert len(rea.versiones(h, "/tmp/app/out/main")) == 2
+    texto, clave = rea.comparar_versiones(h, "/tmp/app/out/main")
+    assert "`canal:nuevo`" in texto
+    assert "1 canal nuevo" in texto
+    # y el «qué cambió» entra en la memoria con su procedencia
+    r = rea.ingerir_comparacion(h, texto, clave)
+    assert r["added"] > 0
+    assert any(e.source.startswith("rea:comparacion:") for e in h.hippo.events())
+
+
 def test_la_mente_recuerda_lo_absorbido(tmp_path):
     """Lo absorbido se puede preguntar después: para eso sirve."""
     h = _home(tmp_path)
