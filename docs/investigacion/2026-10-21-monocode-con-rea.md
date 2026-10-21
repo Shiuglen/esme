@@ -25,8 +25,11 @@
 binario Rust es, hoy, el punto ciego de REA sin motores nativos*. El caso de Deska era al revés: un
 Electron con su `.asar` es justo lo que REA mejor come.
 
-> Instalar Ghidra (o Hopper) es una descarga grande y una configuración de MCP: **no se ha hecho**
-> sin que el creador lo pida. Con el binario a la vista, `strings` sí da la estructura que importa.
+> **Actualización (con el permiso del creador: *«no te rindas, no te limites»*)**: **Ghidra 12.1.4 + JDK 21
+> instalados** → `rea doctor` pasa de `missing_analysis_engine` a **healthy**. Y
+> `inspect-binary-layout` pide además **pwntools 4.15.0, pyelftools 0.33 y unicorn 2.1.2** en un
+> Python que le pases tú (`REA_PWNTOOLS_PYTHON`; REA no instala nunca paquetes). Instalados en un
+> venv propio. Con eso, **REA ya puede con el binario Rust** — que era el punto ciego.
 
 ## 3. Lo que sí se ha sacado del binario instalado (con `strings`)
 
