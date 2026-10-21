@@ -13,6 +13,7 @@ import { errorDelProveedor, esTemporal, sesionMuerta } from './fallos'
 import { leeRoles, textoConRol, type Rol } from './roles'
 import { otroModeloGratis } from './gratis'
 import { autoRespuesta, type Acceso } from './acceso'
+import { declaradas, enjaular } from '../motores/jaula'
 import { aplicarParche, cambiosCopia, commitCopia, crearCopia, diffCopia, exportarCopia, parcheCopia, puntosCopia, quitarCopia, volverAlPunto, type Cambios, type Copia } from './copias'
 
 export type EstadoTarea = 'preparando' | 'trabajando' | 'esperando' | 'lista' | 'parada' | 'error'
@@ -31,10 +32,11 @@ export type Tarea = {
   rol?: string     // el oficio del motor en esa arena (constructor, revisor, probador…)
   acceso?: Acceso   // cuánto puede hacer sin preguntarte (taller/acceso.ts); las antiguas, sin campo, preguntan todo
   objetivo?: string   // el objetivo del rumbo al que sirve esta tarea (id del objetivo en la mente)
+  credenciales?: { vistas: string[]; ocultas: string[] }   // la jaula: qué credenciales ve el agente y cuáles no
 }
 export type MotorElegido = { id: string; nombre: string; comando: string; args: string[]; env?: Record<string, string>; entrarCon?: string }
 export type SesionMotor = { preguntar(texto: string): Promise<string>; cancelar(): Promise<void>; cerrar(): void; configurar(id: string, valor: string): Promise<void> }
-export type AbrirSesion = (o: { comando: string; args: string[]; cwd: string; env?: Record<string, string>; mcp?: { nombre: string; url: string; token: string }; masMcp?: McpServer[]; config?: Record<string, string>
+export type AbrirSesion = (o: { comando: string; args: string[]; cwd: string; env?: Record<string, string>; permitidas?: string[]; mcp?: { nombre: string; url: string; token: string }; masMcp?: McpServer[]; config?: Record<string, string>
   alEvento(e: EventoMotor): void; alPedirPermiso(p: Permiso): Promise<string | 'cancelar'> }) => Promise<SesionMotor>
 export type OperacionesCopia = { crear: typeof crearCopia; cambios: typeof cambiosCopia; diff: typeof diffCopia; quitar: typeof quitarCopia
   parche: typeof parcheCopia; aplicar: typeof aplicarParche; commit: typeof commitCopia; exportar: typeof exportarCopia
@@ -164,7 +166,7 @@ export class Taller {
       t.actividadMs ??= finCubo(t.fin ?? t.inicio)
       const r = this.registroNuevo(t, true)
       // tras reiniciar, la sesión que se reabra debe pedir el modelo y el modo que la tarea usaba, no los de la config del motor
-      r.config = Object.fromEntries((t.opciones ?? []).filter((o) => o.id === 'model' || o.id === 'mode').map((o) => [o.id, o.actual]))
+      r.config = Object.fromEntries((t.opciones ?? []).filter((o) => o.id === 'model' || o.id === 'mode' || o.id === 'credenciales').map((o) => [o.id, o.actual]))
       this.registros.set(t.id, r)
     }
   }
@@ -282,6 +284,14 @@ export class Taller {
     r.tarea.aplicada = undefined
     this.cambio(r, true)
     return { ok: true }
+  }
+
+  /** Si la jaula escondió credenciales, el error lo dice: si la tarea falló por una llave que no
+   *  vio, el motivo tiene que estar a la vista (si no, el fallo es una adivinanza). */
+  private conLaJaula(error: string, t: Tarea): string {
+    const ocultas = t.credenciales?.ocultas ?? []
+    if (!ocultas.length) return error
+    return `${error} — La jaula escondió ${ocultas.length === 1 ? 'una credencial' : `${ocultas.length} credenciales`} (${ocultas.join(', ')}). Si esta tarea la necesita, declárala en la opción «credenciales».`
   }
 
   /** El punto del turno: un commit en la rama de la tarea.
@@ -505,7 +515,7 @@ export class Taller {
       this.anotarTurno(r)
     } catch (e) {
       if (r.descartada || this.cerrado) return
-      t.estado = 'error'; t.error = e instanceof Error ? e.message : String(e); t.fin = this.ahora()
+      t.estado = 'error'; t.error = this.conLaJaula(e instanceof Error ? e.message : String(e), t); t.fin = this.ahora()
       this.registrar(r, { tipo: 'fallo', mensaje: t.error })
       this.anotarTurno(r)
       // Lo que se rompe también es una lección: la mente se lo apunta para el siguiente encargo.
@@ -560,7 +570,10 @@ export class Taller {
   private async abrirSesionDe(r: Registro): Promise<SesionMotor> {
     const t = r.tarea
     const motor = r.motor!
-    return this.abrirSesion({ comando: motor.comando, args: motor.args, cwd: t.copia!.ruta, env: motor.env, ...(motor.entrarCon ? { entrarCon: motor.entrarCon } : {}), mcp: this.mcp() ?? undefined, masMcp: this.masMcp(), config: { ...r.config },
+    const permitidas = declaradas(r.config?.credenciales)
+    const jaula = enjaular({ ...process.env, ...motor.env }, [...Object.keys(motor.env ?? {}), ...permitidas])
+    t.credenciales = { vistas: jaula.vistas, ocultas: jaula.ocultas }
+    return this.abrirSesion({ comando: motor.comando, args: motor.args, cwd: t.copia!.ruta, env: motor.env, permitidas, ...(motor.entrarCon ? { entrarCon: motor.entrarCon } : {}), mcp: this.mcp() ?? undefined, masMcp: this.masMcp(), config: { ...r.config },
       alEvento: (e) => this.alEvento(r, e), alPedirPermiso: (p) => this.alPedirPermiso(r, p) })
   }
 

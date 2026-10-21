@@ -1,3 +1,4 @@
+import { enjaular } from './jaula'
 // Cliente ACP sobre stdio (ClientSideConnection del SDK): abre un motor, traduce sus eventos y reenvía permisos.
 import { spawn as spawnReal } from 'node:child_process'
 import { Readable, Writable } from 'node:stream'
@@ -23,14 +24,22 @@ type Opciones = { comando: string; args: string[]; cwd: string; env?: Record<str
   alEvento: (e: EventoMotor) => void
   alPedirPermiso: (p: { titulo: string; opciones: { id: string; nombre: string; tipo: string }[]; clase?: string }) => Promise<string | 'cancelar'>
   entrarCon?: string   // método de inicio de sesión del agente (authMethods): se llama a authenticate antes de abrir la sesión
-  lanzar?: typeof spawnReal }
+  lanzar?: typeof spawnReal
+  permitidas?: string[] }   // credenciales que la tarea declara: pasan aunque parezcan credencial
 
 export type MetodoEntrada = { id: string; nombre: string; descripcion: string; terminal: boolean }
 
 /** Cómo se entra en un agente (su `authMethods`). Los «por terminal» los resuelve el propio agente en una consola; el resto,
  *  con `entrarCon` (algunos abren tu navegador para que inicies sesión con tu cuenta). */
-export async function metodosDeEntrada(o: Pick<Opciones, 'comando' | 'args' | 'cwd' | 'env' | 'lanzar'>): Promise<MetodoEntrada[]> {
-  const hijo = (o.lanzar ?? spawnReal)(o.comando, o.args, { cwd: o.cwd, env: { ...process.env, ...o.env }, stdio: ['pipe', 'pipe', 'ignore'] })
+/** El entorno del agente: el del usuario **sin las credenciales**, salvo las que el motor
+ * necesita (las llaves de Esme) y las que la tarea declara. */
+export function entornoDelAgente(o: Pick<Opciones, 'env' | 'permitidas'>): Record<string, string> {
+  const propias = Object.keys(o.env ?? {})
+  return enjaular({ ...process.env, ...o.env }, [...propias, ...(o.permitidas ?? [])]).env
+}
+
+export async function metodosDeEntrada(o: Pick<Opciones, 'comando' | 'args' | 'cwd' | 'env' | 'lanzar' | 'permitidas'>): Promise<MetodoEntrada[]> {
+  const hijo = (o.lanzar ?? spawnReal)(o.comando, o.args, { cwd: o.cwd, env: entornoDelAgente(o), stdio: ['pipe', 'pipe', 'ignore'] })
   hijo.stdin?.on('error', () => {})
   const conn = new ClientSideConnection(() => ({ sessionUpdate: async () => {}, requestPermission: async () => ({ outcome: { outcome: 'cancelled' } }) }),
     ndJsonStream(Writable.toWeb(hijo.stdin!) as WritableStream<Uint8Array>, Readable.toWeb(hijo.stdout!) as ReadableStream<Uint8Array>))
@@ -107,7 +116,7 @@ export function ultimaPalabraDe(colchon: string): string {
 
 export async function abrirSesionACP(o: Opciones): Promise<{ preguntar(texto: string): Promise<string>; cancelar(): Promise<void>; cerrar(): void; configurar(id: string, valor: string): Promise<void> }> {
   console.error(`[asesor] spawn ${o.comando.slice(-52)} · args ${o.args.length} · env extra: ${Object.keys(o.env ?? {}).join(',') || 'nada'}`)
-  const hijo = (o.lanzar ?? spawnReal)(o.comando, o.args, { cwd: o.cwd, env: { ...process.env, ...o.env }, stdio: ['pipe', 'pipe', 'pipe'] })
+  const hijo = (o.lanzar ?? spawnReal)(o.comando, o.args, { cwd: o.cwd, env: entornoDelAgente(o), stdio: ['pipe', 'pipe', 'pipe'] })
   let causa: Error | null = null
   let avisar!: (e: Error) => void
   const muerte = new Promise<never>((_, rej) => { avisar = rej }); muerte.catch(() => {})

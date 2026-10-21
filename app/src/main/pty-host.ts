@@ -1,3 +1,4 @@
+import { enjaular } from './motores/jaula'
 // Proceso utilitario de terminales: aísla el módulo nativo (node-pty) del proceso principal.
 import * as pty from '@lydell/node-pty'
 
@@ -13,7 +14,7 @@ const terms = new Map<string, pty.IPty>()
 port.on('message', ({ data: m }) => {
   if (m.type === 'spawn') {
     try {
-      const t = pty.spawn(m.cmd, m.args, { name: 'xterm-256color', cols: m.cols, rows: m.rows, cwd: m.cwd, env: { ...process.env, ...m.env } as Record<string, string> })
+      const t = pty.spawn(m.cmd, m.args, { name: 'xterm-256color', cols: m.cols, rows: m.rows, cwd: m.cwd, env: enjaular({ ...process.env, ...m.env }, Object.keys(m.env ?? {})).env as Record<string, string> })
       terms.set(m.id, t)
       t.onData((data) => port.postMessage({ type: 'data', id: m.id, data }))
       t.onExit(({ exitCode }) => { terms.delete(m.id); port.postMessage({ type: 'exit', id: m.id, code: exitCode }) })
