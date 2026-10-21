@@ -29,3 +29,31 @@
 
 | variante | n | acierto (IC 95 %) | hechos | tokens | latencia s | peor que IA sola | errores |
 |---|---|---|---|---|---|---|---|
+
+## Repetibilidad del examen (el mismo contexto, otra vez)
+
+
+El instrumento se mide a sí mismo: la misma pregunta con el mismo contexto, respondida y juzgada otra vez.
+
+Si el acierto se mueve, lo que se mide es el ruido del modelo y del juez — y ninguna tolerancia
+
+del veredicto puede ser más pequeña que ese ruido.
+
+
+| variante | corrida original | repetición | acierto | Δ |
+
+|---|---|---|---|---|
+
+| daimon | 0.771 | 2 | 0.771 | +0.000 |
+
+| sesion | 0.843 | 2 | 0.843 | +0.000 |
+
+| daimon | 0.771 | 3 | 0.771 | +0.000 |
+
+| sesion | 0.843 | 3 | 0.843 | +0.000 |
+
+
+Movimiento observado: de +0.000 a +0.000 (rango 0.000).
+
+**El examen es determinista**: con el mismo modelo y el mismo contexto, el acierto sale idéntico. Eso significa que una variación entre dos corridas **no es ruido del instrumento**: es que cambió el modelo que responde (o el contexto). La prueba está en `ia_sola`, que no tiene contexto: si sus respuestas cambian, el modelo es otro.
+

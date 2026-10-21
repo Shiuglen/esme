@@ -260,6 +260,11 @@ def cmd_repeticion(a):
         (d / f"scored_rep{rep}.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in filas), encoding="utf-8")
     # el resumen: cuánto se mueve el acierto de la misma variante con el mismo contexto
     original = [json.loads(l) for l in (d / "scored.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+    ans_orig = {}
+    p_orig = d / "answers.jsonl"
+    if p_orig.exists():
+        for r in map(json.loads, p_orig.read_text(encoding="utf-8").splitlines()):
+            ans_orig[(r["item_id"], r["variant"])] = r["answer"]
     for n in pedidos:
         line = [f"{n}"]
         base = [r for r in original if r["variant"] == n and "score" in r]
@@ -273,6 +278,17 @@ def cmd_repeticion(a):
             rs = [r for r in rs if r["variant"] == f"{n}#{rep}"]
             if rs:
                 line.append(f"rep{rep}={np.mean([r['score'] for r in rs]):.3f}")
+        # ¿las respuestas son las mismas? (si no, cambió el modelo, no la memoria)
+        p_ans = d / f"answers_rep{a.veces}.jsonl"
+        if p_ans.exists() and ans_orig:
+            same = tot = 0
+            for r in map(json.loads, p_ans.read_text(encoding="utf-8").splitlines()):
+                if r["variant"] == f"{n}#{a.veces}":
+                    tot += 1
+                    if ans_orig.get((r["item_id"], n)) == r["answer"]:
+                        same += 1
+            if tot:
+                line.append(f"mismas respuestas={same}/{tot}")
         print("  ".join(line))
 
 
@@ -316,6 +332,16 @@ def _nota_repetibilidad(d) -> list[str]:
     if not lineas:
         return []
     deltas = [float(l.rsplit("|", 2)[1]) for l in lineas]
+    rango = max(deltas) - min(deltas)
+    cierre = (f"\nMovimiento observado: de {min(deltas):+.3f} a {max(deltas):+.3f} (rango {rango:.3f}).\n")
+    if rango < 1e-9:
+        cierre += ("\n**El examen es determinista**: con el mismo modelo y el mismo contexto, el acierto sale "
+                   "idéntico. Eso significa que una variación entre dos corridas **no es ruido del "
+                   "instrumento**: es que cambió el modelo que responde (o el contexto). La prueba está en "
+                   "`ia_sola`, que no tiene contexto: si sus respuestas cambian, el modelo es otro.\n")
+    else:
+        cierre += (f"\nEl instrumento se mueve {rango:.3f} con el mismo contexto: ninguna diferencia "
+                   "menor que eso se puede afirmar.\n")
     return ["## Repetibilidad del examen (el mismo contexto, otra vez)\n",
             "El instrumento se mide a sí mismo: la misma pregunta con el mismo contexto, respondida y juzgada otra vez.",
             "Si el acierto se mueve, lo que se mide es el ruido del modelo y del juez — y ninguna tolerancia",
@@ -323,8 +349,7 @@ def _nota_repetibilidad(d) -> list[str]:
             "| variante | corrida original | repetición | acierto | Δ |",
             "|---|---|---|---|---|",
             *lineas,
-            f"\nMovimiento observado: de {min(deltas):+.3f} a {max(deltas):+.3f} "
-            f"(rango {max(deltas) - min(deltas):.3f}).\n"]
+            cierre]
 
 
 def cmd_report(a):
