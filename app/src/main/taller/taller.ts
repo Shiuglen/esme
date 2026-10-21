@@ -11,6 +11,7 @@ import { leeCurva } from './curva-io'
 import type { Curva } from './curva'
 import { errorDelProveedor, esTemporal, sesionMuerta } from './fallos'
 import { leeRoles, textoConRol, type Rol } from './roles'
+import { deltaDeUso, type Estado } from './uso'
 import { otroModeloGratis } from './gratis'
 import { autoRespuesta, type Acceso } from './acceso'
 import { declaradas, enjaular } from '../motores/jaula'
@@ -65,6 +66,7 @@ type Registro = {
   ids: Set<string>; cubo: number; inicioTurno: number; cancelado: boolean; descartada: boolean
   ultimoEmitido: number; temporizador?: NodeJS.Timeout
   usoEscrito?: { entrada: number; salida: number; pensamiento: number; contexto: number; coste?: number }   // lo que ya llegó al Uso: los turnos anotan su delta
+  usoMotor?: Estado   // lo último que reportó el motor y en qué idioma habla: el delta sale de ahí
 }
 
 const finCubo = (ms: number) => (Math.floor(ms / MS_CUBO) + 1) * MS_CUBO
@@ -628,7 +630,18 @@ export class Taller {
     this.actividad(r)
     if (t.turnos === 0 && t.primeraRespuestaMs === undefined) t.primeraRespuestaMs = Math.max(0, this.ahora() - r.inicioTurno)
     if (e.tipo === 'herramienta') { r.ids.add(e.id); t.herramientas = Math.max(t.herramientas, r.ids.size) }
-    else if (e.tipo === 'uso') { t.uso.entrada += e.entrada; t.uso.salida += e.salida; t.uso.pensamiento += e.pensamiento ?? 0 }
+    else if (e.tipo === 'uso') {
+      // El motor manda el acumulado de su sesión, no el turno: lo que pasó es la diferencia con lo
+      // que Ya Reportedó. Y si esa diferencia es más grande que la ventana del modelo, el contador
+      // venía de otro sitio (el motor reparte su acumulado, o la app se reinició): ese salto no es
+      // de este turno y no se cuenta. (Medido: el 84,6 % de los tokens que la app anotaba venía de
+      // saltos imposibles. Ver app/src/main/taller/uso.ts y scripts/banco_memoria.py.)
+      const d = deltaDeUso({ entrada: e.entrada, salida: e.salida, pensamiento: e.pensamiento ?? 0 }, r.usoMotor, t.uso.contextoTotal ?? 0)
+      r.usoMotor = d.estado
+      t.uso.entrada += d.delta.entrada
+      t.uso.salida += d.delta.salida
+      t.uso.pensamiento += d.delta.pensamiento
+    }
     else if (e.tipo === 'contexto') { t.uso.contextoUsado = e.usado; t.uso.contextoTotal = e.total; t.uso.coste = e.coste ?? t.uso.coste }
     this.registrar(r, e)
     this.cambio(r, false)

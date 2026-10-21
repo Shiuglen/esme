@@ -28,6 +28,8 @@ contextBridge.exposeInMainWorld('daimon', {
     olvidar: (id: string) => ipcRenderer.invoke('mente:olvidar', id),
     ingerir: (paths: string[]) => ipcRenderer.invoke('mente:ingerir', paths),
     atlas: () => ipcRenderer.invoke('mente:atlas'),
+    espejo: (ruta: string, motivo: string) => ipcRenderer.invoke('mente:espejo', ruta, motivo),
+    espejoComparar: (ruta: string, contra: string) => ipcRenderer.invoke('mente:espejo:comparar', ruta, contra),
     repeticiones: () => ipcRenderer.invoke('mente:repeticiones'),
     necesidad: () => ipcRenderer.invoke('mente:necesidad'),
     memoria: (id: string) => ipcRenderer.invoke('mente:memoria', id),

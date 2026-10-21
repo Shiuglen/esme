@@ -220,7 +220,12 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
             return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
         r = await locked(lambda: rea_mod.ingerir(home, evidencia, ruta.strip(), motivo=b.get("motivo", "")))()
         bus.publish({"type": "rea", **r})
-        return JSONResponse({"ok": True, **r})
+        # El informe en texto: la ventana lo enseña con sus luces y sus sombras.
+        try:
+            texto = Path(r["informe"]).read_text(encoding="utf-8")
+        except OSError:
+            texto = ""
+        return JSONResponse({"ok": True, **r, "texto": texto})
 
     @mcp.custom_route("/rea/recuerdos", methods=["POST"])
     async def rea_recuerdos(req: Request):
