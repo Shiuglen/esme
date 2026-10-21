@@ -1,7 +1,7 @@
 // El vestidor (Ajustes › Apariencia): aquí la persona cambia Esme entera. Arriba, la piel que lleva con deshacer, rehacer y
 // restablecer; luego las pieles de casa, cada una pintada con sus propios colores y su letra; y abajo cada capa de la piel
 // para afinarla. Los deslizadores ensayan en vivo y solo se guarda en el historial lo que sueltas.
-import { LoaderCircle, Moon, Redo2, RotateCcw, Sparkles, Sun, Trash2, Undo2 } from 'lucide-react'
+import { Check, LoaderCircle, Moon, Redo2, RotateCcw, Sparkles, Sun, Trash2, Undo2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { toast } from 'sonner'
@@ -129,7 +129,9 @@ function Tarjeta({ p, tema, puesta, onVestir }: { p: Piel; tema: Tema; puesta: b
 
 function Segmentado<T extends string>({ valor, opciones, onCambio, etiqueta }: { valor: T; opciones: [T, string][]; onCambio(v: T): void; etiqueta: string }) {
   return (
-    <div role="radiogroup" aria-label={etiqueta} className="inline-flex rounded-full border border-linea bg-s1 p-0.5">
+    // `justify-self-start`: dentro de una rejilla, un `inline-flex` se estira y el grupo de opciones
+    // quedaba repartido por toda la anchura, como una barra rota en vez de un grupo de botones.
+    <div role="radiogroup" aria-label={etiqueta} className="inline-flex w-fit justify-self-start rounded-full border border-linea bg-s1 p-0.5">
       {opciones.map(([id, texto]) => (
         <button key={id} type="button" role="radio" aria-checked={valor === id} onClick={() => onCambio(id)}
           className={cn('h-7 rounded-full px-3 text-[12.5px] transition-colors', valor === id ? 'bg-acento text-sobre-acento' : 'text-texto-2 hover:text-texto')}>{texto}</button>
@@ -311,7 +313,7 @@ export function Apariencia({ tema, onTema, pieles }: { tema: Tema; onTema(t: Tem
       <Capa titulo="Color">
         <div className="flex flex-wrap items-center gap-2">
           <Segmentado etiqueta="Tipo de color" valor={p.color.tipo} onCambio={(t) => cambia({ color: t === 'estilo' ? { tipo: 'estilo', estilo: 'esmeralda' } : t === 'gustos' ? { tipo: 'gustos', gustos: { tono: 165, papel: 30, fuerza: 70 } } : { tipo: 'libre', noche: base.noche, dia: base.dia } })}
-            opciones={[['estilo', 'De casa'], ['gustos', 'Mi ecuación'], ['libre', 'Libre']]} />
+            opciones={[['estilo', 'De casa'], ['gustos', 'A tu gusto'], ['libre', 'Libre']]} />
           {p.color.tipo === 'estilo' && (
             <Segmentado etiqueta="Estilo de casa" valor={p.color.estilo} onCambio={(estilo) => cambia({ color: { tipo: 'estilo', estilo } })}
               opciones={[['esmeralda', 'Esmeralda'], ['quartz', 'Cuarzo'], ['lime', 'Lima'], ['grabado', 'Tinta y Luz']]} />
@@ -365,14 +367,22 @@ export function Apariencia({ tema, onTema, pieles }: { tema: Tema; onTema(t: Tem
 
       <Capa titulo="Escena">
         <p className="m-0 text-xs text-texto-3">Un fondo vivo detrás de toda Esme, teñido con tu piel. Toca uno y míralo detrás de esta hoja.</p>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(132px,1fr))] gap-2" role="radiogroup" aria-label="Escena">
-          {(['ninguna', ...ESCENA_IDS] as const).map((id) => (
-            <button key={id} type="button" role="radio" aria-checked={p.escena === id} onClick={() => cambia({ escena: id })}
-              className={cn('group relative h-16 overflow-hidden rounded-3 border text-left transition-all', p.escena === id ? 'border-acento ring-2 ring-acento/40' : 'border-linea hover:border-linea-fuerte')}>
-              <span aria-hidden className="absolute inset-0 opacity-80 transition-opacity group-hover:opacity-100" style={{ background: muestraDe(id) }} />
-              <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-velo/70 px-2 pt-4 pb-1.5 text-[12px] font-medium text-sobre-velo">{id === 'ninguna' ? 'Sin escena' : ESCENAS[id].nombre}</span>
-            </button>
-          ))}
+        {/* Cada escena es una miniatura con su nombre DEBAJO: el rótulo encima tapaba la imagen y
+            convertía el muro de fondos en un muro de pegatinas ilegibles. */}
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(152px,1fr))] gap-x-3 gap-y-4" role="radiogroup" aria-label="Escena">
+          {(['ninguna', ...ESCENA_IDS] as const).map((id) => {
+            const puesta = p.escena === id
+            return (
+              <button key={id} type="button" role="radio" aria-checked={puesta} onClick={() => cambia({ escena: id })}
+                className={cn('group grid gap-2 text-left', puesta ? 'text-texto' : 'text-texto-2')}>
+                <span aria-hidden className={cn('relative block h-[74px] overflow-hidden rounded-3 border transition-all', puesta ? 'border-acento ring-2 ring-acento/45' : 'border-linea group-hover:border-linea-fuerte')}
+                  style={{ background: muestraDe(id) }}>
+                  {puesta && <span className="absolute top-1.5 right-1.5 grid size-[18px] place-items-center rounded-full bg-acento text-sobre-acento"><Check className="size-3" strokeWidth={3} /></span>}
+                </span>
+                <span className="truncate px-0.5 text-[12.5px] font-medium">{id === 'ninguna' ? 'Sin escena' : ESCENAS[id].nombre}</span>
+              </button>
+            )
+          })}
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-3">
           <label className="grid gap-1.5 text-xs text-texto-2">Presencia de Esme<Segmentado etiqueta="Presencia de Esme" valor={p.presencia} onCambio={(presencia) => cambia({ presencia })} opciones={[['orbe', 'Esfera de luz'], ['orbe-voz', 'Orbe de voz'], ['cara', 'Cara'], ['ninguna', 'Ninguna']]} /></label>
@@ -385,20 +395,27 @@ export function Apariencia({ tema, onTema, pieles }: { tema: Tema; onTema(t: Tem
         {(Object.keys(PIEZAS) as Hueco[]).map((h) => (
           <div key={h} className="grid gap-2">
             <span className="text-xs text-texto-2">{PIEZAS[h].nombre}</span>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-2" role="radiogroup" aria-label={PIEZAS[h].nombre}>
-              {PIEZAS[h].variantes.map((v) => (
-                <button key={v.id} type="button" role="radio" aria-checked={p.piezas[h] === v.id} onClick={() => cambia({ piezas: { ...p.piezas, [h]: v.id } })}
-                  className={cn('grid min-h-[88px] content-between gap-2 rounded-3 border p-3 text-left transition-all', p.piezas[h] === v.id ? 'border-acento ring-2 ring-acento/35' : 'border-linea hover:border-linea-fuerte')}>
-                  <span className="grid min-h-9 place-items-center overflow-hidden text-[19px] font-light text-texto">
-                    {h === 'saludo' && <Saludo texto="Hola." pieza={v.id as Piezas['saludo']} />}
-                    {h === 'trabajo' && <BordeTrabajo pieza={v.id as Piezas['trabajo']} activo radio={12}><span className="block rounded-[12px] border border-linea bg-s2/60 px-4 py-1.5 text-[13px] text-texto-2">pensando…</span></BordeTrabajo>}
-                    {h === 'superficie' && <span data-superficie={v.id} className="block"><span className={cn('hoja flota block rounded-[12px] px-4 py-2 text-[13px] text-texto-2', v.id === 'vidrio' && 'bg-s2/40 backdrop-blur-xl')}>Aa · tu Esme</span></span>}
-                    {h === 'sonido' && <span role="presentation" onClick={(e) => { e.stopPropagation(); void probarSonido(v.id as ModoSonido) }} className="rounded-full border border-linea px-3 py-1 text-[12px] text-texto-2 hover:text-texto">{v.id === 'nada' ? '—' : '▶ escuchar'}</span>}
-                    {h === 'pulsar' && <AlPulsar pieza={v.id as Piezas['pulsar']}><span className="block px-3 py-1.5 text-[13px] text-texto-2">pulsa aquí</span></AlPulsar>}
-                  </span>
-                  <span className="text-[12px] text-texto-2">{v.nombre}</span>
-                </button>
-              ))}
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-2.5" role="radiogroup" aria-label={PIEZAS[h].nombre}>
+              {PIEZAS[h].variantes.map((v) => {
+                const puesta = p.piezas[h] === v.id
+                return (
+                  <button key={v.id} type="button" role="radio" aria-checked={puesta} onClick={() => cambia({ piezas: { ...p.piezas, [h]: v.id } })}
+                    className={cn('group grid gap-2 rounded-3 border p-2 text-left transition-all', puesta ? 'border-acento ring-2 ring-acento/35' : 'border-linea hover:border-linea-fuerte')}>
+                    {/* el fondo del muestrario: sin algo detrás, el vidrio y el papel no se ven */}
+                    <span className="grid h-[62px] place-items-center overflow-hidden rounded-2 bg-fondo/80 p-2 text-[19px] font-light text-texto">
+                      {h === 'saludo' && <Saludo texto="Hola." pieza={v.id as Piezas['saludo']} />}
+                      {h === 'trabajo' && <BordeTrabajo pieza={v.id as Piezas['trabajo']} activo radio={12}><span className="block rounded-[12px] border border-linea bg-s2/60 px-4 py-1.5 text-[13px] text-texto-2">pensando…</span></BordeTrabajo>}
+                      {h === 'superficie' && <span data-superficie={v.id} className="block"><span className={cn('hoja flota block rounded-[12px] px-4 py-2 text-[13px] text-texto-2', v.id === 'vidrio' && 'bg-s2/40 backdrop-blur-xl')}>Aa · tu Esme</span></span>}
+                      {h === 'sonido' && <span role="presentation" onClick={(e) => { e.stopPropagation(); void probarSonido(v.id as ModoSonido) }} className="rounded-full border border-linea px-3 py-1 text-[12px] text-texto-2 hover:text-texto">{v.id === 'nada' ? '—' : '▶ escuchar'}</span>}
+                      {h === 'pulsar' && <AlPulsar pieza={v.id as Piezas['pulsar']}><span className="block px-3 py-1.5 text-[13px] text-texto-2">pulsa aquí</span></AlPulsar>}
+                    </span>
+                    <span className="flex items-center gap-1.5 px-1">
+                      <span className="truncate text-[12.5px] font-medium text-texto-2">{v.nombre}</span>
+                      {puesta && <Check className="size-3 shrink-0 text-acento" strokeWidth={3} />}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           </div>
         ))}
