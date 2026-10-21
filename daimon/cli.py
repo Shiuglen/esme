@@ -94,6 +94,10 @@ def init_cmd(home_path: Path, sin_modelo: bool = False) -> None:
             "mmr_lambda": 1.0,
             "min_dense": 0.32,
             "max_drop": 2.0,
+            # el suelo del corte: aunque un recuerdo gane por goleada, el contexto nunca se queda
+            # con un solo trozo. Medido en el banco del espejo: sin suelo, 0,81 de acierto y 363
+            # tokens de 1500; con suelo, 1,00 y 1316.
+            "min_candidatos": 20,
         }, indent=1), encoding="utf-8")
         print(f"Mente creada en {home_path}")
 

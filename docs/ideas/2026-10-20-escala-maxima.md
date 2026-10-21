@@ -231,6 +231,15 @@ derivan de la evidencia de REA, así que no hay juez ni modelo en medio. Detalle
 causa está vista: **los recuerdos temáticos de la mente se llevan la pregunta** y el conocimiento
 nuevo del programa se queda fuera del presupuesto. La palanca siguiente: cuando la pregunta nombra
 un programa, su conocimiento tiene que ganar.
+**Hecho (21-oct, el suelo): el tope era del tálamo, no de la mente.** La pregunta de las funciones no
+la respondía mal la mente: **no le llegaba la respuesta**. El corte adaptativo del tálamo (`max_drop`,
+2,0 puntos) dejaba la pregunta con **35 tokens de 1.500** y un solo trozo; el acierto caía a 0,00.
+El corte era absoluto sobre una puntuación sin cota, así que se estrecha solo cuando la mente
+crece. Arreglo: un **suelo** (`min_candidatos`, 20) — el corte puede quitar ruido, pero no puede
+dejar a la mente ciega. **El banco del espejo subió de 0,9206 a 1,0000** (app Electron 0,8148 →
+1,0000) y el examen visible subió de 0,8438 a **0,8510** (0,8462 llenando el presupuesto). Detalle:
+`docs/resultados/2026-10-21-el-suelo-del-talamo.md`; la curva se puede rehacer con
+`scripts/curva_corte.py`.
 **Hecho (21-oct, el bucle): absorber → recrear.** Cuando pides una herramienta nueva, el encargo
 al equipo lleva **lo que la mente sabe**: de la necesidad (la búsqueda de siempre) y, si el encargo
 nombra la ruta de un programa, **todo** el conocimiento que el espejo dejó de él (puerta

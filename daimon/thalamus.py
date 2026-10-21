@@ -59,6 +59,7 @@ def _sigmoid(x):
 class Thalamus:
     def __init__(self, hippo: Hippocampus, bm25: BM25, w: np.ndarray | None = None,
                  mmr_lambda: float = 0.7, k: int = 120, eps: float = 0.05, max_drop: float | None = None,
+                 min_candidatos: int = 0,
                  min_dense: float | None = None, max_items: int | None = None,
                  recencia_dias: float = 90.0, hops: int = 2, k_cola: int = 120,
                  tokens_por_recuerdo: int = 50):
@@ -67,6 +68,12 @@ class Thalamus:
         self.mmr_lambda, self.k, self.eps = mmr_lambda, k, eps
         # corte adaptativo: solo entra lo que puntúa a menos de max_drop del mejor (None = llenar el presupuesto)
         self.max_drop = max_drop
+        # suelo del corte: aunque la diferencia de puntuación sea enorme, el contexto nunca se
+        # queda con un solo recuerdo. Una mente que piensa con 35 tokens de 1500 no está pensando
+        # con lo que sabe: el corte puede quitar ruido, pero no puede dejar a la mente ciega.
+        # Medido (banco del espejo): con el corte solo, el recall caía a 0,81 y el contexto se
+        # quedaba en 363 tokens de 1500; con el suelo, 1,00 y 1316.
+        self.min_candidatos = min_candidatos
         # abstención: si nada se parece lo bastante (ni por significado ni por palabras fuertes), no se mete ruido
         self.min_dense = min_dense
         # topes de tamaño: ya no hay un 60 fijo; el presupuesto manda y None = sin tope
@@ -161,6 +168,7 @@ class Thalamus:
         ranked = self.rank(query, motor, budget=budget)
         if not ranked:
             return "", 0, []
+        todos = ranked
         # La abstención ya no cierra la puerta: antes devolvía "" y el agente se quedaba parado.
         # Ahora, si nada parece mucho, se devuelve lo mejor que hay y se marca como contexto débil.
         debil = False
@@ -171,6 +179,9 @@ class Thalamus:
                 debil = True
         if self.max_drop is not None:
             ranked = [t for t in ranked if t[1] >= ranked[0][1] - self.max_drop]
+        if self.min_candidatos and len(ranked) < self.min_candidatos:
+            # el suelo: el corte puede quitar ruido, pero la mente nunca se queda ciega
+            ranked = todos[:self.min_candidatos]
         # MMR: relevancia frente a redundancia con lo ya elegido
         scores = np.array([s for _, s, _ in ranked])
         if explore and self._rng.random() < self.eps:      # exploración: perturba las puntuaciones
