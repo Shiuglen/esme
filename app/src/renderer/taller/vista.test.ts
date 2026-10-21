@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TareaTaller } from '../lib/bridge'
-import { actividadAhora, archivable, barrasDe, duracion, explicarError, motivoFin, ordenPlanta, silencioMs, textoCambios } from './vista'
+import { actividadAhora, archivable, barrasDe, duracion, explicarError, listosPara, motivoFin, ordenPlanta, silencioMs, textoCambios } from './vista'
 
 const tarea = (p: Partial<TareaTaller>): TareaTaller => ({
   id: 'aaaaaaaa', titulo: 't', texto: 't', motor: 'opencode', motorNombre: 'OpenCode', carpeta: null, estado: 'lista', copia: null,
@@ -143,5 +143,23 @@ describe('archivar lo viejo', () => {
 describe('la sesión pedida con otras palabras', () => {
   it('«authMethods» (el motor ofrece formas de entrar) también es pedir que inicies sesión', () => {
     expect(explicarError('La sesión del motor está cerrada. Su última palabra: «data: { authMethods: [ [Object] ] }»', 'Qwen Code', '')?.tipo).toBe('sesion')
+  })
+})
+
+describe('el radar del error — listosPara', () => {
+  const motores = [
+    { id: 'opencode', instalado: true },
+    { id: 'gemini', instalado: true },
+    { id: 'claude', instalado: true },
+    { id: 'qwen', instalado: false },
+  ] as { id: string; instalado: boolean }[]
+  const noListos = new Map([['claude', 'no ha entrado nadie']])
+  it('cuenta los motores instalados, distintos al caído y listos', () => {
+    expect(listosPara('opencode', motores, noListos)).toBe(1)   // gemini sí; claude no está listo; qwen sin instalar
+    expect(listosPara('claude', motores, noListos)).toBe(2)     // opencode y gemini
+  })
+  it('nadie instalado y listo: 0 (la fila dirá «Ninguno»)', () => {
+    expect(listosPara('opencode', motores, new Map([['gemini', 'x'], ['claude', 'y']]))).toBe(0)
+    expect(listosPara('opencode', [], new Map())).toBe(0)
   })
 })
