@@ -15,6 +15,7 @@ import { cn } from '../lib/cn'
 import { useMuelle } from '../tinta/movimiento'
 import { Revision, type AccionesRevision } from './Revision'
 import { Arena } from './Arena'
+import { CadenaComite } from './CadenaComite'
 import { Forja } from './Forja'
 import { VistaPrevia } from './VistaPrevia'
 import { contarLineas } from './diff'
@@ -42,6 +43,11 @@ function ParlamentoPuerta({ oficios, candidatos, onArmar }: { oficios: Rol[]; ca
     setElegidos((v) => (v.length ? v : oficios.slice(0, 3).map((_, i) => motores[i % Math.max(1, motores.length)] ?? '')))
   }, [oficios, candidatos])   // eslint-disable-line react-hooks/exhaustive-deps
   if (!oficios.length || !unicos.length) return null
+  const armar = async () => {
+    setArmando(true)
+    try { setCierre(await onArmar(oficios.slice(0, 3).map((o, i) => ({ rol: o.id, motor: elegidos[i] ?? '' })))) }
+    finally { setArmando(false) }
+  }
   if (cierre) {
     if (!('estado' in cierre)) return <p role="status" className="mt-2 text-xs text-texto-2">{cierre.error}</p>
     const a = cierre.actaFirmada
@@ -74,13 +80,15 @@ function ParlamentoPuerta({ oficios, candidatos, onArmar }: { oficios: Rol[]; ca
           </div>
         )}
         {!a && cierre.acta && <p className="mt-1 text-texto-3">El acta quedó en el diario del taller (actas-parlamento.jsonl), sin par de firma a la vista.</p>}
+        <div className="mt-2">
+          <button type="button" disabled={armando} onClick={() => void armar()} title="El mismo comité vuelve a por el encargo con más información (lo anterior queda firmado en el diario)"
+            className="inline-flex h-7 items-center gap-1.5 rounded-full border border-linea px-3 text-[12px] text-texto-2 hover:bg-s2 hover:text-texto disabled:opacity-50">
+            {armando ? <><LoaderCircle className="size-3.5 animate-spin" />Armando de nuevo…</> : 'Ronda de nuevo'}
+          </button>
+          <span className="ml-2 text-texto-3">el mismo escuadrón; anteriores quedan en el diario</span>
+        </div>
       </div>
     )
-  }
-  const armar = async () => {
-    setArmando(true)
-    try { setCierre(await onArmar(oficios.slice(0, 3).map((o, i) => ({ rol: o.id, motor: elegidos[i] ?? '' })))) }
-    finally { setArmando(false) }
   }
   return (
     <div className="mt-2.5 rounded-2 border border-linea/60 bg-s1/40 p-2.5">
@@ -199,6 +207,12 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
         </div>
         {/* mientras trabaja o espera, sus pasos en directo (Kokonut UI) */}
         {(enMarcha || t.estado === 'esperando') && <div className="mt-3 rounded-3 border border-linea/60 bg-s1/40 p-2"><AILoadingState steps={pasosDe(t)} collapseWhenDone={false} /></div>}
+        {/* El comité no compite: se pasa el testigo. Si esta tarea es relevo, la cadena entera vive aquí arriba */}
+        {t.arena === 'parlamento' && arena && arena.tareas.length > 1 && (
+          <div className="mt-3 rounded-3 border border-linea/50 bg-s1/30">
+            <CadenaComite tareas={arena.tareas} actual={t.id} lineas={arena.lineas} ahora={ahora} onVer={arena.onVer} />
+          </div>
+        )}
         <nav className="mt-3 flex items-center gap-1 border-b border-linea/70 pb-1" aria-label="Vista de la tarea">
           {(['vivo', 'revision', 'previa', ...(arena && arena.tareas.length > 1 ? ['arena' as const] : [])] as Pestana[]).map((p) => (
             <button key={p} type="button" onClick={() => setPestana(p)} aria-current={pestana === p}
