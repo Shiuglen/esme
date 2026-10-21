@@ -8,7 +8,7 @@ import {
   Search, ShieldCheck, Square, SquareTerminal, Trash2, Wrench, X, type LucideIcon,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Markdown } from '../chat/Markdown'
 import type { TareaTaller } from '../lib/bridge'
 import { cn } from '../lib/cn'
@@ -23,6 +23,7 @@ import { describirHerramienta, type ItemLinea } from './linea'
 import { SelectorOpcion } from './Opciones'
 import { activa, barrasDe, duracion, explicarError, motivoFin } from './vista'
 import { BarrasActividad } from './Micrografica'
+import { VENTANA, ventanaDe, visiblesDe } from './ventana'
 
 const ICONO_CLASE: Record<string, LucideIcon> = {
   read: Eye, edit: PencilLine, delete: Trash2, move: MoveRight, search: Search, execute: SquareTerminal, think: Brain, fetch: Globe,
@@ -168,13 +169,30 @@ function Accion({ icono: Icono, texto, onClick }: { icono: LucideIcon; texto: st
 function EnVivo({ t, linea }: { t: TareaTaller; linea: ItemLinea[] | undefined }) {
   const caja = useRef<HTMLDivElement>(null)
   const pegado = useRef(true)
+  const [cuantas, setCuantas] = useState(VENTANA)
+  const [ancla, setAncla] = useState<number | null>(null)   // dónde se para la ventana si se sube a leer
+  const total = linea?.length ?? 0
   useLayoutEffect(() => { const el = caja.current; if (el && pegado.current) el.scrollTop = el.scrollHeight }, [linea])
   if (!linea) return <p className="p-6 text-sm text-texto-3">Cargando lo que ha hecho…</p>
+  const ventana = ventanaDe(linea, cuantas, ancla)
+  const visibles = visiblesDe(linea, ventana)
   return (
     <div ref={caja} className="h-full space-y-2.5 overflow-y-auto px-5 py-4"
-      onScroll={(e) => { const el = e.currentTarget; pegado.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80 }}>
+      onScroll={(e) => {
+        const el = e.currentTarget
+        const abajo = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+        pegado.current = abajo
+        // al subir a leer, la ventana se para donde estaba: lo que llega después no te empuja
+        setAncla(abajo ? null : total)
+      }}>
+      {ventana.hayAntes && (
+        <button type="button" onClick={() => setCuantas((c) => c + VENTANA)}
+          className="w-full rounded-3 border border-linea bg-s1/60 py-1.5 text-[12px] text-texto-2 transition-colors hover:bg-s2/60 hover:text-texto">
+          Ver los {ventana.desde} anteriores
+        </button>
+      )}
       {linea.length === 0 && <p className="text-sm text-texto-3">{t.estado === 'preparando' ? 'Montando la copia aislada y despertando al motor…' : 'Todavía no hay nada.'}</p>}
-      {linea.map((i) => <Item key={i.clave} i={i} />)}
+      {visibles.map((i) => <Item key={i.clave} i={i} />)}
       {t.estado === 'trabajando' && linea.at(-1)?.tipo !== 'texto' && (
         <p className="flex items-center gap-2 text-xs text-texto-3"><LoaderCircle className="size-3.5 animate-spin" strokeWidth={1.75} />Trabajando</p>
       )}
@@ -182,7 +200,7 @@ function EnVivo({ t, linea }: { t: TareaTaller; linea: ItemLinea[] | undefined }
   )
 }
 
-function Item({ i }: { i: ItemLinea }) {
+const Item = memo(function Item({ i }: { i: ItemLinea }) {
   switch (i.tipo) {
     case 'usuario': return <div className="rounded-3 border border-linea bg-s2/60 px-3.5 py-2.5 text-[13.5px] whitespace-pre-wrap text-texto">{i.texto}</div>
     case 'texto': return <div className="text-[14px] leading-[22px] text-texto"><Markdown texto={i.texto} /></div>
@@ -224,7 +242,7 @@ function Item({ i }: { i: ItemLinea }) {
         <Brain className="size-3.5 shrink-0" strokeWidth={1.5} />Le heredé tu memoria: {i.recuerdos} {i.recuerdos === 1 ? 'recuerdo' : 'recuerdos'} ({i.tokens} tokens)
       </p>)
   }
-}
+})
 
 function Pensamiento({ texto }: { texto: string }) {
   const [abierto, setAbierto] = useState(false)
