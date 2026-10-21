@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from .hippocampus import Hippocampus
-from .ingest import Event
+from .ingest import Event, sin_boilerplate
 from .lens import Lens, hash_encoder, model2vec_encoder, ollama_encoder, onnx_encoder, ruta_modelo
 
 # Modelos de Ollama que la Lente propia sabe correr sin Ollama (mismo modelo, motor propio)
@@ -74,6 +74,7 @@ class Home:
 
     def ingest(self, events: list[Event]) -> int:
         """Ingesta sincronizada por fuente (lo editado se actualiza, lo desaparecido queda obsoleto)."""
+        events = sin_boilerplate(events)      # lo que se repite dentro de una misma fuente, no entra dos veces
         n = self.hippo.add_source_events(events)
         self.thalamus.bm25 = BM25(self.hippo.events())
         return n

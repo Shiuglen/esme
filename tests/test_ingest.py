@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from daimon.ingest import collect, from_claude_jsonl, from_markdown
+from daimon.ingest import Event, collect, from_claude_jsonl, from_markdown, sin_boilerplate
 from daimon.troceo import trocea
 
 FIX = Path(__file__).parent / "fixtures"
@@ -101,3 +101,27 @@ def test_las_urls_rotas_del_harvest_se_vuelven_a_pegar():
     assert "https://\n" not in arreglado
     # y un texto normal no se toca
     assert repara_urls("una línea\notra línea") == "una línea\notra línea"
+
+
+def test_el_boilerplate_repetido_no_entra_dos_veces():
+    """Absorber un documento largo mete ruido: catorce variantes del mismo texto de móvil llenaban
+    la memoria, y el recall respondía con eso en vez de con lo que importaba."""
+    base = "Deska mobile 1.3.0. - `deska-1.3.0-android.apk`: direct install on Android (sideload)."
+    evs = [Event(f"e{i}", base.replace("1.3.0", f"1.{i}.0"), "doc", "doc", "2026-10-21", 0.8)
+           for i in range(2, 16)]
+    quedan = sin_boilerplate(evs)
+    assert len(quedan) == 1
+
+
+def test_lo_que_se_parece_pero_viene_de_otro_fichero_se_queda():
+    """La puerta es por fuente: dos documentos que hablan de lo mismo son dos recuerdos, no uno."""
+    texto = "El agente guarda sus skills mientras aprende y cada skill nueva es un fichero."
+    evs = [Event("a", texto, "doc1", "doc", "2026-10-21", 0.8),
+           Event("b", texto, "doc2", "doc", "2026-10-21", 0.8)]
+    assert len(sin_boilerplate(evs)) == 2
+
+
+def test_lo_que_es_distinto_se_queda():
+    evs = [Event("a", "El agente guarda sus skills mientras aprende y cada skill nueva es un fichero.", "doc", "doc", "2026-10-21", 0.8),
+           Event("b", "La jaula del agente: el HOME, las claves SSH y el llavero se quedan fuera.", "doc", "doc", "2026-10-21", 0.8)]
+    assert len(sin_boilerplate(evs)) == 2

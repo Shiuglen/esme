@@ -42,6 +42,70 @@ def _id(text: str) -> str:
     return hashlib.sha1(" ".join(text.lower().split()).encode()).hexdigest()[:16]
 
 
+def _firma(texto: str) -> int:
+    """La firma de un trozo (SimHash de 64 bits).
+
+    Dos trozos que dicen casi lo mismo tienen firmas casi iguales: eso permite reconocer el
+    *boilerplate repetido* sin saber de antemano qué se repite.
+    """
+    palabras = _norm_palabras(texto)
+    if not palabras:
+        return 0
+    tejas = {" ".join(palabras[i:i + 3]) for i in range(max(1, len(palabras) - 2))}
+    contadores = [0] * 64
+    for teja in tejas:
+        h = int.from_bytes(hashlib.blake2b(teja.encode(), digest_size=8).digest(), "big")
+        for b in range(64):
+            contadores[b] += 1 if (h >> b) & 1 else -1
+    firma = 0
+    for b in range(64):
+        if contadores[b] > 0:
+            firma |= 1 << b
+    return firma
+
+
+def _norm_palabras(texto: str) -> list[str]:
+    """Las palabras del texto, en minúsculas y sin acentos: lo que compara la firma."""
+    import unicodedata
+    plano = "".join(c for c in unicodedata.normalize("NFKD", texto.lower())
+                    if not unicodedata.combining(c))
+    return [p for p in re.findall(r"[a-z]+", plano) if len(p) > 2]
+
+
+def _distancia(a: int, b: int) -> int:
+    return bin(a ^ b).count("1")
+
+
+UMBRAL_BOILERPLATE = 3      # de 64 bits: casi el mismo trozo
+
+
+def sin_boilerplate(eventos: list[Event]) -> list[Event]:
+    """Quita los trozos que repiten lo mismo **dentro de la misma fuente**.
+
+    Absorber un documento largo mete ruido dentro: el registro de cambios de un producto trae
+    catorce variantes del mismo texto de móvil, y la memoria se llenaba de eso (y el `recall`
+    respondía con boilerplate en vez de con lo que importaba).
+
+    La puerta es **estricta a propósito**: sólo dentro de una misma fuente, y sólo si las
+    firmas están a 3 bits o menos (≈95 % de parecido). Lo que se parece a lo que ya está en
+    la memoria de *otra* fuente se queda: dos documentos que hablan de lo mismo son dos
+    recuerdos, no uno.
+    """
+    por_fuente: dict[str, list[Event]] = {}
+    for e in eventos:
+        por_fuente.setdefault(e.source, []).append(e)
+    quedan: list[Event] = []
+    for fuente, sus in por_fuente.items():
+        vistas: list[int] = []
+        for e in sus:
+            firma = _firma(e.text)
+            if any(_distancia(firma, v) <= UMBRAL_BOILERPLATE for v in vistas):
+                continue
+            vistas.append(firma)
+            quedan.append(e)
+    return quedan
+
+
 def _mtime_iso(path: Path) -> str:
     return datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).isoformat()
 
