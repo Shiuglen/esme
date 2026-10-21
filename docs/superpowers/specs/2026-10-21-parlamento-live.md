@@ -26,8 +26,10 @@
 // Fases de construcción:
 //   [x] Fase 1 (hoy): el contrato puro — planParlamento + encargoRelevo + veredictoLegible + tests.
 //                     Sin tocar el runtime: la lógica del comité se probara sola.
-//   [ ] Fase 2: Taller.parlamentar(tarea, albaces) — encola los relevo encadenados (cada uno con
-//               su tarea real y su veredicto) y el ítem del taller muestra «Parlamento en curso».
+//   [x] Fase 2 (21 oct, tarde): Taller.parlamentar() corre de verdad — encadena los relevos
+//               encadenados como tareas reales del Taller (arena «parlamento»), el siguiente hereda
+//               la evidencia del anterior (poda a 800), y si un relevo se niega o muere el comité
+//               para y entrega lo hecho («tumbado»). El veredicto lo lee el último relevo.
 //   [x] Fase 3 (21 oct, tarde): la puerta viva — handler `taller:parlamentar` (validación de 2..5
 //               relevos con oficio+motor), preload+bridge (`ResultadoParlamento`), y en el Detalle
 //               la puerta «Armar el parlamento» dentro del aviso de negativa: tres oficios, tú
@@ -42,6 +44,15 @@
 //               firma (también las tumbadas: el acta dice hasta dónde llegó) y avisa a la mente
 //               (aprenderEquipo con los estados frescos de los relevos). El arco del parlamento
 //               está cerrado: instinto → radar → comité → acta → mente.
+//   [x] Fase 5 (21 oct, noche II): el juez local, la pieza que quedaba en la cola del instinto.
+//               El veredicto NO se firma con la PALABRA del último relevo sino con la EVIDENCIA de
+//               su sesión (`juezDe`): «probado» hay que ganarlo — hace falta una ejecución con
+//               pinta de prueba en la sesión («npm test», pytest, vitest…); si no corrió NADA el
+//               juez le niega el probado (dudoso); si su ÚLTIMA prueba acabó en fallo, palabra y
+//               consola chocan y el juez lo tumba. El error del runtime es un hecho, no una
+//               opinión: inapelable. Y el acta no queda escondida: vuelve en la respuesta
+//               (`actaFirmada`, validada in situ) y se lee en la puerta del comité con los
+//               relevos, la huella y su sello (o el grito de que el diario fue tocado).
 //
 // Reglas (las de la casa, sin excepción):
 //   - el creador elige quién lleva cada relevo (los que sí pueden, nunca a ciegas)

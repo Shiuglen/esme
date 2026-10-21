@@ -43,8 +43,39 @@ function ParlamentoPuerta({ oficios, candidatos, onArmar }: { oficios: Rol[]; ca
   }, [oficios, candidatos])   // eslint-disable-line react-hooks/exhaustive-deps
   if (!oficios.length || !unicos.length) return null
   if (cierre) {
-    const frase = 'estado' in cierre ? `${cierre.frase}${cierre.acta ? ' · Firmada en el diario del taller (acta Ed25519).' : ''}` : cierre.error
-    return <p role="status" className="mt-2 text-xs text-texto-2">{frase}</p>
+    if (!('estado' in cierre)) return <p role="status" className="mt-2 text-xs text-texto-2">{cierre.error}</p>
+    const a = cierre.actaFirmada
+    return (
+      <div role="status" className="mt-2 text-xs text-texto-2">
+        <p>{cierre.frase}</p>
+        {a && (
+          <div className="mt-2 rounded-2 border border-linea/50 bg-s1/40 p-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                {a.valida
+                  ? <><ShieldCheck className="size-3.5 text-exito" strokeWidth={1.75} />Acta del comité, firmada por el taller</>
+                  : <><ShieldCheck className="size-3.5 text-peligro" strokeWidth={1.75} />El acta NO se mantiene: alguien tocó el diario</>}
+              </span>
+              <span className="font-mono text-[10.5px] text-texto-3">{new Date(a.emitido).toLocaleString()}</span>
+            </div>
+            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11.5px] text-texto-3">
+              {a.relevos.map((r) => (
+                <span key={r.orden} className="inline-flex items-center gap-1">
+                  <span>{r.orden}.</span>
+                  <span className="text-texto-2">{r.rol}</span>
+                  <span className="font-mono">{r.motor}</span>
+                  {r.estado === 'error' && <span className="text-peligro">caído</span>}
+                </span>
+              ))}
+            </div>
+            <p className="mt-1.5 font-mono text-[10px] text-texto-3" title={a.firma.hash}>
+              huella sha256 {a.firma.hash.slice(0, 16)}… · acta {a.encargoSha256.slice(0, 12)}…
+            </p>
+          </div>
+        )}
+        {!a && cierre.acta && <p className="mt-1 text-texto-3">El acta quedó en el diario del taller (actas-parlamento.jsonl), sin par de firma a la vista.</p>}
+      </div>
+    )
   }
   const armar = async () => {
     setArmando(true)

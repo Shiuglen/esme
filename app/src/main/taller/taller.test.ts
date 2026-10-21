@@ -104,6 +104,8 @@ describe('Taller', () => {
 
     it('tres relevos: tres tareas reales, la segunda hereda la evidencia de la primera y el veredicto lo firma la última', async () => {
       const s = sesiones(async (o, _texto, n) => {
+        // sin consola no hay promesa que valga: el probador corrió de verdad (así se lo sella)
+        if (n === 2) o.alEvento({ tipo: 'herramienta', id: 'p1', clase: 'execute', detalle: 'npm test', estado: 'completed' })
         o.alEvento({ tipo: 'texto', texto: ['Cambié el reloj del taller.', 'Vi que el orden está bien.', 'Las 3 pruebas pasan.'][n] ?? '' })
         return 'end_turn'
       })
@@ -143,12 +145,16 @@ describe('Taller', () => {
 
     it('el veredicto queda en el acta firmada del taller, verificable línea a línea', async () => {
       const s = sesiones(async (o, _texto, n) => {
+        // el probador (tercer relevo) no vale con la frase: tiene que haber corrido de verdad
+        if (n === 2) o.alEvento({ tipo: 'herramienta', id: 'p1', clase: 'execute', detalle: 'npm test', estado: 'completed' })
         o.alEvento({ tipo: 'texto', texto: ['Cambié el reloj del taller.', 'Vi que el orden está bien.', 'Las 3 pruebas pasan.'][n] ?? '' })
         return 'end_turn'
       })
       const taller = crear(s.abrir, copiasFalsas().ops, { resolverMotor: resolverBien })
       const fin = await taller.parlamentar({ texto: 'Arregla el reloj', carpeta: '/proyecto', relevos: rr })
       expect(fin.acta).toBe(true)
+      expect(fin.actaFirmada?.valida).toBe(true)
+      expect(fin.actaFirmada?.estado).toBe('probado')
       const { publica } = parDeFirma(dir)
       const diario = leeActas(dir)
       expect(diario).toHaveLength(1)
@@ -156,6 +162,35 @@ describe('Taller', () => {
       expect(diario[0].estado).toBe('probado')
       expect(diario[0].firma.signed_by).toBe('taller')
       expect(diario[0].relevos.map((r) => r.estado)).toEqual(['lista', 'lista', 'lista'])
+    })
+
+    it('un probador que jura que pasan pero NO corrió nada: el juez le niega el probado (dudoso, firmado igual)', async () => {
+      const s = sesiones(async (o) => { o.alEvento({ tipo: 'texto', texto: 'Las 3 pruebas pasan, todo verificado.' }); return 'end_turn' })
+      const taller = crear(s.abrir, copiasFalsas().ops, { resolverMotor: resolverBien })
+      const fin = await taller.parlamentar({ texto: 'Arregla el reloj', carpeta: '/proyecto', relevos: rr })
+      expect(fin.estado).toBe('dudoso')
+      expect(fin.frase).toContain('sin haber corrido nada')
+      // el acta sale igual: el dudoso es un veredicto legítimo, lo que no cabe es el probado regalado
+      expect(fin.actaFirmada?.estado).toBe('dudoso')
+      expect(fin.actaFirmada?.frase).toContain('sin haber corrido nada')
+    })
+
+    it('un probador que jura que pasan pero su consola acabó en fallo: el juez lo tumba', async () => {
+      const s = sesiones(async (o, _texto, n) => {
+        if (n === 2) o.alEvento({ tipo: 'herramienta', id: 'p1', clase: 'execute', detalle: 'npm test', estado: 'failed' })
+        o.alEvento({ tipo: 'texto', texto: ['Cambié el reloj del taller.', 'Vi que el orden está bien.', 'Las 3 pruebas pasan, todo correcto.'][n] ?? '' })
+        return 'end_turn'
+      })
+      const taller = crear(s.abrir, copiasFalsas().ops, { resolverMotor: resolverBien })
+      const fin = await taller.parlamentar({ texto: 'Arregla el reloj', carpeta: '/proyecto', relevos: rr })
+      expect(fin.estado).toBe('tumbado')
+      expect(fin.frase).toContain('su última prueba acabó en fallo')
+      expect(fin.frase).toContain('npm test')
+      // el acta lo firmó también: la prueba muerta queda en el diario donde cualquiera lo compra
+      expect(fin.actaFirmada?.estado).toBe('tumbado')
+      const { publica } = parDeFirma(dir)
+      const diario = leeActas(dir)
+      expect(actaValida(diario[0], publica)).toBe(true)
     })
 
     it('un parlamento tumbado también firma su acta, hasta donde llegó', async () => {
