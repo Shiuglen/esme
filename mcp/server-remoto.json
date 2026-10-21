@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.shiuglen/esme-remoto",
+  "name": "io.github.Shiuglen/esme-remoto",
   "title": "Esme (mente en marcha)",
   "description": "La memoria viva de Esme, en una mente que ya está en marcha: la dirección y la palabra.",
   "version": "0.1.0",

@@ -32,6 +32,21 @@ def remember_cmd(home_path: Path, text: str, kind: str = "note") -> str:
     return remember_tool(Home(home_path), text, kind)
 
 
+def asegura_lente(home_path: Path) -> None:
+    """Si la mente no tiene Lente, la baja (316 MB, una vez) antes de arrancar.
+
+    Sin esto, «pip install daimon-esme» y «daimon serve-mcp» se caían: la lente no venía con el
+    paquete (su licencia no lo permite) y nadie la bajaba. Ahora el servidor se la baja solo y lo
+    dice, para que el primer arranque de alguien que no es el creador salga bien a la primera.
+    """
+    from .modelos import DEFAULT, esta_instalado, bajar_modelo
+
+    if esta_instalado(DEFAULT):
+        return
+    print(f"La Lente «{DEFAULT}» no está todavía: se baja ahora (unos 316 MB, una vez)…", flush=True)
+    bajar_modelo(DEFAULT, progreso=lambda m: print("·", m, flush=True))
+
+
 def init_cmd(home_path: Path, sin_modelo: bool = False) -> None:
     """Prepara una mente nueva: la carpeta, la lente y las primeras palabras.
 
@@ -183,8 +198,10 @@ def main(argv: list[str] | None = None) -> None:
     elif a.cmd == "serve-mcp":
         from .gate import build_server
         from .home import Home
+        asegura_lente(Path(a.home))
         build_server(Home(Path(a.home))).run("stdio")
     elif a.cmd == "serve":
+        asegura_lente(Path(a.home))
         serve(Path(a.home), a.port, a.token)
     elif a.cmd == "sueño":
         from .home import Home

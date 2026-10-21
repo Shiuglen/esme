@@ -136,8 +136,8 @@ y es de los ojos de quien lo pidió, no de una investigación.
   defecto (no depende de Ollama, que en algunos equipos está roto).
 - **La Lente se baja sola**: `daimon/modelos.py` (el hueco que hacía imposible instalar
   Esme en un equipo limpio).
-- **Dos entradas en el registro, las dos válidas**: `io.github.shiuglen/esme` (el
-  conector) e `io.github.shiuglen/esme-remoto` (la mente en marcha, con variable).
+- **Dos entradas en el registro, las dos válidas**: `io.github.Shiuglen/esme` (el
+  conector) e `io.github.Shiuglen/esme-remoto` (la mente en marcha, con variable).
 - **La app copia la entrada** para dársela a otra IA: el token se compone en el proceso
   principal y va al portapapeles; **la ventana no lo ve nunca** (lo vigila el portón de
   la frontera).

@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.shiuglen/esme",
+  "name": "io.github.Shiuglen/esme",
   "title": "Esme",
   "description": "La memoria viva de Esme: recuerda lo que sabes y devuelve el contexto que cada IA necesita.",
   "version": "0.1.0",

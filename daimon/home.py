@@ -17,7 +17,11 @@ CONFIG = "config.json"
 
 
 def encoder_from_config(cfg: dict):
-    name = cfg.get("encoder", "model2vec:minishlab/potion-multilingual-128M")
+    # El de por defecto es la Lente ONNX (la que dice el README y `daimon/modelos.py`): sus
+    # dependencias —onnxruntime, tokenizers, huggingface_hub— son del paquete base, así que
+    # «pip install daimon-esme» trae todo lo necesario para arrancar. Antes era model2vec, que
+    # es un extra opcional: el paquete publicado se caía al arrancar (`ModuleNotFoundError`).
+    name = cfg.get("encoder", "onnx:embeddinggemma-300m")
     if name.startswith("onnx:"):
         return onnx_encoder(name.split(":", 1)[1])
     if name.startswith("ollama:"):

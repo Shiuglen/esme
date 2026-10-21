@@ -1,6 +1,6 @@
 # Esme
 
-<!-- mcp-name: io.github.shiuglen/esme -->
+<!-- mcp-name: io.github.Shiuglen/esme -->
 
 **«Adiós a los `.md`»: cualquier IA puede acordarse de lo que sabes.**
 

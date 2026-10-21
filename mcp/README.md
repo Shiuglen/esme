@@ -6,7 +6,7 @@
 Este servidor expone **la memoria de Esme** por MCP. La memoria es una red neuronal local: no es una
 búsqueda de texto, es un tálamo que aprende qué contexto darle a cada IA y cuánto.
 
-<!-- mcp-name: io.github.shiuglen/esme -->
+<!-- mcp-name: io.github.Shiuglen/esme -->
 
 ## Qué hay dentro
 

@@ -149,6 +149,28 @@ def test_sesion_dice_quien_mas_esta_trabajando(tmp_path, monkeypatch):
     assert len(companeros()) == 2
 
 
+def test_el_por_defecto_usa_la_lente_que_viene_en_el_paquete(monkeypatch):
+    """«pip install daimon-esme» tiene que arrancar: el codificador por defecto no puede ser un extra."""
+    import daimon.home as home
+    llamado = {}
+    def fake_onnx(nombre, *a, **k):
+        llamado["nombre"] = nombre
+        return (lambda t: [[0.0]]), 1
+    monkeypatch.setattr(home, "onnx_encoder", fake_onnx)
+    home.encoder_from_config({})
+    assert llamado.get("nombre") == "embeddinggemma-300m"
+
+
+def test_el_servidor_asegura_la_lente(monkeypatch, tmp_path):
+    """Si la lente no está, el servidor la baja antes de arrancar (y lo dice)."""
+    import daimon.cli as cli
+    bajadas = []
+    monkeypatch.setattr("daimon.modelos.esta_instalado", lambda nombre: False)
+    monkeypatch.setattr("daimon.modelos.bajar_modelo", lambda nombre, destino=None, progreso=None: bajadas.append(nombre))
+    cli.asegura_lente(tmp_path)
+    assert bajadas == ["embeddinggemma-300m"]
+
+
 def test_el_pack_respeta_el_presupuesto(tmp_path):
     """El pack entero (rumbo + contexto + compañeros + protocolo) cabe en el presupuesto."""
     from daimon.sesion import pack_de_arranque
