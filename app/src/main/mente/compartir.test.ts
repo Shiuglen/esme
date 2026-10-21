@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { AGENTES, conEsme, conectar, desconectar, entradaParaCopiar, estaConectado, sinEsme } from './compartir'
+import { join, dirname } from 'node:path'
+import { AGENTES, conEsme, conInstruccion, conectar, desconectar, entradaParaCopiar, estaConectado, MARCA_INICIO, sinEsme, sinInstruccion } from './compartir'
 
 const U = 'http://127.0.0.1:47321/mcp', T = 'tok'
 const ag = (id: string) => AGENTES.find((a) => a.id === id)!
@@ -61,6 +61,42 @@ describe('en disco', () => {
     conectar(a, home, U, T); writeFileSync(f, '{roto')
     expect(() => conectar(a, home, U, T)).toThrow(/no es JSON/)
     expect(readFileSync(f, 'utf8')).toBe('{roto')
+  })
+})
+
+describe('la memoria entra sola: la instrucción en el fichero del agente', () => {
+  it('conectar escribe el bloque en el fichero de instrucciones, sin tocar lo demás', () => {
+    const home = mkdtempSync(join(tmpdir(), 'mente-'))
+    const a = ag('opencode'), ins = join(home, a.instruccion!)
+    mkdirSync(dirname(ins), { recursive: true })
+    writeFileSync(ins, '# mis reglas\n\nno toques mis cosas\n')
+    conectar(a, home, U, T)
+    const txt = readFileSync(ins, 'utf8')
+    expect(txt).toContain('no toques mis cosas')
+    expect(txt).toContain('sesion')
+    expect(txt).toContain(MARCA_INICIO)
+  })
+  it('conectar dos veces no duplica el bloque', () => {
+    const home = mkdtempSync(join(tmpdir(), 'mente-'))
+    const a = ag('claude-code'), ins = join(home, a.instruccion!)
+    conectar(a, home, U, T); conectar(a, home, U, T)
+    const txt = readFileSync(ins, 'utf8')
+    expect(txt.match(/<!-- esme:memoria -->/g)?.length).toBe(1)
+  })
+  it('desconectar deja el fichero de instrucciones como estaba', () => {
+    const home = mkdtempSync(join(tmpdir(), 'mente-'))
+    const a = ag('claude-code'), ins = join(home, a.instruccion!)
+    mkdirSync(dirname(ins), { recursive: true })
+    writeFileSync(ins, '# mis reglas\n')
+    conectar(a, home, U, T)
+    desconectar(a, home)
+    expect(readFileSync(ins, 'utf8')).toBe('# mis reglas\n')
+  })
+  it('el bloque se pone y se quita sin perder el texto de alrededor', () => {
+    const antes = 'antes\n\ndespués\n'
+    const con = conInstruccion(antes)
+    expect(con).toContain('antes'); expect(con).toContain('después'); expect(con).toContain('sesion')
+    expect(sinInstruccion(con)).toBe(antes)
   })
 })
 

@@ -64,8 +64,33 @@ def build_server(home: Home, lock: threading.Lock | None = None, on_event=None):
     from mcp.server.mcpserver import MCPServer   # mcp 2.x (antes FastMCP)
 
     lock = lock or threading.Lock()   # las herramientas corren en hilos: una a la vez sobre la misma mente
-    mcp = MCPServer("daimon", instructions="Memoria viva de Daimon: usa recall antes de trabajar, remember para guardar "
-                                           "decisiones y feedback para indicar qué recuerdos sirvieron.")
+    # Las «instructions» del servidor son la vía barata para que la memoria se use sola: los
+    # clientes MCP las enseñan al modelo al inicializar, así que el protocolo llega sin proxy,
+    # sin claves y sin reescribir el prompt de quien llama.
+    from .sesion import PROTOCOLO, pack_de_arranque
+
+    mcp = MCPServer("daimon", instructions=PROTOCOLO)
+
+    @mcp.tool()
+    def sesion(tarea: str, ctx: Context, motor: str | None = None) -> str:
+        """Abre la sesión de trabajo: el rumbo de esta mente y el contexto de lo que vas a hacer.
+
+        Llámala UNA vez al empezar, con una frase que diga qué vas a hacer. Te devuelve:
+        para qué trabaja esta mente, lo que ya se sabe de tu tarea (con los ids, para poder dar
+        `feedback` después) y el protocolo de la memoria.
+
+        Es la forma de tener la memoria puesta **sin proxy**: no se secuestra el tráfico del LLM,
+        solo se pide una vez.
+        """
+        with lock:
+            pack = pack_de_arranque(home, tarea, motor=motor)
+        if on_event:
+            try:
+                who = who_from_headers(ctx.headers)
+            except Exception:
+                who = "agente"
+            on_event({"type": "sesion", "who": who, "tarea": tarea[:200]})
+        return pack
 
     @mcp.tool()
     def recall(query: str, ctx: Context, budget: int = 0, motor: str | None = None) -> str:

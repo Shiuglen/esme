@@ -7,6 +7,7 @@
   "aliases": { "components": "src/renderer/ui", "utils": "src/renderer/lib/cn", "ui": "src/renderer/ui", "lib": "src/renderer/lib", "hooks": "src/renderer/hooks" },
   "iconLibrary": "lucide",
   "registries": {
+    "@beui": "https://beui.dev/r/{name}.json",
     "@magicui": "https://magicui.design/r/{name}.json",
     "@kokonutui": "https://kokonutui.com/r/{name}.json",
     "@reactbits": "https://reactbits.dev/r/{name}.json",

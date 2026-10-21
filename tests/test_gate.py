@@ -80,6 +80,43 @@ def test_servidor_expone_herramientas(tmp_path):
     # La memoria (recall/remember/feedback) y el navegador: la web de verdad, para cualquier agente.
     assert {"recall", "remember", "feedback"} <= names
     assert {"navegar", "clic_en_la_pagina", "escribir_en_la_pagina"} <= names
+    # La sesión de arranque: la memoria entra sola con una llamada, sin proxy.
+    assert "sesion" in names
+
+
+def test_el_servidor_declara_el_protocolo(tmp_path):
+    """Las «instructions» del servidor MCP son la vía barata para que la memoria se use sola."""
+    import asyncio
+    srv = build_server(_home(tmp_path))
+    inst = getattr(srv, "instructions", "") or ""
+    for paso in ("sesion", "recall", "remember", "feedback"):
+        assert paso in inst
+
+
+def test_sesion_abre_con_el_rumbo_y_el_contexto(tmp_path):
+    """El pack de arranque: para qué trabaja la mente, qué sabe de tu tarea y cómo usarla."""
+    from daimon import rumbo as rumbo_mod
+    from daimon.sesion import pack_de_arranque
+    h = _home(tmp_path)
+    rumbo_mod.escribe(tmp_path, {"pilares": [{"texto": "Esme de otro mundo"}],
+                                 "objetivos": [{"texto": "Escalar Esme", "estado": "activo"}]})
+    remember_tool(h, "Arc paga 500 USDC")
+    pack = pack_de_arranque(h, "Arc USDC")
+    assert "Escalar Esme" in pack          # el rumbo
+    assert "500" in pack                    # el contexto de la tarea
+    assert "recordar" in pack or "remember" in pack   # el protocolo
+    # Sin rumbo, el pack sigue siendo válido: no se rompe por no tener dirección.
+    assert "Escalar Esme" not in pack_de_arranque(_home(tmp_path / "otra"), "lo que sea")
+
+
+def test_sesion_a_traves_del_servidor(tmp_path):
+    import asyncio
+    h = _home(tmp_path)
+    remember_tool(h, "Los cursos cuestan 79, 179 y 299 dólares")
+    srv = build_server(h)
+    res = asyncio.run(srv.call_tool("sesion", {"tarea": "precio de los cursos"}))
+    text = str(res)
+    assert "79" in text and "Error" not in text
 
 
 def test_home_lee_config(tmp_path):

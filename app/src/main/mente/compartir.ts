@@ -5,17 +5,52 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, join } from 'node:path'
 
 type Json = Record<string, unknown>
-export type Agente = { id: string; nombre: string; fichero: string; clave: 'mcpServers' | 'mcp'; subclave?: string; entrada(url: string, cabeceras: Record<string, string>): Json }
+export type Agente = { id: string; nombre: string; fichero: string; clave: 'mcpServers' | 'mcp'; subclave?: string; entrada(url: string, cabeceras: Record<string, string>): Json; instruccion?: string }
 
 export const AGENTES: Agente[] = [
-  { id: 'claude-code', nombre: 'Claude Code', fichero: '.claude.json', clave: 'mcpServers', entrada: (url, headers) => ({ type: 'http', url, headers }) },
-  { id: 'gemini', nombre: 'Gemini CLI', fichero: '.gemini/settings.json', clave: 'mcpServers', entrada: (httpUrl, headers) => ({ httpUrl, headers }) },
-  { id: 'qwen', nombre: 'Qwen Code', fichero: '.qwen/settings.json', clave: 'mcpServers', entrada: (httpUrl, headers) => ({ httpUrl, headers }) },
-  { id: 'cursor', nombre: 'Cursor', fichero: '.cursor/mcp.json', clave: 'mcpServers', entrada: (url, headers) => ({ url, headers }) },
+  { id: 'claude-code', nombre: 'Claude Code', fichero: '.claude.json', clave: 'mcpServers', instruccion: '.claude/CLAUDE.md', entrada: (url, headers) => ({ type: 'http', url, headers }) },
+  { id: 'gemini', nombre: 'Gemini CLI', fichero: '.gemini/settings.json', clave: 'mcpServers', instruccion: '.gemini/GEMINI.md', entrada: (httpUrl, headers) => ({ httpUrl, headers }) },
+  { id: 'qwen', nombre: 'Qwen Code', fichero: '.qwen/settings.json', clave: 'mcpServers', instruccion: '.qwen/QWEN.md', entrada: (httpUrl, headers) => ({ httpUrl, headers }) },
+  { id: 'cursor', nombre: 'Cursor', fichero: '.cursor/mcp.json', clave: 'mcpServers', instruccion: '.cursor/rules/esme.mdc', entrada: (url, headers) => ({ url, headers }) },
   // OpenCode anida los servidores en mcp.servers; la forma plana (mcp.esme) está en desuso y
   // OpenCode puede dejar de leerla: con la anidada la memoria llega al agente y no por casualidad.
-  { id: 'opencode', nombre: 'OpenCode', fichero: '.config/opencode/opencode.json', clave: 'mcp', subclave: 'servers', entrada: (url, headers) => ({ type: 'remote', url, headers, enabled: true }) },
+  { id: 'opencode', nombre: 'OpenCode', fichero: '.config/opencode/opencode.json', clave: 'mcp', subclave: 'servers', instruccion: '.config/opencode/AGENTS.md', entrada: (url, headers) => ({ type: 'remote', url, headers, enabled: true }) },
 ]
+
+/**
+ * La memoria se usa sola si el agente lo sabe: con la entrada MCP basta para *poder* preguntar, pero
+ * hace falta que la pregunta ocurra. Por eso al conectar la mente también se escribe, en el fichero
+ * de instrucciones de ese agente, un bloque marcado que dice qué llamar y cuándo.
+ *
+ * Es la alternativa barata a lo que hace TencentDB Agent Memory, que inyecta la memoria
+ * **secuestrando el tráfico del LLM** (`ANTHROPIC_BASE_URL` → un proxy): eso exige las claves del
+ * proveedor y reescribe el prompt de quien llama. Aquí nadie toca el tráfico: sólo se le dice al
+ * agente que la memoria está ahí.
+ *
+ * El bloque va entre marcas, así que conectar es idempotente y desconectar lo deja como estaba.
+ */
+export const MARCA_INICIO = '<!-- esme:memoria -->'
+export const MARCA_FIN = '<!-- /esme:memoria -->'
+export const BLOQUE_INSTRUCCION = `${MARCA_INICIO}
+## Memoria de Esme
+Al empezar una tarea, llama a la herramienta \`sesion\` del servidor MCP \`esme\` con una frase que diga
+qué vas a hacer: te devuelve el rumbo de la mente y el contexto de esa tarea, sin que tengas que
+preguntar por él. Antes de investigar, \`recall\` con la pregunta concreta; lo que deba durar más que
+esta conversación, \`remember\`; al terminar, \`feedback\` con los ids que te sirvieron.
+${MARCA_FIN}`
+
+/** Pone el bloque (o lo actualiza) sin tocar el resto del fichero. */
+export function conInstruccion(texto: string): string {
+  const limpio = texto ?? ''
+  if (limpio.includes(MARCA_INICIO)) return limpio.replace(/<!-- esme:memoria -->[\s\S]*?<!-- \/esme:memoria -->\n?/, `${BLOQUE_INSTRUCCION}\n`)
+  const base = limpio.trimEnd()
+  return base ? `${base}\n\n${BLOQUE_INSTRUCCION}\n` : `${BLOQUE_INSTRUCCION}\n`
+}
+/** Quita el bloque y deja el fichero como estaba (salvo el salto de línea final). */
+export function sinInstruccion(texto: string): string {
+  const limpio = (texto ?? '').replace(/<!-- esme:memoria -->[\s\S]*?<!-- \/esme:memoria -->\n?/g, '').trimEnd()
+  return limpio ? `${limpio}\n` : ''
+}
 
 const objeto = (x: unknown): x is Json => !!x && typeof x === 'object' && !Array.isArray(x)
 /** La sección donde viven los servidores MCP de este agente (con OpenCode, un nivel más abajo). */
@@ -69,8 +104,27 @@ function escribir(f: string, j: Json, copia: boolean) {
   renameSync(`${f}.tmp`, f)
 }
 
-export function conectar(a: Agente, home: string, url: string, token: string) { const f = join(home, a.fichero); escribir(f, conEsme(leer(f), a, url, token), true) }
-export function desconectar(a: Agente, home: string) { const f = join(home, a.fichero); if (existsSync(f)) escribir(f, sinEsme(leer(f), a), false) }
+export function conectar(a: Agente, home: string, url: string, token: string) {
+  const f = join(home, a.fichero); escribir(f, conEsme(leer(f), a, url, token), true)
+  if (a.instruccion) escribirInstruccion(join(home, a.instruccion), true)
+}
+export function desconectar(a: Agente, home: string) {
+  const f = join(home, a.fichero); if (existsSync(f)) escribir(f, sinEsme(leer(f), a), false)
+  if (a.instruccion) escribirInstruccion(join(home, a.instruccion), false)
+}
+
+/** El fichero de instrucciones del agente: el bloque de la memoria, o nada si no toca. */
+function escribirInstruccion(f: string, conectar: boolean) {
+  if (!conectar) {
+    if (!existsSync(f)) return
+    const antes = readFileSync(f, 'utf8'); const despues = sinInstruccion(antes)
+    if (despues !== antes) writeFileSync(f, despues, { mode: 0o600 })
+    return
+  }
+  mkdirSync(dirname(f), { recursive: true })
+  const antes = existsSync(f) ? readFileSync(f, 'utf8') : ''
+  writeFileSync(f, conInstruccion(antes), { mode: 0o600 })
+}
 
 /**
  * La entrada de tu mente, en texto, para dársela a otra IA (o a otra persona).

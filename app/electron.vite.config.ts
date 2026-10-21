@@ -6,5 +6,5 @@ import { resolve } from 'node:path'
 export default defineConfig({
   main: { plugins: [externalizeDepsPlugin()], build: { rollupOptions: { input: { index: resolve('src/main/index.ts'), 'pty-host': resolve('src/main/pty-host.ts') } } } },
   preload: { plugins: [externalizeDepsPlugin()] },
-  renderer: { root: 'src/renderer', plugins: [react(), tailwindcss()], build: { rollupOptions: { input: { index: resolve('src/renderer/index.html'), lanzador: resolve('src/renderer/lanzador.html') } } } },
+  renderer: { root: 'src/renderer', resolve: { alias: { '@': resolve('src/renderer') } }, plugins: [react(), tailwindcss()], build: { rollupOptions: { input: { index: resolve('src/renderer/index.html'), lanzador: resolve('src/renderer/lanzador.html') } } } },
 })
