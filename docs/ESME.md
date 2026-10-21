@@ -511,3 +511,29 @@ En pie desde el 19-oct, por decisión del creador: **la ingeniería inversa est�
   tiene `analyze-web-bundle` con el navegador, y el espejo no lo expone todavía).
 
 - **El Parlamento, fase 6 ✅ (el testigo de VERDAD — el hallazgo que apió todo)**: cada relevo nacía con **COPIA NUEVA**: el comité pasaba el RELATO de lo hecho («tocé tal fichero»), no los ficheros — el probador no podía ni correr las pruebas que el constructor no dejó en su copia (el juez de la fase 5 era, sin saberlo, imposible de hacer). Ahora el comité pasa el **TRABAJO REAL**: tras cada relevo el Taller saca el parche de su copia (`parcheCopia`, binario, sin truncar) y se lo entrega al siguiente, que lo **aplica en su copia ANTES de encender al motor** (`crear({ parche })`, la costura exacta está en `ejecutar` entre la copia y la sesión). Si el parche no cupo, el relevo muere honesto antes de trabajar: «El testigo no pasó a este relevo: …» (nada a escondidas; ficheros del choque incluidos). El relevo que no tocó nada no lleva testigo muerto: el siguiente parte de base limpia. **La vista**: `CadenaComite` en `renderer/taller/` — en el detalle de cualquier relevo la cadena entera arriba (nodos con estado encendido, el testigo pasando en vivo, ficheros +/− de cada uno y la voz del último). **Ronda de nuevo**: la puerta re-arma el mismo comité a un clic (anteriores quedan firmadas en el diario) — el dudoso del juez se vuelve mano, no muro. 3 pruebas nuevas del testigo en `taller.test.ts`; **971 de la app verdes**, typecheck limpio.
+
+- **El corte que se comía el contexto: el suelo del tálamo (21 oct 2026, tarde)**: el techo del
+  espejo **no era el espejo**. El banco medía 0,8148 en la app de Electron y 1,0000 en los dos
+  binarios; la causa estaba en `daimon/thalamus.py`: el corte adaptativo (`max_drop`, 2,0 puntos)
+  es **absoluto** sobre una puntuación lineal sin cota, así que **se estrecha solo cuando la mente
+  crece**. En la app, un trozo corto puntuaba 6,71 y todo lo demás caía a 4,65 (unescalón): con 2,0
+  de margen sobrevivía **un** trozo — la pregunta de las funciones se quedaba con **35 tokens de
+  1.500** y acierto 0,00. La pregunta no la respondía mal la mente: **no le llegaba**.
+  - **El arreglo**: un **suelo** (`min_candidatos`, 20 por defecto): el corte puede quitar ruido,
+    pero no puede dejar a la mente ciega. La curva (16-20 es la meseta) está en
+    `scripts/curva_corte.py`, que deja la curva a la vista con los dos instrumentos.
+  - **Los números**: banco del espejo **0,9206 → 1,0000** (app Electron 0,8148 → 1,0000; contexto
+    266 → 982 tokens de media) · examen: visible 0,8438 → **0,8510** (0,8462 llenando el
+    presupuesto), oculto 0,9143 igual. Se probaron las dos maneras (corte relativo por fracciones
+    del mejor, y suelo) y se quedó la que se puede defender con un número: **el suelo**.
+  - **La otra lente del examen**: `scripts/examen_hechos.py` mide, con la misma regla de palabras
+    del juez, si el contexto trae los **hechos** y no sólo el **trozo** del oro (0,8333 contra
+    0,9286: es más estricta, no más benévola). Las dos cifras van juntas en `prueba0.py retrieval`.
+  - **Dónde falla ahora**: sólo tres de 35 preguntas del examen oculto, y **dos son del propio
+    examen** (señalan una evidencia que no es del tema). Con `scripts/donde_falla.py` y
+    `scripts/diagnostico_evidencia.py` se ve en un minuto. El examen está en su techo con este oro.
+  - **Queda**: la app que está corriendo tiene el tálamo viejo en memoria (el suelo entra al
+    reiniciar, y reiniciar la app mata a los agentes del Taller: es su padre) · el juez con LLM no
+    se pudo correr (no hay Ollama levantado) · el número del espejo entra ahora en la corrida del
+    examen (`prueba0.py banco`) **con su huella** (config, recuerdos, evidencia y commit): sin
+    huella, dos números de días distintos no se pueden comparar.
