@@ -27,6 +27,22 @@ def test_sueño_cli(tmp_path):
     assert salida["personas"] >= 1 and salida["energia"] > 0
 
 
+def test_rea_cli_absorbe_un_programa(tmp_path, monkeypatch):
+    """El espejo a mano, para un script o un cron: igual que la herramienta del agente."""
+    import json, io, contextlib
+    from daimon import rea as rea_mod
+    monkeypatch.setattr(rea_mod, "analizar", lambda ruta, **k: {
+        "evidence_id": "ev1", "subject": {"name": "app", "local_path": "/tmp/app"},
+        "normalized_result": {"summary": {"ipc": {"literal_channels": 1}}, "graph": {"nodes": []},
+                              "semantic_graph": {"nodes": [], "unknowns": []}}})
+    home = tmp_path / "mente"
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        main(["rea", "--home", str(home), "--motivo", "curiosidad", "/tmp/app"])
+    r = json.loads(buf.getvalue())
+    assert r["added"] > 0 and r["fuente"].startswith("rea:")
+
+
 def test_ingest_x_cli(tmp_path):
     import json, io, contextlib
     homepage = tmp_path / "mente"
