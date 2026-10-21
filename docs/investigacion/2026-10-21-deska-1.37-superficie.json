@@ -1,0 +1,98 @@
+{
+ "evidencia": "ev_6502aeae0af3b8f16ea57d718a841c48eac29f4018c8400bccfd3304ca2d7d99",
+ "programa": "/home/sakai/Applications/squashfs-root/resources/app.asar",
+ "resumen": {
+  "browser_windows": 4,
+  "explicit_web_preferences": 28,
+  "preload_entrypoints": 0,
+  "context_bridge_apis": 0,
+  "exposed_api_members": 0,
+  "ipc": {
+   "operations": 0,
+   "literal_channels": 0,
+   "dynamic_channel_operations": 0,
+   "renderer_transmissions": 0,
+   "renderer_listeners": 0,
+   "main_handlers": 0,
+   "paired_renderer_transmissions": 0,
+   "ambiguous_renderer_transmissions": 0,
+   "unpaired_literal_renderer_transmissions": 0
+  },
+  "sender_validation_observations": 8,
+  "utility_processes": 1,
+  "resolved_utility_entrypoints": 1,
+  "native_addon_bindings": 0,
+  "resolved_native_addon_bindings": 0
+ },
+ "estadisticas": {
+  "relevant_files": 18860,
+  "nested_asar_containers": 0,
+  "text_bytes_read": 4906120,
+  "invalid_utf8_files": 0,
+  "parsed_javascript_files": 6,
+  "skipped_javascript_files": 0,
+  "visited_ast_nodes": 654387,
+  "findings": 775,
+  "modules": 75,
+  "parse_failures": 0
+ },
+ "canales": {},
+ "ventanas": [
+  {
+   "sitio": "dist/main/index.js:82938",
+   "prefs": [
+    "[spread@3500504]=process.env.DESKA_E2E === \"1\" ? { backgroundThrottling: false } : {}",
+    "additionalArguments=[...electron.app.isPackaged ? [] : [UNPACKAGED_ARG], ...bootRepairArgs(windowType)]",
+    "contextIsolation=True",
+    "enableBlinkFeatures=BlockingFocusWithoutUserActivation",
+    "nodeIntegration=False",
+    "preload=../preload/index.js",
+    "sandbox=!disableRendererSandbox()",
+    "webSecurity=True",
+    "webviewTag=True"
+   ]
+  },
+  {
+   "sitio": "dist/main/index.js:82363",
+   "prefs": [
+    "backgroundThrottling=False",
+    "contextIsolation=True",
+    "devTools=False",
+    "nodeIntegration=False",
+    "offscreen=True",
+    "sandbox=True",
+    "session=sessionForPictures()",
+    "spellcheck=False"
+   ]
+  },
+  {
+   "sitio": "dist/main/index.js:82111",
+   "prefs": [
+    "contextIsolation=True",
+    "nodeIntegration=False",
+    "sandbox=True",
+    "webSecurity=True"
+   ]
+  },
+  {
+   "sitio": "dist/main/index.js:69321",
+   "prefs": [
+    "[spread@2994434]=electron.app.isPackaged ? {} : { additionalArguments: [UNPACKAGED_ARG] }",
+    "backgroundThrottling=False",
+    "contextIsolation=True",
+    "nodeIntegration=False",
+    "preload=../preload/index.js",
+    "sandbox=True",
+    "webSecurity=True"
+   ]
+  }
+ ],
+ "ficheros": {
+  "dist/main/index.js": {
+   "funciones": 11564,
+   "nodos": 20000
+  }
+ },
+ "funciones": {},
+ "desconocidos": 100000
+}

@@ -474,6 +474,57 @@ def _firmas(ventanas: list[dict]) -> dict[str, list[str]]:
     return salida
 
 
+def _claves_ventana(v: dict) -> set[str]:
+    """Las preferencias que declara una ventana (los nombres, no los valores)."""
+    claves = set()
+    for p in v.get("prefs") or []:
+        k = str(p).split("=", 1)[0].strip()
+        if k and not k.startswith("["):      # los «[spread@…]» son el código, no una preferencia
+            claves.add(k)
+    return claves
+
+
+def _firma_ventana(v: dict) -> str:
+    """La identidad de una ventana: **qué preferencias declara**, no qué valores tiene.
+
+    Los valores cambian con cada compilación (los nombres del minificador, los `additionalArguments`
+    que crecen), así que comparar por el texto de las preferencias hacía que **toda** ventana
+    pareciera nueva y vieja a la vez. Los **nombres** de las preferencias no cambian: son la
+    identidad de la ventana.
+    """
+    return ", ".join(sorted(_claves_ventana(v)))
+
+
+def _emparejar_ventanas(va: list[dict], vb: list[dict]) -> tuple[list[tuple[dict, dict]], list[dict], list[dict]]:
+    """Las ventanas de antes y las de ahora, emparejadas por **parecido**.
+
+    No por igualdad exacta: una ventana que gana una preferencia («additionalArguments») es la
+    misma ventana, no una nueva. Se empareja cada ventana de ahora con la de antes que más se le
+    parece (Jaccard de las preferencias declaradas); si ninguna se parece lo suficiente, es nueva.
+    """
+    usados = [False] * len(va)
+    pares: list[tuple[dict, dict]] = []
+    nuevas: list[dict] = []
+    for y in vb:
+        cy = _claves_ventana(y)
+        mejor, mejor_parecido = -1, 0.0
+        for i, x in enumerate(va):
+            if usados[i]:
+                continue
+            cx = _claves_ventana(x)
+            union = cx | cy
+            parecido = len(cx & cy) / len(union) if union else 1.0
+            if parecido > mejor_parecido:
+                mejor, mejor_parecido = i, parecido
+        if mejor >= 0 and mejor_parecido >= 0.5:
+            usados[mejor] = True
+            pares.append((va[mejor], y))
+        else:
+            nuevas.append(y)
+    fuera = [x for i, x in enumerate(va) if not usados[i]]
+    return pares, nuevas, fuera
+
+
 def comparar(a: dict, b: dict, nombre_a: str = "la versión anterior", nombre_b: str = "la versión nueva") -> str:
     """Qué cambió entre dos versiones del mismo programa, en palabras y con números."""
     ca, cb = set(a.get("canales") or {}), set(b.get("canales") or {})
@@ -481,9 +532,10 @@ def comparar(a: dict, b: dict, nombre_a: str = "la versión anterior", nombre_b:
     fa, fb = set(a.get("ficheros") or {}), set(b.get("ficheros") or {})
     fn_a, fn_b = set(a.get("funciones") or {}), set(b.get("funciones") or {})
     fnuevas, ffuera = sorted(fn_b - fn_a), sorted(fn_a - fn_b)
-    va, vb = _firmas(a.get("ventanas") or []), _firmas(b.get("ventanas") or [])
-    ventanas_nuevas = sorted(set(vb) - set(va))
-    ventanas_fuera = sorted(set(va) - set(vb))
+    pares_v, ventanas_nuevas_v, ventanas_fuera_v = _emparejar_ventanas(a.get("ventanas") or [], b.get("ventanas") or [])
+    # Las ventanas que se emparejan pero cambian de preferencias: eso también es «qué cambió».
+    ventanas_cambiadas = [(x, y) for x, y in pares_v
+                          if sorted(x.get("prefs") or []) != sorted(y.get("prefs") or [])]
     sa, sb = a.get("estadisticas") or {}, b.get("estadisticas") or {}
 
     L: list[str] = []
@@ -499,7 +551,8 @@ def comparar(a: dict, b: dict, nombre_a: str = "la versión anterior", nombre_b:
         f"**{_p(len(fuera), 'canal que se fue', 'canales que se fueron')}**, "
         f"**{_p(len(fnuevas), 'función nueva', 'funciones nuevas')}**, "
         f"**{_p(len(ffuera), 'función que desapareció', 'funciones que desaparecieron')}**, "
-        f"**{_p(len(ventanas_nuevas), 'ventana con preferencias nuevas', 'ventanas con preferencias nuevas')}** y "
+        f"**{_p(len(ventanas_nuevas_v), 'ventana nueva', 'ventanas nuevas')}**, "
+        f"**{_p(len(ventanas_cambiadas), 'ventana que cambió sus preferencias', 'ventanas que cambiaron sus preferencias')}** y "
         f"{_p(len(fb - fa), 'fichero que aparece o desaparece', 'ficheros que aparecen o desaparecen')}."
     )
     L.append("")
@@ -532,13 +585,25 @@ def comparar(a: dict, b: dict, nombre_a: str = "la versión anterior", nombre_b:
 
     L.append("## Las ventanas")
     L.append("")
-    if ventanas_nuevas:
-        L.append("Ventanas con preferencias que no estaban: " + "; ".join(ventanas_nuevas) + ".")
+    L.append(f"Antes: {len(a.get('ventanas') or [])} · ahora: {len(b.get('ventanas') or [])} "
+             "(se emparejan por **qué preferencias declaran**, no por sus valores: los valores cambian "
+             "en cada compilación y harían que todo pareciera nuevo y viejo a la vez).")
+    L.append("")
+    if ventanas_nuevas_v:
+        for v in ventanas_nuevas_v:
+            L.append(f"Ventana nueva ({_firma_ventana(v) or 'sin preferencias'}): {v.get('prefs')}.")
         L.append("")
-    if ventanas_fuera:
-        L.append("Ventanas que ya no están: " + "; ".join(ventanas_fuera) + ".")
+    if ventanas_fuera_v:
+        for v in ventanas_fuera_v:
+            L.append(f"Ventana que ya no está ({_firma_ventana(v) or 'sin preferencias'}): {v.get('prefs')}.")
         L.append("")
-    if not ventanas_nuevas and not ventanas_fuera:
+    if ventanas_cambiadas:
+        for x, y in ventanas_cambiadas:
+            antes, ahora = set(x.get("prefs") or []), set(y.get("prefs") or [])
+            L.append(f"Ventana que cambió ({_firma_ventana(x) or 'sin preferencias'}): "
+                     f"antes {sorted(antes)} · ahora {sorted(ahora)}.")
+        L.append("")
+    if not ventanas_nuevas_v and not ventanas_fuera_v and not ventanas_cambiadas:
         L.append("Las ventanas siguen con las mismas preferencias.")
         L.append("")
 

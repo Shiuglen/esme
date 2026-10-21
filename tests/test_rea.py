@@ -253,6 +253,30 @@ def test_comparar_dos_versiones_dice_que_cambio(tmp_path):
     assert any(e.source.startswith("rea:comparacion:") for e in h.hippo.events())
 
 
+def test_una_ventana_que_gana_una_preferencia_no_es_una_ventana_nueva():
+    """Las ventanas se emparejan por parecido, no por igualdad: los valores cambian en cada
+    compilación (y una ventana que gana una preferencia sigue siendo la misma ventana)."""
+    antes = {"ventanas": [{"sitio": "a", "prefs": ["contextIsolation=True", "nodeIntegration=False",
+                                                   "sandbox=True", "webSecurity=True"]}]}
+    despues = {"ventanas": [{"sitio": "b", "prefs": ["additionalArguments=[...]", "contextIsolation=True",
+                                                     "nodeIntegration=False", "sandbox=True",
+                                                     "webSecurity=True"]}]}
+    texto = rea.comparar(antes, despues)
+    assert "1 ventana nueva" not in texto
+    assert "0 ventanas nuevas" in texto
+    assert "cambió" in texto
+
+
+def test_una_ventana_de_verdad_nueva_se_dice_nueva():
+    antes = {"ventanas": [{"sitio": "a", "prefs": ["contextIsolation=True", "nodeIntegration=False",
+                                                   "sandbox=True", "webSecurity=True"]}]}
+    despues = {"ventanas": [{"sitio": "b", "prefs": ["offscreen=True", "session=sessionForPictures()",
+                                                     "spellcheck=False"]}]}
+    texto = rea.comparar(antes, despues)
+    assert "1 ventana nueva" in texto
+    assert "offscreen" in texto
+
+
 def test_la_mente_recuerda_lo_absorbido(tmp_path):
     """Lo absorbido se puede preguntar después: para eso sirve."""
     h = _home(tmp_path)
