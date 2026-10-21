@@ -145,11 +145,26 @@ def build_variants():
     solo_orig = _nuevo(home.thalamus.max_drop)
     solo_orig.load(RUNS / "thalamus_solo_original.npy")
     bm25 = make_ctx_bm25(bm)
+
+    def _sesion(q, b):
+        """El pack de arranque: lo que recibe el agente **sin que nadie lo pida**.
+
+        No es una variante más de contexto: es la entrada por la puerta. El pack entero (rumbo,
+        contexto, compañeros y protocolo) compite por el mismo presupuesto que las otras variantes
+        se gastan solo en contexto. Así se mide lo que cuesta de verdad la memoria que entra sola:
+        si el acierto no baja, el pack es gratis; si baja, el coste es real y hay que pagarlo.
+        """
+        from daimon.sesion import pack_de_arranque
+        from daimon.tokens import count
+        pack = pack_de_arranque(home, q, budget=b)
+        return pack, count(pack)
+
     return {
         "ia_sola": ctx_none, "md": make_ctx_md([p for p in MD_FILES if p.exists()]),
         "bm25": bm25, "bm25_1000": lambda q, b: bm25(q, min(b, 1000)),
         "rag_denso_eg": make_ctx_dense(home.hippo), "contexto_largo": make_ctx_long(evs),
         "daimon": two(base), "daimon_sin_corte": two(sin_corte), "daimon_solo_original": two(solo_orig),
+        "sesion": _sesion,
     }, {e.id: e.text for e in evs}
 
 
