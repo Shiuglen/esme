@@ -202,9 +202,14 @@ Cline…), la herramienta de la conversación `absorber_programa` (que **pregunt
 el oficio **«Espejo»** del Taller. Medido contra la app real: 91,3 s de análisis, 179 recuerdos
 nuevos, y las preguntas sobre el programa se responden en 0,3 s. Detalle:
 `docs/resultados/2026-10-21-el-espejo.md`.
-**Queda.** Comparar dos versiones de un programa; una pregunta nueva en el banco del examen que
-mida esto con un número; y un botón en la interfaz para mirar un programa y ver el informe con sus
-luces y sus sombras.
+**Medido (21-oct), el número:** el banco del espejo (misma mente, mismas preguntas, mismo
+presupuesto; lo único que cambia es si el programa se ha mirado) da **0,0000 sin mirar · 0,9815
+mirando**, con **la mitad de contexto** (490 tokens frente a 982). Las preguntas y su oro se
+derivan de la evidencia de REA, así que no hay juez ni modelo en medio. Detalle:
+`docs/resultados/2026-10-21-banco-del-espejo.md`.
+**Queda.** Comparar dos versiones de un programa (que cambió entre dos builds); meter un segundo
+programa en el banco para que el número no sea el de una sola app; y un botón en la interfaz para
+mirar un programa y ver el informe con sus luces y sus sombras.
 **Hecho (21-oct, el bucle): absorber → recrear.** Cuando pides una herramienta nueva, el encargo
 al equipo lleva **lo que la mente sabe**: de la necesidad (la búsqueda de siempre) y, si el encargo
 nombra la ruta de un programa, **todo** el conocimiento que el espejo dejó de él (puerta

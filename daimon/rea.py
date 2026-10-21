@@ -90,6 +90,23 @@ def _p(n: int, singular: str, plural: str) -> str:
     return f"{_n(n)} {singular if n == 1 else plural}"
 
 
+def _en_trozos(elementos: list[str], prefijo: str, por: int = 12) -> list[str]:
+    """Una lista larga, partida en trozos que se puedan recuperar.
+
+    Una lista de 123 nombres en un solo párrafo es un recuerdo que el motor no trae: se le
+    diluye el significado (el codificador promedia) y el buscador lo penaliza por largo. Con
+    doce por trozo y el prefijo repetido, cada trozo se parece a la pregunta y entra solo.
+    """
+    if not elementos:
+        return []
+    trozos = []
+    total = (len(elementos) + por - 1) // por
+    for i in range(0, len(elementos), por):
+        parte = elementos[i:i + por]
+        trozos.append(f"{prefijo} ({i // por + 1} de {total}): " + ", ".join(parte) + ".")
+    return trozos
+
+
 def _sitio(evidencia: dict) -> str:
     """Dónde está lo visto: «index.js:10757» (o vacío si la evidencia no lo dice)."""
     val = (((evidencia or {}).get("location") or {}).get("value") or {})
@@ -280,7 +297,21 @@ def informe(evidencia: dict, *, motivo: str = "") -> str:
              f"sin pareja: {ipc.get('unpaired_literal_renderer_transmissions', 0)} · "
              f"canales distintos vistos: {len(canales)}.")
     L.append("")
+    L.append(f"Del renderer al proceso principal: {resumen.get('context_bridge_apis', 0)} API de contexto "
+             f"con {_n(resumen.get('exposed_api_members', 0))} miembros, "
+             f"{_n(resumen.get('preload_entrypoints', 0))} punto(s) de entrada de preload y "
+             f"{_n(resumen.get('utility_processes', 0))} proceso(s) auxiliar(es).")
+    L.append("")
     if canales:
+        # El listado, en trozos: la tabla es para el ojo humano, pero la mente trocea el informe
+        # por filas y una fila suelta no se puede recomponer. Sin el listado, la pregunta «qué
+        # canales expone» se llevaba 5 filas de 123 y fallaba.
+        for trozo in _en_trozos([f"`{c['canal']}`" for c in canales[:MAX_CANALES]], "Canales IPC del programa"):
+            L.append(trozo)
+            L.append("")
+        if len(canales) > MAX_CANALES:
+            L.append(f"Y {len(canales) - MAX_CANALES} canales más que el informe deja fuera (la lista se acota).")
+        L.append("")
         L.append("| Canal | Modo | Resolución | Dónde |")
         L.append("|---|---|---|---|")
         for c in canales[:MAX_CANALES]:
@@ -294,6 +325,13 @@ def informe(evidencia: dict, *, motivo: str = "") -> str:
     L.append("## Las ventanas")
     L.append("")
     if ventanas:
+        # Igual que con los canales: el dato completo en una línea, para que la mente lo traiga
+        # entero y no tres trozos sueltos que no se pueden recomponer.
+        for trozo in _en_trozos([f"{v['sitio'] or 'sin sitio'} ({', '.join(v['prefs']) or 'sin webPreferences'})"
+                                for v in ventanas], "Ventanas del programa y sus preferencias web", por=6):
+            L.append(trozo)
+            L.append("")
+        L.append("")
         for v in ventanas:
             L.append(f"- **{v['sitio'] or 'sin sitio'}** — {', '.join(v['prefs']) or 'sin webPreferences'}")
         L.append("")
@@ -307,6 +345,11 @@ def informe(evidencia: dict, *, motivo: str = "") -> str:
     L.append("## Los ficheros del programa")
     L.append("")
     if ficheros:
+        for trozo in _en_trozos([f"{c['fichero']} ({_n(c['funciones'])} funciones, {_n(c['nodos'])} nodos)"
+                                for c in ficheros], "Ficheros del programa analizados", por=6):
+            L.append(trozo)
+            L.append("")
+        L.append("")
         L.append("| Fichero | Funciones | Nodos |")
         L.append("|---|---|---|")
         for c in ficheros[:20]:
@@ -318,6 +361,11 @@ def informe(evidencia: dict, *, motivo: str = "") -> str:
     L.append("## El corazón: las funciones más llamadas")
     L.append("")
     if mas_llamadas:
+        for trozo in _en_trozos([f"`{f['nombre']}` ({f['fichero']}:{f['linea']}, {f['veces']} veces)"
+                                for f in mas_llamadas], "Funciones más llamadas del programa", por=8):
+            L.append(trozo)
+            L.append("")
+        L.append("")
         L.append("| Función | Dónde | Veces que se llama |")
         L.append("|---|---|---|")
         for f in mas_llamadas:
@@ -334,6 +382,12 @@ def informe(evidencia: dict, *, motivo: str = "") -> str:
     L.append("|---|---|---|---|")
     for g in desconocidos[:20]:
         L.append(f"| {g['familia']} | {g['razon']} | {g['n']} | {g['detalle']} ({g['sitio']}) |")
+    L.append("")
+    # Las razones, en trozos: para que la pregunta «qué no se pudo ver» traiga la lista entera.
+    for trozo in _en_trozos([f"{g['familia']}/{g['razon']} ({_n(g['n'])})" for g in desconocidos],
+                            "Lo que no se pudo ver del programa, con su razón", por=6):
+        L.append(trozo)
+        L.append("")
     L.append("")
     L.append(f"Desconocidos totales: {len(semantico.get('unknowns') or [])} · "
              f"cobertura del grafo: {_cobertura(grafo)} · del grafo semántico: {_cobertura(semantico)}")
