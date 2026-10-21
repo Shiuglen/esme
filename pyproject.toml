@@ -2,7 +2,7 @@
 # El nombre de distribución es «daimon-esme» (no «daimon»): en PyPI ya hay un «daimon»
 # que no es nuestro, y la entrada del Registro oficial de MCP apunta a este nombre.
 name = "daimon-esme"
-version = "0.1.0"
+version = "0.1.1"
 description = "Esme: la memoria viva de un sistema cognitivo local. Cualquier IA puede acordarse de lo que sabes."
 readme = "README.md"
 license = "MIT"
