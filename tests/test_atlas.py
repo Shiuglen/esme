@@ -50,6 +50,60 @@ def test_cache(tmp_path):
     assert atlas_for(h) == a1
 
 
+def test_la_densidad_no_explota_la_memoria():
+    """La densidad se calculaba con un tensor n×n×2: con la mente viva eran 693 MB de golpe.
+
+    Ahora va por bloques: el resultado es el mismo, pero la memoria no depende de n².
+    """
+    from daimon.atlas import _kde_heights
+    rng = np.random.default_rng(3)
+    P = rng.random((300, 2))
+    # el cálculo a pelo, como estaba antes
+    d2 = ((P[:, None, :] - P[None, :, :]) ** 2).sum(-1)
+    dens = np.exp(-d2 / (2 * 0.08 ** 2)).sum(1)
+    lo, hi = dens.min(), dens.max()
+    esperado = (dens - lo) / (hi - lo)
+    assert np.allclose(_kde_heights(P), esperado, atol=1e-9)
+
+
+def test_si_la_memoria_cambia_se_sirve_el_atlas_viejo_y_se_recalcula_despues(tmp_path):
+    """El atlas es caro: quien lo pide no espera (ni se lleva el pico de memoria en la respuesta)."""
+    from daimon.atlas import _recalculando
+    import threading
+
+    import daimon.atlas as atlas_mod
+    from daimon.home import Home
+    from tests.fakes import fake_encoder
+
+    h = Home(tmp_path, encoder=fake_encoder(32))
+    _, evs = _blobs(n_per=10)
+    h.add(evs)
+    primero = atlas_for(h)
+    assert primero["points"]
+
+    # la memoria cambia: el atlas guardado ya no está al día
+    h.add([Event("nuevo", "un recuerdo nuevo", "src0", "note", "2026-10-02", 0.8)])
+    real = atlas_mod._calcula
+    blockage = threading.Event()
+    seguir = threading.Event()
+
+    def lento(home):
+        blockage.set()
+        seguir.wait(5)
+        return real(home)
+
+    atlas_mod._calcula = lento
+    atlas_mod._ultimo_intento = 0.0        # que el tope de frecuencia no lo pare
+    atlas_mod._recalculando = False
+    try:
+        servido = atlas_for(h)          # tiene que volver ya, sin esperar al recálculo
+        assert servido["points"] == primero["points"]
+        assert blockage.wait(3)          # y el recálculo va por detrás
+    finally:
+        atlas_mod._calcula = real
+        seguir.set()
+
+
 def test_cada_punto_lleva_su_fecha_y_su_confianza():
     V, evs = _blobs(n_per=4)
     evs[0] = Event(evs[0].id, evs[0].text, "src0", "ai_msg", "2026-09-28T10:00:00+00:00", 0.4)

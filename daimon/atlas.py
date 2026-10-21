@@ -8,6 +8,8 @@ from __future__ import annotations
 import json
 import math
 import re
+import threading
+import time
 import unicodedata
 from collections import Counter
 from typing import Callable
@@ -16,6 +18,8 @@ import numpy as np
 
 from .ingest import Event
 from .lexical import tokenize
+
+_cerrojo = threading.Lock()
 
 _GENERIC = {"usuario", "user", "claude", "assistant", "the", "que", "para", "con", "esto", "tambien", "todo", "puede",
             "hacer", "bien", "ahora", "solo", "cada", "aqui", "asi", "pero", "como", "mas", "muy", "note", "doc",
@@ -41,10 +45,28 @@ def _project(V: np.ndarray, seed: int) -> np.ndarray:
 
 
 def _kde_heights(P: np.ndarray, bw: float = 0.08) -> np.ndarray:
-    d2 = ((P[:, None, :] - P[None, :, :]) ** 2).sum(-1)
-    dens = np.exp(-d2 / (2 * bw * bw)).sum(1)
+    """La altura de cada punto: cuánta masa tiene cerca.
+
+    **Por bloques y sin la matriz n×n×2**: esa expresión (`P[:, None, :] - P[None, :, :]`) crea
+    un tensor de n×n×2 en float64 — con 5.768 recuerdos eran 532 MB, y con los 19.737 de la mente
+    viva, **6,2 GB**: el pico que se llevó la app por delante (el OOM de 13 GB del 20-oct).
+    Aquí la distancia se calcula por bloques y con la identidad del producto escalar
+    (|a|²+|b|²−2a·b), así que lo que vive a la vez es un bloque por n, no n×n×2.
+    """
+    n = len(P)
+    dens = np.zeros(n)
+    if n == 0:
+        return dens
+    P = np.asarray(P, dtype=np.float64)
+    norma2 = np.square(np.linalg.norm(P, axis=1))
+    bloque = max(1, min(n, 512))
+    for i in range(0, n, bloque):
+        trozo = P[i:i + bloque]
+        d2 = norma2[i:i + bloque][:, None] + norma2[None, :] - 2.0 * (trozo @ P.T)
+        np.maximum(d2, 0.0, out=d2)
+        dens[i:i + bloque] = np.exp(-d2 / (2 * bw * bw)).sum(1)
     lo, hi = dens.min(), dens.max()
-    return (dens - lo) / (hi - lo) if hi > lo else np.zeros(len(P))
+    return (dens - lo) / (hi - lo) if hi > lo else np.zeros(n)
 
 
 def _sin_acentos(w: str) -> str:
@@ -155,16 +177,83 @@ def compute_atlas(vectors: np.ndarray, events: list[Event], seed: int = 0,
     return {"points": points, "clusters": clusters}
 
 
+def _mismo_formato(sig) -> bool:
+    """¿La caché guardada es del formato actual? (la marca va en la primera posición)."""
+    return isinstance(sig, list) and bool(sig) and sig[0] == "v4"
+
+
+def _firma(home) -> list:
+    events = home.hippo.events()
+    return ["v4", len(events), events[-1].id if events else ""]   # v2: ts y trust; v3: términos con la lente; v4: términos distintivos
+
+
+def _calcula(home) -> dict:
+    """El atlas de verdad: la proyección, el mapa de densidad y los grupos."""
+    events = home.hippo.events()
+    V = np.stack([home.hippo.vector(e.id) for e in events]) if events else np.zeros((0, home.lens.dim), np.float32)
+    return compute_atlas(V, events, encode=lambda ws: home.lens.encode(ws, role="query"))
+
+
+# El atlas es caro y la memoria cambia en cada recuerdo: recalcularlo en cada `remember` era una
+# trampa (con la mente llena, minutos de CPU y un pico de memoria enorme). Ahora se sirve el que
+# hay y se recalcula por detrás, sin pisar a quien lo pidió, y **con un tope**: un mapa de la mente
+# no necesita estar al segundo.
+_recalculando = False
+_ultimo_intento = 0.0
+ESPERA_ATLAS = 300.0     # segundos entre recálculos
+
+
+def _recalcula_en_hilo(home) -> None:
+    """Recalcula el atlas por detrás, si toca y si no hay otro cálculo en marcha."""
+    global _recalculando, _ultimo_intento
+    ahora = time.monotonic()
+    with _cerrojo:
+        if _recalculando or (ahora - _ultimo_intento) < ESPERA_ATLAS:
+            return
+        _recalculando = True
+        _ultimo_intento = ahora
+
+    def trabajo() -> None:
+        global _recalculando
+        try:
+            atlas = _calcula(home)
+            _guarda(home, atlas)
+        except Exception:      # un atlas que falla no puede tumbar la app: se sigue con el viejo
+            pass
+        finally:
+            with _cerrojo:
+                _recalculando = False
+
+    threading.Thread(target=trabajo, daemon=True).start()
+
+
+def _guarda(home, atlas: dict) -> None:
+    cache = home.path / "atlas.json"
+    cache.write_text(json.dumps({"sig": _firma(home), "atlas": atlas}))
+
+
 def atlas_for(home) -> dict:
-    """Atlas de un hogar, con caché en atlas.json mientras la memoria no cambie."""
+    """Atlas de un hogar, con caché en atlas.json mientras la memoria no cambie.
+
+    Si la memoria ha cambiado, **se sirve el atlas que hay** y el nuevo se calcula por detrás:
+    quien lo pide no espera (ni se lleva el pico de memoria en la respuesta).
+    """
     events = home.hippo.events()
     sig = ["v4", len(events), events[-1].id if events else ""]   # v2: ts y trust; v3: términos con la lente; v4: términos distintivos
     cache = home.path / "atlas.json"
+    guardado = None
     if cache.exists():
-        data = json.loads(cache.read_text())
-        if data.get("sig") == sig:
-            return data["atlas"]
-    V = np.stack([home.hippo.vector(e.id) for e in events]) if events else np.zeros((0, home.lens.dim), np.float32)
-    atlas = compute_atlas(V, events, encode=lambda ws: home.lens.encode(ws, role="query"))
-    cache.write_text(json.dumps({"sig": sig, "atlas": atlas}))
+        try:
+            data = json.loads(cache.read_text())
+            if data.get("sig") == sig:
+                return data["atlas"]
+            # Una caché de **formato viejo** no se sirve: se recalcula (sus datos no son comparables).
+            guardado = data.get("atlas") if _mismo_formato(data.get("sig")) else None
+        except (json.JSONDecodeError, OSError):
+            guardado = None
+    if guardado:
+        _recalcula_en_hilo(home)
+        return guardado
+    atlas = _calcula(home)
+    _guarda(home, atlas)
     return atlas
