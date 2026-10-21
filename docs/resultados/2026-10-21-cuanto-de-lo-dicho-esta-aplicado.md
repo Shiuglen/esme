@@ -23,7 +23,7 @@
 | 13 | **El veredicto envejece (la skill con caducidad)** | `app/src/main/skills/veredicto.ts`, `ipc.ts` | 2 pruebas: a los 90 días se marca caducado y **sigue valiendo** («el juez pone el listón, nunca lo quita») |
 | 14 | **La presión de recursos se ve** (lo que faltó cuando la app murió de memoria) | `app/src/main/uso/presion.ts`, `chat.ts` | 5 pruebas: los roles, la suma, el aviso del swap · y la herramienta `ver_presion` en manos del agente |
 | 15 | **Lo visual, por fin** (hasta aquí todo era de dentro: al reiniciar, la app se veía igual porque no había cambiado ni un píxel) | `app/src/renderer/paginas/Apariencia.tsx`, `MandoVista.tsx` | el muro de escenas: la miniatura con su nombre **debajo** y la marca en la elegida (antes el rótulo tapaba la imagen); las piezas se ven **sobre un fondo** (el vidrio y el papel ya se distinguen); los grupos de opciones son un grupo de botones, no una barra rota; «Mi ecuación» → «A tu gusto»; en el Mando la presencia de Esme es el punto final del saludo y el saludo baja a tamaño legible |
-| 16 | **El renderer deja de comerse la memoria** (la app moría de memoria: el plan no era el bug) | `app/src/renderer/taller/ventana.ts`, `taller/Detalle.tsx` | medido: **2,6 GB en 5 min** y 119 % de CPU · ahora se pinta una ventana de 250 elementos (de 17.000) y `Item` es `memo` · 5 pruebas |
+| 16 | **El renderer deja de comerse la memoria** (la app moría de memoria: el plan no era el bug) | `app/src/renderer/taller/ventana.ts`, `taller/Detalle.tsx` | medido: **2,6 GB en 5 min** y 119 % de CPU · ahora se pinta una ventana de 250 elementos (de 17.000) y `Item` es `memo` · 5 pruebas · en la app reiniciada (13:55): **491–680 MB y bajando, 8 % de CPU** |
 | 17 | **La jaula no rompe al motor** (la bookkeeping de npm no es una credencial) | `app/src/main/motores/jaula.ts`, `taller/taller.ts` | 22 variables `npm_*` dejan de tragarse; las llaves de npm sí se esconden; el error del motor no se llena de ruido |
 | 18 | **Deshacer un turno, en la vista** (el botón que faltaba) | `app/src/renderer/taller/Revision.tsx`, `Detalle.tsx`, `app/src/main/taller/turnos.ts` | el punto de cada turno sale del **mensaje** del commit (`Esme: turno N`), no de contar commits · la Revisión lista los turnos y vuelve a cualquiera con un segundo clic que dice exactamente qué pasa · en la cabecera, «Deshacer el último turno» · 9 pruebas |
 
@@ -61,12 +61,16 @@
 
 - ~~**El botón en la interfaz** del «deshacer turno»~~: **hecho** (fila 18). En la Revisión está la
   lista de turnos y se vuelve a cualquiera; en la cabecera, «Deshacer el último turno».
-- **La medición en la app en marcha**: hecha (21-oct, 12:54) — la app se reconstruyó y se reinició
-  con el código nuevo y se midió en vivo. **Y salió mal**: el renderer subía a **2,6 GB en cinco
-  minutos** (RSS del proceso `--type=renderer`), a **119 % de CPU**, y seguía subiendo. Reiniciar no
-  lo arregla: el plan no era el bug, era el síntoma. **Ya está arreglado** (fila 16): la línea en
-  vivo pintaba **entera** —17.000 elementos por fotograma—; ahora pinta una ventana de 250 y se
-  para si quien mira sube a leer. *Pendiente de re-medir con la app reiniciada.*
+- **La medición en la app en marcha**: hecha dos veces (21-oct, 12:54 y 21-oct, 13:55).
+  La primera **salió mal**: el renderer subía a **2,6 GB en cinco minutos** (RSS del proceso
+  `--type=renderer`), a **119 % de CPU**, y seguía subiendo. Reiniciar no lo arregla: el plan no
+  era el bug, era el síntoma. **Ya está arreglado** (fila 16): la línea en vivo pintaba **entera**
+  —17.000 elementos por fotograma—; ahora pinta una ventana de 250 y se para si quien mira sube
+  a leer.
+  **La segunda, con la app reiniciada y el código de casa ya dentro (13:55)**: el renderer se
+  queda en **491–680 MB y baja** (nunca hacia arriba), a **8 % de un núcleo** — antes: 2,6 GB
+  subiendo y 119 %. El cerebro, con la arena de ONNX apagada: **1325 M → 718 M** al absorber y se
+  queda plano. *Lo que quedaba por medir, medido.*
 - **El número de la caché**: la práctica está puesta (prefijo constante) pero **no se ha medido el
   acierto de caché** de Esme contra el proveedor. Con la cifra de X (76 % de la factura) se puede
   hacer el mismo examen que el del banco del espejo.
