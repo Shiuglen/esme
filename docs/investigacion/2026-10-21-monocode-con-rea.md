@@ -68,6 +68,31 @@ git_stash  git_create_branch  git_checkout  git_status
 > instaló**. Es la comprobación que faltaba: no es que el repositorio prometa, es que la app que
 > tienes en el disco lo trae.
 
+## 3-bis. Con motor nativo: REA **sí** puede con el ELF (y hay un tope)
+
+Con Ghidra + JDK 21 + `pwntools@4.15.0;pyelftools@0.33;unicorn@2.1.2` instalados, REA analiza
+binarios ELF de verdad. Evidencia: `ev_aeb5a3030187c042…`, `provider: pwntools-elf`,
+`authority: shipped-artifact`, `confidence: observed`.
+
+**Los hechos del artefacto instalado** (`MonoCode.AppImage`):
+
+| | |
+|---|---|
+| Formato | ELF, x86_64, 64 bits, little-endian, **ET_DYN** (position-independent) |
+| Tamaño | **18.946.552 bytes** · sha256 `d42c9535…` |
+| Punto de entrada | `0x2ae87` (dirección virtual enlazada; la base de carga en ejecución se desconoce) |
+| Secciones | `.appimage` · `.static` · `.note.gnu.build-id` · `.gnu.hash` · `.dynsym` · `.dynstr` · `.rela.dyn` · `.init` · `.text` … |
+| Limitaciones que declara el propio REA | **12**, escritas una a una (los `PT_NULL` no aportan bytes, los índices `SHN_XINDEX` no se resuelven, las direcciones enlazadas no son direcciones de fichero, …) |
+
+**El tope, preciso:** `inspect-binary-layout` acepta un artefacto de **hasta 33.554.432 bytes
+(32 MiB)**. El binario de MonoCode (`usr/bin/monocode`) son **52 MB**: `out_of_range`. Por eso el
+análisis nativo es del **AppImage** (18,9 MB) y no del binario de la app — y por eso el AppImage
+sí se puede analizar y el binario no.
+
+> **La diferencia entre Deska y MonoCode, con las herramientas correctas**: el `.asar` de Deska lo
+> come REA sin motor (es JavaScript); el ELF de MonoCode necesita motor **y** estar bajo 32 MiB.
+> Con el motor puesto, el punto ciego se reduce a **un número, no a una familia de apps**.
+
 ## 4. Lo que dice el CHANGELOG (74 versiones, y es público)
 
 El CHANGELOG es el mismo tipo de registro que el de Deska, y también **absorbido en la mente de
