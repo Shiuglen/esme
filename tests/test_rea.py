@@ -161,18 +161,58 @@ def test_analizar_avisa_si_no_es_un_programa(tmp_path):
         rea.analizar(f)
 
 
+class _ProcesoFalso:
+    """Un REA de mentira: el test no lanza el motor de verdad (ni la JVM, ni 18 s de espera)."""
+
+    def __init__(self, cmd, stdout=None, stderr=None, **kwargs):
+        self.cmd = cmd
+        self.visto = kwargs
+        self.pid = 999999          # un pid que no existe: el vigilante no ve nada
+        self.returncode = 0
+        self._stdout = stdout
+        self._stderr = stderr
+        self._espera = kwargs.pop("espera", None)
+        self._ya_vencio = False
+
+    def wait(self, timeout=None):
+        if self._espera and not self._ya_vencio:
+            self._ya_vencio = True
+            raise subprocess.TimeoutExpired(self.cmd, timeout or 0)
+        return self.returncode
+
+    def escribe(self, datos):
+        self._stdout.write(json.dumps(datos).encode())
+
+
+def _rea_falso(monkeypatch, *, evidencia=None, codigo=0, error="", espera=None):
+    """Pone un REA de mentira en su sitio y devuelve dónde se vio lo que se le pasó."""
+    visto = {}
+
+    def Popen(cmd, stdout=None, stderr=None, **kwargs):
+        if espera:
+            kwargs["espera"] = espera
+        p = _ProcesoFalso(cmd, stdout=stdout, stderr=stderr, **kwargs)
+        visto["cmd"] = cmd
+        visto["kwargs"] = kwargs
+        visto["stdout"] = stdout
+        visto["stderr"] = stderr
+        if evidencia is not None:
+            p.escribe(evidencia)
+        if error:
+            stderr.write(error.encode())
+        p.returncode = codigo
+        return p
+
+    monkeypatch.setattr(rea.subprocess, "Popen", Popen)
+    return visto
+
+
 def test_analizar_usa_rea_con_la_version_fijada(tmp_path, monkeypatch):
     """La versión se fija: REA publica deprisa y una versión nueva puede romper el análisis."""
     app = tmp_path / "out"
     app.mkdir()
     (app / "index.js").write_text("console.log(1)")
-    visto = {}
-
-    def falso(cmd, **kwargs):
-        visto["cmd"] = cmd
-        return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(_evidencia()), stderr="")
-
-    monkeypatch.setattr(rea.subprocess, "run", falso)
+    visto = _rea_falso(monkeypatch, evidencia=_evidencia())
     ev = rea.analizar(app)
     assert ev["evidence_id"] == "ev_123"
     assert visto["cmd"][0] in ("rea", "npx")
@@ -184,10 +224,140 @@ def test_analizar_usa_rea_con_la_version_fijada(tmp_path, monkeypatch):
 def test_analizar_explica_el_fallo_de_rea(tmp_path, monkeypatch):
     app = tmp_path / "out"
     app.mkdir()
-    monkeypatch.setattr(rea.subprocess, "run",
-                        lambda cmd, **k: subprocess.CompletedProcess(cmd, 1, stdout="", stderr="boom"))
+    _rea_falso(monkeypatch, codigo=1, error="boom")
     with pytest.raises(rea.ErrorRea, match="boom"):
         rea.analizar(app)
+
+
+def test_analizar_no_guarda_la_salida_en_la_memoria_sino_en_un_fichero(tmp_path, monkeypatch):
+    """La salida de REA pesa; si vive en la memoria, se multiplica por tres y mata el escritorio."""
+    app = tmp_path / "out"
+    app.mkdir()
+    visto = _rea_falso(monkeypatch, evidencia=_evidencia())
+    rea.analizar(app)
+    # stdout es un fichero, no una tubería: la evidencia va a disco y se lee después
+    assert visto["stdout"] is not None
+    assert visto["stdout"].name.endswith("evidencia.json")
+    assert "capture_output" not in visto["kwargs"]
+
+
+def test_analizar_mata_al_grupo_entero_cuando_se_pasa_de_tiempo(tmp_path, monkeypatch):
+    """El fin de tiempo mata al padre Y a sus hijos: si no, Ghidra sigue comiendo CPU huérfano."""
+    app = tmp_path / "out"
+    app.mkdir()
+    _rea_falso(monkeypatch, evidencia=_evidencia(), espera=True)
+    with pytest.raises(rea.ErrorRea, match="tardó más"):
+        rea.analizar(app, timeout=1)
+
+
+def test_analizar_dice_el_motivo_real_cuando_rea_no_puede(tmp_path, monkeypatch):
+    """REA contesta con su propio error en JSON: se enseña su motivo, no «Analysis failed»."""
+    app = tmp_path / "out"
+    app.mkdir()
+    _rea_falso(monkeypatch, evidencia={
+        "error": "Analysis failed", "code": "provider_unavailable",
+        "message": "The selected analysis provider is unavailable.",
+        "details": {"rejections": [
+            {"provider_id": "ghidra", "code": "not_configured",
+             "reason": "Set GHIDRA_INSTALL_DIR to an extracted Ghidra 12.1.x release directory."}]},
+    })
+    with pytest.raises(rea.ErrorRea, match="GHIDRA_INSTALL_DIR"):
+        rea.analizar(app)
+
+
+def test_analizar_no_empieza_si_la_maquina_no_tiene_memoria(tmp_path, monkeypatch):
+    """Si la memoria no da, el espejo dice que no: no es él quien decide a quién mata el OOM."""
+    app = tmp_path / "out"
+    app.mkdir()
+    _rea_falso(monkeypatch, evidencia=_evidencia())
+    monkeypatch.setattr(rea.presupuesto, "hay_suelo", lambda: (False, "no hay memoria"))
+    with pytest.raises(rea.ErrorRea, match="no hay memoria"):
+        rea.analizar(app)
+
+
+def test_analizar_no_hay_dos_a_la_vez(tmp_path, monkeypatch):
+    """Un análisis a la vez en toda la máquina: tres REA a la vez son los que mataron el escritorio."""
+    app = tmp_path / "out"
+    app.mkdir()
+    _rea_falso(monkeypatch, evidencia=_evidencia())
+
+    class _Ocupado:
+        def __enter__(self):
+            raise rea.presupuesto.Ocupado("ya hay un análisis en marcha")
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr(rea.presupuesto, "candado", lambda **k: _Ocupado())
+    with pytest.raises(rea.ErrorRea, match="ya hay un análisis en marcha"):
+        rea.analizar(app)
+
+
+# ── el espejo no se limita a un tipo de programa ────────────────────────────────────────────────
+
+def test_el_espejo_mira_cualquier_programa_no_solo_apps_electron(tmp_path):
+    """Un binario no es «un Electron con cero ventanas»: se mira con el motor que le toca."""
+    app = tmp_path / "out"
+    app.mkdir()
+    assert rea.plan_de(app)[0] == "analyze-javascript-application"
+    binario = tmp_path / "programa"
+    binario.write_bytes(b"\x7fELF\x02\x01\x01" + b"\x00" * 64)
+    assert rea.plan_de(binario)[0] == "analyze"
+
+
+def test_el_entorno_de_rea_encuentra_su_motor_nativo(tmp_path, monkeypatch):
+    """Ghidra y el JDK vivían sólo en la terminal del creador: la app heredaba otro entorno."""
+    casa = tmp_path / "Applications" / "ghidra"
+    (casa / "ghidra_12.1.4_PUBLIC").mkdir(parents=True)
+    (casa / "jdk-21.0.12.1+1").mkdir()
+    (casa / "pwn-venv" / "bin").mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("GHIDRA_INSTALL_DIR", raising=False)
+    monkeypatch.delenv("JAVA_HOME", raising=False)
+    monkeypatch.delenv("REA_PWNTOOLS_PYTHON", raising=False)
+    ent = rea.entorno_rea()
+    assert ent["GHIDRA_INSTALL_DIR"].endswith("ghidra_12.1.4_PUBLIC")
+    assert ent["JAVA_HOME"].endswith("jdk-21.0.12.1+1")
+    assert ent["REA_PWNTOOLS_PYTHON"].endswith("pwn-venv/bin/python")
+    assert ent["PATH"].split(":")[0].endswith("jdk-21.0.12.1+1/bin")
+
+
+def test_el_informe_de_un_binario_no_dice_que_es_electron():
+    """El informe dice lo que vio. Antes decía «un programa Electron» de todo, y mentía."""
+    ev = {
+        "evidence_id": "ev_bin", "confidence": "derived", "authority": "shipped-artifact",
+        "subject": {"name": "programa", "local_path": "/usr/bin/programa", "format": "elf",
+                    "architecture": "x86_64", "digest": {"sha256": "b" * 64}},
+        "analysis_profile": {"provider": {"id": "rea-workflow", "name": "REA composed investigation workflow",
+                                          "version": "1"},
+                             "parameters": {"upstream_analysis_profile": {
+                                 "provider": {"id": "ghidra", "name": "Ghidra", "version": "12.1.4"}}}},
+        "operation": "read_binary_inventory_summary",
+        "normalized_result": {"image_base": "0x100000", "segment_count": 2, "procedure_count": 134,
+                              "string_count": 132, "document": "el texto del motor",
+                              "segments": [{"name": "s1", "start": "0x100000", "end": "0x100350",
+                                            "length": 848, "address_space": "ram"}]},
+        "limitations": ["No se vio todo lo empaquetado."],
+    }
+    texto = rea.informe(ev)
+    assert "Electron" not in texto
+    assert "elf" in texto and "x86_64" in texto
+    assert "Ghidra 12.1.4" in texto
+    assert "134 procedimientos" in texto
+    assert "No se vio todo lo empaquetado." in texto
+
+
+def test_la_comparacion_de_dos_binarios_no_habla_de_canales():
+    """Comparar dos binarios con la cuenta de las apps daba ceros que parecían verdades."""
+    antes = {"clase": "nativo", "programa": "/bin/a", "segmentos": {"s1": {"inicio": "0x1000", "longitud": 10}},
+             "procedimientos": 10, "cadenas": 5, "formato": "elf", "arquitectura": "x86_64"}
+    despues = {"clase": "nativo", "programa": "/bin/b", "segmentos": {"s1": {"inicio": "0x2000", "longitud": 20},
+               "s2": {"inicio": "0x3000", "longitud": 5}},
+               "procedimientos": 12, "cadenas": 5, "formato": "elf", "arquitectura": "x86_64"}
+    texto = rea.comparar(antes, despues)
+    assert "canal" not in texto
+    assert "s2" in texto
+    assert "0x1000" in texto and "0x2000" in texto
 
 
 # ── la absorción ───────────────────────────────────────────────────────────────────────────────

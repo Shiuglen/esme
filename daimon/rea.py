@@ -10,20 +10,28 @@ Por qué así y no como receta manual: una receta se ejecuta cuando alguien se a
 **agente** que puede absorber el conocimiento de cualquier programa es lo que hace que Esme
 escale: cada programa entendido deja de ser un problema y se convierte en material.
 
-Regla de la casa (17-oct-2026): REA se usa sobre lo propio, sobre lo del usuario con permiso y
-para el forense del propio equipo. **Nunca** sobre apps de terceros para copiarlas.
+El espejo **no limita a nadie**: mira lo que le pidan mirar —una app Electron, un binario
+nativo, un APK, un paquete, una web—, sin listas de rutas permitidas ni advertencias de
+techo. El motivo con el que se pide queda escrito en el informe y viaja con la evidencia, así
+que siempre se sabe **por qué** se miró y **con qué autorización**. Lo que la casa no hace es
+lo otro: Esme no escribe malware, no roba credenciales, no rompe DRM y no toca la vida ni los
+datos de terceros. Esme **se escribe sola, no se copia**.
 """
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
+import tempfile
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
+from . import presupuesto
 from .immune import TRUST, clean, redact
 from .ingest import Event
 from .troceo import slug, trocea
@@ -35,6 +43,10 @@ LIMITE_NODOS = 20_000
 TIMEOUT = 900          # segundos: el análisis de una app entera tarda minutos
 MAX_CANALES = 200      # el informe entra en la memoria: no cabe un volcado entero
 MAX_FUNCIONES = 25
+MAX_SEGMENTOS = 200    # los segmentos de un binario: también se acotan (hay binarios con miles)
+MAX_DOCUMENTO = 20_000  # el documento que devuelve el motor nativo, en caracteres
+MAX_LIMITES = 40       # los límites que declara la evidencia: son largos y se cortan
+MAX_CAMPOS = 60        # las filas del resumen genérico
 
 
 class ErrorRea(RuntimeError):
@@ -47,32 +59,182 @@ def comando_rea() -> list[str]:
     """El binario de REA: el que está instalado si lo hay; si no, npx con la versión fijada."""
     if shutil.which("rea"):
         return ["rea"]
+    casa = Path.home() / ".local" / "bin" / "rea"
+    if casa.exists():
+        return [str(casa)]
     return ["npx", "-y", f"rea-agents@{VERSION}"]
 
 
-def analizar(ruta: str | Path, *, timeout: int = TIMEOUT, nodos: int = LIMITE_NODOS) -> dict:
-    """Analiza un programa y devuelve su evidencia (el sobre JSON de REA)."""
+def entorno_rea() -> dict[str, str]:
+    """El entorno que REA necesita para encontrar su motor nativo (Ghidra, el JDK, pwntools).
+
+    Estas variables vivían sólo en la terminal del creador. La app, el servidor y el Taller
+    heredan otro entorno, así que REA no encontraba a Ghidra y contestaba `provider_unavailable`
+    —el espejo se quedaba ciego sin decir por qué—. Aquí se buscan solas y se le pasan al hijo.
+    """
+    ent = dict(os.environ)
+    base = Path.home() / "Applications" / "ghidra"
+    if base.is_dir():
+        if not ent.get("GHIDRA_INSTALL_DIR"):
+            for c in sorted(base.glob("ghidra_*_PUBLIC")):
+                ent["GHIDRA_INSTALL_DIR"] = str(c)
+                break
+        if not ent.get("JAVA_HOME"):
+            for c in sorted(base.glob("jdk-*")):
+                ent["JAVA_HOME"] = str(c)
+                break
+        if not ent.get("REA_PWNTOOLS_PYTHON"):
+            for c in sorted(base.glob("pwn-venv")):
+                ent["REA_PWNTOOLS_PYTHON"] = str(c / "bin" / "python")
+                break
+    if ent.get("JAVA_HOME"):
+        ent["PATH"] = f"{ent['JAVA_HOME']}/bin:{ent.get('PATH', '')}"
+    casa = Path.home() / ".local" / "bin"
+    if casa.is_dir():
+        ent["PATH"] = f"{casa}:{ent.get('PATH', '')}"
+    return ent
+
+
+# Los ficheros que sí son programa: un binario tiene una firma, no un texto.
+_MAGICOS = (b"\x7fELF", b"MZ", b"\xca\xfe\xba\xbe", b"\xcf\xfa\xed\xfe",
+            b"\xce\xfa\xed\xfe", b"PK\x03\x04", b"dex\n", b"\x00asm")
+
+
+def _parece_texto(ruta: Path) -> bool:
+    """¿Es un fichero de texto? Un programa de verdad no lo es (y una nota no se puede mirar)."""
+    try:
+        cabeza = ruta.open("rb").read(4096)
+    except OSError:
+        return False
+    if not cabeza:
+        return True
+    if cabeza.startswith(_MAGICOS):
+        return False
+    try:
+        cabeza.decode("utf-8")
+    except UnicodeDecodeError:
+        return False
+    return sum(1 for b in cabeza if b < 9 or (13 < b < 32)) < len(cabeza) * 0.05
+
+
+def plan_de(ruta: Path, *, nodos: int = LIMITE_NODOS) -> list[str]:
+    """El comando de REA que corresponde al programa.
+
+    El espejo no se limita a un tipo de programa: una app Electron se reconstruye con su grafo
+    semántico; un binario nativo (ELF, PE, Mach-O, .NET), un APK o un paquete se miran con el
+    motor de Ghidra. Lo que no sepa REA lo dirá REA, no el espejo.
+    """
+    if ruta.is_dir() or ruta.suffix.lower() == ".asar":
+        return ["analyze-javascript-application", str(ruta), "--format", "json",
+                "--max-semantic-nodes", str(nodos)]
+    return ["analyze", str(ruta), "--format", "json"]
+
+
+def nodos_segun_memoria(nodos: int) -> int:
+    """El presupuesto de nodos se ajusta a la memoria que hay: si la máquina va justa, se mira menos."""
+    libre = presupuesto.memoria_disponible()
+    gib = 1024 ** 3
+    if not libre:
+        return nodos
+    if libre < 6 * gib:
+        return max(2_000, nodos // 4)
+    if libre < 10 * gib:
+        return max(4_000, nodos // 2)
+    return nodos
+
+
+def _motivo_de_error(datos: dict) -> str:
+    """El error de REA con sus palabras y el consejo de arreglo, no un «Analysis failed»."""
+    partes = [str(datos.get("message") or datos.get("error") or "REA no pudo analizar el programa")]
+    detalles = datos.get("details") or {}
+    for rechazo in detalles.get("rejections") or []:
+        proveedor = rechazo.get("provider_id") or "?"
+        codigo = rechazo.get("code") or "?"
+        razon = rechazo.get("reason") or ""
+        partes.append(f"{proveedor}: {codigo}" + (f" — {razon}" if razon else ""))
+    return " · ".join(partes)
+
+
+def analizar(ruta: str | Path, *, timeout: int = TIMEOUT, nodos: int = LIMITE_NODOS,
+             esperar: float = 0.0) -> dict:
+    """Analiza un programa y devuelve su evidencia (el sobre JSON de REA).
+
+    El espejo no se come la máquina: comprueba que hay memoria, toma el cerrojo (un análisis a la
+    vez en toda la máquina), pone un tope al proceso hijo, escribe la salida a disco —no a la
+    memoria— y deja muerto al grupo entero de procesos si algo se pasa.
+    """
+    with _candado(esperar):
+        return _analizar_bajo_candado(ruta, timeout=timeout, nodos=nodos)
+
+
+@contextlib.contextmanager
+def _candado(espera: float = 0.0):
+    """El cerrojo de máquina, con sus errores traducidos a los del espejo."""
+    try:
+        with presupuesto.candado(espera=espera):
+            yield
+    except presupuesto.Ocupado as e:
+        raise ErrorRea(f"{e}: espera a que termine y vuelve a intentarlo") from None
+    except presupuesto.PresupuestoInsuficiente as e:
+        raise ErrorRea(f"no se puede mirar ahora: {e}") from None
+
+
+def _analizar_bajo_candado(ruta: str | Path, *, timeout: int, nodos: int) -> dict:
+    """El análisis con el cerrojo ya tomado: así una comparación no suelta la máquina en medio."""
     ruta = Path(ruta).expanduser()
     if not ruta.exists():
         raise ErrorRea(f"no existe el programa: {ruta}")
-    if not (ruta.is_dir() or ruta.suffix == ".asar"):
+    if ruta.is_file() and _parece_texto(ruta):
         raise ErrorRea(f"eso no es un programa que REA sepa mirar: {ruta}")
-    cmd = comando_rea() + [
-        "analyze-javascript-application", str(ruta),
-        "--format", "json",
-        "--max-semantic-nodes", str(nodos),
-    ]
-    try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-    except subprocess.TimeoutExpired:
-        raise ErrorRea(f"REA tardó más de {timeout} s y se paró (mira un programa más pequeño)") from None
-    if proc.returncode != 0:
-        detalle = (proc.stderr or proc.stdout or "").strip().splitlines()
-        raise ErrorRea(f"REA no pudo analizar el programa: {detalle[-1] if detalle else 'sin explicación'}")
-    try:
-        return json.loads(proc.stdout)
-    except json.JSONDecodeError:
-        raise ErrorRea("REA no devolvió evidencia legible (su salida no es JSON)") from None
+    return _mirar(ruta, timeout=timeout, nodos=nodos)
+
+
+def _mirar(ruta: Path, *, timeout: int, nodos: int) -> dict:
+    """El análisis, con el gobernador puesto. La salida va a disco: la memoria no se toca."""
+    cmd = comando_rea() + plan_de(ruta, nodos=nodos_segun_memoria(nodos))
+    ent = entorno_rea()
+    hay, porque = presupuesto.hay_suelo()
+    if not hay:
+        raise ErrorRea(f"no se puede mirar ahora: {porque}")
+    tope = presupuesto.tope_memoria()
+    with tempfile.TemporaryDirectory(prefix="rea-") as tmp:
+        salida = Path(tmp) / "evidencia.json"
+        errores = Path(tmp) / "errores.txt"
+        with salida.open("wb") as f_out, errores.open("wb") as f_err:
+            try:
+                proc = subprocess.Popen(
+                    cmd, stdout=f_out, stderr=f_err, stdin=subprocess.DEVNULL,
+                    env=ent, start_new_session=True,
+                )
+            except FileNotFoundError:
+                raise ErrorRea("no se encontró el motor de REA (¿está instalado `rea`?)") from None
+            with presupuesto.Vigilante(proc.pid, tope) as vigila:
+                try:
+                    proc.wait(timeout=timeout)
+                except subprocess.TimeoutExpired:
+                    presupuesto.mata_todo(proc.pid, vigila.vistos)
+                    proc.wait(timeout=15)
+                    raise ErrorRea(f"REA tardó más de {timeout} s y se paró "
+                                   f"(mira un programa más pequeño)") from None
+                if vigila.excedido:
+                    presupuesto.mata_todo(proc.pid, vigila.vistos)
+                    raise ErrorRea(f"el análisis pasó de {tope // (1024 * 1024)} MiB de memoria y se paró "
+                                   f"(mira un programa más pequeño)")
+        datos = None
+        try:
+            with salida.open("r", encoding="utf-8") as f:
+                datos = json.load(f)
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError):
+            datos = None
+        if isinstance(datos, dict) and datos.get("error"):
+            raise ErrorRea(_motivo_de_error(datos))
+        if datos is None:
+            detalle = (errores.read_text(errors="replace") or "").strip().splitlines()
+            if proc.returncode != 0:
+                raise ErrorRea(f"REA no pudo analizar el programa: "
+                               f"{detalle[-1] if detalle else 'sin explicación'}")
+            raise ErrorRea("REA no devolvió evidencia legible (su salida no es JSON)")
+        return datos
 
 
 # ── el informe: del grafo a palabras ──────────────────────────────────────────────────────────
@@ -242,7 +404,177 @@ def _cobertura(bloque: dict) -> str:
     return f"{estado}" + (f" (topes: {topes})" if topes else "")
 
 
+def _forma_de(evidencia: dict) -> str:
+    """De qué tipo es la evidencia: cada programa se cuenta con su propia historia.
+
+    Antes el informe decía «un programa Electron» de todo, y un binario nativo salía como un
+    Electron con cero ventanas y cero canales: un informe que mentía. Ahora cada forma tiene su
+    informe, y lo que no se sabe se dice que no se sabe.
+    """
+    nr = evidencia.get("normalized_result") or {}
+    if nr.get("graph") or nr.get("semantic_graph"):
+        return "electron"
+    if nr.get("segments") is not None or "procedure_count" in nr or "string_count" in nr:
+        return "nativo"
+    return "generico"
+
+
 def informe(evidencia: dict, *, motivo: str = "") -> str:
+    """Convierte la evidencia de REA en un informe que la mente pueda absorber.
+
+    Todo lo que sale aquí está en la evidencia: si REA no lo dice, el informe no lo inventa.
+    """
+    forma = _forma_de(evidencia)
+    if forma == "electron":
+        return _informe_de_electron(evidencia, motivo=motivo)
+    if forma == "nativo":
+        return _informe_de_nativo(evidencia, motivo=motivo)
+    return _informe_generico(evidencia, motivo=motivo)
+
+
+def _cabecera_informe(evidencia: dict, *, motivo: str, titulo: str) -> list[str]:
+    """La cabecera común: de quién es el informe, con qué evidencia y por qué se miró."""
+    asunto = evidencia.get("subject") or {}
+    digest = (asunto.get("digest") or {}).get("sha256") or ""
+    ruta = asunto.get("local_path") or asunto.get("name") or "?"
+    L = [f"# {titulo}", ""]
+    L.append("> Informe generado por REA " + VERSION + " para la mente de Esme. "
+             f"Cada dato viene de la evidencia de REA ({evidencia.get('evidence_id') or 'sin id'}); "
+             f"confianza «{evidencia.get('confidence') or '?'}», autoridad «{evidencia.get('authority') or '?'}».")
+    L.append(f"> Programa: `{ruta}` (sha256 `{(digest or '')[:16]}`) · generado el "
+             f"{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC")
+    if motivo:
+        L.append(f"> Motivo: {motivo}")
+    L.append("")
+    return L
+
+
+def _motor_de(evidencia: dict) -> str:
+    """Quién leyó el programa: el motor de verdad (Ghidra, Hopper, IDA...), no el envoltorio."""
+    encontrados: list[str] = []
+
+    def _mira(perfil) -> None:
+        if not isinstance(perfil, dict):
+            return
+        p = perfil.get("provider") if "provider" in perfil else perfil
+        if not isinstance(p, dict):
+            return
+        nombre = p.get("name") or p.get("id")
+        if not nombre:
+            return
+        version = p.get("version")
+        etiqueta = f"{nombre} {version}".strip() if version and str(version) != "1" else str(nombre)
+        if etiqueta not in encontrados:
+            encontrados.append(etiqueta)
+
+    perfil = evidencia.get("analysis_profile") or {}
+    _mira(perfil)
+    _mira((perfil.get("parameters") or {}).get("upstream_analysis_profile") or {})
+    _mira(evidencia.get("provider") or {})
+    for etiqueta in encontrados:
+        if "composed" not in etiqueta.lower():
+            return etiqueta
+    return encontrados[0] if encontrados else "el motor de REA"
+
+
+def _apartado_de_limites(evidencia: dict) -> list[str]:
+    """Los límites que declara la propia evidencia: lo que no se pudo ver, con su razón."""
+    limites = evidencia.get("limitations") or []
+    L = ["## Lo que no se pudo ver", ""]
+    if limites:
+        for limite in limites[:MAX_LIMITES]:
+            L.append(f"- {limite}")
+        if len(limites) > MAX_LIMITES:
+            L.append(f"- … y {len(limites) - MAX_LIMITES} límites más (el informe los acota)")
+    else:
+        L.append("La evidencia no declara límites. Eso no significa que no los tenga: significa "
+                 "que REA no los escribió.")
+    L.append("")
+    return L
+
+
+def _informe_de_nativo(evidencia: dict, *, motivo: str = "") -> str:
+    """El informe de un binario: qué es, cómo está repartido en memoria y qué no se pudo ver."""
+    nr = evidencia.get("normalized_result") or {}
+    asunto = evidencia.get("subject") or {}
+    segmentos = nr.get("segments") or []
+    L = _cabecera_informe(evidencia, motivo=motivo,
+                          titulo=f"Lo que REA vio de {asunto.get('name') or 'un binario'}")
+    motor = _motor_de(evidencia)
+    L.append("## En una frase")
+    L.append("")
+    L.append(f"Un binario **{asunto.get('format') or 'sin formato declarado'}** de "
+             f"**{asunto.get('architecture') or 'arquitectura desconocida'}** con "
+             f"**{_n(nr.get('segment_count', len(segmentos)))} segmentos**, "
+             f"**{_n(nr.get('procedure_count', 0))} procedimientos** y "
+             f"**{_n(nr.get('string_count', 0))} cadenas**, leído con **{motor}**"
+             + (f" (base de imagen `{nr.get('image_base')}`)" if nr.get("image_base") else "") + ".")
+    L.append("")
+    L.append("## Qué es")
+    L.append("")
+    L.append("| | |")
+    L.append("|---|---|")
+    L.append(f"| Formato | `{asunto.get('format') or '?'}` |")
+    L.append(f"| Arquitectura | `{asunto.get('architecture') or '?'}` |")
+    L.append(f"| Motor | {motor} |")
+    L.append(f"| Base de imagen | `{nr.get('image_base') or '?'}` |")
+    L.append(f"| Segmentos | {_n(nr.get('segment_count', len(segmentos)))} |")
+    L.append(f"| Procedimientos | {_n(nr.get('procedure_count', 0))} |")
+    L.append(f"| Cadenas | {_n(nr.get('string_count', 0))} |")
+    L.append(f"| Operación | `{evidencia.get('operation') or '?'}` |")
+    L.append("")
+    if segmentos:
+        L.append("## Los segmentos de memoria")
+        L.append("")
+        L.append("| Segmento | Desde | Hasta | Longitud | Espacio |")
+        L.append("|---|---|---|---|---|")
+        for s in segmentos[:MAX_SEGMENTOS]:
+            L.append(f"| `{s.get('name') or '?'}` | `{s.get('start') or '?'}` | `{s.get('end') or '?'}` | "
+                     f"{_n(s.get('length', 0))} | `{s.get('address_space') or '?'}` |")
+        if len(segmentos) > MAX_SEGMENTOS:
+            L.append(f"| … | | | | {len(segmentos) - MAX_SEGMENTOS} segmentos más (el informe los acota) |")
+        L.append("")
+    documento = nr.get("document") or ""
+    if documento:
+        L.append("## Lo que el motor devolvió")
+        L.append("")
+        L.append(documento[:MAX_DOCUMENTO])
+        if len(documento) > MAX_DOCUMENTO:
+            L.append("")
+            L.append(f"(el documento del motor se acota a {MAX_DOCUMENTO} caracteres de {len(documento)})")
+        L.append("")
+    L.extend(_apartado_de_limites(evidencia))
+    return "\n".join(L) + "\n"
+
+
+def _informe_generico(evidencia: dict, *, motivo: str = "") -> str:
+    """Cuando la evidencia no es de una forma que sepamos: se dice lo que hay, sin inventar."""
+    nr = evidencia.get("normalized_result") or {}
+    asunto = evidencia.get("subject") or {}
+    L = _cabecera_informe(evidencia, motivo=motivo,
+                          titulo=f"Lo que REA vio de {asunto.get('name') or 'un programa'}")
+    L.append("## En una frase")
+    L.append("")
+    L.append(f"Una evidencia de REA de formato `{asunto.get('format') or 'desconocido'}` "
+             f"(`{evidencia.get('operation') or 'operación sin nombre'}`), leída con **{_motor_de(evidencia)}**.")
+    L.append("")
+    L.append("## Lo que devolvió el motor")
+    L.append("")
+    resumen = nr.get("summary") if isinstance(nr.get("summary"), dict) else {}
+    if resumen:
+        L.append("| Dato | Valor |")
+        L.append("|---|---|")
+        for clave, valor in list(resumen.items())[:MAX_CAMPOS]:
+            L.append(f"| {clave} | {_n(valor) if isinstance(valor, (int, float)) and not isinstance(valor, bool) else valor} |")
+        L.append("")
+    else:
+        L.append("El motor no devolvió un resumen con esos nombres.")
+        L.append("")
+    L.extend(_apartado_de_limites(evidencia))
+    return "\n".join(L) + "\n"
+
+
+def _informe_de_electron(evidencia: dict, *, motivo: str = "") -> str:
     """Convierte la evidencia de REA en un informe que la mente pueda absorber.
 
     Todo lo que sale aquí está en la evidencia: si REA no lo dice, el informe no lo inventa.
@@ -453,9 +785,14 @@ def reducir(evidencia: dict) -> dict:
     semantico = nr.get("semantic_graph") or {}
     funciones = _funciones(semantico)
     mas_llamadas = _mas_llamadas(semantico, funciones)
+    asunto = evidencia.get("subject") or {}
     return {
         "evidencia": evidencia.get("evidence_id"),
-        "programa": (evidencia.get("subject") or {}).get("local_path"),
+        "programa": asunto.get("local_path"),
+        "clase": _forma_de(evidencia),
+        "formato": asunto.get("format"),
+        "arquitectura": asunto.get("architecture"),
+        "motor": _motor_de(evidencia),
         "resumen": nr.get("summary") or {},
         "estadisticas": nr.get("statistics") or {},
         "canales": {c["canal"]: c["sitio"] for c in _canales(grafo)},
@@ -463,6 +800,13 @@ def reducir(evidencia: dict) -> dict:
         "ficheros": {c["fichero"]: {"funciones": c["funciones"], "nodos": c["nodos"]} for c in _ficheros(semantico)},
         "funciones": {f["nombre"]: f"{f['fichero']}:{f['linea']}" for f in mas_llamadas},
         "desconocidos": len(semantico.get("unknowns") or []),
+        # lo nativo: los segmentos, los procedimientos y las cadenas, que es lo que se compara
+        "segmentos": {s.get("name") or "": {"inicio": s.get("start"), "fin": s.get("end"),
+                                            "longitud": s.get("length"), "espacio": s.get("address_space")}
+                      for s in (nr.get("segments") or [])},
+        "procedimientos": nr.get("procedure_count", 0),
+        "cadenas": nr.get("string_count", 0),
+        "base_imagen": nr.get("image_base"),
     }
 
 
@@ -525,8 +869,71 @@ def _emparejar_ventanas(va: list[dict], vb: list[dict]) -> tuple[list[tuple[dict
     return pares, nuevas, fuera
 
 
+def _comparar_nativo(a: dict, b: dict, nombre_a: str, nombre_b: str) -> str:
+    """La comparación de dos binarios: formato, arquitectura, segmentos, procedimientos y cadenas.
+
+    Comparar dos binarios con la comparación de las apps Electron daba «0 canales nuevos, 0
+    ventanas nuevas» para dos binarios que no tienen canales ni ventanas: un cero que parecía
+    una verdad y no lo era.
+    """
+    sa = a.get("segmentos") or {}
+    sb = b.get("segmentos") or {}
+    nuevos = sorted(set(sb) - set(sa))
+    fuera = sorted(set(sa) - set(sb))
+    cambiados = [(k, sa[k], sb[k]) for k in sorted(set(sa) & set(sb))
+                 if sa[k].get("longitud") != sb[k].get("longitud")
+                 or sa[k].get("inicio") != sb[k].get("inicio")]
+    L: list[str] = []
+    L.append(f"# Qué cambió entre {nombre_a} y {nombre_b}")
+    L.append("")
+    L.append(f"> Comparación hecha con las dos versiones reducidas (lo que el espejo guardó de cada "
+             f"una). {nombre_a}: {a.get('programa') or '?'} · {nombre_b}: {b.get('programa') or '?'}")
+    L.append("")
+    L.append("## En una frase")
+    L.append("")
+    L.append(f"**{_p(len(nuevos), 'segmento nuevo', 'segmentos nuevos')}**, "
+             f"**{_p(len(fuera), 'segmento que se fue', 'segmentos que se fueron')}** y "
+             f"**{_p(len(cambiados), 'segmento que cambió', 'segmentos que cambiaron')}**.")
+    L.append("")
+    if a.get("formato") != b.get("formato"):
+        L.append(f"El formato cambió: `{a.get('formato')}` → `{b.get('formato')}`.")
+        L.append("")
+    if a.get("arquitectura") != b.get("arquitectura"):
+        L.append(f"La arquitectura cambió: `{a.get('arquitectura')}` → `{b.get('arquitectura')}`.")
+        L.append("")
+    if a.get("base_imagen") != b.get("base_imagen"):
+        L.append(f"La base de imagen cambió: `{a.get('base_imagen')}` → `{b.get('base_imagen')}`.")
+        L.append("")
+    L.append("## Los números")
+    L.append("")
+    L.append("| | Antes | Ahora |")
+    L.append("|---|---|---|")
+    L.append(f"| Segmentos | {_n(len(sa))} | {_n(len(sb))} |")
+    L.append(f"| Procedimientos | {_n(a.get('procedimientos') or 0)} | {_n(b.get('procedimientos') or 0)} |")
+    L.append(f"| Cadenas | {_n(a.get('cadenas') or 0)} | {_n(b.get('cadenas') or 0)} |")
+    L.append("")
+    if nuevos:
+        L.append("Segmentos nuevos: " + ", ".join(f"`{s}`" for s in nuevos) + ".")
+        L.append("")
+    if fuera:
+        L.append("Segmentos que se fueron: " + ", ".join(f"`{s}`" for s in fuera) + ".")
+        L.append("")
+    if cambiados:
+        L.append("## Los segmentos que cambiaron")
+        L.append("")
+        L.append("| Segmento | Antes | Ahora |")
+        L.append("|---|---|---|")
+        for nombre, x, y in cambiados[:MAX_SEGMENTOS]:
+            L.append(f"| `{nombre}` | `{x.get('inicio')}` ({_n(x.get('longitud', 0))} B) | "
+                     f"`{y.get('inicio')}` ({_n(y.get('longitud', 0))} B) |")
+        L.append("")
+    return "\n".join(L) + "\n"
+
+
 def comparar(a: dict, b: dict, nombre_a: str = "la versión anterior", nombre_b: str = "la versión nueva") -> str:
     """Qué cambió entre dos versiones del mismo programa, en palabras y con números."""
+    if "nativo" in (a.get("clase"), b.get("clase")):
+        return _comparar_nativo(a, b, nombre_a, nombre_b)
     ca, cb = set(a.get("canales") or {}), set(b.get("canales") or {})
     nuevos, fuera = sorted(cb - ca), sorted(ca - cb)
     fa, fb = set(a.get("ficheros") or {}), set(b.get("ficheros") or {})
@@ -663,9 +1070,14 @@ def ingerir(home, evidencia: dict, ruta: str | Path, *, motivo: str = "") -> dic
         "fuente": fuente,
         "evidencia": evidencia.get("evidence_id"),
         "programa": (evidencia.get("subject") or {}).get("local_path"),
+        "clase": _forma_de(evidencia),
         "canales": ((nr.get("summary") or {}).get("ipc") or {}).get("literal_channels"),
         "funciones": sum(1 for n in (nr.get("semantic_graph") or {}).get("nodes") or [] if n.get("kind") == "function"),
         "desconocidos": len((nr.get("semantic_graph") or {}).get("unknowns") or []),
+        # lo nativo tiene sus propias cuentas: segmentos, procedimientos y cadenas
+        "segmentos": nr.get("segment_count", len(nr.get("segments") or [])) if _forma_de(evidencia) == "nativo" else None,
+        "procedimientos": nr.get("procedure_count") if _forma_de(evidencia) == "nativo" else None,
+        "cadenas": nr.get("string_count") if _forma_de(evidencia) == "nativo" else None,
     }
 
 
@@ -722,30 +1134,33 @@ def comparar_versiones(home, ruta: str | Path, *, contra: str | Path | None = No
 
     Separada a propósito: lo lento (analizar) va fuera del cerrojo y lo rápido (escribir) dentro.
     """
-    va_list = versiones(home, ruta)
-    if contra is not None:
-        vb_list = versiones(home, contra)
-        if not va_list:
-            va_list = [reducir(analizar(ruta, timeout=timeout))]
-            _soltar_memoria()
-        if not vb_list:
-            vb_list = [reducir(analizar(contra, timeout=timeout))]
-            _soltar_memoria()
-        va, vb = va_list[0], vb_list[0]
-        etiqueta_a = nombre_a or f"{Path(ruta).name} (antes)"
-        etiqueta_b = nombre_b or f"{Path(contra).name} (después)"
-        clave = f"{clave_de(ruta)}~{clave_de(contra)}"
-    else:
-        if len(va_list) >= 2:
-            vb, va = va_list[0], va_list[1]
+    # Un solo cerrojo para las dos mitades: si se soltara entre medias, otro análisis se
+    # colaría y la comparación se haría con la máquina ya ocupada.
+    with _candado():
+        va_list = versiones(home, ruta)
+        if contra is not None:
+            vb_list = versiones(home, contra)
+            if not va_list:
+                va_list = [reducir(analizar(ruta, timeout=timeout))]
+                _soltar_memoria()
+            if not vb_list:
+                vb_list = [reducir(analizar(contra, timeout=timeout))]
+                _soltar_memoria()
+            va, vb = va_list[0], vb_list[0]
+            etiqueta_a = nombre_a or f"{Path(ruta).name} (antes)"
+            etiqueta_b = nombre_b or f"{Path(contra).name} (después)"
+            clave = f"{clave_de(ruta)}~{clave_de(contra)}"
         else:
-            # Sólo había una versión guardada: se mira el programa otra vez (ya cambió en disco).
-            vb = reducir(analizar(ruta, timeout=timeout))
-            _soltar_memoria()
-            va = va_list[0] if va_list else vb
-        etiqueta_a = nombre_a or "la versión anterior"
-        etiqueta_b = nombre_b or "la versión nueva"
-        clave = f"{clave_de(ruta)}~ahora"
+            if len(va_list) >= 2:
+                vb, va = va_list[0], va_list[1]
+            else:
+                # Sólo había una versión guardada: se mira el programa otra vez (ya cambió en disco).
+                vb = reducir(analizar(ruta, timeout=timeout))
+                _soltar_memoria()
+                va = va_list[0] if va_list else vb
+            etiqueta_a = nombre_a or "la versión anterior"
+            etiqueta_b = nombre_b or "la versión nueva"
+            clave = f"{clave_de(ruta)}~ahora"
     return comparar(va, vb, etiqueta_a, etiqueta_b), clave
 
 

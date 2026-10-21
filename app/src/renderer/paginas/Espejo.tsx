@@ -3,11 +3,12 @@
 // La puerta que faltaba: el espejo ya se podía usar desde la conversación, desde MCP y desde la
 // terminal, pero el informe —lo que REA vio y lo que no— sólo se leía en un fichero. Aquí se ve.
 //
-// Regla de la casa: sólo software propio, el del usuario con permiso o el forense del equipo.
+// El espejo no limita: mira lo que le pases y guarda el motivo con el que se miró.
 import { useState } from 'react'
 import { ScanSearch, Loader2, GitCompareArrows, ShieldAlert, Sparkles } from 'lucide-react'
 import { Markdown } from '../chat/Markdown'
 import { bridge } from '../lib/bridge'
+import { cuentasDe, puedeMirar, rutaLimpia } from './espejo-cuentas'
 
 type Estado =
   | { fase: 'idle' }
@@ -16,39 +17,33 @@ type Estado =
   | { fase: 'comparado'; ruta: string; texto: string; cuentas: string[] }
   | { fase: 'error'; mensaje: string }
 
-/** Las cuentas del informe, en una línea: lo que se ve y lo que no. */
-export function cuentasDe(r: { canales?: number; funciones?: number; desconocidos?: number; added?: number }): string[] {
-  const out: string[] = []
-  if (r.canales !== undefined) out.push(`${r.canales} canales IPC`)
-  if (r.funciones !== undefined) out.push(`${r.funciones} funciones`)
-  if (r.desconocidos !== undefined) out.push(`${r.desconocidos} cosas que no se pudo ver`)
-  if (r.added !== undefined) out.push(`${r.added} recuerdos en la mente`)
-  return out
-}
-
 export function Espejo() {
   const [ruta, setRuta] = useState('')
   const [motivo, setMotivo] = useState('')
   const [estado, setEstado] = useState<Estado>({ fase: 'idle' })
 
   const mirar = async () => {
-    const limpio = ruta.trim()
-    if (!limpio) return
+    const limpio = rutaLimpia(ruta)
+    if (!puedeMirar(limpio, false)) return
     setEstado({ fase: 'mirando', ruta: limpio })
-    const r = await bridge.mente.espejo(limpio, motivo.trim())
-    if (!r.ok) { setEstado({ fase: 'error', mensaje: r.error ?? 'el espejo falló' }); return }
-    const d = r.dato
-    setEstado({ fase: 'hecho', ruta: limpio, texto: d.texto ?? '', cuentas: cuentasDe(d) })
+    try {
+      const d = await bridge.mente.espejo(limpio, motivo.trim())
+      setEstado({ fase: 'hecho', ruta: limpio, texto: d.texto ?? '', cuentas: cuentasDe(d) })
+    } catch (e) {
+      setEstado({ fase: 'error', mensaje: e instanceof Error ? e.message : 'el espejo falló' })
+    }
   }
 
   const comparar = async () => {
-    const limpio = ruta.trim()
-    if (!limpio) return
+    const limpio = rutaLimpia(ruta)
+    if (!puedeMirar(limpio, false)) return
     setEstado({ fase: 'mirando', ruta: limpio })
-    const r = await bridge.mente.espejoComparar(limpio, '')
-    if (!r.ok) { setEstado({ fase: 'error', mensaje: r.error ?? 'la comparación falló' }); return }
-    const d = r.dato
-    setEstado({ fase: 'comparado', ruta: limpio, texto: d.texto ?? '', cuentas: cuentasDe(d) })
+    try {
+      const d = await bridge.mente.espejoComparar(limpio, '')
+      setEstado({ fase: 'comparado', ruta: limpio, texto: d.texto ?? '', cuentas: cuentasDe(d) })
+    } catch (e) {
+      setEstado({ fase: 'error', mensaje: e instanceof Error ? e.message : 'la comparación falló' })
+    }
   }
 
   return (
@@ -59,8 +54,9 @@ export function Espejo() {
         </h3>
         <p className="m-0 text-[13px] text-texto-2">
           Le pasa el programa a REA y lo que vio queda en tu mente: los módulos, las funciones, la
-          superficie (los canales IPC y las ventanas) y, lo más importante, <strong>lo que no se
-          pudo ver</strong>. Luego puedes preguntarle por él a cualquier IA que trabaje contigo.
+          superficie (los canales IPC y las ventanas) o, si es un binario, sus segmentos, sus
+          procedimientos y sus cadenas — y, lo más importante, <strong>lo que no se pudo ver</strong>.
+          Luego puedes preguntarle por él a cualquier IA que trabaje contigo.
         </p>
       </div>
 
@@ -70,7 +66,7 @@ export function Espejo() {
           id="espejo-ruta"
           value={ruta}
           onChange={(e) => setRuta(e.target.value)}
-          placeholder="/home/tu/usuario/una/app/out  (o el .asar)"
+          placeholder="/home/tu/usuario/una/app/out  ·  /usr/bin/programa  ·  algo.asar"
           spellCheck={false}
           className="rounded-b border border-linea bg-s1 px-3 py-2 text-[13px] outline-none focus:border-acento"
         />
@@ -92,7 +88,7 @@ export function Espejo() {
         <button
           type="button"
           onClick={mirar}
-          disabled={!ruta.trim() || estado.fase === 'mirando'}
+          disabled={!puedeMirar(ruta, estado.fase === 'mirando')}
           className="inline-flex items-center gap-2 rounded-full bg-acento px-4 py-1.5 text-[13px] text-sobre-acento disabled:opacity-40"
         >
           {estado.fase === 'mirando' ? <Loader2 className="size-4 animate-spin" strokeWidth={1.5} /> : <ScanSearch className="size-4" strokeWidth={1.5} />}
@@ -101,7 +97,7 @@ export function Espejo() {
         <button
           type="button"
           onClick={comparar}
-          disabled={!ruta.trim() || estado.fase === 'mirando'}
+          disabled={!puedeMirar(ruta, estado.fase === 'mirando')}
           className="inline-flex items-center gap-2 rounded-full border border-linea px-4 py-1.5 text-[13px] text-texto-2 disabled:opacity-40"
         >
           <GitCompareArrows className="size-4" strokeWidth={1.5} />
@@ -111,8 +107,9 @@ export function Espejo() {
 
       <p className="m-0 flex items-start gap-2 text-[12px] text-texto-2">
         <ShieldAlert className="mt-px size-3.5 shrink-0" strokeWidth={1.5} />
-        Sólo software propio, el tuyo con permiso o el forense de tu equipo. Nunca para copiar apps
-        de terceros. Mirar un programa tarda (un minuto o más: REA lo lee entero).
+        El espejo no limita: mira lo que le pases —una app, un binario, un paquete, un .asar— y
+        guarda el motivo con el que se miró. Tarda (un minuto o más: REA lo lee entero) y come
+        memoria: si la máquina está justa, espera en vez de llevarte por delante el escritorio.
       </p>
 
       {estado.fase === 'error' && (

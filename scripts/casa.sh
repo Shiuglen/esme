@@ -38,7 +38,11 @@ cd "$RAIZ"
 if [ "${1:-}" = "commit" ]; then
   shift
   SIN_SUBIR="$(git status --porcelain | grep -vE '^[MADRCU?]{1,2} ' || true)"
-  MODIFICADOS="$(git status --porcelain | awk '$1 != "??" {print $2}' || true)"
+  # Lo que está en el índice ya es «mío y subido»: la columna 1 del porcelain es el índice y la
+  # 2 el árbol de trabajo. Con `awk '$1 != "??"'` lo que ya estaba en el índice salía como
+  # «cambio ajeno» y el script se negaba siempre: el candado que protege a los dos agentes
+  # impedía trabajar a los dos.
+  MODIFICADOS="$(git status --porcelain | awk 'substr($0,2,1) != " " {print $2}' || true)"
   if [ -n "$MODIFICADOS" ]; then
     echo "Hay cambios sin subir en la casa que no son tuyos:" >&2
     git status --porcelain >&2

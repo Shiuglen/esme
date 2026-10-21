@@ -82,9 +82,13 @@ export type Espejo = {
   fuente?: string
   evidencia?: string
   programa?: string
+  clase?: string
   canales?: number
   funciones?: number
   desconocidos?: number
+  segmentos?: number
+  procedimientos?: number
+  cadenas?: number
   texto?: string
   error?: string
 }
@@ -242,8 +246,8 @@ export const bridge = {
     ingerir: async (paths: string[]) => dato(isElectron() ? window.daimon!.mente.ingerir(paths) : datoWeb((c) => c.ingerir(paths))),
     atlas: async () => dato(isElectron() ? window.daimon!.mente.atlas() : datoWeb((c) => c.atlas() as Promise<{ points: unknown[]; clusters: unknown[] }>)),
     repeticiones: async () => dato(isElectron() ? window.daimon!.mente.repeticiones() : datoWeb((c) => c.repeticiones())),
-    espejo: async (ruta: string, motivo: string) => dato(isElectron() ? window.daimon!.mente.espejo(ruta, motivo) : solo<Espejo>({ error: 'El espejo sólo funciona en la app.' })),
-    espejoComparar: async (ruta: string, contra: string) => dato(isElectron() ? window.daimon!.mente.espejoComparar(ruta, contra) : solo<Espejo & { texto: string }>({ error: 'El espejo sólo funciona en la app.' })),
+    espejo: async (ruta: string, motivo: string) => dato(isElectron() ? window.daimon!.mente.espejo(ruta, motivo) : solo<Espejo>()),
+    espejoComparar: async (ruta: string, contra: string) => dato(isElectron() ? window.daimon!.mente.espejoComparar(ruta, contra) : solo<Espejo & { texto: string }>()),
     necesidad: async () => dato(isElectron() ? window.daimon!.mente.necesidad() : datoWeb((c) => c.necesidad())),
     memoria: async (id: string) => dato(isElectron() ? window.daimon!.mente.memoria(id) : datoWeb((c) => c.memoria(id))),
     oir: async (pcm: ArrayBuffer, idioma: string) => dato(isElectron() ? window.daimon!.mente.oir(pcm, idioma) : datoWeb((c) => c.oir(pcm, idioma))),
