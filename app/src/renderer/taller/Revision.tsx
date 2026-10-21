@@ -34,7 +34,7 @@ export function Revision({ t, linea, acciones }: { t: TareaTaller; linea: ItemLi
     let vivo = true
     void bridge.taller.diff(t.id).then((d) => { if (vivo) { setFicheros(leerDiff(d.texto)); setTruncado(d.truncado) } })
     return () => { vivo = false }
-  }, [huella, t.id])
+  }, [huella, t.id, vuelta])
   // Los puntos de cada turno: el commit que dejó. Se releen cuando la tarea cambia o cuando se vuelve.
   useEffect(() => {
     let vivo = true
