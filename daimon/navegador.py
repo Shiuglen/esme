@@ -71,6 +71,9 @@ class ClienteNavegador:
     def bajar(self, abajo: bool = True) -> dict:
         return self._llama("/scroll", {"abajo": abajo})
 
+    def volver(self) -> dict:
+        return self._llama("/volver", {})
+
 
 def en_palabras(r: dict) -> str:
     """Lo que la herramienta MCP devuelve: la página, en texto, con sus acciones posibles."""

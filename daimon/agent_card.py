@@ -63,7 +63,7 @@ def agent_card(url_base: str, version: str = VERSION) -> dict:
                     "Abre la página de las noticias y dime qué hay.",
                     "Busca en esa web el precio y vuelve con la cifra.",
                 ],
-                "x-esme": {"herramientas": ["navegar", "clic_en_la_pagina", "escribir_en_la_pagina", "bajar_la_mira"]},
+                "x-esme": {"herramientas": ["navegar", "clic_en_la_pagina", "escribir_en_la_pagina", "bajar_la_mira", "volver_en_la_historia"]},
             },
             {
                 "id": "sueno",

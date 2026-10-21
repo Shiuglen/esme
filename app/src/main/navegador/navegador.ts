@@ -1,7 +1,7 @@
 // El navegador: la ventana que se abre, se usa y se cierra. La ventana se fabrica (así esto se
 // puede probar sin Electron) y se cierra sola cuando pasa un rato sin usarla: en reposo Esme no
 // consume memoria ni navegador abierto.
-import { GUION_CLIC, GUION_ESCRIBIR, GUION_ESTADO, GUION_SCROLL, normaliza, urlValida, type EstadoPagina } from './estado'
+import { GUION_CLIC, GUION_ESCRIBIR, GUION_ESTADO, GUION_SCROLL, GUION_VOLVER, normaliza, urlValida, type EstadoPagina } from './estado'
 
 /** Lo mínimo de una ventana que el navegador necesita. */
 export type Ventana = {
@@ -61,6 +61,21 @@ export class Navegador {
   async scroll(abajo = true): Promise<EstadoPagina> {
     const v = this.ventana()
     await v.executeJavaScript(GUION_SCROLL(abajo))
+    return this.estado()
+  }
+
+  /** Vuelve a la página anterior: la historia del navegador. La página vieja muere al navegar,
+   *  así que aquí no se espera dentro de la página — se espera FUERA, mirando la dirección que
+   *  la ventana carga, y se lee el estado nuevo cuando la dirección ya cambió (o se da a los
+   *  2,5 segundos: mejor un estado a medias que colgar la puerta). */
+  async volver(): Promise<EstadoPagina> {
+    const v = this.ventana()
+    const antes = v.url()
+    await v.executeJavaScript(GUION_VOLVER)
+    for (let i = 0; i < 25; i++) {
+      await new Promise((r) => setTimeout(r, 100))
+      if (v.url() !== antes) break
+    }
     return this.estado()
   }
 
