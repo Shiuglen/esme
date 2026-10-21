@@ -2,7 +2,7 @@ import json
 
 from daimon.bench.items import Item
 from daimon.bench.judge import fact_recall, judge, parse_score
-from daimon.bench.metrics import bootstrap_ci, worse_rate
+from daimon.bench.metrics import bootstrap_ci, paired_diff_ci, sign_test_p, worse_rate
 from daimon.bench.report import report
 from daimon.bench.run import run
 
@@ -87,3 +87,69 @@ def test_veredicto(tmp_path):
     assert report(rows, items, tmp_path / "r2.md")["verdict"] is False
     rows = _rows("ia_sola", 0.0, 0, ids) + _rows("bm25", 0.5, 1500, ids) + _rows("daimon", 0.5, 900, ids)
     assert report(rows, items, tmp_path / "r3.md")["verdict"] is True
+
+
+# ——— el veredicto por pares (20-oct): el ruido del instrumento, no la memoria ———
+def _ruidoso(n, ac_daimon, ac_base, semilla=0):
+    """Ítems con acierto ruidoso: dos variantes con la misma media pueden no ser iguales."""
+    import random
+    r = random.Random(semilla)
+    ids = [f"q{i}" for i in range(n)]
+
+    def filas(v, p, tokens):
+        out = []
+        for i in ids:
+            out.append({"item_id": i, "variant": v, "status": "ok", "score": 1.0 if r.random() < p else 0.0,
+                        "facts": 1.0 if r.random() < p else 0.0, "context_tokens": tokens,
+                        "latency_s": 1.0, "answer": ""})
+        return out
+    return filas("daimon", ac_daimon, 900) + filas("bm25", ac_base, 1500) + filas("ia_sola", 0.0, 0)
+
+
+def test_empate_ruidoso_no_es_derrota(tmp_path):
+    """Dos variantes con la MISMA media y el mismo ruido: la diferencia no se distingue → empate."""
+    items = [Item(f"q{i}", "q", "g", ["f"], [], "hecho", "generada") for i in range(35)]
+    rows = _ruidoso(35, 0.8, 0.8, 3)
+    s = report(rows, items, tmp_path / "r.md")
+    assert s["verdict"] is True, s["reason"]
+    assert "empata" in s["reason"]
+
+
+def test_perder_de_verdad_no_pasa(tmp_path):
+    """Si la memoria es peor de verdad (y el ruido es pequeño), NO CUMPLE."""
+    items = [Item(f"q{i}", "q", "g", ["f"], [], "hecho", "generada") for i in range(200)]
+    ids = [i.id for i in items]
+    # daimon acierta 0,4; bm25 acierta 0,8: la diferencia es enorme y consistente
+    rows = _rows("ia_sola", 0.0, 0, ids) + _rows("bm25", 0.8, 1500, ids) + _rows("daimon", 0.4, 900, ids)
+    s = report(rows, items, tmp_path / "r.md")
+    assert s["verdict"] is False
+    assert "peor" in s["reason"]
+
+
+def test_la_entrega_por_la_puerta_no_es_linea_base(tmp_path):
+    """El pack (`sesion`) no puede hacer de línea base: si no, el veredicto juzga a la memoria
+    contra ella misma con el protocolo puesto."""
+    items = [Item(f"q{i}", "q", "g", ["f"], [], "hecho", "generada") for i in range(200)]
+    ids = [i.id for i in items]
+    rows = (_rows("ia_sola", 0.0, 0, ids) + _rows("bm25", 0.5, 1500, ids)
+            + _rows("daimon", 0.5, 900, ids) + _rows("sesion", 1.0, 950, ids))
+    s = report(rows, items, tmp_path / "r.md")
+    assert s["verdict"] is True, s["reason"]
+    md = (tmp_path / "r.md").read_text(encoding="utf-8")
+    assert "entrega por la puerta" in md
+
+
+def test_pareado_detecta_el_ruido():
+    """El IC pareado es más estrecho que el de las medias sueltas: eso es lo que hace posible
+    decidir un empate."""
+    import random
+    r = random.Random(11)
+    n = 200
+    ids = [f"q{i}" for i in range(n)]
+    a = {i: (1.0 if r.random() < 0.8 else 0.0) for i in ids}
+    b = {i: (1.0 if r.random() < 0.8 else 0.0) for i in ids}
+    dif, lo, hi = paired_diff_ci(a, b)
+    m1, l1, h1 = bootstrap_ci(list(a.values()))
+    m2, l2, h2 = bootstrap_ci(list(b.values()))
+    assert (h1 - l1) + (h2 - l2) > (hi - lo)   # el ruido de las medias sueltas es mayor
+    assert lo <= dif <= hi

@@ -226,6 +226,56 @@ def cmd_answer(a):
     print(f"filas: {len(rows)}; errores: {sum(r['status'] == 'error' for r in rows)}")
 
 
+def cmd_repeticion(a):
+    """Repite el examen con el MISMO contexto: mide cuánto ruido tiene el instrumento.
+
+    La misma pregunta, el mismo contexto, otra vez. Si el acierto se mueve, lo que se
+    está midiendo es el ruido del modelo que responde y del juez, no la memoria: sin
+    saber cuánto ruido hay, cualquier tolerancia del veredicto es una suposición al aire.
+    (Lo que se descubrió al medirlo: el veredicto exigía 0,02 de diferencia y el
+    instrumento se movía 0,08 entre corridas — el número no distinguía memoria de ruido.)
+
+    Los contextos son los de la corrida original: no se recalcula la recuperación.
+    """
+    d = _dir(a.set)
+    ctx = {(r["item_id"], r["variant"]): (r["context"], r["tokens"])
+           for r in map(json.loads, [l for l in (d / "contexts.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()])}
+    its = items_for(a.set, a.split)
+    if a.limite:
+        its = its[:a.limite]
+    pedidos = [v.strip() for v in (a.variants or "").split(",") if v.strip()] or ["daimon"]
+    faltan = {n for i in its for n in pedidos if (i.id, n) not in ctx}
+    if faltan:
+        print(f"faltan contextos de {sorted(faltan)} — primero: contexts --split {a.split}", file=sys.stderr)
+        sys.exit(1)
+    qid = {i.question: i.id for i in its}
+    for rep in range(2, a.veces + 1):
+        sufijo = f"#{rep}"
+        variants = {f"{n}{sufijo}": (lambda n=n: (lambda q, b: ctx[(qid[q], n)]))() for n in pedidos}
+        print(f"repetición {rep}: {' '.join(pedidos)}", flush=True)
+        run(its, variants, Ollama(ANSWERER, timeout=300), BUDGET, d / f"answers_rep{rep}.jsonl",
+            MAX_TOKENS, on_row=lambda r: print(f'  {r["item_id"]} {r["variant"]} {r["status"]}', flush=True))
+        filas = [json.loads(l) for l in (d / f"answers_rep{rep}.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+        filas = score(filas, its, Ollama(JUDGE, timeout=120), d / f"judge_rep{rep}.jsonl")
+        (d / f"scored_rep{rep}.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in filas), encoding="utf-8")
+    # el resumen: cuánto se mueve el acierto de la misma variante con el mismo contexto
+    original = [json.loads(l) for l in (d / "scored.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+    for n in pedidos:
+        line = [f"{n}"]
+        base = [r for r in original if r["variant"] == n and "score" in r]
+        if base:
+            line.append(f"original={np.mean([r['score'] for r in base]):.3f}")
+        for rep in range(2, a.veces + 1):
+            p = d / f"scored_rep{rep}.jsonl"
+            if not p.exists():
+                continue
+            rs = [json.loads(l) for l in p.read_text(encoding="utf-8").splitlines() if l.strip()]
+            rs = [r for r in rs if r["variant"] == f"{n}#{rep}"]
+            if rs:
+                line.append(f"rep{rep}={np.mean([r['score'] for r in rs]):.3f}")
+        print("  ".join(line))
+
+
 def cmd_judge(a):
     d = _dir(a.set)
     rows = [json.loads(l) for l in (d / "answers.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
@@ -235,12 +285,54 @@ def cmd_judge(a):
     print(f"puntuadas: {sum('score' in r for r in rows)}")
 
 
+def _nota_repetibilidad(d) -> list[str]:
+    """La nota que justifica la tolerancia: cuánto se mueve el examen con el MISMO contexto.
+
+    Sin este número, cualquier tolerancia del veredicto es una suposición. Con él, se sabe que
+    la diferencia que el veredicto tiene que distinguir es más grande que el ruido del
+    instrumento.
+    """
+    if not d.exists():
+        return []
+    original = [json.loads(l) for l in (d / "scored.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+    por_variante: dict[str, list[float]] = {}
+    for r in original:
+        if "score" in r:
+            por_variante.setdefault(r["variant"], []).append(r["score"])
+    base = {k: float(np.mean(v)) for k, v in por_variante.items()}
+    lineas = []
+    for p in sorted(d.glob("scored_rep*.jsonl")):
+        rep = p.stem.replace("scored_rep", "")
+        filas = [json.loads(l) for l in p.read_text(encoding="utf-8").splitlines() if l.strip()]
+        for v in sorted({r["variant"] for r in filas}):
+            rs = [r for r in filas if r["variant"] == v and "score" in r]
+            if not rs:
+                continue
+            v0 = v.split("#")[0]
+            if v0 not in base:
+                continue
+            delta = float(np.mean([r["score"] for r in rs])) - float(base[v0])
+            lineas.append(f"| {v0} | {base[v0]:.3f} | {rep} | {float(np.mean([r['score'] for r in rs])):.3f} | {delta:+.3f} |")
+    if not lineas:
+        return []
+    deltas = [float(l.rsplit("|", 2)[1]) for l in lineas]
+    return ["## Repetibilidad del examen (el mismo contexto, otra vez)\n",
+            "El instrumento se mide a sí mismo: la misma pregunta con el mismo contexto, respondida y juzgada otra vez.",
+            "Si el acierto se mueve, lo que se mide es el ruido del modelo y del juez — y ninguna tolerancia",
+            "del veredicto puede ser más pequeña que ese ruido.\n",
+            "| variante | corrida original | repetición | acierto | Δ |",
+            "|---|---|---|---|---|",
+            *lineas,
+            f"\nMovimiento observado: de {min(deltas):+.3f} a {max(deltas):+.3f} "
+            f"(rango {max(deltas) - min(deltas):.3f}).\n"]
+
+
 def cmd_report(a):
     d = _dir(a.set)
     rows = [json.loads(l) for l in (d / "scored.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
     its = items_for(a.set, "oculto") + items_for(a.set, "visible")
     out = ROOT / "docs" / "resultados" / f"2026-10-12-prueba0-v2-{a.set}.md"
-    s = report(rows, its, out, title=f"Prueba 0 v2 — preguntas {a.set}")
+    s = report(rows, its, out, title=f"Prueba 0 v2 — preguntas {a.set}", notas=_nota_repetibilidad(d))
     print(s["verdict"], s["reason"], "→", out)
 
 
@@ -253,8 +345,13 @@ if __name__ == "__main__":
         p = sp.add_parser(c); p.add_argument("--set", choices=["original", "parafrasis"], required=True)
         p.add_argument("--split", choices=["oculto", "visible"], default="oculto")
         p.add_argument("--variants", default="", help="sólo estas variantes (a,b). Vacío = todas")
+    p = sp.add_parser("repeticion"); p.add_argument("--set", choices=["original", "parafrasis"], required=True)
+    p.add_argument("--split", choices=["oculto", "visible"], default="oculto")
+    p.add_argument("--variants", default="daimon", help="variantes a repetir (a,b)")
+    p.add_argument("--veces", type=int, default=2, help="cuántas repeticiones (la original va por la cuenta)")
+    p.add_argument("--limite", type=int, default=0, help="sólo los primeros N ítems (prueba rápida)")
     for c in ("judge", "report"):
         p = sp.add_parser(c); p.add_argument("--set", choices=["original", "parafrasis"], required=True)
     a = ap.parse_args()
     {"train": cmd_train, "retrieval": cmd_retrieval, "contexts": cmd_contexts, "answer": cmd_answer,
-     "judge": cmd_judge, "report": cmd_report}[a.cmd](a)
+     "repeticion": cmd_repeticion, "judge": cmd_judge, "report": cmd_report}[a.cmd](a)

@@ -4,21 +4,26 @@
 
 ## Veredicto (examen oculto)
 
-**CUMPLE** — daimon empata con bm25 usando 39% menos tokens
+**CUMPLE** — daimon empata con rag_denso_eg (Δ -0.057, IC 95 % [-0.171, +0.057]: la diferencia no se distingue) usando 39% menos tokens
+
+> Contraveredicto (si la entrega por la puerta contara como línea base): **NO CUMPLE** — daimon empata con sesion (Δ -0.071, IC 95 % [-0.186, +0.043]) pero no gasta menos tokens (917 frente a 937): no aporta nada
 
 ## Examen oculto
 
 | variante | n | acierto (IC 95 %) | hechos | tokens | latencia s | peor que IA sola | errores |
 |---|---|---|---|---|---|---|---|
-| daimon_sin_corte | 35 | 0.943 (0.857–1.000) | 0.602 | 1496 | 10.2 | 0.0% | 0 |
-| daimon | 35 | 0.929 (0.857–0.986) | 0.621 | 917 | 9.5 | 0.0% | 0 |
-| bm25 | 35 | 0.900 (0.800–0.986) | 0.581 | 1497 | 13.4 | 0.0% | 0 |
-| rag_denso_eg | 35 | 0.886 (0.786–0.971) | 0.602 | 1494 | 11.9 | 0.0% | 0 |
-| daimon_solo_original | 35 | 0.871 (0.771–0.957) | 0.595 | 833 | 9.4 | 0.0% | 0 |
-| bm25_1000 | 35 | 0.843 (0.714–0.943) | 0.576 | 997 | 9.8 | 0.0% | 0 |
-| ia_sola | 35 | 0.129 (0.043–0.229) | 0.055 | 0 | 7.1 | 0.0% | 0 |
-| md | 35 | 0.114 (0.029–0.214) | 0.095 | 1499 | 15.2 | 5.7% | 0 |
-| contexto_largo | 35 | 0.071 (0.014–0.129) | 0.088 | 1498 | 12.1 | 17.1% | 0 |
+| sesion | 35 | 0.843 (0.729–0.943) | 0.555 | 937 | 8.6 | 0.0% | 0 |
+| rag_denso_eg | 35 | 0.829 (0.729–0.929) | 0.531 | 1494 | 9.6 | 2.9% | 0 |
+| daimon | 35 | 0.771 (0.657–0.886) | 0.545 | 917 | 8.9 | 2.9% | 0 |
+| ia_sola | 35 | 0.143 (0.071–0.214) | 0.064 | 0 | 6.6 | 0.0% | 0 |
+
+## Comparación por pares (daimon contra cada variante)
+
+| variante | Δ acierto (por pares) | IC 95 % | p (exacto) | ítems a favor / en contra | tokens |
+|---|---|---|---|---|---|
+| sesion (entrega por la puerta) | -0.071 | [-0.186, +0.043] | 0.227 | 3 / 8 | 937 |
+| rag_denso_eg | -0.057 | [-0.171, +0.057] | 0.508 | 3 / 6 | 1494 |
+| ia_sola | +0.629 | [+0.486, +0.757] | 0.000 | 29 / 1 | 0 |
 
 ## Examen visible
 
