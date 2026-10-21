@@ -86,6 +86,16 @@ describe('Taller', () => {
     expect(s.cerrar).toHaveBeenCalled()   // la sesión de un motor que se negó no queda abierta
   })
 
+  it('una negativa por palabras (el motor lo dice y el turno acaba end_turn) tampoco es un éxito', async () => {
+    const s = sesiones(async (o) => { o.alEvento({ tipo: 'texto', texto: 'No puedo hacer eso.' }); return 'end_turn' })
+    const tarea = crear(s.abrir).crear({ motor, carpeta: '/proyecto', texto: 'La tarea que el motor desprecia' })
+    await esperar(tarea.id, 'error')
+    const muerta = t!.lista()[0]
+    expect(muerta.estado).toBe('error')
+    expect(muerta.error).toBe('Falso se negó a hacerlo')
+    expect(s.cerrar).toHaveBeenCalled()
+  })
+
   it('dos tareas trabajan a la vez: cada una con su copia, su motor y sus eventos', async () => {
     // La promesa del contrato: dos tareas pueden estar «trabajando» al mismo tiempo. Aquí se
     // comprueba que de verdad conviven (ninguna espera a la otra) y que no se pisan: cada una
