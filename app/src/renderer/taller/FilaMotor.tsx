@@ -32,10 +32,11 @@ const modeloCorto = (m: string | null) => nombreDeModelo(m) || null
 const coste = (c: TareaTaller['uso']['coste']) => (!c ? null : c.moneda === 'USD' ? fmtUSD(c.cantidad) : `${c.cantidad.toFixed(2)} ${c.moneda}`)
 const segundos = (ms?: number) => (ms === undefined ? '—' : ms < 10_000 ? `${(ms / 1000).toFixed(1).replace('.', ',')} s` : `${Math.round(ms / 1000)} s`)
 
-export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida, resaltada, objetivo, onElegir, onResaltar, onReencarnar, onAplicar, onParar }: {
+export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida, resaltada, objetivo, onElegir, onResaltar, onReencarnar, onAplicar, onParar, radar }: {
   t: TareaTaller; login?: string; ahora: number; inicioTurno?: number; haciendo: string | null; elegida: boolean; resaltada: boolean
   objetivo?: string   // el texto del objetivo del rumbo (el id no se le enseña a nadie)
   onElegir(id: string): void; onResaltar(id: string | null): void; onReencarnar(): void; onAplicar(): void; onParar(): void
+  radar?: number   // el radar del error: cuántos otros motores están listos para reencarnarla, a la vista sin abrir nada
 }) {
   const enMarcha = activa(t)
   // terminada y sin elegir: una sola línea (la fila respira); las que trabajan, esperan o fallan enseñan todo
@@ -51,6 +52,8 @@ export function FilaMotor({ t, login = '', ahora, inicioTurno, haciendo, elegida
     : haciendo ?? (t.estado === 'preparando' ? 'Montando la copia aislada…' : t.estado === 'lista' ? `${t.turnos} ${t.turnos === 1 ? 'turno' : 'turnos'} en ${t.copia?.rama ?? 'una carpeta nueva'}` : '')
   // Métricas que hablan: las que no dicen nada salen de la fila; si nada habla, una sola línea de espera.
   const metricas = [
+    // el radar del error, a la vista sin abrir nada: si hay 0, la reencarnación no tiene a dónde ir
+    ...(t.estado === 'error' && radar !== undefined ? [{ nombre: 'Motores listos', valor: radar > 0 ? String(radar) : 'Ninguno' }] : []),
     { nombre: 'Herramientas', valor: t.herramientas > 0 ? String(t.herramientas) : null },
     { nombre: tokens ? 'Tokens' : '', valor: tokens ? fmtTokens(tokens) : null },
     { nombre: t.uso.coste ? 'Coste' : '', valor: t.uso.coste ? coste(t.uso.coste)! : null },

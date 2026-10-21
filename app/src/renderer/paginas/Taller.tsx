@@ -14,7 +14,7 @@ import { actividadActual } from '../taller/linea'
 import { NuevaTarea } from '../taller/NuevaTarea'
 import { Terminales } from '../taller/Terminales'
 import type { useTaller } from '../taller/useTaller'
-import { activa, archivable, ESTADOS, explicarError } from '../taller/vista'
+import { activa, archivable, ESTADOS, explicarError, listosPara } from '../taller/vista'
 import { caidosDe, fallosDe, noListos, puedenHacer, type Eleccion } from '../taller/eleccion'
 import { cn } from '../lib/cn'
 import { useMuelle } from '../tinta/movimiento'
@@ -238,6 +238,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
                         <motion.div key={x.id} layout initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0, marginTop: 0 }}
                           transition={muelle}>
                           <FilaMotor t={x} login={login(x.motor)} ahora={ahora} inicioTurno={tl.inicioTurno.get(x.id)} haciendo={actividadActual(tl.lineas[x.id] ?? [])} objetivo={objetivosDe[x.objetivo ?? '']}
+                            radar={listosPara(x.motor, tl.motores, sinListo)}
                             elegida={x.id === seleccion} resaltada={x.id === resaltada} onElegir={elegir} onResaltar={setResaltada}
                             onReencarnar={() => void reincarna(x)} onAplicar={() => tl.aplicar(x.id, () => void tl.deshacer(x.id))} onParar={() => void tl.parar(x.id)} />
                         </motion.div>

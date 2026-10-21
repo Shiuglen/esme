@@ -80,6 +80,10 @@ export function explicarError(error: string, motor: string, login: string): Expl
   return null
 }
 
+/** El radar del error: cuántos motores instalados y listos pueden reencarnarla — sin abrir el detalle. */
+export const listosPara = (motor: string, motores: { id: string; instalado: boolean }[], noListos: Map<string, string>): number =>
+  motores.filter((m) => m.instalado && m.id !== motor && !noListos.has(m.id)).length
+
 /** Un error o una parada de hace más de un día se archiva: deja de gritar en la fila y en las cuentas, pero no se borra. */
 export const ARCHIVAR_TRAS_MS = 864e5
 export const ARCHIVAR_LISTAS_TRAS_MS = 3 * 864e5   // una tarea lista que nadie miró en tres días deja de llenar la fila
