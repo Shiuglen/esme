@@ -45,14 +45,28 @@
 //               (aprenderEquipo con los estados frescos de los relevos). El arco del parlamento
 //               está cerrado: instinto → radar → comité → acta → mente.
 //   [x] Fase 5 (21 oct, noche II): el juez local, la pieza que quedaba en la cola del instinto.
-//               El veredicto NO se firma con la PALABRA del último relevo sino con la EVIDENCIA de
-//               su sesión (`juezDe`): «probado» hay que ganarlo — hace falta una ejecución con
-//               pinta de prueba en la sesión («npm test», pytest, vitest…); si no corrió NADA el
-//               juez le niega el probado (dudoso); si su ÚLTIMA prueba acabó en fallo, palabra y
-//               consola chocan y el juez lo tumba. El error del runtime es un hecho, no una
-//               opinión: inapelable. Y el acta no queda escondida: vuelve en la respuesta
-//               (`actaFirmada`, validada in situ) y se lee en la puerta del comité con los
-//               relevos, la huella y su sello (o el grito de que el diario fue tocado).
+//           El veredicto NO se firma con la PALABRA del último relevo sino con la EVIDENCIA de
+//           su sesión (`juezDe`): «probado» hay que ganarlo — hace falta una ejecución con
+//           pinta de prueba en la sesión («npm test», pytest, vitest…); si no corrió NADA el
+//           juez le niega el probado (dudoso); si su ÚLTIMA prueba acabó en fallo, palabra y
+//           consola chocan y el juez lo tumba. El error del runtime es un hecho, no una
+//           opinión: inapelable. Y el acta no queda escondida: vuelve en la respuesta
+//           (`actaFirmada`, validada in situ) y se lee en la puerta del comité con los
+//           relevos, la huella y su sello (o el grito de que el diario fue tocado).
+//   [x] Fase 6 (21 oct, noche III): el testigo de VERDAD + la cadena viva + la ronda de nuevo.
+//           El hallazgo que la apió: cada relevo nacía con COPIA NUEVA — el comité pasaba el
+//           RELATO de lo hecho («tocé tal fichero»), no las fichas. Ahora el sane pasa el
+//           TRABAJO REAL: tras cada relevo el Taller saca el parche de su copia (binary, sin
+//           truncar) y se lo entrega al siguiente, que lo APLICA en su copia ANTES de encender
+//           al motor (`crear({ parche })` → `ejecutar` lo aplica entre copia y sesión; si el
+//           parche no cupo, el relevo muere honesto: «El testigo no pasó a este relevo: …» —
+//           nada a escondidas). El relevo que no tocó nada no lleva testigo muerto. Con las
+//           fichas de verdad en la copia del probador, el juez deja de ser imposible: corrier
+//           las pruebas que el constructor nunca pudo dejarle ver. Y la vista: `CadenaComite`
+//           — en el detalle de CUALQUIER relevo la cadena entera arriba (nodos con estado
+//           envidado, testigo pasando, ficheros +/−, y la voz del último). «Ronda de nuevo»:
+//           la puerta re-arma el mismo comité a un clic; las actas anteriores quedan en el
+//           diario, y así el dudoso del juez se vuelve mano en vez de muro.
 //
 // Reglas (las de la casa, sin excepción):
 //   - el creador elige quién lleva cada relevo (los que sí pueden, nunca a ciegas)

@@ -71,6 +71,7 @@ type Registro = {
   usoEscrito?: { entrada: number; salida: number; pensamiento: number; contexto: number; coste?: number }   // lo que ya llegó al Uso: los turnos anotan su delta
   usoMotor?: Estado   // lo último que reportó el motor y en qué idioma habla: el delta sale de ahí
   textoUltimo?: string   // el último mensaje del motor del turno (los trozos del ACP se juntan): aquí mira la negativa
+  parcheInicial?: string   // el trabajo heredado (el testigo del parlamento): se aplica en la copia ANTES de encender al motor
 }
 
 const finCubo = (ms: number) => (Math.floor(ms / MS_CUBO) + 1) * MS_CUBO
@@ -178,7 +179,7 @@ export class Taller {
     }
   }
 
-  crear(p: { motor: MotorElegido; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: Acceso; rol?: Rol; objetivo?: string }): Tarea {
+  crear(p: { motor: MotorElegido; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: Acceso; rol?: Rol; objetivo?: string; parche?: string }): Tarea {
     let id = nuevoId()
     while (this.registros.has(id)) id = nuevoId()
     const titulo = (p.texto.split('\n').find((l) => l.trim()) ?? '').trim().slice(0, 120)
@@ -192,6 +193,7 @@ export class Taller {
     tarea.actividadMs = finCubo(tarea.inicio)
     const r = this.registroNuevo(tarea, false)
     r.motor = p.motor; r.config = { ...p.config }
+    if (p.parche?.trim()) r.parcheInicial = p.parche
     this.registros.set(id, r)
     this.cambio(r, true)
     void this.ejecutar(r, encargo)
@@ -223,6 +225,7 @@ export class Taller {
     const ids: string[] = []
     let evidencia: Evidencia | undefined
     let resumen = ''
+    let parche: string | undefined   // el testigo de verdad: el parche real del relevo anterior
     const relevos: ActaRelevo[] = []
     // El acta se dicta en TODA salida, también la temprana: el comité dice hasta dónde llegó.
     // Sin el par o sin disco, el veredicto vive igual (el acta es memoria, no permiso).
@@ -247,7 +250,7 @@ export class Taller {
       }
       // El oficio del paso va cosido por encargoRelevo en el texto (NO por el campo rol de crear:
       // lo duplicaría con la evidencia; estos relevos se distinguen por su arena «parlamento»).
-      const t = this.crear({ motor, carpeta: p.carpeta, texto: encargoRelevo(paso, evidencia), arena: 'parlamento', acceso: p.acceso ?? 'ediciones' })
+      const t = this.crear({ motor, carpeta: p.carpeta, texto: encargoRelevo(paso, evidencia), arena: 'parlamento', acceso: p.acceso ?? 'ediciones', ...(parche ? { parche } : {}) })
       ids.push(t.id)
       const seAcabo = await this.esperarFin(t.id)
       if (seAcabo === 'cerrado') {
@@ -271,11 +274,16 @@ export class Taller {
         resumen,
         ficheros: tarea.cambios?.lista?.map((f) => ({ nombre: f.ruta, mas: f.mas, menos: f.menos })),
       })
+      // Y además de la evidencia por PALABRAS, el testigo de VERDAD: el parche real de su copia
+      // pasa al siguiente relevo, que empieza con esos ficheros donde los dejó el anterior.
+      const copia = this.registros.get(t.id)?.tarea.copia
+      if (copia) {
+        const suyo = await this.copias.parche(copia).catch(() => '')
+        if (suyo.trim()) parche = suyo
+        else parche = undefined   // no tocó nada: el siguiente parte de la base limpia, sin testigo muerto
+      }
     }
-    // El veredicto no sale de la palabra del último relevo: lo juzga su EVIDENCIA (la consola que
-    // corrió y cómo acabó — el juez local de la cola del instinto).
-    const ultimo = ids[ids.length - 1]
-    const veredicto = juezDe({ resumen, eventos: ultimo ? await this.eventos(ultimo) : [] })
+    const veredicto = juezDe({ resumen, eventos: await this.eventos(ids[ids.length - 1]) })
     return cierra({ ids, estado: veredicto.estado, frase: veredicto.frase })
   }
 
@@ -589,6 +597,18 @@ export class Taller {
     try {
       if (!t.copia) t.copia = await this.copias.crear({ carpeta: t.carpeta, id: t.id, dirCopias: this.dirCopias })
       if (parada()) return
+      // El testigo de verdad (fase 6): si el encargo hereda el trabajo de un relevo anterior,
+      // se aplica en su copia ANTES de encender al motor — el comité pasa la labor REAL, no el relato.
+      if (r.parcheInicial?.trim()) {
+        const vaya = await this.copias.aplicar(t.copia.ruta, r.parcheInicial).catch(() => ({ ok: false as const, ficheros: 0, mensaje: 'no respondió' }))
+        if (!vaya.ok) {
+          t.estado = 'error'; t.error = `El testigo no pasó a este relevo: ${vaya.mensaje}`; t.fin = this.ahora()
+          this.registrar(r, { tipo: 'fallo', mensaje: t.error }); this.cambio(r, true)
+          void this.aprenderEquipo()
+          return
+        }
+        t.cambios = await this.copias.cambios(t.copia).catch(() => null)
+      }
       if (!r.sesion) {
         const motor = r.motor!
         r.sesion = await this.abrirSesionDe(r)

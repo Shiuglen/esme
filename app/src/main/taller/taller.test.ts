@@ -193,6 +193,41 @@ describe('Taller', () => {
       expect(actaValida(diario[0], publica)).toBe(true)
     })
 
+    it('el testigo de verdad: el relevo 2 recibe EL PARCHE del relevo 1 en su copia antes de encender al motor', async () => {
+      const s = sesiones(async (o) => { o.alEvento({ tipo: 'texto', texto: 'ECHO' }); return 'end_turn' })
+      const { ops } = copiasFalsas()
+      const taller = crear(s.abrir, ops, { resolverMotor: resolverBien })
+      const fin = await taller.parlamentar({ texto: 'Arregla el reloj', carpeta: '/proyecto', relevos: rr })
+      // el parche se sacó de la copia del relevo 1 (cuando ya acabó)
+      expect(ops.parche).toHaveBeenCalledWith(expect.objectContaining({ id: fin.ids[0] }))
+      // y se aplicó en la copia del relevo 2 antes de que su motor trabajara
+      expect(ops.aplicar).toHaveBeenCalledWith(join(dir, 'copias', fin.ids[1]), 'PARCHE')
+      expect(ops.aplicar).toHaveBeenCalledWith(join(dir, 'copias', fin.ids[2]), 'PARCHE')
+    })
+
+    it('un testigo que no cabe se dice no escondido: el relevo muere antes de trabajar y el comité queda tumbado', async () => {
+      const s = sesiones(async (o) => { o.alEvento({ tipo: 'texto', texto: 'no llegué a hacer nada' }); return 'end_turn' })
+      const { ops } = copiasFalsas()
+      ;(ops.aplicar as any).mockResolvedValueOnce({ ok: false, ficheros: 2, mensaje: 'los cambios chocan' })
+      const taller = crear(s.abrir, ops, { resolverMotor: resolverBien })
+      const fin = await taller.parlamentar({ texto: 'Arregla el reloj', carpeta: '/proyecto', relevos: rr })
+      expect(fin.estado).toBe('tumbado')
+      expect(fin.frase).toContain('El testigo no pasó a este relevo')
+      expect(fin.frase).toContain('los cambios chocan')
+      // el acta lo cuenta: la caída del testigo es un relevo error, no una promesa
+      const diario = leeActas(dir)
+      expect(diario[0].relevos.map((r) => r.estado)).toEqual(['lista', 'error'])
+    })
+
+    it('un relevo que no tocó nada no lleva testigo muerto: el siguiente parte de la base limpia', async () => {
+      const s = sesiones(async (o) => { o.alEvento({ tipo: 'texto', texto: 'hola' }); return 'end_turn' })
+      const { ops } = copiasFalsas()
+      ;(ops.parche as any).mockResolvedValue('')   // el relevo no cambió nada
+      const taller = crear(s.abrir, ops, { resolverMotor: resolverBien })
+      await taller.parlamentar({ texto: 'Arregla el reloj', carpeta: '/proyecto', relevos: rr })
+      expect(ops.aplicar).not.toHaveBeenCalled()
+    })
+
     it('un parlamento tumbado también firma su acta, hasta donde llegó', async () => {
       let llamada = 0
       const s = sesiones(async (o) => { if (++llamada === 2) o.alEvento({ tipo: 'texto', texto: 'No puedo hacer eso.' }); return 'end_turn' })
