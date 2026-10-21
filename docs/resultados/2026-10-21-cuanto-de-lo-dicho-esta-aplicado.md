@@ -25,6 +25,7 @@
 | 15 | **Lo visual, por fin** (hasta aquí todo era de dentro: al reiniciar, la app se veía igual porque no había cambiado ni un píxel) | `app/src/renderer/paginas/Apariencia.tsx`, `MandoVista.tsx` | el muro de escenas: la miniatura con su nombre **debajo** y la marca en la elegida (antes el rótulo tapaba la imagen); las piezas se ven **sobre un fondo** (el vidrio y el papel ya se distinguen); los grupos de opciones son un grupo de botones, no una barra rota; «Mi ecuación» → «A tu gusto»; en el Mando la presencia de Esme es el punto final del saludo y el saludo baja a tamaño legible |
 | 16 | **El renderer deja de comerse la memoria** (la app moría de memoria: el plan no era el bug) | `app/src/renderer/taller/ventana.ts`, `taller/Detalle.tsx` | medido: **2,6 GB en 5 min** y 119 % de CPU · ahora se pinta una ventana de 250 elementos (de 17.000) y `Item` es `memo` · 5 pruebas |
 | 17 | **La jaula no rompe al motor** (la bookkeeping de npm no es una credencial) | `app/src/main/motores/jaula.ts`, `taller/taller.ts` | 22 variables `npm_*` dejan de tragarse; las llaves de npm sí se esconden; el error del motor no se llena de ruido |
+| 18 | **Deshacer un turno, en la vista** (el botón que faltaba) | `app/src/renderer/taller/Revision.tsx`, `Detalle.tsx`, `app/src/main/taller/turnos.ts` | el punto de cada turno sale del **mensaje** del commit (`Esme: turno N`), no de contar commits · la Revisión lista los turnos y vuelve a cualquiera con un segundo clic que dice exactamente qué pasa · en la cabecera, «Deshacer el último turno» · 9 pruebas |
 
 ## 2. Ya estaba aplicado (y el estudio se equivocó)
 
@@ -41,25 +42,25 @@
 | 15 | **El coste por petición** | El Taller anota el uso **por turno**; lo que falta es por petición y que se pueda consultar | Deska (`recordTokenUsage`) |
 | 16 | ~~**La skill con dueño y con caducidad**~~ | **La caducidad, hecha** (fila 13). Queda el *dueño*: el catálogo ya trae `autor` y el veredicto, `firmante`; falta juntarlos en la vista | `@mem0ai` (skill drift) · `@KanikaBK` (revisar permisos cada mes) |
 | 17 | **Los permisos se re-preguntan al cambiar** | La Tienda compara huellas (ya está); falta **preguntar** cuando una skill trae permisos nuevos | Deska 1.33: «an update adding one asks again» |
-| 18 | **El manifiesto habla el formato de plugin** | El manifiesto es propio; el estándar es el de Google/MS/OpenAI/Cursor/Vercel | `@akshay_pachaar` |
-| 19 | **El worktree con dueño** | Hay worktree por tarea, pero no se sabe **quién** lo tiene ni se evita el choque | Deska (`worktreeInUse`, `worktreeUsedByAnotherTask`) |
-| 20 | ~~**La presión de recursos, a la vista**~~ | **Hecha** (fila 14): el medidor y la herramienta `ver_presion`. Queda la vista de proceso con los botones de parar | MonoCode 0.15 (`Resource pressure`) |
-| 21 | **La sesión propia por página embebida** | El Ojo y el navegador comparten sesión | Deska (`embedSessionFor`) |
-| 22 | **El inbox por demanda** | No hay bandeja que ordene por «te necesitan» | MonoCode y Deska lo tienen abierto; en X, `@mr_r0b0t` |
-| 23 | **Publicar en el registro MCP** | El código y las dos entradas están hechas y validadas | **Faltan las dos cuentas del creador** — no es un límite técnico |
+| 19 | **El manifiesto habla el formato de plugin** | El manifiesto es propio; el estándar es el de Google/MS/OpenAI/Cursor/Vercel | `@akshay_pachaar` |
+| 20 | **El worktree con dueño** | Hay worktree por tarea, pero no se sabe **quién** lo tiene ni se evita el choque | Deska (`worktreeInUse`, `worktreeUsedByAnotherTask`) |
+| 21 | ~~**La presión de recursos, a la vista**~~ | **Hecha** (fila 14): el medidor y la herramienta `ver_presion`. Queda la vista de proceso con los botones de parar | MonoCode 0.15 (`Resource pressure`) |
+| 22 | **La sesión propia por página embebida** | El Ojo y el navegador comparten sesión | Deska (`embedSessionFor`) |
+| 23 | **El inbox por demanda** | No hay bandeja que ordene por «te necesitan» | MonoCode y Deska lo tienen abierto; en X, `@mr_r0b0t` |
+| 24 | **Publicar en el registro MCP** | El código y las dos entradas están hechas y validadas | **Faltan las dos cuentas del creador** — no es un límite técnico |
 
 ## 4. Lo que NO entra (y por qué)
 
 | # | Qué | Por qué |
 |---|---|---|
-| 24 | **La microVM de SPACE** (Firecracker) | Es la jaula completa: no cabe junto a la app y el modelo local en 24 GB. Se absorbe el **principio** (credenciales y egreso fuera del sandbox), no el artefacto |
-| 25 | **La marketplace y el directorio de agentes con wallet** | Es la escala de la cuenta: justo lo que la bets de Esme no quiere |
-| 26 | **Copiar código de terceros** | Decisión del 17-oct: REA para **aprender prácticas**, nunca para copiar. Ni una línea de Deska o MonoCode entra en Esme |
+| 25 | **La microVM de SPACE** (Firecracker) | Es la jaula completa: no cabe junto a la app y el modelo local en 24 GB. Se absorbe el **principio** (credenciales y egreso fuera del sandbox), no el artefacto |
+| 26 | **La marketplace y el directorio de agentes con wallet** | Es la escala de la cuenta: justo lo que la bets de Esme no quiere |
+| 27 | **Copiar código de terceros** | Decisión del 17-oct: REA para **aprender prácticas**, nunca para copiar. Ni una línea de Deska o MonoCode entra en Esme |
 
 ## 5. Lo que falta por el camino
 
-- **El botón en la interfaz** del «deshacer turno»: hoy está en el código, el IPC y el puente, pero
-  **no hay un botón en la vista**. Es lo siguiente.
+- ~~**El botón en la interfaz** del «deshacer turno»~~: **hecho** (fila 18). En la Revisión está la
+  lista de turnos y se vuelve a cualquiera; en la cabecera, «Deshacer el último turno».
 - **La medición en la app en marcha**: hecha (21-oct, 12:54) — la app se reconstruyó y se reinició
   con el código nuevo y se midió en vivo. **Y salió mal**: el renderer subía a **2,6 GB en cinco
   minutos** (RSS del proceso `--type=renderer`), a **119 % de CPU**, y seguía subiendo. Reiniciar no
