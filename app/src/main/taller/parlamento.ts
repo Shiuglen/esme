@@ -3,6 +3,8 @@
 // con un oficio (roles.ts); lo que se pasa de un motor al siguiente es la EVIDENCIA: lo que hizo,
 // en qué ficheros y qué falló o se negó en su camino. Aquí está el plan, el encargo de cada relevo
 // y cómo se lee el veredicto final — sin tocar nada del runtime todavía.
+import type { EventoMotor } from '../motores/sesion-acp'
+import type { ActaFirmada } from './acta'
 import type { Rol } from './roles'
 
 /** Un relevo: quién lleva el testigo en esa etapa del comité. */
@@ -10,8 +12,17 @@ export type Relevo = { rol: string; motor: string }
 
 /** Cómo acabó el parlamento entero: los ids de los relevos en orden, el estado del veredicto
  *  y la frase humana. `error` trae el motivo si el comité no llegó al final. `acta` dice si el
- *  veredicto quedó firmado en el diario del taller (actas-parlamento.jsonl). */
-export type FinParlamento = { ids: string[]; estado: 'probado' | 'dudoso' | 'tumbado'; frase: string; error?: string; acta?: boolean }
+ *  veredicto quedó firmado en el diario del taller (actas-parlamento.jsonl), y `actaFirmada`
+ *  la trae ya sellada (con su estados de validez comprobado in situ) para que se lea sin pedir
+ *  nada más: lo que firmó la casa, visible en la puerta que lo pidió. */
+export type FinParlamento = {
+  ids: string[]
+  estado: 'probado' | 'dudoso' | 'tumbado'
+  frase: string
+  error?: string
+  acta?: boolean
+  actaFirmada?: ActaFirmada & { valida: boolean }
+}
 
 /** Un paso del plan: el oficio del relevo, el motor que lo lleva y el encargo de base. */
 export type Paso = {
@@ -89,3 +100,33 @@ export function veredictoDe(base: { resumen?: string; caido?: string }): { estad
 }
 
 const recortado = (s: string, max = 800) => (s.trim().length > max ? s.trim().slice(0, max - 1).trimEnd() + '…' : s.trim())
+
+/** La consola del probador: lo que de verdad ejecutó en su sesión (las herramientas de la clase
+ *  'execute'). No lo que dice que corrió: lo que dejó pasar por el runtime. */
+export type Ejecucion = { detalle?: string; estado?: string }
+export const ejecucionesDe = (eventos: EventoMotor[]): Ejecucion[] =>
+  eventos.flatMap((e) => (e.tipo === 'herramienta' && e.clase === 'execute' ? [{ detalle: e.detalle, estado: e.estado }] : []))
+
+/** ¿Ese comando tiene pinta de prueba? Por el nombre manda: npm test, pytest, vitest run, go test,
+ *  cargo test, `npx tsc --check`… (la crítica de la casa es conservadora: si no huele a prueba, no lo es). */
+export const parecioPrueba = (comando?: string): boolean => !!comando?.trim() && /test|spec|vitest|jest|pytest|mocha|prueba|\bcheck/i.test(comando)
+
+/** El juez local (la cola del instinto, 21-oct): el veredicto del comité no se firma con la PALABRA
+ *  del último relevo sino con la EVIDENCIA de su sesión. «Probado» hay que ganarlo:
+ *   - tumbado por el runtime (cayó o se negó): inapelable, el error es un hecho.
+ *   - dudoso (no declaró nada claro): se queda como está, no hay nada que juzgar.
+ *   - dijo que PASA: hace falta que la consola suene — al menos una ejecución con pinta de prueba.
+ *     Si no corrió NADA, o lo suyo no parece pruebas, el probado se le niega (dudoso). Y si su
+ *     ÚLTIMA prueba acabó en fallo, la palabra y la consola chocan: el juez lo tumba. */
+export function juezDe(e: { resumen?: string; caido?: string; eventos?: EventoMotor[] }): { estado: 'probado' | 'dudoso' | 'tumbado'; frase: string } {
+  const base = veredictoDe(e)
+  if (base.estado !== 'probado') return base
+  const ejecutadas = ejecucionesDe(e.eventos ?? [])
+  if (!ejecutadas.length) return { estado: 'dudoso', frase: `Dijo que pasaba sin haber corrido nada: «${base.frase}»` }
+  if (!ejecutadas.some((x) => parecioPrueba(x.detalle))) return { estado: 'dudoso', frase: `Dijo que pasaban las pruebas, pero no se ve que corriera una: «${base.frase}»` }
+  const ultima = [...ejecutadas].reverse().find((x) => parecioPrueba(x.detalle))!
+  if (ultima.estado === 'failed') {
+    return { estado: 'tumbado', frase: `Jura que pasan, pero su última prueba acabó en fallo${ultima.detalle ? ` («${ultima.detalle}»)` : ''}: el juez lo tumba.` }
+  }
+  return base
+}

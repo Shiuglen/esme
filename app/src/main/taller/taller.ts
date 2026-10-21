@@ -11,8 +11,8 @@ import { leeCurva } from './curva-io'
 import type { Curva } from './curva'
 import { errorDelProveedor, esTemporal, sesionMuerta } from './fallos'
 import { esNegativaTexto } from './negativa'
-import { encargoRelevo, planParlamento, podarEvidencia, veredictoDe, type Evidencia, type FinParlamento, type Paso, type Relevo } from './parlamento'
-import { anotaActa, firmaDe, parDeFirma, type ActaRelevo } from './acta'
+import { encargoRelevo, juezDe, planParlamento, podarEvidencia, type Evidencia, type FinParlamento, type Paso, type Relevo } from './parlamento'
+import { actaValida, anotaActa, firmaDe, parDeFirma, type ActaRelevo } from './acta'
 import { leeRoles, textoConRol, type Rol } from './roles'
 import { deltaDeUso, type Estado } from './uso'
 import { otroModeloGratis } from './gratis'
@@ -227,14 +227,16 @@ export class Taller {
     // El acta se dicta en TODA salida, también la temprana: el comité dice hasta dónde llegó.
     // Sin el par o sin disco, el veredicto vive igual (el acta es memoria, no permiso).
     const relevosDe = (paso: Paso, estado: 'lista' | 'error'): ActaRelevo => ({ orden: paso.orden, rol: paso.rol, motor: paso.motor, estado })
-    const cierra = (fin: Omit<FinParlamento, 'acta'>): FinParlamento => {
+    const cierra = (fin: Omit<FinParlamento, 'acta' | 'actaFirmada'>): FinParlamento => {
       try {
+        const par = parDeFirma(this.dir)
         const acta = firmaDe({ version: 1, emitido: this.ahora(), encargoSha256: createHash('sha256').update(p.texto).digest('hex'),
-          estado: fin.estado, frase: fin.frase, relevos: relevos.map((r) => ({ ...r })) }, parDeFirma(this.dir).privada)
+          estado: fin.estado, frase: fin.frase, relevos: relevos.map((r) => ({ ...r })) }, par.privada)
         anotaActa(this.dir, acta)
         // la mente aprende del comité entero: los estados finales de los relevos acaban de moverse
         void this.aprenderEquipo()
-        return { ...fin, acta: true }
+        // el acta vuelve sellada y validada in situ: la puerta que pidió el comité la lee sin pedir nada más
+        return { ...fin, acta: true, actaFirmada: { ...acta, valida: actaValida(acta, par.publica) } }
       } catch { return { ...fin, acta: false } }
     }
     for (const paso of plan) {
@@ -270,7 +272,10 @@ export class Taller {
         ficheros: tarea.cambios?.lista?.map((f) => ({ nombre: f.ruta, mas: f.mas, menos: f.menos })),
       })
     }
-    const veredicto = veredictoDe({ resumen })
+    // El veredicto no sale de la palabra del último relevo: lo juzga su EVIDENCIA (la consola que
+    // corrió y cómo acabó — el juez local de la cola del instinto).
+    const ultimo = ids[ids.length - 1]
+    const veredicto = juezDe({ resumen, eventos: ultimo ? await this.eventos(ultimo) : [] })
     return cierra({ ids, estado: veredicto.estado, frase: veredicto.frase })
   }
 

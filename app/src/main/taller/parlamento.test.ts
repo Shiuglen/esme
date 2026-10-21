@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { baseDe, encargoRelevo, planParlamento, podarEvidencia, veredictoDe } from './parlamento'
+import { baseDe, encargoRelevo, ejecucionesDe, juezDe, parecioPrueba, planParlamento, podarEvidencia, veredictoDe } from './parlamento'
 import { ROLES_POR_DEFECTO } from './roles'
+import type { EventoMotor } from '../motores/sesion-acp'
 
 const cronistas = ROLES_POR_DEFECTO
 const relevos = [
@@ -80,5 +81,70 @@ describe('veredictoDe — lo que firma el último relevo', () => {
   it('no dijo nada: dudoso, no se encubre', () => {
     expect(veredictoDe({}).frase).toContain('sin veredicto')
     expect(veredictoDe({ resumen: '   ' }).estado).toBe('dudoso')
+  })
+})
+
+const ejecuto = (detalle: string, estado?: string): EventoMotor =>
+  ({ tipo: 'herramienta', id: 'x', clase: 'execute', detalle, estado })
+const maquina = (ejecuciones: EventoMotor[], resumen: string): { resumen: string; eventos: EventoMotor[] } => ({ resumen, eventos: ejecuciones })
+
+describe('juezDe — la palabra no firma, la consola encaja o tumba', () => {
+  it('dijo que pasaban y corrió las pruebas de verdad: probado se queda', () => {
+    const j1 = juezDe(maquina([ejecuto('npm test', 'completed')], 'Las 3 pruebas pasan.'))
+    expect(j1.estado).toBe('probado')
+    expect(j1.frase).toBe('Las 3 pruebas pasan.')
+    const j2 = juezDe(maquina([ejecuto('npx vitest run', 'completed'), ejecuto('git status', 'completed')], 'Las pruebas pasan.'))
+    expect(j2.estado).toBe('probado')
+  })
+  it('dijo que pasaban sin haber corrido NADA: el juez le niega el probado', () => {
+    const j = juezDe(maquina([], 'Las 3 pruebas pasan.'))
+    expect(j.estado).toBe('dudoso')
+    expect(j.frase).toContain('sin haber corrido nada')
+    expect(j.frase).toContain('Las 3 pruebas pasan.')
+  })
+  it('corrió cosas, pero ninguna parece prueba: dudoso también', () => {
+    const j = juezDe(maquina([ejecuto('git status', 'completed'), ejecuto('ls src', 'completed')], 'Las pruebas pasan.'))
+    expect(j.estado).toBe('dudoso')
+    expect(j.frase).toContain('no se ve que corriera una')
+  })
+  it('juró que pasaban pero su ÚLTIMA prueba acabó en fallo: palabra y consola chocan, tumbado', () => {
+    const j = juezDe(maquina([ejecuto('git status', 'completed'), ejecuto('npm test', 'failed')], 'Las pruebas pasan, todo correcto.'))
+    expect(j.estado).toBe('tumbado')
+    expect(j.frase).toContain('su última prueba acabó en fallo')
+    expect(j.frase).toContain('npm test')
+  })
+  it('una prueba que falló ANTES y otra que pasó después: no se tumba por la primera', () => {
+    const j = juezDe(maquina([ejecuto('npm test', 'failed'), ejecuto('npm test', 'completed')], 'Ya pasan las pruebas.'))
+    expect(j.estado).toBe('probado')
+  })
+  it('la caída del runtime es un hecho, no una opinión: inapelable con o sin consola', () => {
+    expect(juezDe({ resumen: 'Las pruebas pasan.', caido: 'Gemini se negó a hacerlo', eventos: [ejecuto('npm test', 'completed')] }).estado).toBe('tumbado')
+    expect(juezDe({ caido: 'se murió el motor' }).frase).toBe('El parlamento no llegó: se murió el motor')
+  })
+  it('quien no declaró nada claro no lo juzga nadie', () => {
+    const j = juezDe(maquina([ejecuto('npm test', 'completed')], ''))
+    expect(j.estado).toBe('dudoso')
+    expect(j.frase).toContain('sin veredicto')
+  })
+})
+
+describe('ejecucionesDe y parecioPrueba — la consola del probador', () => {
+  it('solo las herramientas de la clase execute, con su detalle y su estado', () => {
+    const eventos: EventoMotor[] = [
+      { tipo: 'texto', texto: 'voy' },
+      ejecuto('npm test', 'completed'),
+      { tipo: 'herramienta', id: 'y', titulo: 'leer', clase: 'read', rutas: ['a.ts'] },
+      ejecuto('pytest -q'),
+    ]
+    expect(ejecucionesDe(eventos)).toEqual([{ detalle: 'npm test', estado: 'completed' }, { detalle: 'pytest -q', estado: undefined }])
+  })
+  it('parecioPrueba: por el nombre manda', () => {
+    expect(parecioPrueba('npm test')).toBe(true)
+    expect(parecioPrueba('python -m pytest')).toBe(true)
+    expect(parecioPrueba('npx tsc --check')).toBe(true)
+    expect(parecioPrueba('go test ./...')).toBe(true)
+    expect(parecioPrueba('git status')).toBe(false)
+    expect(parecioPrueba('')).toBe(false)
+    expect(parecioPrueba()).toBe(false)
   })
 })
