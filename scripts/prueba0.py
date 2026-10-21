@@ -37,7 +37,7 @@ BUDGET, MAX_TOKENS = 1500, 160
 MD_FILES = [Path.home() / ".claude/CLAUDE.md",
             Path.home() / ".claude/projects/-home-sakai-Sakoi/memory/MEMORY.md",
             Path.home() / ".claude/projects/-home-sakai-Sakoi/memory/sakoi-estado-migracion.md"]
-MAIN = ["ia_sola", "md", "bm25", "bm25_1000", "rag_denso_eg", "contexto_largo", "daimon"]
+MAIN = ["ia_sola", "md", "bm25", "bm25_1000", "rag_denso_eg", "contexto_largo", "daimon", "sesion"]
 ABLATIONS = ["daimon_sin_corte", "daimon_solo_original"]
 
 
