@@ -259,7 +259,26 @@ export const bridge = {
   },
   // Skills: instrucciones de experto para Esme y tus agentes, desde el repositorio de su autor (main/skills)
   skills: {
-    catalogo: async () => (isElectron() ? window.daimon!.skills.catalogo() : { skills: [], agentes: [], veredicto: { origen: 'ninguno' as const, aplica: false, aviso: null } }),
+    // En el navegador no hay proceso principal: se cargan los datos de la app y se verifica el veredicto
+    // aquí mismo (WebCrypto), con la misma clave fijada. Mismos datos, mismo juicio.
+    catalogo: async (): Promise<{ skills: SkillCatalogo[]; agentes: { id: string; nombre: string }[]; veredicto: EstadoVeredicto }> => {
+      if (isElectron()) return window.daimon!.skills.catalogo()
+      const [{ default: catalogo }, { default: veredictos }, { CLAVES_TIENDA }, { verificaVeredictos, catalogoSha256 }] = await Promise.all([
+        import('../../main/skills/catalogo.json'),
+        import('../../main/skills/veredictos-skills.json'),
+        import('../../main/claves'),
+        import('./veredicto-web'),
+      ])
+      const v = await verificaVeredictos(JSON.stringify(veredictos), CLAVES_TIENDA)
+      if (!v.ok) return { skills: [], agentes: [], veredicto: { origen: 'ninguno', aplica: false, aviso: v.motivo } }
+      const aplica = v.catalogoSha256 === await catalogoSha256(catalogo)
+      const porId = new Map(v.skills.map((s) => [s.id, s]))
+      return {
+        skills: (catalogo as { id: string; nombre: string; grupo: string; descripcionEs: string; descripcion: string; repo: string; ruta: string; commit: string; licencia: string; tieneScripts: boolean; ficheros: number; bytes: number; revisadoEl: string }[]).map((c) => ({ ...c, instalada: null, veredicto: aplica ? (porId.get(c.id) ?? null) : null })),
+        agentes: [],
+        veredicto: { origen: 'empaquetado', aplica, aviso: null },
+      }
+    },
     vistaPrevia: async (id: string): Promise<VistaSkill> => (isElectron() ? window.daimon!.skills.vistaPrevia(id) : { ok: false, error: 'Solo en la app de escritorio.' }),
     instalar: async (id: string, agentes: string[], conScripts: boolean) => (isElectron() ? window.daimon!.skills.instalar(id, agentes, conScripts) : { ok: false as const, error: 'Solo en la app de escritorio.' }),
     desinstalar: async (id: string) => (isElectron() ? window.daimon!.skills.desinstalar(id) : { ok: false as const, error: 'Solo en la app de escritorio.' }),
