@@ -202,9 +202,13 @@ Cline…), la herramienta de la conversación `absorber_programa` (que **pregunt
 el oficio **«Espejo»** del Taller. Medido contra la app real: 91,3 s de análisis, 179 recuerdos
 nuevos, y las preguntas sobre el programa se responden en 0,3 s. Detalle:
 `docs/resultados/2026-10-21-el-espejo.md`.
-**Queda.** Que la Forja pida a la mente lo que sabe del programa que quiere recrear (el bucle
-absorber → recrear, explícito); comparar dos versiones de un programa; y una pregunta nueva en
-el banco del examen que mida esto con un número.
+**Queda.** Comparar dos versiones de un programa; una pregunta nueva en el banco del examen que
+mida esto con un número; y un botón en la interfaz para mirar un programa y ver el informe con sus
+luces y sus sombras.
+**Hecho (21-oct, el bucle): absorber → recrear.** Cuando pides una herramienta nueva, el encargo
+al equipo lleva **lo que la mente sabe**: de la necesidad (la búsqueda de siempre) y, si el encargo
+nombra la ruta de un programa, **todo** el conocimiento que el espejo dejó de él (puerta
+`/rea/recuerdos`; 179 recuerdos para la app real). Quien va a recrear deja de adivinar: recibe.
 
 ### Palanca 7 — Skills que nacen del uso
 **Idea.** Ya existe el patrón «una skill por cuenco» (investigar, escribir, web, PDF, codificar,
