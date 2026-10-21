@@ -42,8 +42,8 @@ describe('el movimiento tiene carácter (es de la piel)', () => {
 })
 
 describe('el carácter es un dato de la piel', () => {
-  it('«preciso» por defecto; lo que no existe se rechaza', () => {
-    expect(PIEL_BASE.caracter).toBe('preciso')
+  it('«magnetico» por defecto (nivel dios); lo que no existe se rechaza', () => {
+    expect(PIEL_BASE.caracter).toBe('magnetico')
     const r = validarPiel({ caracter: 'pesado' })
     expect(r.ok && r.piel.caracter).toBe('pesado')
     expect(validarPiel({ caracter: 'gelatina' }).ok).toBe(false)

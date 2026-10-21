@@ -22,6 +22,10 @@ motor, `daimon/thalamus.py`).
 """
 from __future__ import annotations
 
+import json
+import os
+from pathlib import Path
+
 from .home import Home
 from . import rumbo as rumbo_mod
 
@@ -61,8 +65,159 @@ def _rumbo_texto(home: Home) -> str:
     return " | ".join(partes)
 
 
-def pack_de_arranque(home: Home, tarea: str, budget: int = 0, motor: str | None = None) -> str:
-    """El pack de arranque: rumbo + contexto de la tarea + protocolo.
+# ── Los compañeros: quién más está trabajando en el Taller, ahora mismo ──────────────────────────
+# Dos agentes en el Taller a la vez es lo normal, no la excepción. Cada uno trabaja en su copia
+# aislada, así que no se pisan los ficheros; lo que **no** se ve es el otro. Sin esto, dos agentes
+# pueden romper el mismo repo de la casa sin saber que el otro estaba ahí.
+#
+# Se lee el registro del Taller (el mismo fichero que escribe la app) y, de cada copia, su último
+# commit — **sin lanzar git**: se leen los ficheros de `.git`. Un `git log` por compañero en cada
+# sesión sería gastar un proceso por nada.
+
+ESTADOS_VIVOS = ("trabajando", "preparando", "esperando")
+
+
+def _directorio_taller() -> Path:
+    """Dónde está el registro del Taller. `ESME_APP_DATA` lo puede mover (tests, instalaciones)."""
+    base = os.environ.get("ESME_APP_DATA") or str(Path.home() / ".config" / "daimon-app")
+    return Path(base) / "taller"
+
+
+def _tareas_vivas() -> list[dict]:
+    """Las tareas que están vivas ahora mismo (trabajando, preparando o esperando)."""
+    f = _directorio_taller() / "tareas.json"
+    if not f.exists():
+        return []
+    try:
+        bruto = json.loads(f.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    tareas = bruto if isinstance(bruto, list) else bruto.get("tareas", bruto)
+    if isinstance(tareas, dict):
+        tareas = list(tareas.values())
+    if not isinstance(tareas, list):
+        return []
+    return [t for t in tareas if isinstance(t, dict) and t.get("estado") in ESTADOS_VIVOS]
+
+
+def _git_dir(copia: Path) -> Path | None:
+    """La carpeta `.git` de esa copia: puede ser un directorio o un fichero (worktree)."""
+    g = copia / ".git"
+    if g.is_dir():
+        return g
+    if g.is_file():
+        try:
+            linea = g.read_text(encoding="utf-8").strip()
+        except Exception:
+            return None
+        if linea.startswith("gitdir:"):
+            destino = Path(linea.split(":", 1)[1].strip())
+            return destino if destino.is_absolute() else (copia / destino)
+    return None
+
+
+def _mensaje_commit(git_dir: Path, sha: str) -> str:
+    """El asunto real del commit, leído del objeto de git (no del COMMIT_EDITMSG, que se queda viejo).
+
+    El objeto es un texto comprimido con zlib: la cabecera y luego el mensaje, separados por una
+    línea en blanco. Si algo falla (objeto empaquetado, formato raro), no se inventa nada.
+    """
+    obj = git_dir / "objects" / sha[:2] / sha[2:]
+    if not obj.exists():
+        return ""
+    try:
+        import zlib
+        crudo = zlib.decompress(obj.read_bytes()).decode("utf-8", "replace")
+    except Exception:
+        return ""
+    partes = crudo.split("\n\n", 1)
+    if len(partes) < 2:
+        return ""
+    for linea in partes[1].splitlines():
+        if linea.strip():
+            return linea.strip()[:120]
+    return ""
+
+
+def _ultimo_commit(copia: Path) -> tuple[str, str] | None:
+    """(sha corto, asunto) del último commit de la copia, leyendo `.git` sin lanzar git."""
+    g = _git_dir(copia)
+    if g is None:
+        return None
+    sha = ""
+    try:
+        head = (g / "HEAD").read_text(encoding="utf-8").strip()
+        if head.startswith("ref:"):
+            ref = head.split(":", 1)[1].strip()
+            sha = (g / ref).read_text(encoding="utf-8").strip()
+        else:
+            sha = head
+    except Exception:
+        return None
+    if not sha:
+        return None
+    asunto = _mensaje_commit(g, sha)
+    if not asunto:
+        # Sin objeto legible (paketizado o raro): el mensaje del editor, que puede estar viejo.
+        try:
+            for linea in (g / "COMMIT_EDITMSG").read_text(encoding="utf-8").splitlines():
+                if linea.strip():
+                    asunto = linea.strip()[:120]
+                    break
+        except Exception:
+            asunto = ""
+    return (sha[:8], asunto)
+
+
+def companeros(yo: str | None = None) -> list[dict]:
+    """Quién más está trabajando en el Taller ahora mismo.
+
+    `yo` es el identificador de la tarea propia, para no one's list itself.
+    """
+    fuera = []
+    for t in _tareas_vivas():
+        tid = str(t.get("id") or "")
+        if yo and tid == yo:
+            continue
+        copia = (t.get("copia") or {}).get("ruta")
+        commit = _ultimo_commit(Path(copia)) if copia else None
+        fuera.append({
+            "id": tid,
+            "titulo": str(t.get("titulo") or "")[:160],
+            "motor": str(t.get("motor") or t.get("motorNombre") or ""),
+            "turnos": t.get("turnos") or 0,
+            "copia": copia,
+            "commit": commit,
+        })
+    return fuera
+
+
+def _companeros_texto(yo: str | None = None) -> str:
+    gente = companeros(yo)
+    if not gente:
+        return ""
+    lineas = [f"[compañeros] {len(gente)} persona(s) más trabajando en el Taller ahora mismo:"]
+    for g in gente:
+        bits = [f"- {g['id']}"]
+        if g["titulo"]:
+            bits.append(f"«{g['titulo']}»")
+        if g["motor"]:
+            bits.append(f"motor {g['motor']}")
+        if g["turnos"]:
+            bits.append(f"{g['turnos']} turnos")
+        if g["copia"]:
+            bits.append(f"copia {g['copia']}")
+        if g["commit"]:
+            bits.append(f"último commit {g['commit'][0]} «{g['commit'][1]}»")
+        lineas.append("  " + " · ".join(bits))
+    lineas.append("  Antes de tocar lo que es de otro, mira su commit: tu trabajo y el suyo "
+                  "conviven en la misma casa.")
+    return "\n".join(lineas)
+
+
+def pack_de_arranque(home: Home, tarea: str, budget: int = 0, motor: str | None = None,
+                     yo: str | None = None) -> str:
+    """El pack de arranque: rumbo + contexto de la tarea + compañeros + protocolo.
 
     `budget` son tokens de contexto (0 = el presupuesto de la mente). El contexto se compone con el
     mismo motor que el resto de la mente, así que cada IA recibe lo que a esa IA le sirve.
@@ -83,6 +238,10 @@ def pack_de_arranque(home: Home, tarea: str, budget: int = 0, motor: str | None 
         else:
             bloques.append("[contexto de tu tarea] la mente no sabe nada de esto todavía: "
                            "trabaja con lo que ve y guarda lo que aprendas con `remember`.")
+
+    companeros_txt = _companeros_texto(yo)
+    if companeros_txt:
+        bloques.append(companeros_txt)
 
     bloques.append(f"[protocolo] {COMO_USARLA}")
     return "\n\n".join(bloques)

@@ -7,6 +7,7 @@ import {
   Check,
   Info,
   LoaderCircle,
+  TriangleAlert,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -29,7 +30,7 @@ import { createPortal } from "react-dom";
 import { EASE_OUT } from '@/lib/ease';
 import { cn } from '@/lib/cn';
 
-export type ToastStatus = "neutral" | "info" | "loading" | "success" | "error";
+export type ToastStatus = "neutral" | "info" | "loading" | "success" | "error" | "warning";
 export type ToastPosition =
   | "top-left"
   | "top-center"
@@ -111,14 +112,16 @@ const STATUS_ICON: Record<ToastStatus, LucideIcon> = {
   loading: LoaderCircle,
   success: Check,
   error: AlertCircle,
+  warning: TriangleAlert,
 };
 
 const STATUS_CLASS: Record<ToastStatus, string> = {
   neutral: "text-muted-foreground bg-muted/60",
   info: "text-primary bg-muted",
   loading: "text-primary bg-muted",
-  success: "text-emerald-600 bg-emerald-500/10 dark:text-emerald-400",
+  success: "text-acento bg-acento-velo",
   error: "text-destructive bg-destructive/10",
+  warning: "text-atencion bg-atencion-velo",
 };
 
 const POSITION_CLASS: Record<ToastPosition, string> = {

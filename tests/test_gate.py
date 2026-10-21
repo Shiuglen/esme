@@ -119,6 +119,54 @@ def test_sesion_a_traves_del_servidor(tmp_path):
     assert "79" in text and "Error" not in text
 
 
+def test_sesion_dice_quien_mas_esta_trabajando(tmp_path, monkeypatch):
+    """Dos agentes en el Taller a la vez: cada uno tiene que saber que el otro está ahí."""
+    import json as _json
+    from daimon.sesion import companeros, pack_de_arranque
+    app = tmp_path / "app"
+    (app / "taller").mkdir(parents=True)
+    copia = tmp_path / "copia-otro"
+    (copia / ".git" / "refs" / "heads").mkdir(parents=True)
+    (copia / ".git" / "HEAD").write_text("ref: refs/heads/otra\n")
+    (copia / ".git" / "refs" / "heads" / "otra").write_text("a" * 40 + "\n")
+    (copia / ".git" / "COMMIT_EDITMSG").write_text("la CI firmaba con la dev key\n")
+    (app / "taller" / "tareas.json").write_text(_json.dumps([
+        {"id": "otro", "estado": "trabajando", "titulo": "arregla la release", "motor": "opencode",
+         "turnos": 39, "copia": {"ruta": str(copia)}},
+        {"id": "yo", "estado": "trabajando", "titulo": "mi tarea", "motor": "opencode",
+         "turnos": 22, "copia": {"ruta": str(copia)}},
+        {"id": "vieja", "estado": "lista", "titulo": "terminada", "motor": "opencode"},
+    ]))
+    monkeypatch.setenv("ESME_APP_DATA", str(app))
+    # Sólo la viva que no es la mía.
+    gente = companeros("yo")
+    assert [g["id"] for g in gente] == ["otro"]
+    assert gente[0]["commit"][1].startswith("la CI firmaba")
+    # El pack lo dice, con el commit del otro.
+    pack = pack_de_arranque(_home(tmp_path / "mente"), "lo que sea", yo="yo")
+    assert "compañeros" in pack and "otro" in pack and "dev key" in pack
+    # Sin decir quién es uno, se listan los dos vivos.
+    assert len(companeros()) == 2
+
+
+def test_el_asunto_del_commit_se_lee_del_objeto(tmp_path):
+    """El mensaje del commit sale del objeto de git, no de un fichero que se queda viejo."""
+    import zlib
+    from daimon.sesion import _ultimo_commit
+    copia = tmp_path / "copia"
+    (copia / ".git" / "refs" / "heads").mkdir(parents=True)
+    sha = "b" * 40
+    (copia / ".git" / "HEAD").write_text("ref: refs/heads/otra\n")
+    (copia / ".git" / "refs" / "heads" / "otra").write_text(sha + "\n")
+    # El objeto real: cabecera y mensaje.
+    obj = zlib.compress(f"tree c0ffee\nauthor x <x@x> 1 +0000\ncommitter x <x@x> 1 +0000\n\nel asunto de verdad\n".encode())
+    (copia / ".git" / "objects" / sha[:2]).mkdir(parents=True)
+    (copia / ".git" / "objects" / sha[:2] / sha[2:]).write_bytes(obj)
+    # El COMMIT_EDITMSG dice otra cosa (es lo que pasa en la vida: se queda viejo).
+    (copia / ".git" / "COMMIT_EDITMSG").write_text("mensaje viejo\n")
+    assert _ultimo_commit(copia) == (sha[:8], "el asunto de verdad")
+
+
 def test_home_lee_config(tmp_path):
     import json
     (tmp_path / "config.json").write_text(json.dumps({"mmr_lambda": 1.0, "max_drop": 1.3, "min_dense": 0.5,

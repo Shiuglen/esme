@@ -50,9 +50,11 @@ export const PIEL_BASE: Piel = {
     noche: { fondo: '#070b14', superficie: '#0d1424', texto: '#ece6d8', acento: '#4fe3c1', atencion: '#f2b45b', peligro: '#ff7a6b', exito: '#7ee0a1' },
     dia: { fondo: '#eeebe3', superficie: '#fbfaf6', texto: '#141821', acento: '#08705e', atencion: '#9a5b00', peligro: '#b42318', exito: '#1f7a3f' } },
   // fondo más hondo y radios más generosos: el ADN de los productos del creador (Sakoi, plagatox-ui; vision-2026-10-18/04-github.md)
-  letra: { titulos: 'bodoni', texto: 'geist', escala: 1 }, forma: { radio: 1, sombra: 'plana' },
-  densidad: 'comoda', movimiento: 'sutil', caracter: 'preciso', fondo: 'liso', navegacion: 'leyenda', portada: 'mando', escena: 'ninguna', presencia: 'orbe',
-  piezas: PIEZAS_BASE,
+  letra: { titulos: 'bodoni', texto: 'geist', escala: 1 }, forma: { radio: 1, sombra: 'honda' },
+  // «nivel dios» = SaaS premium oscuro (Linear/Stripe): la escena tiene luz, el fondo resplandece, la sombra es honda y la
+  // navegación es el muelle de vidrio (la píldora que se desliza). Antes: liso/ninguna/plana/leyenda — todo plano, sin fondo.
+  densidad: 'comoda', movimiento: 'vivo', caracter: 'magnetico', fondo: 'aurora', navegacion: 'muelle', portada: 'mando', escena: 'aurora-suave', presencia: 'orbe-voz',
+  piezas: { ...PIEZAS_BASE, superficie: 'vidrio' },
 }
 
 const SOMBRAS: Sombra[] = ['plana', 'suave', 'honda'], DENSIDADES: Densidad[] = ['compacta', 'comoda', 'amplia']
@@ -110,7 +112,7 @@ export function validarPiel(x: unknown): { ok: true; piel: Piel } | { ok: false;
     else e.push(`${k}: «${String(x[k])}» no es una opción`)
   }
   enumera('densidad', DENSIDADES); enumera('movimiento', MOVIMIENTOS); enumera('fondo', FONDOS); enumera('navegacion', NAVEGACIONES); enumera('caracter', CARACTERES); enumera('portada', PORTADAS); enumera('escena', ESCENAS_PIEL); enumera('presencia', PRESENCIAS)
-  { const v = validarPiezas(x.piezas); p.piezas = v.piezas; e.push(...v.errores) }
+  { const v = validarPiezas(x.piezas, p.piezas); p.piezas = v.piezas; e.push(...v.errores) }
   return e.length ? { ok: false, errores: e } : { ok: true, piel: p }
 }
 

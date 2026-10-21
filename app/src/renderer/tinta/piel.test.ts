@@ -87,7 +87,7 @@ describe('nada se queda sin color', () => {
 
 describe('la navegación también es de la piel', () => {
   it('leyenda por defecto; riel y muelle son válidos; lo desconocido se rechaza', () => {
-    expect(PIEL_BASE.navegacion).toBe('leyenda')
+    expect(PIEL_BASE.navegacion).toBe('muelle')
     const r = validarPiel({ navegacion: 'muelle' })
     expect(r.ok && r.piel.navegacion).toBe('muelle')
     expect(validarPiel({ navegacion: 'riel' }).ok).toBe(true)
@@ -95,12 +95,21 @@ describe('la navegación también es de la piel', () => {
   })
 })
 
-describe('la piel de la casa: Tinta y Luz (18-oct)', () => {
-  it('materia impresa: Bodoni para los títulos, Geist para el texto, superficie de tinta (líneas de 1 px, sin cristal)', async () => {
+describe('la piel de la casa: Tinta y Luz (18-oct; «nivel dios» 21-oct)', () => {
+  it('materia impresa: Bodoni para los títulos, Geist para el texto, superficie de vidrio (cristal líquido)', async () => {
     const { PIEL_BASE: p } = await import('./piel')
     expect(p.nombre).toBe('Tinta y Luz')
     expect(p.letra.titulos).toBe('bodoni'); expect(p.letra.texto).toBe('geist')
-    expect(p.piezas.superficie).toBe('tinta')
+    expect(p.piezas.superficie).toBe('vidrio')
+  })
+  it('nivel dios: la escena tiene luz, el fondo resplandece, la sombra es honda y la navegación es el muelle', async () => {
+    const { PIEL_BASE: p } = await import('./piel')
+    expect(p.escena).toBe('aurora-suave')
+    expect(p.fondo).toBe('aurora')
+    expect(p.forma.sombra).toBe('honda')
+    expect(p.navegacion).toBe('muelle')
+    expect(p.movimiento).toBe('vivo')
+    expect(p.caracter).toBe('magnetico')
   })
   it('tinta azul profunda con luz bioluminiscente, válida y legible de día y de noche', async () => {
     const { PIEL_BASE: p, validarPiel: v, revisarContraste: c, variablesDePiel: vars } = await import('./piel')

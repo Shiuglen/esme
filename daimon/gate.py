@@ -72,18 +72,21 @@ def build_server(home: Home, lock: threading.Lock | None = None, on_event=None):
     mcp = MCPServer("daimon", instructions=PROTOCOLO)
 
     @mcp.tool()
-    def sesion(tarea: str, ctx: Context, motor: str | None = None) -> str:
+    def sesion(tarea: str, ctx: Context, motor: str | None = None, tarea_id: str | None = None) -> str:
         """Abre la sesión de trabajo: el rumbo de esta mente y el contexto de lo que vas a hacer.
 
         Llámala UNA vez al empezar, con una frase que diga qué vas a hacer. Te devuelve:
         para qué trabaja esta mente, lo que ya se sabe de tu tarea (con los ids, para poder dar
-        `feedback` después) y el protocolo de la memoria.
+        `feedback` después), **quién más está trabajando en el Taller ahora mismo** y el protocolo
+        de la memoria.
 
         Es la forma de tener la memoria puesta **sin proxy**: no se secuestra el tráfico del LLM,
         solo se pide una vez.
+
+        «tarea_id» es el identificador de tu tarea en el Taller (si lo sabes): así no te listan a ti.
         """
         with lock:
-            pack = pack_de_arranque(home, tarea, motor=motor)
+            pack = pack_de_arranque(home, tarea, motor=motor, yo=tarea_id)
         if on_event:
             try:
                 who = who_from_headers(ctx.headers)

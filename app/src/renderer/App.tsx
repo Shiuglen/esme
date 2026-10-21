@@ -3,6 +3,7 @@
 // desde su sitio en la leyenda y se pliega al cerrarla; se monta una vez y queda viva (conversación y terminales siguen).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Toaster, toast } from 'sonner'
+import { AnimatedToastStack, type AnimatedToast } from './ui/motion/animated-toast-stack'
 import { BrainClient, type Atlas as AtlasData, type MindEvent } from './lib/brain'
 import { bridge, type BrainInfo, type EstadoMente } from './lib/bridge'
 import { cn } from './lib/cn'
@@ -110,6 +111,15 @@ export function App() {
 
   // Avisos del Taller: al Inicio siempre; fuera del Taller, también un aviso con «Ver»; sin foco en la ventana, notificación del sistema.
   const verTarea = useCallback((id: string) => { ir('taller'); setFocoTaller((f) => ({ id, n: (f?.n ?? 0) + 1 })) }, [ir])
+  // La pila de avisos viva: lo que pasa en el equipo se apila abajo a la derecha y se va sola. Es el canal de
+  // «está pasando algo ahora» (una tarea terminó, un agente pide permiso, algo falló), distinto del toast de sonner,
+  // que es para lo que tú acabas de hacer.
+  const [pila, setPila] = useState<AnimatedToast[]>([])
+  const avisar = useCallback((t: Omit<AnimatedToast, 'id' | 'createdAt'>) => {
+    const id = `pila-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    setPila((v) => [...v, { ...t, id, createdAt: Date.now() }].slice(-5))
+    window.setTimeout(() => setPila((v) => v.filter((x) => x.id !== id)), t.duration ?? 5200)
+  }, [])
   useEffect(() => {
     for (const t of tl.tareas) {
       const avisos = avisosDe(vistas.current.get(t.id), t)
@@ -117,7 +127,14 @@ export function App() {
       for (const a of avisos) {
         void sonar(a.tipo === 'lista' ? 'listo' : a.tipo === 'error' ? 'error' : 'aviso')
         setEventos((v) => [{ id: ++seqEvento.current, ts: Date.now(), tipo: `taller-${a.tipo}` as const, texto: a.texto, detalle: a.detalle, onVer: () => verTarea(a.id) }, ...v].slice(0, 40))
-        if (seccionRef.current !== 'taller' && a.tipo === 'permiso') toast(a.texto, { description: a.detalle, action: { label: 'Ver', onClick: () => verTarea(a.id) } })
+        if (seccionRef.current !== 'taller') {
+          avisar({
+            title: a.texto,
+            description: a.detalle,
+            status: a.tipo === 'error' ? 'error' : a.tipo === 'permiso' ? 'warning' : 'success',
+            action: a.tipo === 'permiso' ? { label: 'Ver', onClick: () => verTarea(a.id) } : undefined,
+          })
+        }
         if (!document.hasFocus() && typeof Notification !== 'undefined') { try { new Notification('esme', { body: a.detalle ? `${a.texto}\n${a.detalle}` : a.texto, silent: a.tipo === 'lista' }) } catch { /* sin notificaciones */ } }
       }
     }
@@ -319,6 +336,22 @@ export function App() {
         brain={brain} tareas={tl.tareas} onTarea={verTarea} onVestir={pieles.vestir} onEncargar={(t) => void encargarDesdePaleta(t)}
         onRecuerdo={(id) => { ir('memoria'); setTimeout(() => enfocarRecuerdo(id), 350) }} />
       <Toaster theme={tema === 'noche' ? 'dark' : 'light'} position="bottom-right" toastOptions={{ style: { background: 'var(--superficie-2)', border: '1px solid var(--linea)', color: 'var(--texto)', fontFamily: 'inherit' } }} />
+      {/* la pila de lo que está pasando ahora: se apila, se va sola, y no tapa el trabajo */}
+      <AnimatedToastStack
+        toasts={pila}
+        onDismiss={(id) => setPila((v) => v.filter((x) => x.id !== id))}
+        position="bottom-right"
+        placement="fixed"
+        portal
+        classNames={{
+          root: 'pointer-events-none z-50',
+          surface: 'pointer-events-auto border border-linea bg-s2/90 shadow-flotante backdrop-blur-xl',
+          title: 'text-texto',
+          description: 'text-texto-3',
+          action: 'rounded-full border border-linea bg-s3 text-texto-2 hover:text-texto',
+          close: 'text-texto-3 hover:text-texto',
+        }}
+      />
       <HojasVivas tareas={tl.tareas} onVer={verTarea} />
     </div>
     </AlPulsar>

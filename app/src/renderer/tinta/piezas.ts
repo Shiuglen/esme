@@ -26,9 +26,11 @@ export type Piezas = { [H in Hueco]: (typeof PIEZAS)[H]['variantes'][number]['id
 // las de la casa: tinta (líneas de 1 px, sin cristal ni halos; la luz solo en lo vivo) y un brillo sereno al trabajar (19-oct)
 export const PIEZAS_BASE: Piezas = { superficie: 'tinta', saludo: 'enfoque', pulsar: 'nada', sonido: 'avisos', trabajo: 'brillo' }
 
-/** Valida las piezas que trae una piel: completa lo que falta con la base y devuelve los errores de lo que no existe. */
-export function validarPiezas(x: unknown): { piezas: Piezas; errores: string[] } {
-  const piezas = { ...PIEZAS_BASE }, errores: string[] = []
+/** Valida las piezas que trae una piel: completa lo que falta con la base y devuelve los errores de lo que no existe.
+ *  La base que completa es la de la PIEL (la de casa), no la neutra: si la piel de casa usa vidrio, una piel
+ *  que no dice nada de superficie hereda vidrio, no tinta. */
+export function validarPiezas(x: unknown, base: Piezas = PIEZAS_BASE): { piezas: Piezas; errores: string[] } {
+  const piezas = { ...base }, errores: string[] = []
   if (x === undefined) return { piezas, errores }
   if (typeof x !== 'object' || x === null || Array.isArray(x)) return { piezas, errores: ['piezas: tiene que ser un objeto'] }
   for (const [k, v] of Object.entries(x)) {

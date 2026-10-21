@@ -13,12 +13,12 @@ describe('las escenas: fondos vivos que son parte de la piel', () => {
     for (const id of ESCENA_IDS) expect(JSON.stringify(propsDeEscena(id, paleta)).toLowerCase(), id).toContain('7c5cff')
   })
   it('una piel puede llevar cualquier escena; lo que no existe se rechaza', () => {
-    expect(PIEL_BASE.escena).toBe('ninguna')   // Tinta y Luz: la luz sale de tu mente, no de un fondo de gradiente
+    expect(PIEL_BASE.escena).toBe('aurora-suave')   // «nivel dios»: la escena da la luz del fondo
     expect(validarPiel({ escena: 'seda' }).ok).toBe(true)
     expect(validarPiel({ escena: 'volcan' }).ok).toBe(false)
   })
   it('la presencia de Esme también se elige', () => {
-    expect(PIEL_BASE.presencia).toBe('orbe')
+    expect(PIEL_BASE.presencia).toBe('orbe-voz')
     expect(validarPiel({ presencia: 'ninguna' }).ok).toBe(true)
     expect(validarPiel({ presencia: 'dragon' }).ok).toBe(false)
   })
