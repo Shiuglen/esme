@@ -8,6 +8,10 @@ import type { Rol } from './roles'
 /** Un relevo: quién lleva el testigo en esa etapa del comité. */
 export type Relevo = { rol: string; motor: string }
 
+/** Cómo acabó el parlamento entero: los ids de los relevos en orden, el estado del veredicto
+ *  y la frase humana. `error` trae el motivo si el comité no llegó al final. */
+export type FinParlamento = { ids: string[]; estado: 'probado' | 'dudoso' | 'tumbado'; frase: string; error?: string }
+
 /** Un paso del plan: el oficio del relevo, el motor que lo lleva y el encargo de base. */
 export type Paso = {
   orden: number

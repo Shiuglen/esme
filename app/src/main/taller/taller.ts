@@ -11,6 +11,7 @@ import { leeCurva } from './curva-io'
 import type { Curva } from './curva'
 import { errorDelProveedor, esTemporal, sesionMuerta } from './fallos'
 import { esNegativaTexto } from './negativa'
+import { encargoRelevo, planParlamento, podarEvidencia, veredictoDe, type Evidencia, type FinParlamento, type Relevo } from './parlamento'
 import { leeRoles, textoConRol, type Rol } from './roles'
 import { deltaDeUso, type Estado } from './uso'
 import { otroModeloGratis } from './gratis'
@@ -209,6 +210,54 @@ export class Taller {
     r.tarea.error = undefined; r.tarea.fin = undefined
     this.cambio(r, true)
     void this.ejecutar(r, texto)
+  }
+
+  /** El parlamento: el comité de relevos (docs/superpowers/specs/2026-10-21-parlamento-live.md, fase 2).
+   *  Cada relevo es una TAREA REAL del Taller con su oficio delante; el siguiente hereda la evidencia
+   *  (lo que dijo el anterior, los ficheros que tocó, qué quedó mal). Si un relevo cae o se niega, el
+   *  comité no llena el hueco a escondidas: ahí para y entrega lo hecho con la nota del pinchazo. */
+  async parlamentar(p: { texto: string; carpeta: string | null; relevos: Relevo[]; acceso?: Acceso }): Promise<FinParlamento> {
+    const plan = planParlamento(p.texto, p.relevos, this.roles())
+    if (!plan.length) throw new Error('El parlamento pide dos relevos como mínimo, con oficios conocidos y encargo con sustancia.')
+    const ids: string[] = []
+    let evidencia: Evidencia | undefined
+    let resumen = ''
+    for (const paso of plan) {
+      const motor = (await this.resolverMotor?.(paso.motor).catch(() => null)) ?? null
+      if (!motor) return { ids, estado: 'tumbado', frase: `El parlamento no llegó: falta el motor del relevo ${paso.orden} (${paso.motor}).`, error: `motor «${paso.motor}» no disponible` }
+      // El oficio del paso va cosido por encargoRelevo en el texto (NO por el campo rol de crear:
+      // lo duplicaría con la evidencia; estos relevos se distinguen por su arena «parlamento»).
+      const t = this.crear({ motor, carpeta: p.carpeta, texto: encargoRelevo(paso, evidencia), arena: 'parlamento', acceso: p.acceso ?? 'ediciones' })
+      ids.push(t.id)
+      const seAcabo = await this.esperarFin(t.id)
+      if (seAcabo === 'cerrado') return { ids, estado: 'tumbado', frase: 'El taller se cerró con el parlamento a mitad de camino.', error: 'taller cerrado' }
+      const tarea = this.lista().find((x) => x.id === t.id)
+      resumen = this.registros.get(t.id)?.textoUltimo ?? resumen
+      if (!tarea) return { ids, estado: 'tumbado', frase: `El relevo ${paso.orden} se descartó con el testigo en la mano.` }
+      if (tarea.estado === 'error') {
+        return { ids, estado: 'tumbado', frase: `El parlamento no llegó en el relevo ${paso.orden} de ${plan.length}: ${tarea.error ?? 'algo falló'}`, error: tarea.error }
+      }
+      if (tarea.estado === 'parada') {
+        return { ids, estado: 'tumbado', frase: `El parlamento se paró en el relevo ${paso.orden} de ${plan.length}, de tu mano.` }
+      }
+      evidencia = podarEvidencia({
+        resumen,
+        ficheros: tarea.cambios?.lista?.map((f) => ({ nombre: f.ruta, mas: f.mas, menos: f.menos })),
+      })
+    }
+    const veredicto = veredictoDe({ resumen })
+    return { ids, estado: veredicto.estado, frase: veredicto.frase }
+  }
+
+  /** Espera a que un relevo salga de los estados activos; la vigilancia de 30 min ya mata al motor
+   *  muerto por detrás, así que no hace falta un segundo reloj aquí. */
+  private async esperarFin(id: string): Promise<'fin' | 'cerrado'> {
+    while (!this.cerrado) {
+      const estado = this.registros.get(id)?.tarea.estado
+      if (!estado || !ACTIVAS.includes(estado)) return 'fin'
+      await new Promise((s) => setTimeout(s, 100))
+    }
+    return 'cerrado'
   }
 
   async configurar(id: string, opcion: string, valor: string): Promise<void> {

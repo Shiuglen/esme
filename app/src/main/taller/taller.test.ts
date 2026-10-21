@@ -96,6 +96,51 @@ describe('Taller', () => {
     expect(s.cerrar).toHaveBeenCalled()
   })
 
+  describe('el parlamento — los relevos encadenados', () => {
+    const rr = [{ rol: 'constructor', motor: 'falso-a' }, { rol: 'revisor', motor: 'falso-b' }, { rol: 'probador', motor: 'falso-c' }]
+    const mm = (id: string, nombre: string): MotorElegido => ({ id, nombre, comando: 'x', args: [] })
+    const resolverBien = async (id: string) => (id === 'falso-a' ? mm('falso-a', 'Falso A') : id === 'falso-b' ? mm('falso-b', 'Falso B') : mm('falso-c', 'Falso C'))
+
+    it('tres relevos: tres tareas reales, la segunda hereda la evidencia de la primera y el veredicto lo firma la última', async () => {
+      const s = sesiones(async (o, _texto, n) => {
+        o.alEvento({ tipo: 'texto', texto: ['Cambié el reloj del taller.', 'Vi que el orden está bien.', 'Las 3 pruebas pasan.'][n] ?? '' })
+        return 'end_turn'
+      })
+      const taller = crear(s.abrir, copiasFalsas().ops, { resolverMotor: resolverBien })
+      const fin = await taller.parlamentar({ texto: 'Arregla el reloj', carpeta: '/proyecto', relevos: rr })
+      expect(fin.ids.length).toBe(3)
+      expect(fin.estado).toBe('probado')
+      expect(fin.frase).toContain('Las 3 pruebas pasan.')
+      // la segunda tarea empieza con el oficio del revisor y trae la evidencia del constructor
+      const segundo = taller.lista().find((x) => x.id === fin.ids[1])
+      expect(segundo?.texto).toContain('quien revisa')
+      expect(segundo?.texto).toContain('Evidencia del relevo anterior')
+      expect(segundo?.texto).toContain('Cambié el reloj del taller.')
+      expect(segundo?.texto).toContain('a.txt (+3/−1)')
+      expect(segundo?.arena).toBe('parlamento')
+    })
+
+    it('un relevo que se niega tumba el parlamento y el comité no rellena el hueco', async () => {
+      let llamada = 0
+      const s = sesiones(async (o) => { if (++llamada === 2) o.alEvento({ tipo: 'texto', texto: 'No puedo hacer eso.' }); return 'end_turn' })
+      const taller = crear(s.abrir, copiasFalsas().ops, { resolverMotor: async () => mm('falso', 'Falso') })
+      const fin = await taller.parlamentar({ texto: 'Arregla el reloj', carpeta: '/proyecto', relevos: rr })
+      expect(fin.ids).toHaveLength(2)   // el tercer relevo jamás se creó
+      expect(fin.estado).toBe('tumbado')
+      expect(fin.frase).toContain('relevo 2 de 3')
+      expect(fin.frase).toContain('se negó')
+    })
+
+    it('un motor que no está tumba el parlamento ANTES de crear tarea de ese relevo', async () => {
+      const s = sesiones(async () => 'end_turn')
+      const taller = crear(s.abrir, copiasFalsas().ops, { resolverMotor: async (id: string) => (id === 'falso-a' ? mm('falso-a', 'Falso A') : null) })
+      const fin = await taller.parlamentar({ texto: 'Arregla el reloj', carpeta: '/proyecto', relevos: rr })
+      expect(fin.estado).toBe('tumbado')
+      expect(fin.frase).toContain('falta el motor del relevo 2')
+      expect(fin.ids).toHaveLength(1)
+    })
+  })
+
   it('dos tareas trabajan a la vez: cada una con su copia, su motor y sus eventos', async () => {
     // La promesa del contrato: dos tareas pueden estar «trabajando» al mismo tiempo. Aquí se
     // comprueba que de verdad conviven (ninguna espera a la otra) y que no se pisan: cada una
