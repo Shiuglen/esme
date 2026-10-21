@@ -64,7 +64,20 @@ const forma = (s: unknown): s is VeredictoSkill => {
     && !!x.medidas && typeof x.medidas === 'object' && typeof x.medidas.arbolSha256 === 'string'
 }
 
-export type Verificacion = { ok: true; skills: VeredictoSkill[]; emitido: number; firmante: string; catalogoSha256: string } | { ok: false; motivo: string }
+/** Cuánto vive un veredicto antes de pedir otro.
+ *
+ * La práctica viene de dos sitios: **@KanikaBK** («revisa los permisos de tus skills instaladas
+ * cada mes») y **@mem0ai** (Hermes: «las skills que el agente guarda se degradan sin
+ * mantenimiento» — skill drift). Un veredicto de hace un año no dice nada del estado de hoy.
+ *
+ * **El juez pone el listón, nunca lo quita**: un veredicto caducado **sigue valiendo**; lo que
+ * cambia es que se dice, para que nadie lo crea actual sin que lo sea.
+ */
+export const CADUCIDAD_DIAS = 90
+export const DIA_MS = 86_400_000
+
+export type Verificacion = { ok: true; skills: VeredictoSkill[]; emitido: number; firmante: string; catalogoSha256: string
+  caducado: boolean; vence: number } | { ok: false; motivo: string }
 
 /** Comprueba el veredicto: ¿el cuerpo es el que se firmó? ¿la firma es del juez? */
 export function verificaVeredictos(texto: string, claves: string | string[]): Verificacion {
@@ -87,7 +100,9 @@ export function verificaVeredictos(texto: string, claves: string | string[]): Ve
   }
   if (!valida) return { ok: false, motivo: 'El veredicto no trae una firma válida del juez.' }
   if (doc.firma.signed_by !== doc.firmante) return { ok: false, motivo: 'El veredicto no lo firmó quien dice haber firmado.' }
-  return { ok: true, skills, emitido, firmante: doc.firmante ?? '', catalogoSha256: huellaCatalogo }
+  const vence = emitido + CADUCIDAD_DIAS * DIA_MS
+  const caducado = emitido > 0 && Date.now() > vence
+  return { ok: true, skills, emitido, firmante: doc.firmante ?? '', catalogoSha256: huellaCatalogo, caducado, vence }
 }
 
 /** De dónde salió el veredicto: la red, la copia local, el que viaja con la app o ninguno. */
@@ -99,6 +114,8 @@ export type Veredictos = {
   firmante: string
   catalogoSha256: string
   origen: OrigenVeredicto
+  caducado: boolean      // el veredicto tiene edad: sigue valiendo, pero se dice
+  vence: number
   aviso?: string
 } | { ok: false; motivo: string; origen: OrigenVeredicto; aviso?: string }
 
@@ -134,7 +151,7 @@ export async function veredictosRemotos(o: { datos: string; url?: string; buscar
       const v = verificaVeredictos(texto, claves)
       if (v.ok) {
         try { writeFileSync(copia, texto) } catch { /* la copia es opcional */ }
-        return { ok: true, porId: new Map(v.skills.map((s) => [s.id, s])), emitido: v.emitido, firmante: v.firmante, catalogoSha256: v.catalogoSha256, origen: 'red' }
+        return { ok: true, porId: new Map(v.skills.map((s) => [s.id, s])), emitido: v.emitido, firmante: v.firmante, catalogoSha256: v.catalogoSha256, origen: 'red', caducado: v.caducado, vence: v.vence }
       }
       aviso = v.motivo
     }
@@ -142,10 +159,10 @@ export async function veredictosRemotos(o: { datos: string; url?: string; buscar
 
   try {
     const v = verificaVeredictos(readFileSync(copia, 'utf8'), claves)
-    if (v.ok) return { ok: true, porId: new Map(v.skills.map((s) => [s.id, s])), emitido: v.emitido, firmante: v.firmante, catalogoSha256: v.catalogoSha256, origen: 'copia', aviso }
+    if (v.ok) return { ok: true, porId: new Map(v.skills.map((s) => [s.id, s])), emitido: v.emitido, firmante: v.firmante, catalogoSha256: v.catalogoSha256, origen: 'copia', caducado: v.caducado, vence: v.vence, aviso }
   } catch { /* sin copia */ }
 
   const v = veredictosEmpaquetados(claves)
   if (!v.ok) return { ok: false, motivo: v.motivo, origen: 'ninguno', aviso }
-  return { ok: true, porId: new Map(v.skills.map((s) => [s.id, s])), emitido: v.emitido, firmante: v.firmante, catalogoSha256: v.catalogoSha256, origen: 'empaquetado', aviso }
+  return { ok: true, porId: new Map(v.skills.map((s) => [s.id, s])), emitido: v.emitido, firmante: v.firmante, catalogoSha256: v.catalogoSha256, origen: 'empaquetado', caducado: v.caducado, vence: v.vence, aviso }
 }

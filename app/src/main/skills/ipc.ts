@@ -38,9 +38,12 @@ export function registerSkills() {
     const agentes = (await agentesParaConversar().catch(() => [])).filter((a) => a.instalado && AGENTES_CON_SKILLS.includes(a.id)).map((a) => ({ id: a.id, nombre: a.nombre }))
     const veredictos = await veredictosDe()
     const judged = porId(veredictos)
-    const estado: { origen: OrigenVeredicto; aplica: boolean; aviso: string | null } = veredictos.ok
-      ? { origen: veredictos.origen, aplica: !!judged, aviso: veredictos.aviso ?? null }
-      : { origen: 'ninguno', aplica: false, aviso: veredictos.motivo }
+    // El veredicto caduca a los 90 días: **sigue valiendo** (el juez pone el listón, nunca lo
+    // quita), pero se dice, para que nadie lo crea actual sin que lo sea.
+    const estado: { origen: OrigenVeredicto; aplica: boolean; aviso: string | null; caducado: boolean; vence: number; emitido: number; firmante: string } = veredictos.ok
+      ? { origen: veredictos.origen, aplica: !!judged, aviso: veredictos.aviso ?? null,
+          caducado: veredictos.caducado, vence: veredictos.vence, emitido: veredictos.emitido, firmante: veredictos.firmante }
+      : { origen: 'ninguno', aplica: false, aviso: veredictos.motivo, caducado: false, vence: 0, emitido: 0, firmante: '' }
     return { skills: catalogo.map((c) => ({ ...c, instalada: instaladas.find((i) => i.id === c.id) ?? null, veredicto: judged?.get(c.id) ?? null })), agentes, veredicto: estado }
   })
   ipcMain.handle('skills:vistaPrevia', async (_e, id: unknown) => {

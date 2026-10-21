@@ -23,9 +23,9 @@ const cuerpo = (v: { version: number; emitido: number; firmante: string; catalog
   skills: v.skills.map((s) => ({ id: s.id, entra: s.entra, nivel: s.nivel, causa: s.causa,
     medidas: { arbolSha256: s.medidas.arbolSha256, licencia: s.medidas.licencia, commit: s.medidas.commit, ficheros: s.medidas.ficheros, bytes: s.medidas.bytes, ejecutables: s.medidas.ejecutables, tokens: s.medidas.tokens ?? null, skillMdSha256: s.medidas.skillMdSha256 ?? '' } })),
 }))
-const firmar = (skills: VeredictoSkill[], o: { clave?: string; firmante?: string; signedBy?: string; catalogo?: string } = {}) => {
+const firmar = (skills: VeredictoSkill[], o: { clave?: string; firmante?: string; signedBy?: string; catalogo?: string; emitido?: number } = {}) => {
   const firmante = o.firmante ?? 'huella'
-  const v = { version: 1, emitido: 1, firmante, catalogoSha256: o.catalogo ?? 'f'.repeat(64), skills }
+  const v = { version: 1, emitido: o.emitido ?? 1, firmante, catalogoSha256: o.catalogo ?? 'f'.repeat(64), skills }
   const bytes = cuerpo(v)
   return JSON.stringify({ ...v, firma: { algorithm: 'ed25519-sha512', signature: sign(null, bytes, o.clave ?? privada).toString('base64'), signed_at: new Date().toISOString(), signed_by: o.signedBy ?? firmante, hash: createHash('sha256').update(bytes).digest('base64') } })
 }
@@ -98,5 +98,21 @@ describe('el veredicto se busca: la red, la copia y el que viaja con la app', ()
   it('sin red y sin copia, el que viaja con la app', async () => {
     const v = await veredictosRemotos({ datos: datos(), buscar: async () => { throw new Error('sin red') }, claves: CLAVES_TIENDA })
     expect(v.ok && v.origen).toBe('empaquetado')
+  })
+})
+
+describe('el veredicto envejece: se dice, pero no se quita', () => {
+  it('un veredicto de hace un día está al día', () => {
+    const r = verificaVeredictos(firmar([skill], { emitido: Date.now() - 86_400_000 }), publica)
+    expect(r.ok).toBe(true)
+    if (r.ok) { expect(r.caducado).toBe(false); expect(r.vence).toBeGreaterThan(Date.now()) }
+  })
+
+  it('un veredicto de hace más de 90 días se marca caducado… pero sigue valiendo', () => {
+    // El juez pone el listón, nunca lo quita: un veredicto viejo sigue aplicando.
+    const viejo = Date.now() - 120 * 86_400_000
+    const r = verificaVeredictos(firmar([skill], { emitido: viejo }), publica)
+    expect(r.ok).toBe(true)
+    if (r.ok) { expect(r.caducado).toBe(true); expect(r.emitido).toBe(viejo) }
   })
 })
