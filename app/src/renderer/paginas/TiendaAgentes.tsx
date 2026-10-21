@@ -4,7 +4,7 @@
 // viene con la firma de Esme, con su versión y con lo que trae. La ficha dice lo que hace, con qué herramientas
 // cuenta y qué necesita antes de poder usarlo. Nada se ejecuta sin que lo pidas.
 import { useEffect, useMemo, useState } from 'react'
-import { Bot, Check, CircleAlert, Search, Sparkles, X } from 'lucide-react'
+import { Bot, Check, CircleAlert, Download, LoaderCircle, Search, Sparkles, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { bridge } from '../lib/bridge'
 import { cn } from '../lib/cn'
@@ -101,6 +101,9 @@ export function TiendaAgentes() {
 /** La ficha de un agente: qué hace, cómo se lanza, qué necesita y si está en tu equipo. */
 function FichaAgente({ a }: { a: Agente }) {
   const [falta, setFalta] = useState<string[] | null>(null)
+  // ¿está en este equipo? y ¿se está instalando ahora?
+  const [instalado, setInstalado] = useState<boolean | null>(null)
+  const [instalando, setInstalando] = useState<string | null>(null)
 
   useEffect(() => {
     // qué herramientas de las que pide no están en el PATH: si falta alguna, la Tienda lo dice ANTES
@@ -109,6 +112,30 @@ function FichaAgente({ a }: { a: Agente }) {
     void bridge.herramientas.conectadas().then(() => { if (vivo) setFalta([]) }).catch(() => { if (vivo) setFalta(a.herramientas) })
     return () => { vivo = false }
   }, [a.herramientas])
+
+  useEffect(() => {
+    // ¿ya está en el equipo? (el Cerebro es de casa: siempre está)
+    if (a.deCasa) { setInstalado(true); return }
+    let vivo = true
+    void bridge.taller.motores().then((ms) => { if (vivo) setInstalado(ms.some((m) => m.id === a.id && m.instalado)) })
+      .catch(() => { if (vivo) setInstalado(false) })
+    return () => { vivo = false }
+  }, [a.id, a.deCasa])
+
+  // la instalación corre de verdad (npm install -g), con el detalle en vivo
+  useEffect(() => {
+    if (!instalando) return
+    return bridge.taller.onInstalacion((p) => { if (p.listo) { setInstalando(null); setInstalado(true) } })
+  }, [instalando])
+
+  const instalar = () => {
+    setInstalando(a.id)
+    void bridge.taller.instalarMotor(a.id).then((r) => {
+      setInstalando(null)
+      if (r.ok) { setInstalado(true); toast.success(`${r.nombre} instalado de verdad`) }
+      else toast.error(r.error)
+    }).catch((e) => { setInstalando(null); toast.error(String(e?.message ?? e)) })
+  }
 
   return (
     <article className="vidrio grid content-start gap-3 rounded-4 border p-4">
@@ -148,15 +175,27 @@ function FichaAgente({ a }: { a: Agente }) {
       )}
 
       <div className="mt-1 grid gap-1.5">
-        <button type="button" onClick={() => {
-          // el Taller está en otra pantalla: se lo pide por el bus. Si no hay nadie escuchando, se avisa.
-          const peticion: PeticionDeAgente = { motor: a.id, nombre: a.nombre, que: a.ejemplo ?? '' }
-          if (pide(TIPO_AGENTE, peticion)) toast(`«${a.nombre}» te espera en el Taller.`)
-          else toast('Abre el Taller y vuelve aquí: el agente se queda elegido.', { description: 'Nadie está escuchando todavía.' })
-        }}
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-acento px-4 text-[13px] font-medium text-sobre-acento transition-[filter] hover:brightness-110">
-          Usar en el Taller
-        </button>
+        {instalando ? (
+          <button type="button" disabled
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-linea px-4 text-[13px] text-texto-3">
+            <LoaderCircle className="size-3.5 animate-spin" /> instalando de verdad…
+          </button>
+        ) : instalado === false ? (
+          <button type="button" onClick={instalar}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-full border border-linea-fuerte bg-s2 px-4 text-[13px] text-texto transition-colors hover:bg-s3">
+            <Download className="size-3.5" strokeWidth={1.75} /> Instalar en este equipo
+          </button>
+        ) : (
+          <button type="button" onClick={() => {
+            // el Taller está en otra pantalla: se lo pide por el bus. Si no hay nadie escuchando, se avisa.
+            const peticion: PeticionDeAgente = { motor: a.id, nombre: a.nombre, que: a.ejemplo ?? '' }
+            if (pide(TIPO_AGENTE, peticion)) toast(`«${a.nombre}» te espera en el Taller.`)
+            else toast('Abre el Taller y vuelve aquí: el agente se queda elegido.', { description: 'Nadie está escuchando todavía.' })
+          }}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-acento px-4 text-[13px] font-medium text-sobre-acento transition-[filter] hover:brightness-110">
+            Usar en el Taller
+          </button>
+        )}
         {falta && falta.length > 0 && (
           <p className="m-0 text-center text-[11.5px] text-atencion">Te falta {falta.join(' y ')}: instálalo y vuelve.</p>
         )}
