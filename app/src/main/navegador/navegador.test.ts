@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { GUION_CLIC, GUION_ESCRIBIR, GUION_ESTADO, GUION_SCROLL, accionesDe, normaliza, resumen, urlValida } from './estado'
+import { GUION_CLIC, GUION_ESCRIBIR, GUION_ESTADO, GUION_SCROLL, GUION_VOLVER, accionesDe, normaliza, resumen, urlValida } from './estado'
 import { Navegador, type Ventana } from './navegador'
 
 describe('lo que el agente ve de una página', () => {
@@ -77,11 +77,24 @@ describe('lo que el agente ve de una página', () => {
     expect(GUION_ESTADO).toContain('for (const e of VIVOS)')
     expect(GUION_CLIC('n7')).toContain('numeroDe(objetivo)')
     expect(GUION_CLIC('n7')).toContain('VIVOS[porNumero - 1]')
-    expect(GUION_CLIC('Enviar')).toContain('norm(objetivo)')
+    expect(GUION_CLIC('n7')).toContain("e.click()")
     expect(GUION_ESCRIBIR('n3', 'hola')).toContain('VIVOS[porNumero - 1]')
     // un número que señala un botón no se deja escribir: se niega, no adivina
     expect(GUION_ESCRIBIR('n2', 'texto')).toContain("['INPUT', 'TEXTAREA', 'SELECT'].indexOf(fila.tagName) >= 0")
-    expect(GUION_CLIC('n7')).toContain("e.click()")
+  })
+
+  it('localizadores profundos: lo que DICE la página manda, y ojo con el objetivo vacío', () => {
+    // de fuera hacia dentro: exacto > contiene; y los atributos de rescate (aria-label, id, name)
+    const orden = GUION_CLIC('Enviar')
+    expect(orden).toContain("dice(x) === o) ||")
+    expect(orden).toContain("dice(x).includes(o)")
+    expect(orden).toContain("x.getAttribute('aria-label')")
+    expect(orden).toContain('placeholder, x.title, x.id, x.name')
+    expect(orden.indexOf("dice(x) === o")).toBeLessThan(orden.indexOf("atributos(x) === o"))
+    // y nadie loco: un objetivo vacío no pulsa al primero de la fila
+    expect(GUION_CLIC('')).toContain("if (!o) return { ok: false, donde: '' }")
+    expect(GUION_ESCRIBIR('', 'hola')).toContain("if (!o) return { ok: false, donde: '' }")
+    expect(GUION_ESCRIBIR('Buscar', 'hola')).toContain("dice(x) === o")
   })
 
   it('el guion de la mirada: baja o sube casi una pantalla, y el estado cuenta dónde quedó', () => {
@@ -89,6 +102,11 @@ describe('lo que el agente ve de una página', () => {
     expect(GUION_SCROLL(false)).toContain('window.innerHeight * 0.85) * (-1)')
     expect(GUION_ESTADO).toContain('window.scrollY')
     expect(GUION_ESTADO).toContain('scrollHeight')
+  })
+
+  it('la historia: el guion no espera nada dentro de la página (muere al navegar); el que espera es el navegador', () => {
+    expect(GUION_VOLVER).toBe('history.back()')
+    expect(GUION_VOLVER).not.toContain('Promise')
   })
 })
 
@@ -142,6 +160,31 @@ describe('el navegador', () => {
     expect(v.llamadas.some((c) => c.includes('window.innerHeight * 0.85'))).toBe(true)
     expect(e.vista?.y).toBe(1200)
     expect(e.elementos.map((x) => x.etiqueta)).toEqual(['Leer más'])
+  })
+
+  it('la historia: vuelve atrás y el estado que trae es el de la página viva (no cuelga la puerta)', async () => {
+    // aquí la ventana falsa SÍ cambia de dirección al pedir volver: primo de lo que hace Chromium.
+    // El guion de volver no espera nada dentro de la página (moriría al navegar); el estado viene
+    // de la lectura que el navegador hace DESPUÉS de la espera.
+    const estado = { url: 'https://x.com/vieja', titulo: 'Vieja', texto: 'la página de antes',
+      elementos: [{ n: 1, rol: 'enlace', etiqueta: 'Adelante' }] }
+    const llamadas: string[] = []
+    let direccion = 'https://x.com/'
+    const v: Ventana & { llamada: (c: string) => Promise<unknown> } = {
+      loadURL: async () => {},
+      llamada: async (c) => { llamadas.push(c); if (c === 'history.back()') direccion = 'https://x.com/vieja'; return llamadas.length > 1 ? estado : undefined },
+      executeJavaScript: (c) => v.llamada(c),
+      isDestroyed: () => false,
+      close: () => {},
+      url: () => direccion,
+    }
+    const n = new Navegador(() => v)
+    await n.abrir('https://x.com')
+    const e = await n.volver()
+    expect(llamadas).toContain('history.back()')
+    expect(e.titulo).toBe('Vieja')
+    expect(e.texto).toBe('la página de antes')
+    expect(e.elementos.map((x) => x.etiqueta)).toEqual(['Adelante'])
   })
 
   it('se cierra sola si nadie la usa: en reposo no hay navegador abierto', async () => {

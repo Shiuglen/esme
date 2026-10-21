@@ -113,6 +113,11 @@ def test_por_http_de_verdad_con_la_puerta_de_la_app():
         assert visto["cuerpo"] == {"abajo": True}
         c.bajar(False)
         assert visto["cuerpo"] == {"abajo": False}
+
+        # y la historia: atrás sin cuerpo
+        c.volver()
+        assert visto["ruta"] == "/volver"
+        assert visto["cuerpo"] == {}
     finally:
         srv.shutdown()
         srv.server_close()

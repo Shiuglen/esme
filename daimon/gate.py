@@ -158,6 +158,12 @@ def build_server(home: Home, lock: threading.Lock | None = None, on_event=None):
         más página debajo. Devuelve el texto nuevo y sus números."""
         return en_palabras(ClienteNavegador().bajar(direccion != "arriba"))
 
+    @mcp.tool()
+    def volver_en_la_historia() -> str:
+        """Vuelve a la página anterior en el navegador de Esme (la historia del navegador) y
+        devuelve lo que hay agora: el texto nuevo y su mapa con números."""
+        return en_palabras(ClienteNavegador().volver())
+
     # ── El espejo: entender un programa y que la mente lo sepa ─────────────────────────────────
     # REA (ingeniería inversa, MIT) mira un programa y devuelve lo que vio con su evidencia.
     # Aquí ese conocimiento entra en la memoria: el programa deja de ser una caja negra para

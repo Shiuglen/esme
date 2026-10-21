@@ -178,7 +178,16 @@ ${POZO}
   const porNumero = numeroDe(objetivo);
   let e = null;
   if (porNumero) e = VIVOS[porNumero - 1] || null;
-  if (!e) e = VIVOS.find((x) => norm(x.innerText || x.value || x.textContent).includes(norm(objetivo))) || null;
+  if (!e) {
+    const o = norm(objetivo);
+    if (!o) return { ok: false, donde: '' };
+    // Localizadores profundos, de fuera hacia dentro: lo que la página DICE primero (exacto y
+    // luego contiene), y sólo si nadie dice, sus atributos (aria-label, título, id, name).
+    const dice = (x) => norm(x.innerText || x.value || x.textContent);
+    const atributos = (x) => norm([x.getAttribute('aria-label'), x.placeholder, x.title, x.id, x.name].join(' '));
+    e = VIVOS.find((x) => dice(x) === o) || VIVOS.find((x) => dice(x).includes(o))
+      || VIVOS.find((x) => atributos(x) === o) || VIVOS.find((x) => atributos(x).includes(o)) || null;
+  }
   if (!e) return { ok: false, donde: '' };
   const donde = ((e.innerText || e.value || '') + '').trim().slice(0, 120);
   e.scrollIntoView({ block: 'center' });
@@ -200,9 +209,14 @@ ${POZO}
     const fila = VIVOS[porNumero - 1] || null;
     if (fila && ['INPUT', 'TEXTAREA', 'SELECT'].indexOf(fila.tagName) >= 0) e = fila;
   }
-  if (!e) e = VIVOS.filter((x) => ['input', 'textarea', 'select'].includes(x.tagName.toLowerCase()))
-    .find((x) => norm([x.name, x.id, x.placeholder, x.getAttribute('aria-label'),
-      x.labels && x.labels[0] && x.labels[0].innerText].join(' ')).includes(norm(clave))) || null;
+  if (!e) {
+    const o = norm(clave);
+    if (!o) return { ok: false, donde: '' };
+    const campos = VIVOS.filter((x) => ['input', 'textarea', 'select'].includes(x.tagName.toLowerCase()));
+    const dice = (x) => norm([x.name, x.id, x.placeholder, x.getAttribute('aria-label'),
+      x.labels && x.labels[0] && x.labels[0].innerText].join(' '));
+    e = campos.find((x) => dice(x) === o) || campos.find((x) => dice(x).includes(o)) || null;
+  }
   if (!e) return { ok: false, donde: '' };
   const donde = ((e.name || e.id || e.placeholder || '') + '').trim().slice(0, 120);
   e.focus();
@@ -229,6 +243,11 @@ export const GUION_SCROLL = (abajo: boolean) => `(() => {
   return { ok: true, donde: '',
     vista: { y: window.scrollY, alto: document.documentElement.scrollHeight, v: window.innerHeight } };
 })()`
+
+/** El guion de la historia: pide volver atrás. Nadie espera aquí la carga — la ventana muere al
+ *  navegar y una promesa de la página vieja moriría con ella; el que espera es el navegador
+ *  (`Navegador.volver`), mirando la dirección que la ventana ya carga. */
+export const GUION_VOLVER = `history.back()`
 
 /** Una dirección de la web: sólo http y https. Nada de ficheros locales ni de javascript:. */
 export function urlValida(u: string): string | null {
