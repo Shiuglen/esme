@@ -9,6 +9,7 @@ import type { Navegacion } from '../tinta/piel'
 import type { Origen } from './Hoja'
 import { Vidrio } from './Vidrio'
 import { AJUSTES, SECCIONES, type SeccionId } from './secciones'
+import { Dock, DockItem, DockSeparator } from '../ui/motion/dock'
 
 export type NotaLugar = { texto: string; tono?: 'atencion' | 'peligro' | 'vida' }
 const LUGARES = [...SECCIONES.filter((s) => s.id !== 'inicio'), AJUSTES]
@@ -20,7 +21,40 @@ export function Leyenda({ actual, recogida: recogidaPedida, estado, notas, onIr,
   modo?: Navegacion; actual: SeccionId; recogida: boolean; estado: EstadoSenal; notas: Partial<Record<SeccionId, NotaLugar>>; onIr(id: SeccionId, origen: Origen): void
 }) {
   const recogida = modo !== 'leyenda' || recogidaPedida, muelle = modo === 'muelle'
-  const ir = (id: SeccionId, e: React.MouseEvent<HTMLElement>) => { const r = e.currentTarget.getBoundingClientRect(); onIr(id, { x: r.left + r.width / 2, y: r.top + r.height / 2 }) }
+  // el dock no pasa el evento: el origen se calcula desde el elemento que se pulsó
+  const ir = (id: SeccionId, e?: React.MouseEvent<HTMLElement> | HTMLElement) => {
+    const el = e && 'currentTarget' in e ? e.currentTarget : (e as HTMLElement | undefined)
+    const r = el?.getBoundingClientRect()
+    onIr(id, r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : { x: 0, y: 0 })
+  }
+
+  // «muelle»: el dock flotante de abajo (píldora activa que se desliza, al pie de la pantalla).
+  // Es la forma que la piel elige cuando la persona quiere la pantalla despejada: los iconos
+  // flotan en una píldora de vidrio y el sitio activo se marca con una píldora que se desliza.
+  if (muelle) {
+    return (
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center pb-4">
+        <Dock size={40} className="pointer-events-auto border border-linea bg-s1/70 shadow-flotante backdrop-blur-2xl">
+          <DockItem active={actual === 'inicio'} onClick={() => ir('inicio')} aria-label="Tu mente (Esc)"
+            className="text-texto-2 transition-colors hover:text-texto data-[active=true]:text-texto">
+            <PuntoVista px={22} estado={estado === 'pensando' || estado === 'recordando' ? 'pensando' : 'reposo'} titulo="Esme" className="text-acento" />
+          </DockItem>
+          <DockSeparator className="bg-linea" />
+          {LUGARES.map(({ id, nombre, Icono, atajo }) => {
+            const nota = notas[id]
+            return (
+              <DockItem key={id} active={actual === id} onClick={() => ir(id)} aria-label={`${nombre} (${atajo})`}
+                className="relative text-texto-2 transition-colors hover:text-texto data-[active=true]:text-texto">
+                <Icono className="size-[18px]" strokeWidth={1.5} />
+                {nota?.tono && <span aria-hidden className={cn('absolute top-1 right-1 size-1.5 rounded-full', nota.tono === 'peligro' ? 'bg-peligro' : nota.tono === 'atencion' ? 'bg-atencion' : 'bg-luz')} />}
+              </DockItem>
+            )
+          })}
+        </Dock>
+      </div>
+    )
+  }
+
   return (
     // la navegación es capa de navegación: vidrio líquido (shell/Vidrio.tsx), no una hoja de contenido
     <Vidrio radio={18} className={cn('!absolute z-30 overflow-hidden border border-linea bg-s1/35 shadow-flotante transition-[width] duration-500 ease-salida',

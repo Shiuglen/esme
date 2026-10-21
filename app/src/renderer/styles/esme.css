@@ -41,6 +41,37 @@
   --color-esmeralda: var(--esmeralda);
   --color-esmeralda-1: var(--esmeralda-1);
   --color-esmeralda-3: var(--esmeralda-3);
+  /* El puente con el mundo de las piezas de terceros (beUI y el resto de ui/): habla el
+     vocabulario de shadcn (card, foreground, muted…), y aquí cada nombre se traduce a un
+     rol de la piel. Por eso una pieza de fuera vista ESME, no genérica: el color sigue
+     siendo decisión de la piel, que es lo que el test de «una sola piel» exige. */
+  --color-background: var(--fondo);
+  --color-foreground: var(--texto);
+  --color-card: var(--superficie-1);
+  --color-card-foreground: var(--texto);
+  --color-popover: var(--superficie-2);
+  --color-popover-foreground: var(--texto);
+  --color-muted: var(--superficie-2);
+  --color-muted-foreground: var(--texto-2);
+  --color-primary: var(--acento);
+  --color-primary-foreground: var(--sobre-acento);
+  --color-secondary: var(--superficie-3);
+  --color-secondary-foreground: var(--texto);
+  --color-accent: var(--acento-velo);
+  --color-accent-foreground: var(--acento);
+  --color-destructive: var(--peligro);
+  --color-destructive-foreground: var(--sobre-peligro);
+  --color-border: var(--linea);
+  --color-input: var(--linea);
+  --color-ring: var(--foco);
+  --color-sidebar: var(--superficie-1);
+  --color-sidebar-foreground: var(--texto);
+  --color-sidebar-primary: var(--acento);
+  --color-sidebar-primary-foreground: var(--sobre-acento);
+  --color-sidebar-accent: var(--superficie-2);
+  --color-sidebar-accent-foreground: var(--texto);
+  --color-sidebar-border: var(--linea);
+  --color-sidebar-ring: var(--foco);
   --font-display: var(--letra-titulos);
   --font-sans: var(--letra-texto);
   --font-mono: "JetBrains Mono Variable", "SF Mono", Menlo, Consolas, monospace;
