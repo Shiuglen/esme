@@ -5,7 +5,7 @@ import AILoadingState from '../ui/ai-loading'
 import { pasosDe } from '../paginas/mando'
 import {
   ArrowUp, Brain, Hourglass, Check, ChevronRight, Circle, CircleCheck, Eye, FolderOpen, GitBranch, Globe, LoaderCircle, MoveRight, PencilLine, RefreshCcw,
-  Search, ShieldCheck, Square, SquareTerminal, Trash2, Wrench, X, type LucideIcon,
+  Search, ShieldCheck, Square, SquareTerminal, Trash2, Undo2, Wrench, X, type LucideIcon,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
@@ -32,22 +32,28 @@ const PERMISO: Record<string, string> = { allow_once: 'Permitir', allow_always: 
 
 
 export type Pestana = 'vivo' | 'revision' | 'previa' | 'arena'
-export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, onDescartar, onAbrir, onConfigurar, onTerminal, revision, onPestana, arena, pedida, onReencarnar, ahora = Date.now() }: {
+export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, onDescartar, onAbrir, onConfigurar, onTerminal, revision, onPestana, arena, pedida, onReencarnar, onDeshacerTurno, ahora = Date.now() }: {
   ahora?: number
   t: TareaTaller; linea: ItemLinea[] | undefined; login?: string; onTerminal(): void; revision: AccionesRevision; onPestana?(p: Pestana): void
   arena?: Omit<React.ComponentProps<typeof Arena>, 'actual'>; pedida?: { p: Pestana; n: number } | null
   onSeguir(texto: string): Promise<boolean>; onResponder(opcion: string): void; onParar(): void; onDescartar(): void; onAbrir(): void; onReencarnar(): void
+  onDeshacerTurno(): Promise<boolean> | void
   onConfigurar(opcion: string, valor: string): void
 }) {
   const muelle = useMuelle({ stiffness: 500, damping: 40 })
   const [pestana, setPestana] = useState<Pestana>(t.arena ? 'arena' : 'vivo')
   const [confirmar, setConfirmar] = useState(false)
-  useEffect(() => { setPestana(t.arena && arena && arena.tareas.length > 1 ? 'arena' : 'vivo'); setConfirmar(false) }, [t.id])   // eslint-disable-line react-hooks/exhaustive-deps
+  const [confirmarTurno, setConfirmarTurno] = useState(false)
+  useEffect(() => { setPestana(t.arena && arena && arena.tareas.length > 1 ? 'arena' : 'vivo'); setConfirmar(false); setConfirmarTurno(false) }, [t.id])   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (pedida) setPestana(pedida.p) }, [pedida?.n])   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { onPestana?.(pestana) }, [pestana, onPestana])
   useEffect(() => { if (!confirmar) return; const k = setTimeout(() => setConfirmar(false), 4500); return () => clearTimeout(k) }, [confirmar])
+  useEffect(() => { if (!confirmarTurno) return; const k = setTimeout(() => setConfirmarTurno(false), 4500); return () => clearTimeout(k) }, [confirmarTurno])
   const enMarcha = activa(t)
   const carpeta = t.carpeta ? t.carpeta.split(/[\\/]/).filter(Boolean).pop() : null
+  // Deshacer un turno sólo tiene sentido con una copia (todo lo que trabaja vive en un repo, sea el
+  // del proyecto o uno nuevo) y con un turno anterior al que volver.
+  const sePuedeDeshacerTurno = !!t.copia && t.turnos >= 2 && !enMarcha
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -60,6 +66,18 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
             {enMarcha && <Accion icono={Square} texto="Parar" onClick={onParar} />}
             {t.copia && <Accion icono={FolderOpen} texto="Abrir la copia" onClick={onAbrir} />}
             {t.estado === 'error' && <Accion icono={RefreshCcw} texto="Reencarna con otro motor" onClick={onReencarnar} />}
+            <AnimatePresence mode="popLayout" initial={false}>
+              {sePuedeDeshacerTurno && (confirmarTurno ? (
+                <motion.button key="turno-si" type="button" onClick={() => { setConfirmarTurno(false); void onDeshacerTurno() }} initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full bg-atencion-velo px-3 text-xs font-medium text-atencion">
+                  <Undo2 className="size-3.5" strokeWidth={1.75} />¿Deshacer el turno?
+                </motion.button>
+              ) : (
+                <motion.span key="turno-no" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <Accion icono={Undo2} texto="Deshacer el último turno" onClick={() => setConfirmarTurno(true)} />
+                </motion.span>
+              ))}
+            </AnimatePresence>
             <AnimatePresence mode="popLayout" initial={false}>
               {confirmar ? (
                 <motion.button key="si" type="button" onClick={onDescartar} initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }}

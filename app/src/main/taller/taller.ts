@@ -14,7 +14,8 @@ import { leeRoles, textoConRol, type Rol } from './roles'
 import { otroModeloGratis } from './gratis'
 import { autoRespuesta, type Acceso } from './acceso'
 import { declaradas, enjaular } from '../motores/jaula'
-import { aplicarParche, cambiosCopia, commitCopia, crearCopia, diffCopia, exportarCopia, parcheCopia, puntosCopia, quitarCopia, volverAlPunto, type Cambios, type Copia } from './copias'
+import { aplicarParche, cambiosCopia, commitCopia, crearCopia, diffCopia, exportarCopia, parcheCopia, puntosCopia, quitarCopia, volverAlPunto, type Cambios, type Copia, type Punto } from './copias'
+import { mensajeTurno, turnosDe } from './turnos'
 
 export type EstadoTarea = 'preparando' | 'trabajando' | 'esperando' | 'lista' | 'parada' | 'error'
 export type Permiso = { titulo: string; opciones: { id: string; nombre: string; tipo: string }[]; clase?: string }   // clase: read, edit, execute, fetch… (ACP)
@@ -305,11 +306,11 @@ export class Taller {
   private async punto(r: Registro, n: number): Promise<void> {
     const copia = r.tarea.copia
     if (!copia?.ruta) return
-    try { await this.copias.commit(copia, `Esme: turno ${n}`) } catch { /* el punto es un extra */ }
+    try { await this.copias.commit(copia, mensajeTurno(n)) } catch { /* el punto es un extra */ }
   }
 
-  /** Los puntos de la tarea: un commit por turno, con su mensaje. */
-  async puntos(id: string): Promise<{ ok: true; puntos: { sha: string; mensaje: string }[] } | Fallo> {
+  /** Los puntos de la tarea: un commit por turno, con su número. */
+  async puntos(id: string): Promise<{ ok: true; puntos: Punto[] } | Fallo> {
     const r = this.registro(id)
     const copia = r.tarea.copia
     if (!copia?.ruta) return { ok: false, error: 'Esta tarea no tiene copia donde mirar.' }
@@ -319,8 +320,8 @@ export class Taller {
 
   /** Deshacer **un turno**: la copia vuelve al punto que se le diga.
    *
-   * La rama conserva los commits (nada se pierde): lo que cambia es el estado del worktree. La
-   * carpeta del usuario no se toca nunca.
+   * La rama de la tarea rebobina hasta ese punto: lo que vino después deja de estar en ella (queda
+   * en su reflog). La carpeta del usuario no se toca nunca.
    */
   async deshacerTurno(id: string, sha: string): Promise<{ ok: true } | Fallo> {
     const r = this.registro(id)
@@ -332,6 +333,27 @@ export class Taller {
     r.tarea.cambios = await this.copias.cambios(copia).catch(() => null)
     this.cambio(r, true)
     return { ok: true }
+  }
+
+  /** Deshacer el **último turno**: la copia vuelve al punto del turno anterior.
+   *
+   * Es lo mismo que deshacer un turno, pero sin que quien mira tenga que saber qué sha es cuál.
+   */
+  async deshacerUltimoTurno(id: string): Promise<{ ok: true; turno: number } | Fallo> {
+    const r = this.registro(id)
+    const copia = r.tarea.copia
+    if (!copia?.ruta) return { ok: false, error: 'Esta tarea no tiene copia donde volver.' }
+    let puntos: Punto[]
+    try { puntos = await this.copias.puntos(copia) }
+    catch (e) { return { ok: false, error: mensajeDe(e) } }
+    const turnos = turnosDe(puntos)
+    if (turnos.length < 2) return { ok: false, error: 'No hay ningún turno que deshacer.' }
+    const anterior = turnos[turnos.length - 2]
+    try { await this.copias.volver(copia, anterior.sha) }
+    catch (e) { return { ok: false, error: mensajeDe(e) } }
+    r.tarea.cambios = await this.copias.cambios(copia).catch(() => null)
+    this.cambio(r, true)
+    return { ok: true, turno: anterior.n }
   }
 
   async guardarEnRama(id: string, mensaje?: string): Promise<{ ok: true; commit: string } | Fallo> {

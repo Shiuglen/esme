@@ -11,6 +11,7 @@ import { lados, leerDiff, type FicheroDiff } from './diff'
 import { describirHerramienta, type ItemLinea } from './linea'
 import { lenguajeDe, resaltar, type Pieza } from './resaltado'
 import { activa } from './vista'
+import { aDondeVolver, fraseVuelta, turnos as turnosDe, type Turno } from './turnos'
 import { Sello } from '../marca/SelloVista'
 import { giroSello } from '../marca/sello'
 
@@ -19,17 +20,27 @@ const ancla = (ruta: string) => `fichero-${ruta.replace(/[^a-zA-Z0-9]/g, '-')}`
 
 export type AccionesRevision = {
   onAplicar(): Promise<boolean>; onDeshacer(): Promise<boolean>; onGuardarRama(): Promise<boolean>; onExportar(): Promise<boolean>; onAbrir(): void
+  /** Volver a un punto: la copia queda como estaba al terminar ese turno. */
+  onVolverTurno(sha: string, n: number): Promise<boolean>
 }
 
 export function Revision({ t, linea, acciones }: { t: TareaTaller; linea: ItemLinea[] | undefined; acciones: AccionesRevision }) {
   const [ficheros, setFicheros] = useState<FicheroDiff[] | null>(null)
   const [truncado, setTruncado] = useState(false)
+  const [puntos, setPuntos] = useState<Turno[]>([])
+  const [vuelta, setVuelta] = useState(0)
   const huella = `${t.id}:${t.turnos}:${t.cambios?.mas}:${t.cambios?.menos}:${t.cambios?.ficheros}:${t.aplicada?.cuando ?? ''}`
   useEffect(() => {
     let vivo = true
     void bridge.taller.diff(t.id).then((d) => { if (vivo) { setFicheros(leerDiff(d.texto)); setTruncado(d.truncado) } })
     return () => { vivo = false }
   }, [huella, t.id])
+  // Los puntos de cada turno: el commit que dejó. Se releen cuando la tarea cambia o cuando se vuelve.
+  useEffect(() => {
+    let vivo = true
+    void bridge.taller.puntos(t.id).then((r) => { if (vivo) setPuntos(r.ok ? turnosDe(r.puntos) : []) })
+    return () => { vivo = false }
+  }, [huella, t.id, vuelta])
 
   const resumen = useMemo(() => [...(linea ?? [])].reverse().find((i) => i.tipo === 'texto')?.texto ?? null, [linea])
   const comandos = useMemo(() => (linea ?? []).flatMap((i) => (i.tipo === 'herramienta' && i.clase === 'execute' ? [i] : [])), [linea])
@@ -75,6 +86,9 @@ export function Revision({ t, linea, acciones }: { t: TareaTaller; linea: ItemLi
                 ))}
               </ul>
             </section>
+            {puntos.length > 1 && (
+              <Turnos puntos={puntos} onVolver={async (sha, n) => { const ok = await acciones.onVolverTurno(sha, n); if (ok) setVuelta((v) => v + 1); return ok }} />
+            )}
             {comandos.length > 0 && (
               <section aria-label="Lo que ejecutó">
                 <h3 className="mb-1.5 text-xs text-texto-3">Lo que ejecutó en su copia</h3>
@@ -106,6 +120,69 @@ export function Revision({ t, linea, acciones }: { t: TareaTaller; linea: ItemLi
 function IconoFichero({ f }: { f: FicheroDiff }) {
   const Icono = f.estado === 'nuevo' ? FilePlus2 : f.estado === 'borrado' ? FileMinus2 : FileText
   return <Icono className={cn('size-3.5 shrink-0', f.estado === 'nuevo' ? 'text-exito' : f.estado === 'borrado' ? 'text-peligro' : 'text-texto-3')} strokeWidth={1.5} />
+}
+
+/** Los puntos de cada turno: volver a uno deshace ese turno y los que vinieron después.
+ *
+ * El segundo clic es el que decide, y dice exactamente qué va a pasar: la copia vuelve al final de
+ * ese turno y lo que hicieron los siguientes ya no está en ella. Tu carpeta nunca se toca.
+ */
+function Turnos({ puntos, onVolver }: { puntos: Turno[]; onVolver(sha: string, n: number): Promise<boolean> }) {
+  const [confirmar, setConfirmar] = useState<string | null>(null)
+  const [ocupado, setOcupado] = useState(false)
+  const total = puntos.length
+  const destinos = aDondeVolver(puntos)
+  useEffect(() => { if (!confirmar) return; const k = setTimeout(() => setConfirmar(null), 8000); return () => clearTimeout(k) }, [confirmar])
+  const volver = async (p: Turno) => {
+    setOcupado(true)
+    try { await onVolver(p.sha, p.n) } finally { setOcupado(false); setConfirmar(null) }
+  }
+  return (
+    <section aria-label="Los turnos">
+      <h3 className="mb-1 text-xs text-texto-3">Los turnos</h3>
+      <p className="mb-2 max-w-[520px] text-[12.5px] leading-[19px] text-texto-3">
+        Cada turno dejó un punto en la rama de la copia. Al volver a un punto, ese turno y los que vinieron después ya no están en la copia.
+      </p>
+      <ul className="space-y-1">
+        {puntos.map((p) => {
+          const ultimo = p === puntos[puntos.length - 1]
+          const volverAEste = destinos.some((d) => d.sha === p.sha)
+          const preguntando = confirmar === p.sha
+          return (
+            <li key={p.sha} className="text-[12.5px]">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className={cn('font-mono tabular-nums', ultimo ? 'text-texto-3' : 'text-texto-2')}>Turno {p.n}</span>
+                {ultimo ? (
+                  <span className="text-texto-3">el último</span>
+                ) : preguntando ? (
+                  <>
+                    <span className="min-w-0 flex-1" />
+                    <button type="button" onClick={() => void volver(p)} disabled={ocupado}
+                      className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full bg-acento px-3 text-[12.5px] font-medium text-sobre-acento transition-opacity disabled:opacity-35">
+                      {ocupado ? <LoaderCircle className="size-3.5 animate-spin" /> : <Undo2 className="size-3.5" strokeWidth={1.75} />}Sí, volver
+                    </button>
+                    <button type="button" onClick={() => setConfirmar(null)} disabled={ocupado}
+                      className="shrink-0 text-[12.5px] text-texto-3 transition-colors hover:text-texto-2">Cancelar</button>
+                  </>
+                ) : (
+                  <>
+                    <span className="min-w-0 flex-1" />
+                    {volverAEste && (
+                      <button type="button" onClick={() => setConfirmar(p.sha)}
+                        className="shrink-0 text-[12.5px] text-texto-2 underline decoration-linea-fuerte underline-offset-4 transition-colors hover:text-texto">
+                        Volver aquí
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+              {preguntando && <p className="mt-0.5 max-w-[460px] leading-[18px] text-texto-3">{fraseVuelta(p, total)}</p>}
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
 }
 
 function Fichero({ f, abierto: inicial }: { f: FicheroDiff; abierto: boolean }) {

@@ -3,8 +3,11 @@ import { execFile } from 'node:child_process'
 import { cp, mkdir, mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join, relative, resolve } from 'node:path'
+import { numeroTurno } from './turnos'
 
 export type Copia = { id: string; ruta: string; rama: string | null; base: string; repo: string | null }   // repo null: carpeta nueva de Esme
+/** Un punto de la copia: el commit que dejó un turno. `turno` es su número, o null si el commit no es un turno. */
+export type Punto = { sha: string; mensaje: string; turno: number | null }
 export type FicheroCambiado = { ruta: string; mas: number; menos: number; binario: boolean }
 export type Cambios = { ficheros: number; mas: number; menos: number; lista: FicheroCambiado[] }
 export type Git = (args: string[], o: { cwd: string; env?: NodeJS.ProcessEnv }) => Promise<string>
@@ -128,20 +131,26 @@ export async function commitCopia(c: Copia, mensaje: string, git: Git = gitReal)
  *
  * No hay estado nuevo que guardar: **los puntos son los commits de la rama de la tarea**. Eso es
  * lo que permite deshacer *un turno* y no la tarea entera (la práctica que tiene MonoCode, MIT).
+ * Cada punto lleva su número de turno; los commits que no son turnos (guardar en la rama) no lo llevan.
  */
-export async function puntosCopia(c: Copia, git: Git = gitReal): Promise<{ sha: string; mensaje: string }[]> {
+export async function puntosCopia(c: Copia, git: Git = gitReal): Promise<Punto[]> {
   let salida = ''
   try { salida = await git(['log', '--format=%H%x09%s', '--reverse', `${c.base}..HEAD`], { cwd: c.ruta }) }
   catch { return [] }
   return salida.split('\n').filter(Boolean).map((linea) => {
     const [sha, ...resto] = linea.split('\t')
-    return { sha, mensaje: resto.join('\t') }
+    const mensaje = resto.join('\t')
+    return { sha, mensaje, turno: numeroTurno(mensaje) }
   })
 }
 
 /** Vuelve la copia a un punto: deshace un turno (o los que haya detrás).
  *
  * Sólo toca la **copia** (el worktree de la tarea): la carpeta del usuario no se toca nunca.
+ *
+ * Lo que hay que saber: `reset --hard` rebobina la rama de la tarea, así que los commits posteriores
+ * dejan de estar en ella (quedan en su reflog, recuperables con `git reflog`). Y los ficheros que el
+ * motor creó y nunca se commitearon no se borran: `reset --hard` no toca lo que no está en git.
  */
 export async function volverAlPunto(c: Copia, sha: string, git: Git = gitReal): Promise<void> {
   await git(['reset', '--hard', sha], { cwd: c.ruta })
