@@ -207,9 +207,30 @@ presupuesto; lo único que cambia es si el programa se ha mirado) da **0,0000 si
 mirando**, con **la mitad de contexto** (490 tokens frente a 982). Las preguntas y su oro se
 derivan de la evidencia de REA, así que no hay juez ni modelo en medio. Detalle:
 `docs/resultados/2026-10-21-banco-del-espejo.md`.
-**Queda.** Comparar dos versiones de un programa (que cambió entre dos builds); meter un segundo
-programa en el banco para que el número no sea el de una sola app; y un botón en la interfaz para
-mirar un programa y ver el informe con sus luces y sus sombras.
+**Hecho (21-oct, tarde): la Palanca 6 completa.**
+- **Comparar dos versiones**: ya está (`daimon rea-compara`, y también para binarios nativos).
+- **El botón en la interfaz**: «Entender un programa» está en **Ajustes › Espejo**, con el informe
+  a la vista y sus cuentas. Y el espejo **ya no se limita a las apps Electron**: `plan_de()`
+  despacha al comando que toque (carpeta/`.asar` → grafo semántico; cualquier otro → motor nativo)
+  y hay informe por forma (`electron`, `nativo`, `generico`). El motor nativo además **deja de
+  perderse**: `entorno_rea()` encuentra Ghidra, el JDK y pwntools solo (vivían sólo en la terminal
+  del creador, así que la app contestaba `provider_unavailable` y el espejo se quedaba ciego).
+- **El banco, con varios programas**: `scripts/banco_rea.py` corre sobre varios programas, hace
+  las preguntas según la forma de la evidencia y da una fila por programa y una de conjunto. El
+  número: **0,0000 sin mirar · 0,9206 mirando** (14 preguntas, tres programas, dos formas). El
+  binario nativo pasó de **0,0833 a 1,0000**. Detalle: `docs/resultados/2026-10-21-banco-del-espejo-escalado.md`.
+- **El espejo no se come la máquina**: `daimon/presupuesto.py` (suelo de memoria, tope con
+  vigilante que mide el grupo **y los descendientes sueltos** —la JVM de Ghidra se desancla—, y un
+  cerrojo de máquina para que no haya dos análisis a la vez). Medido: con el tope en 700 MiB el
+  análisis se paró solo a los 13 s. Y `daimon rea-shell <comando>` da ese presupuesto al `rea` de
+  fuera, que es donde el 21-oct se comió la memoria.
+- **El encargo avisa de lo que falta mirar**: si la mente no conoce el programa del que habla el
+  encargo, la Forja se lo dice al agente («míralo primero con la herramienta del espejo»): recrear
+  deja de ser adivinar.
+**Queda.** El número de la app Electron es inestable (0,98 → 0,81 sin que cambie el código) y la
+causa está vista: **los recuerdos temáticos de la mente se llevan la pregunta** y el conocimiento
+nuevo del programa se queda fuera del presupuesto. La palanca siguiente: cuando la pregunta nombra
+un programa, su conocimiento tiene que ganar.
 **Hecho (21-oct, el bucle): absorber → recrear.** Cuando pides una herramienta nueva, el encargo
 al equipo lleva **lo que la mente sabe**: de la necesidad (la búsqueda de siempre) y, si el encargo
 nombra la ruta de un programa, **todo** el conocimiento que el espejo dejó de él (puerta

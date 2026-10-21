@@ -293,6 +293,26 @@ def test_analizar_no_hay_dos_a_la_vez(tmp_path, monkeypatch):
         rea.analizar(app)
 
 
+def test_el_reloj_del_motor_nativo_cabe_con_el_objetivo(tmp_path):
+    """REA da 330 s al motor y con un binario de 27 MB se queda sin tiempo: el espejo le da más."""
+    grande = tmp_path / "grande"
+    grande.write_bytes(b"\x7fELF" + b"\x00" * (12 * 1024 * 1024))
+    pequeno = tmp_path / "pequeno"
+    pequeno.write_bytes(b"\x7fELF" + b"\x00" * 1024)
+    assert rea.plazo_de_ghidra(grande) > rea.plazo_de_ghidra(pequeno)
+    assert rea.plazo_de_ghidra(pequeno) == 330
+    assert rea.plazo_de_ghidra(grande) <= 1200
+
+
+def test_el_entorno_de_rea_le_pasa_el_reloj_al_motor(tmp_path, monkeypatch):
+    app = tmp_path / "out"
+    app.mkdir()
+    (app / "index.js").write_text("console.log(1)")
+    visto = _rea_falso(monkeypatch, evidencia=_evidencia())
+    rea.analizar(app)
+    assert visto["kwargs"]["env"]["REA_GHIDRA_STARTUP_TIMEOUT_MS"] == str(330 * 1000)
+
+
 # ── el espejo no se limita a un tipo de programa ────────────────────────────────────────────────
 
 def test_el_espejo_mira_cualquier_programa_no_solo_apps_electron(tmp_path):

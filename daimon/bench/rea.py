@@ -20,8 +20,11 @@ from pathlib import Path
 from .items import Item
 # Las mismas funciones que usa el informe: una sola implementación, para que el examen no se
 # mida contra una lista de funciones distinta de la que el informe afirma.
+from ..rea import _forma_de
 from ..rea import _funciones as _funciones_del_informe
 from ..rea import _mas_llamadas as _mas_llamadas_del_informe
+from ..rea import _motor_de
+from ..rea import informe as _informe_del_espejo
 
 
 def _id(pregunta: str) -> str:
@@ -95,7 +98,125 @@ def _n(x: object) -> str:
 
 
 def preguntas(evidencia: dict, nombre: str) -> list[Item]:
-    """El juego de preguntas sobre un programa, derivado de su evidencia (nada inventado)."""
+    """El juego de preguntas sobre un programa, derivado de su evidencia (nada inventado).
+
+    El instrumento se escala con el espejo: el espejo ya mira cualquier programa (una app
+    Electron, un binario nativo, un paquete), así que el banco tiene que saber preguntar por
+    cualquier programa. Antes sólo sabía de las apps Electron, y con una app Electron el número
+    era una anécdota de una sola app.
+    """
+    forma = _forma_de(evidencia)
+    if forma == "nativo":
+        return _preguntas_nativo(evidencia, nombre)
+    if forma == "generico":
+        return _preguntas_generico(evidencia, nombre)
+    return _preguntas_electron(evidencia, nombre)
+
+
+def _hechos_del_informe(informe: str, *candidatos: str) -> list[str]:
+    """Los hechos que de verdad están en la memoria: se buscan en el informe, no se inventan.
+
+    Si un hecho no aparece en el informe, la pregunta no se hace. Es mejor no medir que medir
+    una cosa que la mente no sabe: el número del banco tiene que ser verdad.
+    """
+    return [c for c in candidatos if c and c[:60] in informe]
+
+
+def _preguntas_nativo(evidencia: dict, nombre: str) -> list[Item]:
+    """Las preguntas de un binario: su forma, sus números, su motor y sus límites.
+
+    Mismo principio que en las apps: las preguntas y sus hechos clave salen de la propia evidencia,
+    así que el oro es verdad por construcción y no hace falta juez.
+    """
+    nr = evidencia.get("normalized_result") or {}
+    asunto = evidencia.get("subject") or {}
+    items: list[Item] = []
+
+    def nuevo(pregunta: str, oro: str, hechos: list[str], evidencia_: list[str]) -> None:
+        items.append(Item(id=_id(pregunta), question=pregunta, gold=oro, key_facts=hechos,
+                          evidence=evidencia_, type="hecho", origin="generada", validated=True))
+
+    formato = asunto.get("format") or ""
+    arquitectura = asunto.get("architecture") or ""
+    segmentos = nr.get("segment_count")
+    procedimientos = nr.get("procedure_count")
+    cadenas = nr.get("string_count")
+    motor = _motor_de(evidencia)
+    limites = evidencia.get("limitations") or []
+
+    informe = _informe_del_espejo(evidencia)
+
+    if formato and arquitectura:
+        hechos = _hechos_del_informe(informe, f"binario **{formato}** de **{arquitectura}**")
+        if hechos:
+            nuevo(f"¿Qué formato y qué arquitectura tiene {nombre}?",
+                  f"{nombre} es un binario {formato} de {arquitectura}.",
+                  [formato, arquitectura], hechos)
+
+    if segmentos and procedimientos and cadenas:
+        hechos = _hechos_del_informe(informe,
+                                     f"**{_n(segmentos)} segmentos**",
+                                     f"**{_n(procedimientos)} procedimientos**",
+                                     f"**{_n(cadenas)} cadenas**")
+        if hechos:
+            nuevo(f"¿Cuántos segmentos, procedimientos y cadenas tiene {nombre}?",
+                  f"{nombre} tiene {_n(segmentos)} segmentos, {_n(procedimientos)} procedimientos "
+                  f"y {_n(cadenas)} cadenas.",
+                  [str(segmentos), str(procedimientos), str(cadenas)], hechos)
+
+    if motor:
+        hechos = _hechos_del_informe(informe, f"**{motor}**")
+        if hechos:
+            nuevo(f"¿Qué motor leyó {nombre}?",
+                  f"{nombre} lo leyó {motor}.",
+                  [motor], hechos)
+
+    if limites:
+        primero = str(limites[0])
+        hechos = _hechos_del_informe(informe, primero[:60])
+        if hechos:
+            nuevo(f"¿Qué no se pudo ver de {nombre}?",
+                  "El análisis declara: " + primero,
+                  [primero[:60]], hechos)
+
+    return items
+
+
+def _preguntas_generico(evidencia: dict, nombre: str) -> list[Item]:
+    """Cuando la evidencia no es de una forma que sepamos: se pregunta por lo que sí hay."""
+    nr = evidencia.get("normalized_result") or {}
+    asunto = evidencia.get("subject") or {}
+    items: list[Item] = []
+
+    def nuevo(pregunta: str, oro: str, hechos: list[str], evidencia_: list[str]) -> None:
+        items.append(Item(id=_id(pregunta), question=pregunta, gold=oro, key_facts=hechos,
+                          evidence=evidencia_, type="hecho", origin="generada", validated=True))
+
+    formato = asunto.get("format") or ""
+    motor = _motor_de(evidencia)
+    if formato:
+        nuevo(f"¿De qué tipo es {nombre}?",
+              f"{nombre} es un artefacto de formato {formato}.",
+              [formato],
+              [f"formato `{formato}`"])
+    if motor:
+        nuevo(f"¿Qué motor leyó {nombre}?",
+              f"{nombre} lo leyó {motor}.",
+              [motor],
+              [f"**{motor}**"])
+    resumen = nr.get("summary") if isinstance(nr.get("summary"), dict) else {}
+    for clave in list(resumen)[:4]:
+        valor = resumen[clave]
+        if isinstance(valor, (int, float)) and not isinstance(valor, bool):
+            nuevo(f"¿Qué {clave.replace('_', ' ')} tiene {nombre}?",
+                  f"{nombre} tiene {valor} en {clave.replace('_', ' ')}.",
+                  [str(valor)],
+                  [f"| {clave} | {valor} |"])
+    return items
+
+
+def _preguntas_electron(evidencia: dict, nombre: str) -> list[Item]:
+    """Las preguntas de una app Electron: canales, ventanas, funciones y lo que no se pudo ver."""
     canales = _canales(evidencia)
     ventanas = _ventanas(evidencia)
     funciones = _funciones(evidencia)

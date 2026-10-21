@@ -130,6 +130,23 @@ def plan_de(ruta: Path, *, nodos: int = LIMITE_NODOS) -> list[str]:
     return ["analyze", str(ruta), "--format", "json"]
 
 
+def plazo_de_ghidra(ruta: Path) -> int:
+    """El reloj del motor nativo para este objetivo (segundos).
+
+    REA da 330 s por defecto y con un binario de 27 MB contesta «Ghidra did not finish importing
+    and analyzing the target within its 330000 ms startup deadline»: el motor no falla, se queda
+    sin tiempo. El plazo se escala con el tamaño del objetivo (un minuto extra por cada 4 MiB,
+    hasta 20 minutos), porque un binario grande necesita más y el espejo no puede dejar de mirar
+    por un reloj que no cabe.
+    """
+    try:
+        tamano = ruta.stat().st_size
+    except OSError:
+        tamano = 0
+    mib = tamano / (1024 * 1024)
+    return min(1200, 330 + int(mib / 4) * 60)
+
+
 def nodos_segun_memoria(nodos: int) -> int:
     """El presupuesto de nodos se ajusta a la memoria que hay: si la máquina va justa, se mira menos."""
     libre = presupuesto.memoria_disponible()
@@ -230,6 +247,11 @@ def _mirar(ruta: Path, *, timeout: int, nodos: int) -> dict:
     """El análisis, con el gobernador puesto. La salida va a disco: la memoria no se toca."""
     cmd = comando_rea() + plan_de(ruta, nodos=nodos_segun_memoria(nodos))
     ent = entorno_rea()
+    # El reloj del motor nativo tiene que caber con el objetivo, y el fin de tiempo global tiene
+    # que ser mayor que él: si no, el espejo corta al motor cuando el motor iba bien.
+    plazo = plazo_de_ghidra(ruta)
+    ent["REA_GHIDRA_STARTUP_TIMEOUT_MS"] = str(plazo * 1000)
+    timeout = max(timeout, plazo + 120)
     hay, porque = presupuesto.hay_suelo()
     if not hay:
         raise ErrorRea(f"no se puede mirar ahora: {porque}")
@@ -295,6 +317,7 @@ def _en_trozos(elementos: list[str], prefijo: str, por: int = 12) -> list[str]:
     Una lista de 123 nombres en un solo párrafo es un recuerdo que el motor no trae: se le
     diluye el significado (el codificador promedia) y el buscador lo penaliza por largo. Con
     doce por trozo y el prefijo repetido, cada trozo se parece a la pregunta y entra solo.
+
     """
     if not elementos:
         return []
@@ -302,7 +325,8 @@ def _en_trozos(elementos: list[str], prefijo: str, por: int = 12) -> list[str]:
     total = (len(elementos) + por - 1) // por
     for i in range(0, len(elementos), por):
         parte = elementos[i:i + por]
-        trozos.append(f"{prefijo} ({i // por + 1} de {total}): " + ", ".join(parte) + ".")
+        etiqueta = f"{prefijo} ({i // por + 1} de {total})"
+        trozos.append(f"{etiqueta}: " + ", ".join(parte) + ".")
     return trozos
 
 
@@ -514,10 +538,15 @@ def _motor_de(evidencia: dict) -> str:
     return encontrados[0] if encontrados else "el motor de REA"
 
 
-def _apartado_de_limites(evidencia: dict) -> list[str]:
+def _apartado_de_limites(evidencia: dict, nombre: str = "") -> list[str]:
     """Los límites que declara la propia evidencia: lo que no se pudo ver, con su razón."""
     limites = evidencia.get("limitations") or []
-    L = ["## Lo que no se pudo ver", ""]
+    L = [f"## Lo que no se pudo ver{f' de {nombre}' if nombre else ''}", ""]
+    if limites and nombre:
+        # El resumen va en su propia línea, dentro del apartado: así su trozo lleva el título
+        # (que es lo que pregunta el agente) y el hecho. El detalle queda debajo.
+        L.append(f"El análisis declara {_n(len(limites))} límites. El primero: «{str(limites[0])}»")
+        L.append("")
     if limites:
         for limite in limites[:MAX_LIMITES]:
             L.append(f"- {limite}")
@@ -531,23 +560,37 @@ def _apartado_de_limites(evidencia: dict) -> list[str]:
 
 
 def _informe_de_nativo(evidencia: dict, *, motivo: str = "") -> str:
-    """El informe de un binario: qué es, cómo está repartido en memoria y qué no se pudo ver."""
+    """El informe de un binario: qué es, cómo está repartido en memoria y qué no se pudo ver.
+
+    Cada apartado **nombra al programa**. No es un detalle de estilo: la pregunta que hará
+    cualquier agente («¿qué formato tiene X?») lleva el nombre de X, y un apartado que no lo
+    lleva no se parece a la pregunta: la memoria lo tiene pero no lo devuelve. Así se perdió el
+    banco del espejo: el binario se absorbía perfecto y luego no se encontraba (0,08 de acierto
+    con 46 recuerdos en la mente, contra 0,98 de la app).
+    """
     nr = evidencia.get("normalized_result") or {}
     asunto = evidencia.get("subject") or {}
     segmentos = nr.get("segments") or []
-    L = _cabecera_informe(evidencia, motivo=motivo,
-                          titulo=f"Lo que REA vio de {asunto.get('name') or 'un binario'}")
+    nombre = asunto.get("name") or "el binario"
+    L = _cabecera_informe(evidencia, motivo=motivo, titulo=f"Lo que REA vio de {nombre}")
     motor = _motor_de(evidencia)
-    L.append("## En una frase")
+    L.append(f"## {nombre} en una frase")
     L.append("")
-    L.append(f"Un binario **{asunto.get('format') or 'sin formato declarado'}** de "
+    L.append(f"{nombre} es un binario **{asunto.get('format') or 'sin formato declarado'}** de "
              f"**{asunto.get('architecture') or 'arquitectura desconocida'}** con "
              f"**{_n(nr.get('segment_count', len(segmentos)))} segmentos**, "
              f"**{_n(nr.get('procedure_count', 0))} procedimientos** y "
              f"**{_n(nr.get('string_count', 0))} cadenas**, leído con **{motor}**"
              + (f" (base de imagen `{nr.get('image_base')}`)" if nr.get("image_base") else "") + ".")
     L.append("")
-    L.append("## Qué es")
+    # Cada apartado lleva su frase con los hechos, y luego la tabla para el ojo. La razón es
+    # exacta: la pregunta recupera el apartado cuyo título coincide, y las tablas se trocean por
+    # filas —así que un hecho que sólo está en la tabla no está en ningún trozo que la pregunta
+    # traiga. La frase sí.
+    L.append(f"## El formato y la arquitectura de {nombre}")
+    L.append("")
+    L.append(f"{nombre} es un binario **{asunto.get('format') or 'sin formato declarado'}** de "
+             f"**{asunto.get('architecture') or 'arquitectura desconocida'}**")
     L.append("")
     L.append("| | |")
     L.append("|---|---|")
@@ -555,13 +598,27 @@ def _informe_de_nativo(evidencia: dict, *, motivo: str = "") -> str:
     L.append(f"| Arquitectura | `{asunto.get('architecture') or '?'}` |")
     L.append(f"| Motor | {motor} |")
     L.append(f"| Base de imagen | `{nr.get('image_base') or '?'}` |")
+    L.append(f"| Operación | `{evidencia.get('operation') or '?'}` |")
+    L.append("")
+    L.append(f"## Los números de {nombre}: segmentos, procedimientos y cadenas")
+    L.append("")
+    L.append(f"{nombre} tiene **{_n(nr.get('segment_count', len(segmentos)))} segmentos**, "
+             f"**{_n(nr.get('procedure_count', 0))} procedimientos** y "
+             f"**{_n(nr.get('string_count', 0))} cadenas**.")
+    L.append("")
+    L.append("| | |")
+    L.append("|---|---|")
     L.append(f"| Segmentos | {_n(nr.get('segment_count', len(segmentos)))} |")
     L.append(f"| Procedimientos | {_n(nr.get('procedure_count', 0))} |")
     L.append(f"| Cadenas | {_n(nr.get('string_count', 0))} |")
-    L.append(f"| Operación | `{evidencia.get('operation') or '?'}` |")
+    L.append("")
+    L.append(f"## El motor que leyó {nombre}")
+    L.append("")
+    L.append(f"{nombre} lo leyó **{motor}**"
+             + (f", con la base de imagen `{nr.get('image_base')}`." if nr.get("image_base") else "."))
     L.append("")
     if segmentos:
-        L.append("## Los segmentos de memoria")
+        L.append(f"## Los segmentos de memoria de {nombre}")
         L.append("")
         L.append("| Segmento | Desde | Hasta | Longitud | Espacio |")
         L.append("|---|---|---|---|---|")
@@ -573,14 +630,18 @@ def _informe_de_nativo(evidencia: dict, *, motivo: str = "") -> str:
         L.append("")
     documento = nr.get("document") or ""
     if documento:
-        L.append("## Lo que el motor devolvió")
+        L.append(f"## Lo que el motor devolvió de {nombre}")
         L.append("")
         L.append(documento[:MAX_DOCUMENTO])
         if len(documento) > MAX_DOCUMENTO:
             L.append("")
             L.append(f"(el documento del motor se acota a {MAX_DOCUMENTO} caracteres de {len(documento)})")
         L.append("")
-    L.extend(_apartado_de_limites(evidencia))
+    # El apartado de límites de un binario es larguísimo (el motor explica sus límites en
+    # párrafos) y un trozo así no lo recupera nadie: el resumen va en su propia línea, con el
+    # título del apartado delante, y el detalle debajo. En las apps el apartado es corto y se
+    # deja entero (probado: partirlo o resumirlo les baja el número).
+    L.extend(_apartado_de_limites(evidencia, nombre))
     return "\n".join(L) + "\n"
 
 
@@ -625,6 +686,7 @@ def _informe_de_electron(evidencia: dict, *, motivo: str = "") -> str:
     asunto = evidencia.get("subject") or {}
     digest = (asunto.get("digest") or {}).get("sha256") or ""
     ruta = asunto.get("local_path") or asunto.get("name") or "?"
+    nombre = asunto.get("name") or ruta
 
     funciones = _funciones(semantico)
     canales = _canales(grafo)
