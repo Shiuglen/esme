@@ -1,3 +1,4 @@
+import { explicar, medirPresion } from './uso/presion'
 // Chat con cualquier IA, en streaming hacia la interfaz por IPC. La memoria llega ya compuesta por el Tálamo.
 // Con manos (docs/superpowers/specs/2026-10-18-manos.md): la conversación busca, lee, recuerda, encarga y programa;
 // cada paso se ve en la interfaz y lo que actúa pide permiso por el canal chat:permiso.
@@ -81,6 +82,10 @@ function manosPara(to: WebContents, req: ChatRequest, ac: AbortController, d: De
     },
     usarSkill: (nombre, fichero) => usarSkill(app.getPath('userData'), nombre, fichero),
     // la clave de Brave vive en el llavero como la de cualquier proveedor
+    presion: async () => {
+      const p = medirPresion()
+      return { texto: explicar(p), totalMB: p.totalMB, swapLibreMB: p.swapLibreMB }
+    },
     buscarWeb: (q) => buscarWeb(q, { brave: keys.get('brave'), searxng: cfg.searxng }),
     leerWeb: (u) => leerPagina(u),
     // El Ojo: una mirada a la pantalla de ahora (el agente pregunta antes: lo pone el guardián).

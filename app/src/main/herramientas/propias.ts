@@ -28,6 +28,9 @@ export type Manos = {
   /** Qué cambió entre dos versiones de un programa: los canales y funciones que aparecen o se van. */
   compararProgramas?(ruta: string, contra?: string): Promise<{ ok: boolean; added?: number; informe?: string; fuente?: string; texto?: string; error?: string }>
   usarSkill?(nombre: string, fichero?: string): { instrucciones: string; ficheros: string[] }
+  /** La presión de recursos de la casa ahora mismo: cuánto pesa cada proceso y cómo va el swap.
+   *  Para saber si la máquina va a poder con lo que se le pide. */
+  presion?(): Promise<{ texto: string; totalMB: number; swapLibreMB: number }>
   buscarWeb(consulta: string): Promise<{ fuente: string; resultados: Resultado[] }>
   leerWeb(url: string): Promise<{ titulo: string; texto: string; url: string }>
   /** El navegador: una web de verdad (con JavaScript y formularios), no sólo texto plano. */
@@ -102,6 +105,18 @@ export function herramientasPropias(m: Manos): ToolSet {
       description: 'Lee el texto de una página web (http/https). Úsala con direcciones que te dio el usuario o que salieron en una búsqueda.',
       inputSchema: z.object({ url: z.string().url() }),
       execute: g('leer_web', ({ url }: { url: string }) => m.leerWeb(url)),
+    }),
+    ver_presion: tool({
+      description: 'Mide la presión de recursos de la casa ahora mismo: la memoria que pesa cada proceso '
+        + '(la app, el renderer, el cerebro, los agentes), la memoria libre y el swap. Úsala antes de lanzar '
+        + 'algo pesado, o cuando la máquina va lenta, para saber si hay sitio. Si el swap está casi lleno, '
+        + 'lo que se puede soltar es la memoria de las transcripciones, no el historial.',
+      inputSchema: z.object({}),
+      execute: g('ver_presion', async () => {
+        if (!m.presion) return 'Ahora mismo no se puede medir la presión.'
+        const p = await m.presion()
+        return p.texto
+      }),
     }),
     ver_la_pantalla: tool({
       description: 'Mira la pantalla del usuario ahora mismo (una foto) y te la devuelve para que veas lo que ve. '
