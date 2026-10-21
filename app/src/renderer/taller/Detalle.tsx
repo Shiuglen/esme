@@ -43,7 +43,7 @@ function ParlamentoPuerta({ oficios, candidatos, onArmar }: { oficios: Rol[]; ca
   }, [oficios, candidatos])   // eslint-disable-line react-hooks/exhaustive-deps
   if (!oficios.length || !unicos.length) return null
   if (cierre) {
-    const frase = 'estado' in cierre ? cierre.frase : cierre.error
+    const frase = 'estado' in cierre ? `${cierre.frase}${cierre.acta ? ' · Firmada en el diario del taller (acta Ed25519).' : ''}` : cierre.error
     return <p role="status" className="mt-2 text-xs text-texto-2">{frase}</p>
   }
   const armar = async () => {
