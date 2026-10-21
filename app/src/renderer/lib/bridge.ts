@@ -72,6 +72,23 @@ export type ResumenUso = ReturnType<RegistroUso['resumen']>
 export type { EstadoPlan, Hilo, ResumenHilo, TurnoHilo, Producto, RespuestaCatalogo }
 export type { VeredictoTaller, EventoTaller, OpcionMotor, MotorTaller, TareaTaller }
 export type ResultadoTaller = { ok: true } | { ok: false; error: string; ficheros?: string[] }
+/** Lo que devuelve el espejo: el informe (el texto) y sus cuentas. */
+export type Espejo = {
+  ok?: boolean
+  added?: number
+  memories?: number
+  informe?: string
+  version?: string
+  fuente?: string
+  evidencia?: string
+  programa?: string
+  canales?: number
+  funciones?: number
+  desconocidos?: number
+  texto?: string
+  error?: string
+}
+
 export type ResultadoMente<T> = { ok: true; dato: T } | { ok: false; error: string }
 export type Memoria = { id: string; text: string; source: string; kind: string; ts: string; trust: number; compartment: string; score?: number }
 export type InstalarMotor = { ok: true; nombre: string } | { ok: false; error: string }
@@ -98,6 +115,10 @@ type ElectronApi = {
     ingerir(paths: string[]): Promise<ResultadoMente<{ added: number; memories: number }>>
     atlas(): Promise<ResultadoMente<{ points: unknown[]; clusters: unknown[] }>>
     repeticiones(): Promise<ResultadoMente<{ repeticiones: Repeticion[]; total: number; informe: string }>>
+    /** El espejo: entender un programa y leer el informe con sus luces y sus sombras. */
+    espejo(ruta: string, motivo: string): Promise<ResultadoMente<Espejo>>
+    /** Qué cambió entre dos versiones del programa. */
+    espejoComparar(ruta: string, contra: string): Promise<ResultadoMente<Espejo & { texto: string }>>
     necesidad(): Promise<ResultadoMente<{ necesidades: Necesidad[]; total: number; informe: string }>>
     memoria(id: string): Promise<ResultadoMente<Memoria>>
     oir(pcm: ArrayBuffer, idioma: string): Promise<ResultadoMente<{ texto: string }>>
@@ -221,6 +242,8 @@ export const bridge = {
     ingerir: async (paths: string[]) => dato(isElectron() ? window.daimon!.mente.ingerir(paths) : datoWeb((c) => c.ingerir(paths))),
     atlas: async () => dato(isElectron() ? window.daimon!.mente.atlas() : datoWeb((c) => c.atlas() as Promise<{ points: unknown[]; clusters: unknown[] }>)),
     repeticiones: async () => dato(isElectron() ? window.daimon!.mente.repeticiones() : datoWeb((c) => c.repeticiones())),
+    espejo: async (ruta: string, motivo: string) => dato(isElectron() ? window.daimon!.mente.espejo(ruta, motivo) : solo<Espejo>({ error: 'El espejo sólo funciona en la app.' })),
+    espejoComparar: async (ruta: string, contra: string) => dato(isElectron() ? window.daimon!.mente.espejoComparar(ruta, contra) : solo<Espejo & { texto: string }>({ error: 'El espejo sólo funciona en la app.' })),
     necesidad: async () => dato(isElectron() ? window.daimon!.mente.necesidad() : datoWeb((c) => c.necesidad())),
     memoria: async (id: string) => dato(isElectron() ? window.daimon!.mente.memoria(id) : datoWeb((c) => c.memoria(id))),
     oir: async (pcm: ArrayBuffer, idioma: string) => dato(isElectron() ? window.daimon!.mente.oir(pcm, idioma) : datoWeb((c) => c.oir(pcm, idioma))),

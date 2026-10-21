@@ -36,6 +36,11 @@ export function registerMente(o: Opciones) {
   ipcMain.handle('mente:olvidar', (_e, id: unknown) => conMente((c) => c.olvidar(String(id ?? ''))))
   ipcMain.handle('mente:ingerir', (_e, paths: unknown) => conMente((c) => c.ingerir(Array.isArray(paths) ? paths.map(String) : [])))
   ipcMain.handle('mente:atlas', () => conMente((c) => c.atlas()))
+  // El espejo: entender un programa (tarda lo que tarda REA: el reloj va largo) y ver el informe.
+  ipcMain.handle('mente:espejo', (_e, ruta: unknown, motivo: unknown) =>
+    conMente((c) => c.absorberPrograma(String(ruta ?? ''), String(motivo ?? ''))))
+  ipcMain.handle('mente:espejo:comparar', (_e, ruta: unknown, contra: unknown) =>
+    conMente((c) => c.compararProgramas(String(ruta ?? ''), String(contra ?? ''))))
   // Las tareas que el creador repite: la mente propone la skill, el usuario la decide.
   ipcMain.handle('mente:repeticiones', () => conMente((c) => c.repeticiones()))
   // Las herramientas que el equipo echa de menos: lo que falló y se repitió.
