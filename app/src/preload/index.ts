@@ -123,6 +123,8 @@ contextBridge.exposeInMainWorld('daimon', {
     cerrarVista: (id: string) => ipcRenderer.invoke('taller:cerrarVista', id),
     opcionesMotor: (motor: string) => ipcRenderer.invoke('taller:opcionesMotor', motor),
     aplicar: (id: string) => ipcRenderer.invoke('taller:aplicar', id), deshacer: (id: string) => ipcRenderer.invoke('taller:deshacer', id),
+    puntos: (id: string) => ipcRenderer.invoke('taller:puntos', id),
+    deshacerTurno: (id: string, sha: string) => ipcRenderer.invoke('taller:deshacerTurno', id, sha),
     guardarRama: (id: string, mensaje?: string) => ipcRenderer.invoke('taller:guardarRama', id, mensaje),
     exportar: (id: string) => ipcRenderer.invoke('taller:exportar', id), veredictos: () => ipcRenderer.invoke('taller:veredictos'),
     curva: () => ipcRenderer.invoke('taller:curva'), roles: () => ipcRenderer.invoke('taller:roles'),

@@ -124,6 +124,29 @@ export async function commitCopia(c: Copia, mensaje: string, git: Git = gitReal)
   return (await git(['rev-parse', 'HEAD'], { cwd: c.ruta })).trim()
 }
 
+/** Los puntos de una copia: el commit que dejó cada turno, del primero al último.
+ *
+ * No hay estado nuevo que guardar: **los puntos son los commits de la rama de la tarea**. Eso es
+ * lo que permite deshacer *un turno* y no la tarea entera (la práctica que tiene MonoCode, MIT).
+ */
+export async function puntosCopia(c: Copia, git: Git = gitReal): Promise<{ sha: string; mensaje: string }[]> {
+  let salida = ''
+  try { salida = await git(['log', '--format=%H%x09%s', '--reverse', `${c.base}..HEAD`], { cwd: c.ruta }) }
+  catch { return [] }
+  return salida.split('\n').filter(Boolean).map((linea) => {
+    const [sha, ...resto] = linea.split('\t')
+    return { sha, mensaje: resto.join('\t') }
+  })
+}
+
+/** Vuelve la copia a un punto: deshace un turno (o los que haya detrás).
+ *
+ * Sólo toca la **copia** (el worktree de la tarea): la carpeta del usuario no se toca nunca.
+ */
+export async function volverAlPunto(c: Copia, sha: string, git: Git = gitReal): Promise<void> {
+  await git(['reset', '--hard', sha], { cwd: c.ruta })
+}
+
 export async function exportarCopia(c: Copia, destino: string): Promise<void> {
   if (c.repo !== null) throw new Error('Solo se exporta una tarea hecha en una carpeta nueva.')
   if (await stat(destino).then(() => true, () => false)) throw new Error(`«${destino}» ya existe: elige otro nombre.`)

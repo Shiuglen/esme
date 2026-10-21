@@ -328,6 +328,9 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
   })
   ipcMain.handle('taller:aplicar', (_e, id: unknown) => (idValido(id) ? t.aplicar(id) : entrada))
   ipcMain.handle('taller:deshacer', (_e, id: unknown) => (idValido(id) ? t.deshacer(id) : entrada))
+  ipcMain.handle('taller:puntos', (_e, id: unknown) => (idValido(id) ? t.puntos(id) : entrada))
+  ipcMain.handle('taller:deshacerTurno', (_e, id: unknown, sha: unknown) =>
+    (idValido(id) && typeof sha === 'string' && sha.length > 0 ? t.deshacerTurno(id, sha) : entrada))
   ipcMain.handle('taller:guardarRama', (_e, id: unknown, mensaje: unknown) => {
     if (!idValido(id) || !(mensaje === undefined || mensaje === null || (typeof mensaje === 'string' && mensaje.length <= 300))) return entrada
     return t.guardarEnRama(id, typeof mensaje === 'string' ? mensaje : undefined)

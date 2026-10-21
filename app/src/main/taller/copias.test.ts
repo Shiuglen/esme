@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdir, mkdtemp, readFile, rm, writeFile, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { aplicarParche, cambiosCopia, commitCopia, crearCopia, diffCopia, exportarCopia, gitReal, parcheCopia, quitarCopia, raizRepo } from './copias'
+import { aplicarParche, cambiosCopia, commitCopia, crearCopia, diffCopia, exportarCopia, gitReal, parcheCopia, puntosCopia, quitarCopia, raizRepo, volverAlPunto } from './copias'
 
 let raiz = ''
 let repo = ''
@@ -20,6 +20,22 @@ beforeEach(async () => {
 afterEach(async () => { await rm(raiz, { recursive: true, force: true }) })
 
 describe('copias', () => {
+  it('deja un punto por turno y se puede volver al anterior (deshacer un turno, no la tarea)', async () => {
+    // La práctica que tiene MonoCode (MIT) y que Esme no tenía: los puntos son los commits de
+    // la rama de la tarea, así que no hay estado nuevo que guardar.
+    const c = await crearCopia({ carpeta: repo, id: 'puntos1', dirCopias })
+    await writeFile(join(c.ruta, 'a.txt'), 'turno uno\n')
+    await commitCopia(c, 'Esme: turno 1')
+    await writeFile(join(c.ruta, 'a.txt'), 'turno dos\n')
+    await commitCopia(c, 'Esme: turno 2')
+    const puntos = await puntosCopia(c)
+    expect(puntos.map((p) => p.mensaje)).toEqual(['Esme: turno 1', 'Esme: turno 2'])
+    await volverAlPunto(c, puntos[0].sha)
+    expect(await readFile(join(c.ruta, 'a.txt'), 'utf8')).toBe('turno uno\n')
+    // y la carpeta del usuario, intacta
+    expect(await readFile(join(repo, 'a.txt'), 'utf8')).toBe('uno\ndos\ntres\n')
+  })
+
   it('crea un worktree en una rama esme/<id> desde HEAD sin tocar la carpeta original', async () => {
     await writeFile(join(repo, 'sucio.txt'), 'sin commitear')
     const antes = await g(repo, 'status', '--porcelain')

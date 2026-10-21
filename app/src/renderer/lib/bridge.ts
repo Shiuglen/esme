@@ -171,6 +171,8 @@ type ElectronApi = {
     vistaPrevia(id: string): Promise<{ ok: true; url: string } | { ok: false; error: string }>; cerrarVista(id: string): Promise<ResultadoTaller>
     configurar(id: string, opcion: string, valor: string): Promise<ResultadoTaller>; opcionesMotor(motor: string): Promise<OpcionMotor[]>
     aplicar(id: string): Promise<{ ok: true; ficheros: number } | { ok: false; error: string; ficheros?: string[] }>; deshacer(id: string): Promise<ResultadoTaller>
+    puntos(id: string): Promise<{ ok: true; puntos: { sha: string; mensaje: string }[] } | { ok: false; error: string }>
+    deshacerTurno(id: string, sha: string): Promise<ResultadoTaller>
     guardarRama(id: string, mensaje?: string): Promise<{ ok: true; commit: string } | { ok: false; error: string }>; exportar(id: string): Promise<ResultadoTaller>
     veredictos(): Promise<VeredictoTaller[]>
     curva(): Promise<Curva>
@@ -410,6 +412,8 @@ export const bridge = {
     opcionesMotor: async (motor: string): Promise<OpcionMotor[]> => (isElectron() ? window.daimon!.taller.opcionesMotor(motor) : []),
     aplicar: async (id: string): Promise<{ ok: true; ficheros: number } | { ok: false; error: string; ficheros?: string[] }> => (isElectron() ? window.daimon!.taller.aplicar(id) : SOLO_ESCRITORIO),
     deshacer: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.deshacer(id) : SOLO_ESCRITORIO),
+    puntos: async (id: string) => (isElectron() ? window.daimon!.taller.puntos(id) : { ok: false, error: 'Sólo lectura' }),
+    deshacerTurno: async (id: string, sha: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.deshacerTurno(id, sha) : SOLO_ESCRITORIO),
     guardarRama: async (id: string, mensaje?: string): Promise<{ ok: true; commit: string } | { ok: false; error: string }> => (isElectron() ? window.daimon!.taller.guardarRama(id, mensaje) : SOLO_ESCRITORIO),
     exportar: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.exportar(id) : SOLO_ESCRITORIO),
     veredictos: async (): Promise<VeredictoTaller[]> => (isElectron() ? window.daimon!.taller.veredictos() : []),

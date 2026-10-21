@@ -22,6 +22,7 @@ const copiasFalsas = () => {
     crear: vi.fn(async (o: { id: string; dirCopias: string; carpeta: string | null }) => ({ id: o.id, ruta: join(o.dirCopias, o.id), rama: o.carpeta === null ? null : `esme/${o.id}`, base: 'b', repo: o.carpeta === null ? null : '/r' })) as any,
     cambios: vi.fn(async () => CAMBIOS), diff: vi.fn(async () => ({ texto: 'diff', truncado: false })), quitar,
     parche: vi.fn(async () => 'PARCHE'), aplicar: vi.fn(async () => ({ ok: true as const })), commit: vi.fn(async () => 'abc1234'), exportar: vi.fn(async () => {}),
+    puntos: vi.fn(async () => [{ sha: 'abc1234', mensaje: 'Esme: turno 1' }]), volver: vi.fn(async () => {}),
   }
   return { ops, quitar }
 }
@@ -416,6 +417,22 @@ describe('Taller: hallazgos de la revisión', () => {
       expect(emisiones.filter((e) => e.canal === 'cambio').at(-1)!.dato.aplicada?.modo).toBe('carpeta')
       expect(await t!.veredictos()).toEqual([{ ts: reloj, motor: 'falso', modelo: null, exito: true, tarea: tarea.id }])
       expect(await t!.aplicar(tarea.id)).toEqual({ ok: false, error: 'Ya está aplicada.' })
+    })
+
+    it('cada turno deja un punto: se puede volver al anterior sin perder el trabajo', async () => {
+      // La práctica que tiene MonoCode (MIT) y que Esme no: deshacer **un turno**, no la tarea.
+      const { ops, tarea } = await lista()
+      expect(ops.commit).toHaveBeenCalledWith(expect.objectContaining({ id: tarea.id }), 'Esme: turno 1')
+      const puntos = await t!.puntos(tarea.id)
+      expect(puntos.ok).toBe(true)
+      expect((puntos as any).puntos).toEqual([{ sha: 'abc1234', mensaje: 'Esme: turno 1' }])
+      expect(await t!.deshacerTurno(tarea.id, 'abc1234')).toEqual({ ok: true })
+      expect(ops.volver).toHaveBeenCalledWith(expect.objectContaining({ id: tarea.id }), 'abc1234')
+    })
+
+    it('deshacer un turno sin copia o sin sha se niega, y no toca nada', async () => {
+      const { tarea } = await lista()
+      expect(await t!.deshacerTurno(tarea.id, '')).toEqual({ ok: false, error: 'No hay punto al que volver.' })
     })
 
     it('aplicar se niega si la tarea está en marcha o en una carpeta nueva', async () => {

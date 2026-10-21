@@ -13,7 +13,7 @@ import { errorDelProveedor, esTemporal, sesionMuerta } from './fallos'
 import { leeRoles, textoConRol, type Rol } from './roles'
 import { otroModeloGratis } from './gratis'
 import { autoRespuesta, type Acceso } from './acceso'
-import { aplicarParche, cambiosCopia, commitCopia, crearCopia, diffCopia, exportarCopia, parcheCopia, quitarCopia, type Cambios, type Copia } from './copias'
+import { aplicarParche, cambiosCopia, commitCopia, crearCopia, diffCopia, exportarCopia, parcheCopia, puntosCopia, quitarCopia, volverAlPunto, type Cambios, type Copia } from './copias'
 
 export type EstadoTarea = 'preparando' | 'trabajando' | 'esperando' | 'lista' | 'parada' | 'error'
 export type Permiso = { titulo: string; opciones: { id: string; nombre: string; tipo: string }[]; clase?: string }   // clase: read, edit, execute, fetch… (ACP)
@@ -37,7 +37,8 @@ export type SesionMotor = { preguntar(texto: string): Promise<string>; cancelar(
 export type AbrirSesion = (o: { comando: string; args: string[]; cwd: string; env?: Record<string, string>; mcp?: { nombre: string; url: string; token: string }; masMcp?: McpServer[]; config?: Record<string, string>
   alEvento(e: EventoMotor): void; alPedirPermiso(p: Permiso): Promise<string | 'cancelar'> }) => Promise<SesionMotor>
 export type OperacionesCopia = { crear: typeof crearCopia; cambios: typeof cambiosCopia; diff: typeof diffCopia; quitar: typeof quitarCopia
-  parche: typeof parcheCopia; aplicar: typeof aplicarParche; commit: typeof commitCopia; exportar: typeof exportarCopia }
+  parche: typeof parcheCopia; aplicar: typeof aplicarParche; commit: typeof commitCopia; exportar: typeof exportarCopia
+  puntos: typeof puntosCopia; volver: typeof volverAlPunto }
 export type Aplicada = { cuando: number; modo: 'carpeta' | 'rama' | 'exportada'; ficheros: number; destino?: string; commit?: string }
 export type Veredicto = { ts: number; motor: string; modelo: string | null; exito: boolean; tarea?: string }
 // El delta de uso real de un turno, para el Uso de la app: cada tarea levanta su historia.
@@ -104,7 +105,7 @@ export class Taller {
     this.dirCopias = join(o.dir, 'copias')
     this.emitir = o.emitir
     this.abrirSesion = o.abrirSesion ?? ((x) => abrirSesionACP(x))
-    this.copias = o.copias ?? { crear: crearCopia, cambios: cambiosCopia, diff: diffCopia, quitar: quitarCopia, parche: parcheCopia, aplicar: aplicarParche, commit: commitCopia, exportar: exportarCopia }
+    this.copias = o.copias ?? { crear: crearCopia, cambios: cambiosCopia, diff: diffCopia, quitar: quitarCopia, parche: parcheCopia, aplicar: aplicarParche, commit: commitCopia, exportar: exportarCopia, puntos: puntosCopia, volver: volverAlPunto }
     this.mcp = o.mcp ?? (() => null)
     this.masMcp = o.masMcp ?? (() => [])
     this.mente = o.mente ?? (() => null)
@@ -279,6 +280,43 @@ export class Taller {
     if (!res.ok) return { ok: false, error: 'Tu carpeta ha cambiado en esos ficheros: no se deshizo nada.', ficheros: res.ficheros }
     await rm(this.archivoParche(id), { force: true })
     r.tarea.aplicada = undefined
+    this.cambio(r, true)
+    return { ok: true }
+  }
+
+  /** El punto del turno: un commit en la rama de la tarea.
+   *
+   * Es lo que permite deshacer **un turno** y no la tarea entera. No guarda estado nuevo: los
+   * puntos son los commits de la rama. Si el commit falla, la tarea sigue (el punto es un extra).
+   */
+  private async punto(r: Registro, n: number): Promise<void> {
+    const copia = r.tarea.copia
+    if (!copia?.ruta) return
+    try { await this.copias.commit(copia, `Esme: turno ${n}`) } catch { /* el punto es un extra */ }
+  }
+
+  /** Los puntos de la tarea: un commit por turno, con su mensaje. */
+  async puntos(id: string): Promise<{ ok: true; puntos: { sha: string; mensaje: string }[] } | Fallo> {
+    const r = this.registro(id)
+    const copia = r.tarea.copia
+    if (!copia?.ruta) return { ok: false, error: 'Esta tarea no tiene copia donde mirar.' }
+    try { return { ok: true, puntos: await this.copias.puntos(copia) } }
+    catch (e) { return { ok: false, error: mensajeDe(e) } }
+  }
+
+  /** Deshacer **un turno**: la copia vuelve al punto que se le diga.
+   *
+   * La rama conserva los commits (nada se pierde): lo que cambia es el estado del worktree. La
+   * carpeta del usuario no se toca nunca.
+   */
+  async deshacerTurno(id: string, sha: string): Promise<{ ok: true } | Fallo> {
+    const r = this.registro(id)
+    const copia = r.tarea.copia
+    if (!copia?.ruta) return { ok: false, error: 'Esta tarea no tiene copia donde volver.' }
+    if (!sha || !sha.trim()) return { ok: false, error: 'No hay punto al que volver.' }
+    try { await this.copias.volver(copia, sha) }
+    catch (e) { return { ok: false, error: mensajeDe(e) } }
+    r.tarea.cambios = await this.copias.cambios(copia).catch(() => null)
     this.cambio(r, true)
     return { ok: true }
   }
@@ -461,6 +499,8 @@ export class Taller {
       const cambios = await this.copias.cambios(t.copia).catch(() => null)
       t.cambios = cambios
       t.turnos++; t.fin = this.ahora()
+      // El punto del turno: el estado de la copia tal como quedó. Deshacer un turno, no la tarea.
+      await this.punto(r, t.turnos)
       t.estado = motivo === 'cancelled' ? 'parada' : 'lista'
       this.anotarTurno(r)
     } catch (e) {
