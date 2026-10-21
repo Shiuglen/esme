@@ -128,7 +128,7 @@ const faceState = (visible: boolean) =>
  * so every swap reads as one control changing state.
  */
 function ButtonFaces({ visible }: { visible: Record<Face, boolean> }) {
-  const icon = "h-6 w-6 text-black/90 dark:text-white/90";
+  const icon = "h-6 w-6 text-texto/90 text-texto/90";
   return (
     <>
       <Mic
@@ -139,7 +139,7 @@ function ButtonFaces({ visible }: { visible: Record<Face, boolean> }) {
         aria-hidden="true"
         className={cn(
           FACE_CLASS,
-          "h-5 w-5 rounded-[5px] bg-black dark:bg-white",
+          "h-5 w-5 rounded-[5px] bg-fondo bg-texto",
           faceState(visible.stop)
         )}
       />
@@ -166,7 +166,7 @@ function ButtonFaces({ visible }: { visible: Record<Face, boolean> }) {
 }
 
 const ACTION_FOCUS =
-  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/30";
+  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-foco/20 dark:focus-visible:ring-foco/30";
 
 function ReviewActions({
   onDiscard,
@@ -185,7 +185,7 @@ function ReviewActions({
     >
       <button
         className={cn(
-          "flex h-7 items-center gap-1 rounded-lg px-2 text-black/60 text-xs transition-colors duration-150 hover:bg-black/5 hover:text-black dark:text-white/60 dark:hover:bg-white/5 dark:hover:text-white",
+          "flex h-7 items-center gap-1 rounded-lg px-2 text-texto/60 text-xs transition-colors duration-150 hover:bg-fondo/5 hover:text-texto text-texto/60 dark:hover:bg-texto/5 dark:hover:text-texto",
           ACTION_FOCUS
         )}
         onClick={onDiscard}
@@ -196,7 +196,7 @@ function ReviewActions({
       </button>
       <button
         className={cn(
-          "flex h-7 items-center gap-1 rounded-lg bg-black px-2.5 text-white text-xs transition-colors duration-150 hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80",
+          "flex h-7 items-center gap-1 rounded-lg bg-fondo px-2.5 text-texto text-xs transition-colors duration-150 hover:bg-fondo/80 bg-texto text-texto dark:hover:bg-texto/80",
           ACTION_FOCUS
         )}
         onClick={onSend}
@@ -501,7 +501,7 @@ export default function AI_Voice({
           {/* Swells with the voice while recording. */}
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-xl bg-black/5 opacity-0 dark:bg-white/5"
+            className="pointer-events-none absolute inset-0 rounded-xl bg-fondo/5 opacity-0 bg-texto/5"
             ref={ringRef}
           />
           <button
@@ -509,10 +509,10 @@ export default function AI_Voice({
             aria-pressed={recording && announce}
             className={cn(
               "relative flex h-16 w-16 items-center justify-center rounded-xl transition-colors duration-150 ease-out",
-              "outline-hidden focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/30",
+              "outline-hidden focus-visible:ring-2 focus-visible:ring-foco/20 dark:focus-visible:ring-foco/30",
               mode === "idle"
-                ? "hover:bg-black/5 dark:hover:bg-white/5"
-                : "bg-black/5 dark:bg-white/5"
+                ? "hover:bg-fondo/5 dark:hover:bg-texto/5"
+                : "bg-fondo/5 bg-texto/5"
             )}
             onClick={handleMainClick}
             type="button"
@@ -525,8 +525,8 @@ export default function AI_Voice({
           className={cn(
             "relative font-mono text-sm tabular-nums transition-colors duration-300",
             mode === "idle"
-              ? "text-black/30 dark:text-white/30"
-              : "text-black/70 dark:text-white/70"
+              ? "text-texto/30 text-texto/30"
+              : "text-texto/70 text-texto/70"
           )}
         >
           {/* A steady red dot, like a recorder's REC lamp. Sits outside the
@@ -534,7 +534,7 @@ export default function AI_Voice({
           <span
             aria-hidden="true"
             className={cn(
-              "absolute top-1/2 right-full mr-2 size-1.5 -translate-y-1/2 rounded-full bg-red-500 transition-opacity duration-150",
+              "absolute top-1/2 right-full mr-2 size-1.5 -translate-y-1/2 rounded-full bg-s2 transition-opacity duration-150",
               recording ? "opacity-100" : "opacity-0"
             )}
           />
@@ -558,8 +558,8 @@ export default function AI_Voice({
                 className={cn(
                   "h-full w-[3px] shrink-0 rounded-full",
                   recording
-                    ? "bg-black/60 dark:bg-white/60"
-                    : "bg-black/15 transition-transform duration-500 motion-reduce:transition-none dark:bg-white/15"
+                    ? "bg-fondo/60 bg-texto/60"
+                    : "bg-fondo/15 transition-transform duration-500 motion-reduce:transition-none bg-texto/15"
                 )}
                 key={id}
                 ref={(el) => {
@@ -586,7 +586,7 @@ export default function AI_Voice({
           >
             {BAR_IDS.map((id, i) => (
               <span
-                className="h-full w-[3px] shrink-0 rounded-full bg-black/70 dark:bg-white/70"
+                className="h-full w-[3px] shrink-0 rounded-full bg-fondo/70 bg-texto/70"
                 key={id}
                 ref={(el) => {
                   playedBarRefs.current[i] = el;
@@ -608,7 +608,7 @@ export default function AI_Voice({
             ) : (
               <motion.span
                 animate={{ opacity: 1, filter: "blur(0px)" }}
-                className="text-black/70 text-xs dark:text-white/70"
+                className="text-texto/70 text-xs text-texto/70"
                 exit={{ opacity: 0, filter: "blur(2px)" }}
                 initial={{ opacity: 0, filter: "blur(2px)" }}
                 key="caption"

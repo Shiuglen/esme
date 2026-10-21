@@ -40,6 +40,10 @@ export interface CommandPaletteProps {
   emptyMessage?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Called with the text typed. Es la puerta para filtrar la lista desde fuera (buscar en la mente). */
+  onQueryChange?: (query: string) => void;
+  /** No captures el atajo: para cuando la app ya lo lleva (y abrir y cerrar es cosa de la app). */
+  disableShortcut?: boolean;
 }
 
 // Opened via a keyboard shortcut many times a day — entrance must read as
@@ -58,6 +62,8 @@ export function CommandPalette({
   emptyMessage = "No results found.",
   open: controlledOpen,
   onOpenChange,
+  onQueryChange,
+  disableShortcut = false,
 }: CommandPaletteProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const controlled = controlledOpen !== undefined;
@@ -71,6 +77,8 @@ export function CommandPalette({
   );
 
   const [query, setQuery] = useState("");
+  // La lista se filtra desde fuera (así la app puede buscar en la mente mientras teclea): se avisa de cada cambio.
+  useEffect(() => { onQueryChange?.(query); }, [query, onQueryChange]);
   // Portal target only exists client-side; render nothing during SSR/hydration.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -82,7 +90,9 @@ export function CommandPalette({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // El atajo propio solo si nadie lo lleva: la app (Esme) ya tiene sus atajos globales y controla la apertura.
       if (
+        !disableShortcut &&
         (e.metaKey || e.ctrlKey) &&
         e.key.toLowerCase() === shortcut.toLowerCase()
       ) {
@@ -97,7 +107,7 @@ export function CommandPalette({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, shortcut, setOpen]);
+  }, [open, shortcut, setOpen, disableShortcut]);
 
   useEffect(() => {
     if (!open) return;

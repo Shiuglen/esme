@@ -169,7 +169,7 @@ export function App() {
       const t = e.key.toLowerCase()
       // la salida de emergencia: Ctrl+Mayús+0 vuelve a la piel de casa, por mal que haya quedado la actual (se puede deshacer)
       if (e.shiftKey && e.code === 'Digit0') { e.preventDefault(); setHistorial((h) => vestir(h, PIEL_BASE)); return }
-      if (t === 'k') { e.preventDefault(); setPaleta((p) => !p) }
+      if (t === 'k') { e.preventDefault(); setPaleta(true) }
       else if (t === ',') { e.preventDefault(); ir('ajustes') }
       else if (/^[1-6]$/.test(t)) { e.preventDefault(); ir(SECCIONES[Number(t) - 1].id) }
     }

@@ -55,13 +55,13 @@ export function Paleta({ abierta, onCerrar, onIr, onPreguntar, onTema, brain = n
     if (q) {
       out.push({
         id: 'preguntar', group: 'Esme', label: `Preguntar «${q}»`, icon: MessageSquare,
-        hint: CornerDownLeft as unknown as CommandItem['icon'], keywords: ['preguntar', 'memoria', 'mente'],
+        keywords: ['preguntar', 'memoria', 'mente'],
         onSelect: () => preguntar(q),
       })
       if (onEncargar) {
         out.push({
           id: 'encargar', group: 'Esme', label: `Encargar al equipo «${q}»`, icon: Hammer,
-          hint: 'trabaja en una copia aislada' as unknown as CommandItem['hint'],
+          hint: 'trabaja en una copia aislada',
           keywords: ['encargar', 'equipo', 'agente', 'tarea'], onSelect: () => { onEncargar(q); onCerrar() },
         })
       }
@@ -128,6 +128,7 @@ export function Paleta({ abierta, onCerrar, onIr, onPreguntar, onTema, brain = n
       open={abierta}
       onOpenChange={(o) => { if (!o) onCerrar() }}
       onQueryChange={setTexto}
+      disableShortcut
       items={items}
       placeholder="Busca en tu mente, pregunta, encarga o ve a cualquier sitio…"
       emptyMessage="Nada con eso. Prueba con otra palabra."

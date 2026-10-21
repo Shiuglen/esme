@@ -63,7 +63,7 @@ export function MemoryPanel(props: { brain: BrainClient | null; focusId: string 
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => props.onFocus(sel.id)} className="inline-flex h-7 items-center gap-1.5 rounded-full border border-linea px-3 text-[12px] text-texto-2 hover:text-texto"><Eye className="size-3.5" strokeWidth={1.75} />Verlo en el mapa</button>
               <button type="button" onClick={() => void olvidar(sel)} onBlur={() => setSeguro(false)}
-                className={cn('inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-[12px]', seguro ? 'bg-peligro text-white' : 'text-texto-3 hover:text-peligro')}>
+                className={cn('inline-flex h-7 items-center gap-1.5 rounded-full px-3 text-[12px]', seguro ? 'bg-peligro text-sobre-peligro' : 'text-texto-3 hover:text-peligro')}>
                 <Trash2 className="size-3.5" strokeWidth={1.75} />{seguro ? 'Olvidar para siempre' : 'Olvidar'}
               </button>
             </div>

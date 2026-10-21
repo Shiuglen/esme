@@ -17,6 +17,7 @@ import { TiendaHerramientas } from './TiendaHerramientas'
 import { TiendaSkills } from './TiendaSkills'
 import { TiendaModulos } from './TiendaModulos'
 import { TiendaDeseos } from './TiendaDeseos'
+import { TiendaAgentes } from './TiendaAgentes'
 import { PuntoVista } from '../marca/PuntoVista'
 
 const PUNTO: Record<Familia, string> = { rojo: '#ef4444', naranja: '#f97316', amarillo: '#eab308', verde: '#22c55e', cian: '#06b6d4', azul: '#3b82f6', violeta: '#8b5cf6', rosa: '#ec4899', gris: '#9ca3af' }
@@ -46,7 +47,7 @@ export function Tienda({ tema, pieles }: { tema: Tema; pieles: Pieles }) {
   }, [remotos])
   // cada ficha se enseña con su letra: se cargan las de los diseños de la Tienda (una vez cada una)
   useEffect(() => { for (const i of todos) { void cargarLetra(i.piel.letra.titulos); void cargarLetra(i.piel.letra.texto) } }, [todos])
-  const [seccion, setSeccion] = useState<'disenos' | 'deseos' | 'herramientas' | 'skills' | 'modulos'>('disenos')
+  const [seccion, setSeccion] = useState<'disenos' | 'agentes' | 'deseos' | 'herramientas' | 'skills' | 'modulos'>('disenos')
   const [texto, setTexto] = useState('')
   const [color, setColor] = useState<Familia | null>(null)
   const [vista, setVista] = useState<'todo' | 'coleccion'>('todo')
@@ -70,13 +71,15 @@ export function Tienda({ tema, pieles }: { tema: Tema; pieles: Pieles }) {
           <p className="m-0 max-w-[66ch] text-[15px] leading-6 text-texto-2">Pieles para cambiarme por fuera, manos nuevas para hacer más cosas y skills para que yo y tus agentes trabajemos como expertos. Pruébalo todo antes de quedártelo; nada actúa sin tu permiso.</p>
         </header>
         <div role="tablist" aria-label="Qué buscas" className="flex w-fit gap-1 rounded-full border border-linea p-1 text-[14px]">
-          {([['disenos', 'Diseños'], ['deseos', 'Deseos'], ['herramientas', 'Herramientas'], ['skills', 'Skills'], ['modulos', 'Módulos']] as const).map(([id, nombre]) => (
+          {([['disenos', 'Diseños'], ['agentes', 'Agentes'], ['deseos', 'Deseos'], ['herramientas', 'Herramientas'], ['skills', 'Skills'], ['modulos', 'Módulos']] as const).map(([id, nombre]) => (
             <button key={id} id={`tab-${id}`} type="button" role="tab" aria-selected={seccion === id} aria-controls={`panel-${id}`} onClick={() => setSeccion(id)}
               className={cn('rounded-full px-4 py-1.5 transition-colors', seccion === id ? 'bg-acento text-sobre-acento' : 'text-texto-2 hover:text-texto')}>{nombre}</button>
           ))}
         </div>
 
-        {seccion === 'skills'
+        {seccion === 'agentes'
+          ? <div id="panel-agentes" role="tabpanel" aria-labelledby="tab-agentes"><TiendaAgentes /></div>
+          : seccion === 'skills'
           ? <div id="panel-skills" role="tabpanel" aria-labelledby="tab-skills"><TiendaSkills /></div>
           : seccion === 'modulos'
             ? <div id="panel-modulos" role="tabpanel" aria-labelledby="tab-modulos"><TiendaModulos /></div>

@@ -2,6 +2,8 @@
    Los componentes solo usan roles (--fondo, --texto, --acento…): cambiar de estilo o de tema cambia toda la app a la vez. */
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 @theme inline {
   --color-fondo: var(--fondo);
   --color-s1: var(--superficie-1);
@@ -72,6 +74,58 @@
   --color-sidebar-accent-foreground: var(--texto);
   --color-sidebar-border: var(--linea);
   --color-sidebar-ring: var(--foco);
+  /* Las piezas que traen su color por prop (el haz de luz, los degradados) leen de la piel: por eso
+     un haz de luz es esmeralda en la piel esmeralda y violeta en la de Neón Tokio, sin tocar la pieza. */
+  --color-haz: var(--luz);
+  --color-haz-2: var(--luz-2);
+  --color-haz-3: var(--luz-3);
+  --color-degradado-1: var(--acento);
+  --color-degradado-2: var(--info);
+  --color-degradado-3: var(--luz-3);
+  /* El resto del vocabulario de shadcn. Las 400+ piezas de beUI, MagicUI y las demás
+     librerías del catálogo hablan este idioma; si un nombre no está aquí, la pieza sale
+     sin color (heredando) en vez de con un color que no es de la piel. Por eso el catálogo
+     entero se puede usar sin que ninguna rompa la regla de «una sola piel». */
+  --color-popover-2: var(--superficie-2);
+  --color-muted-2: var(--superficie-3);
+  --color-chart-1: var(--acento);
+  --color-chart-2: var(--info);
+  --color-chart-3: var(--luz-2);
+  --color-chart-4: var(--luz-3);
+  --color-chart-5: var(--atencion);
+  --color-foreground-2: var(--texto-2);
+  --color-foreground-3: var(--texto-3);
+  --color-success: var(--exito);
+  --color-success-foreground: var(--sobre-acento);
+  --color-warning: var(--atencion);
+  --color-warning-foreground: var(--sobre-acento);
+  --color-info: var(--info);
+  --color-info-foreground: var(--sobre-acento);
+  --color-outline: var(--linea-fuerte);
+  --color-surface: var(--superficie-1);
+  --color-surface-2: var(--superficie-2);
+  --color-surface-3: var(--superficie-3);
+  --color-veil: var(--velo);
+  --color-veil-foreground: var(--sobre-velo);
+  --color-overlay: var(--acento-velo);
+  --color-highlight: var(--memoria);
+  --color-highlight-foreground: var(--sobre-acento);
+  --color-track: var(--linea);
+  --color-on: var(--acento);
+  --color-off: var(--linea-fuerte);
+  /* Los radios y las sombras también: una pieza de fuera con su propio radio rompe la forma. */
+  --radius-sm: calc(var(--forma-r1) * 0.5);
+  --radius-md: var(--forma-r2);
+  --radius-lg: var(--forma-r3);
+  --radius-xl: var(--forma-r4);
+  --radius-2xl: var(--forma-r4);
+  --radius-3xl: var(--forma-r4);
+  --radius-4xl: var(--forma-r4);
+  --shadow-sm: var(--sombra-flotante);
+  --shadow-md: var(--sombra-flotante);
+  --shadow-lg: var(--sombra-flotante);
+  --shadow-xl: var(--sombra-flotante);
+  --shadow-2xl: var(--sombra-flotante);
   --font-display: var(--letra-titulos);
   --font-sans: var(--letra-texto);
   --font-mono: "JetBrains Mono Variable", "SF Mono", Menlo, Consolas, monospace;
@@ -87,7 +141,19 @@
   --shadow-flotante: var(--sombra-flotante);
   --animate-late: late 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   @keyframes late { 0%, 100% { opacity: 1; transform: scale(1) } 50% { opacity: 0.35; transform: scale(0.7) } }
-}
+  --animate-marquee: marquee var(--duration) infinite linear;
+  --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite
+;
+  @keyframes marquee {
+  from {
+    transform: translateX(0);}
+  to {
+    transform: translateX(calc(-100% - var(--gap)));}}
+  @keyframes marquee-vertical {
+  from {
+    transform: translateY(0);}
+  to {
+    transform: translateY(calc(-100% - var(--gap)));}}}
 
 /* «Esmeralda» (Esme v3, 12-oct): el estilo por defecto. Azul marino profundo (nunca negro puro) y la luz esmeralda de Esme
    (Esmeralda → «la querida»). Superficies precisas con líneas de 1 px; el color aparece donde hay vida. Contraste AA comprobado
@@ -419,7 +485,6 @@
   opacity: 0.035;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
 }
-
 
 /* La conversación: un brillo que recorre el texto mientras Esme trabaja, y su esfera que late mientras escribe. */
 @keyframes brillo { from { background-position: 200% 0 } to { background-position: -200% 0 } }

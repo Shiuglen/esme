@@ -6,8 +6,7 @@ import { Vidrio } from './Vidrio'
 import { Firma } from '../marca/PuntoVista'
 import { cifra } from '../lib/cifras'
 import { Bicho, SerCasa } from '../marca/SerVista'
-import { MUELLE } from './Paleta'
-import { useMuelle } from '../tinta/movimiento'
+import { useMuelle, MUELLE } from '../tinta/movimiento'
 
 export type Estado = { conectado: boolean; recuerdos: number | null; pensando: boolean }
 

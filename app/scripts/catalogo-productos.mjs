@@ -24,17 +24,30 @@ const leer = async (entrada) => {
 }
 
 const { PIELES_TIENDA } = await leer('src/renderer/tinta/pieles-tienda.ts')
+const { AGENTES_TIENDA } = await leer('src/renderer/tinta/agentes-tienda.ts')
 
-const productos = PIELES_TIENDA.map((p) => ({
-  id: p.id,
-  tipo: 'piel',
-  nombre: p.piel.nombre,
-  autor: p.autor,
-  descripcion: p.descripcion,
-  etiquetas: p.etiquetas,
-  version: 1,
-  contenido: p.piel,
-}))
+const productos = [
+  ...PIELES_TIENDA.map((p) => ({
+    id: p.id,
+    tipo: 'piel',
+    nombre: p.piel.nombre,
+    autor: p.autor,
+    descripcion: p.descripcion,
+    etiquetas: p.etiquetas,
+    version: 1,
+    contenido: p.piel,
+  })),
+  ...AGENTES_TIENDA.map((a) => ({
+    id: a.id,
+    tipo: 'agente',
+    nombre: a.nombre,
+    autor: a.autor,
+    descripcion: a.descripcion,
+    etiquetas: a.etiquetas,
+    version: a.version,
+    contenido: { comando: a.comando, herramientas: a.herramientas ?? [], ejemplo: a.ejemplo ?? '' },
+  })),
+]
 
 const destino = join(raiz, 'src/main/tienda/productos.json')
 mkdirSync(dirname(destino), { recursive: true })

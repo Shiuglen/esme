@@ -15,6 +15,7 @@ import { construirRed, type EnlaceRed, type NodoRed } from './red'
 import { Tiempo } from './TiempoVista'
 import { etiquetaFecha, histograma, rangoDe, visiblesEn } from './tiempo'
 import { cifra } from '../lib/cifras'
+import { NumberTicker } from '../ui/number-ticker'
 
 export type RedHandle = { encender(ids: string[]): void; enfocar(id: string): void }
 export type Recordado = { id: number; consulta: string; cuantos: number }
@@ -257,9 +258,9 @@ export const RedNeuronal = forwardRef<RedHandle, { atlas: Atlas | null; tema: st
         <div className="pointer-events-none absolute top-0 flex items-center justify-between px-5 pt-4 text-xs" style={{ left: hueco.izquierda, right: hueco.derecha }}>
           <span className="text-texto-3">{corte === null ? 'Red neuronal de tu memoria' : `Tu memoria ${deCuando(corte)}`}</span>
           <span className="flex gap-3 text-texto-2 tabular-nums">
-            <span><b className="font-semibold text-texto">{cifra(cuenta.recuerdos)}</b> recuerdos</span>
-            <span><b className="font-semibold text-texto">{cuenta.temas}</b> temas</span>
-            <span><b className="font-semibold text-texto">{cifra(cuenta.conexiones)}</b> conexiones</span>
+            <span><NumberTicker value={cuenta.recuerdos} className="font-semibold text-texto" /> recuerdos</span>
+            <span><NumberTicker value={cuenta.temas} className="font-semibold text-texto" /> temas</span>
+            <span><NumberTicker value={cuenta.conexiones} className="font-semibold text-texto" /> conexiones</span>
           </span>
         </div>
         <div className="pointer-events-none absolute bottom-0 grid gap-3 px-5 pb-4" style={{ left: hueco.izquierda, right: hueco.derecha }}>

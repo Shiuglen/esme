@@ -15,5 +15,8 @@ export function useMuelle(base: { stiffness: number; damping: number; mass?: num
   return useMemo(() => muelleCon(caracter, movimiento, { type: 'spring', stiffness, damping, mass }), [caracter, movimiento, stiffness, damping, mass])
 }
 
+/** El muelle de casa: el de la app entera. whoever lo use, salta igual. */
+export const MUELLE = { type: 'spring', stiffness: 420, damping: 38, mass: 0.9 } as const
+
 /** Las piezas elegidas en la piel (tinta/piezas.ts). */
 export const usePiezas = () => ({ piezas: useContext(Ctx).piezas })

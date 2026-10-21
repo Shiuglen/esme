@@ -94,7 +94,7 @@ function TaskIcon({ task }: { task: IslandTask }) {
     return (
       <svg
         aria-hidden="true"
-        className="size-4 shrink-0 text-emerald-400"
+        className="size-4 shrink-0 text-texto-2"
         fill="none"
         viewBox="0 0 16 16"
       >
@@ -116,7 +116,7 @@ function TaskIcon({ task }: { task: IslandTask }) {
     return (
       <svg
         aria-hidden="true"
-        className="size-4 shrink-0 text-red-400"
+        className="size-4 shrink-0 text-texto-2"
         fill="none"
         viewBox="0 0 16 16"
       >
@@ -172,7 +172,7 @@ function TaskTrailing({ task }: { task: IslandTask }) {
     const { label, onClick } = task.action;
     return (
       <button
-        className="-my-1 shrink-0 rounded-full bg-white/12 px-2.5 py-1 font-medium text-white text-xs transition-colors duration-150 hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-white/60"
+        className="-my-1 shrink-0 rounded-full bg-texto/12 px-2.5 py-1 font-medium text-texto text-xs transition-colors duration-150 hover:bg-texto/20 focus-visible:outline-2 focus-visible:outline-foco/60"
         onClick={(event) => {
           event.stopPropagation();
           onClick();
@@ -186,7 +186,7 @@ function TaskTrailing({ task }: { task: IslandTask }) {
   if (task.status === "running" && typeof task.progress === "number") {
     const percent = Math.round(Math.min(1, Math.max(0, task.progress)) * 100);
     return (
-      <span className="flex shrink-0 items-center text-white/55 text-xs">
+      <span className="flex shrink-0 items-center text-texto/55 text-xs">
         <RollingNumber value={percent} />%
       </span>
     );
@@ -201,7 +201,7 @@ function TaskRow({ task }: { task: IslandTask }) {
       <span className="min-w-0 flex-1 truncate text-[13px] leading-4">
         {task.label}
         {task.detail ? (
-          <span className="text-white/50"> · {task.detail}</span>
+          <span className="text-texto/50"> · {task.detail}</span>
         ) : null}
       </span>
       <TaskTrailing task={task} />
@@ -345,7 +345,7 @@ export function StatusIsland({
                     scale: 1 - (i + 1) * 0.06,
                   }}
                   aria-hidden="true"
-                  className="absolute inset-0 rounded-[20px] bg-zinc-800 ring-1 ring-white/5 dark:bg-zinc-800"
+                  className="absolute inset-0 rounded-[20px] bg-s2 ring-1 ring-foco/5 bg-s2"
                   initial={false}
                   // biome-ignore lint/suspicious/noArrayIndexKey: layers are positional
                   key={i}
@@ -354,7 +354,7 @@ export function StatusIsland({
                 />
               ))}
               <motion.div
-                className="relative overflow-hidden bg-zinc-950 text-white shadow-black/20 shadow-lg ring-1 ring-black/5 dark:bg-zinc-900 dark:ring-white/10"
+                className="relative overflow-hidden bg-s2 text-texto shadow-foco/20 shadow-lg ring-1 ring-foco/5 bg-s1 ring-foco/10"
                 layout
                 onBlur={handleBlur}
                 onFocus={() => setOpen(true)}
@@ -403,7 +403,7 @@ export function StatusIsland({
                           <span className="min-w-0 flex-1 truncate text-[13px] leading-4">
                             {current.label}
                             {current.detail ? (
-                              <span className="text-white/50">
+                              <span className="text-texto/50">
                                 {" "}
                                 · {current.detail}
                               </span>
@@ -433,7 +433,7 @@ export function StatusIsland({
 function TaskTrailingInert({ task }: { task: IslandTask }) {
   if (task.action) {
     return (
-      <span className="-my-1 inline-block rounded-full bg-white/12 px-2.5 py-1 font-medium text-xs">
+      <span className="-my-1 inline-block rounded-full bg-texto/12 px-2.5 py-1 font-medium text-xs">
         {task.action.label}
       </span>
     );
@@ -627,7 +627,7 @@ export default function StatusIslandDemo({
       <div className="flex flex-wrap justify-center gap-2 px-4">
         {DEMO_ACTIONS.map((action) => (
           <button
-            className="h-8 rounded-full border border-zinc-200 bg-white px-3.5 font-medium text-[13px] text-zinc-700 transition-colors duration-150 hover:bg-zinc-50 hover:text-zinc-950 active:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 dark:active:bg-zinc-800 dark:hover:bg-zinc-900 dark:hover:text-white"
+            className="h-8 rounded-full border border-linea bg-texto px-3.5 font-medium text-[13px] text-texto-2 transition-colors duration-150 hover:bg-s1 hover:text-texto-2 active:bg-s2 border-linea bg-fondo text-texto-2 dark:active:bg-s2 dark:hover:bg-s2 dark:hover:text-texto"
             key={action.kind}
             onClick={() => start(action.kind)}
             type="button"
@@ -637,7 +637,7 @@ export default function StatusIslandDemo({
         ))}
       </div>
       {tasks.length === 0 ? (
-        <p className="text-sm text-zinc-400 dark:text-zinc-500">
+        <p className="text-sm text-texto-3 text-texto-3">
           Start a task, then hover the island
         </p>
       ) : null}

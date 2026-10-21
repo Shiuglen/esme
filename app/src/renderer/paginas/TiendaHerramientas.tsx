@@ -41,7 +41,7 @@ export function TiendaHerramientas() {
                 <button type="button" role="switch" aria-checked={c.activa} aria-label={c.activa ? 'Pausar' : 'Activar'}
                   onClick={() => void bridge.herramientas.alternar(c.ficha.slug, !c.activa).then(recargar)}
                   className={cn('relative h-6 w-10 rounded-full transition-colors', c.activa ? 'bg-acento' : 'bg-s3')}>
-                  <span className={cn('absolute top-1 size-4 rounded-full bg-white transition-all', c.activa ? 'left-5' : 'left-1')} />
+                  <span className={cn('absolute top-1 size-4 rounded-full bg-texto transition-all', c.activa ? 'left-5' : 'left-1')} />
                 </button>
                 <button type="button" aria-label={`Quitar ${c.ficha.titulo}`} onClick={() => void bridge.herramientas.quitar(c.ficha.slug).then(() => { toast(`Quitaste ${c.ficha.titulo}`); recargar() })}
                   className="grid size-8 place-items-center rounded-full text-texto-3 hover:bg-s2 hover:text-peligro"><Trash2 className="size-4" strokeWidth={1.75} /></button>

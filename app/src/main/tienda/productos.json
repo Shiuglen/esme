@@ -674,6 +674,128 @@
           "trabajo": "electrico"
         }
       }
+    },
+    {
+      "id": "opencode",
+      "tipo": "agente",
+      "nombre": "OpenCode",
+      "autor": "SST",
+      "descripcion": "El agente de terminal que lee el repo, edita ficheros y corre pruebas. El más versátil para construir.",
+      "etiquetas": [
+        "código",
+        "terminal",
+        "general"
+      ],
+      "version": 1,
+      "contenido": {
+        "comando": "opencode -p \"{tarea}\"",
+        "herramientas": [
+          "node",
+          "git"
+        ],
+        "ejemplo": "«Arregla el test que falla y deja la suite en verde»"
+      }
+    },
+    {
+      "id": "claude-code",
+      "tipo": "agente",
+      "nombre": "Claude Code",
+      "autor": "Anthropic",
+      "descripcion": "El agente de Anthropic para la terminal: lee, edita y explica. Fuerte con refactors grandes.",
+      "etiquetas": [
+        "código",
+        "terminal",
+        "refactor"
+      ],
+      "version": 1,
+      "contenido": {
+        "comando": "claude -p \"{tarea}\"",
+        "herramientas": [
+          "node",
+          "git"
+        ],
+        "ejemplo": "«Mueve este módulo a la arquitectura nueva y deja los tests»"
+      }
+    },
+    {
+      "id": "codex",
+      "tipo": "agente",
+      "nombre": "Codex",
+      "autor": "OpenAI",
+      "descripcion": "El agente de OpenAI para la terminal. Preciso con los cambios mecánicos y con el formato.",
+      "etiquetas": [
+        "código",
+        "terminal",
+        "mecánico"
+      ],
+      "version": 1,
+      "contenido": {
+        "comando": "codex exec \"{tarea}\"",
+        "herramientas": [
+          "node",
+          "git"
+        ],
+        "ejemplo": "«Renombra estas funciones y actualiza las llamadas»"
+      }
+    },
+    {
+      "id": "gemini-cli",
+      "tipo": "agente",
+      "nombre": "Gemini CLI",
+      "autor": "Google",
+      "descripcion": "El agente de Google para la terminal. Contexto enorme: bueno para leer repos enteros.",
+      "etiquetas": [
+        "código",
+        "terminal",
+        "contexto"
+      ],
+      "version": 1,
+      "contenido": {
+        "comando": "gemini -p \"{tarea}\"",
+        "herramientas": [
+          "node",
+          "git"
+        ],
+        "ejemplo": "«Explora este repo y dime dónde vive la lógica de permisos»"
+      }
+    },
+    {
+      "id": "qwen-code",
+      "tipo": "agente",
+      "nombre": "Qwen Code",
+      "autor": "Alibaba",
+      "descripcion": "El agente de Alibaba para la terminal. Multi-modelo: puede razonar o apurar.",
+      "etiquetas": [
+        "código",
+        "terminal",
+        "multimodelo"
+      ],
+      "version": 1,
+      "contenido": {
+        "comando": "qwen -p \"{tarea}\"",
+        "herramientas": [
+          "node",
+          "git"
+        ],
+        "ejemplo": "«Escribe los tests que le faltan a este módulo»"
+      }
+    },
+    {
+      "id": "esme-cerebro",
+      "tipo": "agente",
+      "nombre": "El Cerebro",
+      "autor": "Esme",
+      "descripcion": "No es un agente de código: es la memoria. Conoce lo que happened y sabe lo que tú no dijiste.",
+      "etiquetas": [
+        "memoria",
+        "contexto"
+      ],
+      "version": 1,
+      "contenido": {
+        "comando": "esme cerebro \"{tarea}\"",
+        "herramientas": [],
+        "ejemplo": "«¿Qué decidimos la semana pasada sobre la Tienda?»"
+      }
     }
   ]
 }

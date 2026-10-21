@@ -350,7 +350,7 @@ function MenteCompartida() {
             <span className="min-w-0 flex-1 text-[13.5px] text-texto">{a.nombre}<span className="ml-2 text-[12px] text-texto-3">{a.instalado ? a.fichero.replace(/^.*?(\.[^/]+.*)$/, '~/$1') : 'no lo tienes en este equipo'}</span></span>
             <button type="button" role="switch" aria-checked={a.conectado} aria-label={`Tu mente en ${a.nombre}`} disabled={!a.instalado && !a.conectado}
               onClick={() => void cambiar(a)} className={cn('relative h-6 w-10 rounded-full transition-colors disabled:opacity-30', a.conectado ? 'bg-acento' : 'bg-s3')}>
-              <span className={cn('absolute top-1 size-4 rounded-full bg-white transition-all', a.conectado ? 'left-5' : 'left-1')} />
+              <span className={cn('absolute top-1 size-4 rounded-full bg-texto transition-all', a.conectado ? 'left-5' : 'left-1')} />
             </button>
           </li>
         ))}
