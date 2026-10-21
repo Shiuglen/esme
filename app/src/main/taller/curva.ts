@@ -7,6 +7,15 @@
 import type { Tarea, Veredicto } from './taller'
 
 export type CurvaDia = { dia: string; positivos: number; negativos: number; aciertos: number }
+/** Un grupo de tareas: las solas, o las que compartieron arena (dos agentes en el mismo encargo). */
+export type CurvaGrupo = {
+  grupo: string
+  tareas: number
+  veredictos: number
+  aciertos: number
+  aciertosPorVeredicto: number
+  tokensPorTarea: number
+}
 export type CurvaMotor = {
   motor: string; tareas: number; terminadas: number; error: number; parada: number; trabajando: number
   herramientas: number; tokens: number; coste: number; ficheros: number
@@ -19,13 +28,15 @@ export type Curva = {
   veredictos: { total: number; positivos: number; negativos: number }
   porDia: CurvaDia[]
   porMotor: CurvaMotor[]
+  /** Las tareas con dos agentes (arena) y las que fueron solas: el número que faltaba. */
+  porGrupo: CurvaGrupo[]
   fallos: { mensaje: string; veces: number }[]
   costeDelAcierto: { tareas: number; tokens: number; coste: number } | null
 }
 
 export const CURVA_VACIA: Curva = {
   tareas: 0, estados: {}, veredictos: { total: 0, positivos: 0, negativos: 0 },
-  porDia: [], porMotor: [], fallos: [], costeDelAcierto: null,
+  porDia: [], porMotor: [], porGrupo: [], fallos: [], costeDelAcierto: null,
 }
 
 /** El día en el calendario del creador (no en UTC: su medianoche es la suya). */
@@ -105,6 +116,42 @@ export function curvaDe(datos: { tareas: Tarea[]; veredictos: Veredicto[]; fallo
     m.costePorTarea = m.tareas ? redondea(m.coste / m.tareas, 6) : 0
   }
 
+  // 2b. Los grupos: las tareas que compartieron arena (dos agentes en el mismo encargo) y las
+  // que fueron solas. Es el número que faltaba: «dos agentes juntos rinden más que dos solos».
+  // Ojo con lo que este número NO dice: la arena se usa para los encargos difíciles, así que
+  // una diferencia entre los grupos puede ser que el trabajo era más duro, no que los dos
+  // agentes rinden más. Por eso se cuenta junto a los veredictos del creador y no sólo a los turnos.
+  const grupos = new Map<string, CurvaGrupo>()
+  const cajaGrupo = (nombre: string): CurvaGrupo => {
+    let g = grupos.get(nombre)
+    if (!g) {
+      g = { grupo: nombre, tareas: 0, veredictos: 0, aciertos: 0, aciertosPorVeredicto: 0, tokensPorTarea: 0 }
+      grupos.set(nombre, g)
+    }
+    return g
+  }
+  const tokensPorTarea = new Map<string, { tokens: number; tareas: number }>()
+  for (const t of tareas) {
+    const nombre = t.arena ? 'arena' : 'solas'
+    cajaGrupo(nombre).tareas++
+    const ac = tokensPorTarea.get(nombre) ?? { tokens: 0, tareas: 0 }
+    ac.tokens += (t.uso?.entrada || 0) + (t.uso?.salida || 0)
+    ac.tareas++
+    tokensPorTarea.set(nombre, ac)
+  }
+  for (const v of veredictos) {
+    const t = tareaDelVeredicto(v)
+    if (!t) continue
+    const g = cajaGrupo(t.arena ? 'arena' : 'solas')
+    g.veredictos++
+    if (v.exito) g.aciertos++
+  }
+  for (const g of grupos.values()) {
+    g.aciertosPorVeredicto = g.veredictos ? redondea(g.aciertos / g.veredictos) : 0
+    const ac = tokensPorTarea.get(g.grupo)
+    g.tokensPorTarea = ac && ac.tareas ? Math.round(ac.tokens / ac.tareas) : 0
+  }
+
   // 3. El coste del acierto: lo que costó cada tarea que el creador se quedó.
   const aplicadas = veredictos.filter((v) => v.exito)
   let costeDelAcierto: Curva['costeDelAcierto'] = null
@@ -146,6 +193,7 @@ export function curvaDe(datos: { tareas: Tarea[]; veredictos: Veredicto[]; fallo
       aciertos: d.positivos + d.negativos ? redondea(d.positivos / (d.positivos + d.negativos)) : 0,
     })),
     porMotor: [...motores.values()].sort((a, b) => b.tareas - a.tareas),
+    porGrupo: [...grupos.values()].sort((a, b) => (a.grupo === 'arena' ? -1 : b.grupo === 'arena' ? 1 : 0)),
     fallos: [...cuenta.entries()].map(([mensaje, veces]) => ({ mensaje, veces })).sort((a, b) => b.veces - a.veces),
     costeDelAcierto,
   }

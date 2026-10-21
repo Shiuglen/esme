@@ -1,15 +1,15 @@
 {
- "tareas": 7,
+ "tareas": 9,
  "estados": {
-  "lista": 2,
+  "lista": 4,
   "error": 3,
   "trabajando": 1,
   "parada": 1
  },
  "veredictos": {
-  "total": 5,
-  "positivos": 3,
-  "negativos": 2
+  "total": 7,
+  "positivos": 4,
+  "negativos": 3
  },
  "porDia": [
   {
@@ -20,47 +20,47 @@
   },
   {
    "dia": "2026-05-10",
-   "positivos": 3,
-   "negativos": 1,
-   "aciertos": 0.75
+   "positivos": 4,
+   "negativos": 2,
+   "aciertos": 0.667
   }
  ],
  "porMotor": [
   {
    "motor": "opencode",
-   "tareas": 3,
-   "terminadas": 1,
+   "tareas": 4,
+   "terminadas": 2,
    "error": 2,
    "parada": 0,
    "trabajando": 0,
-   "herramientas": 19,
-   "tokens": 1360,
-   "coste": 0.0128,
+   "herramientas": 39,
+   "tokens": 2360,
+   "coste": 0.0148,
+   "ficheros": 5,
+   "veredictos": 3,
+   "aciertos": 2,
+   "aciertosPorTarea": 0.5,
+   "herramientasPorTarea": 9.8,
+   "tokensPorTarea": 590,
+   "costePorTarea": 0.0037
+  },
+  {
+   "motor": "qwen-code",
+   "tareas": 3,
+   "terminadas": 1,
+   "error": 0,
+   "parada": 1,
+   "trabajando": 1,
+   "herramientas": 27,
+   "tokens": 1365,
+   "coste": 0.003,
    "ficheros": 3,
    "veredictos": 2,
    "aciertos": 1,
    "aciertosPorTarea": 0.333,
-   "herramientasPorTarea": 6.3,
-   "tokensPorTarea": 453,
-   "costePorTarea": 0.004267
-  },
-  {
-   "motor": "qwen-code",
-   "tareas": 2,
-   "terminadas": 0,
-   "error": 0,
-   "parada": 1,
-   "trabajando": 1,
-   "herramientas": 7,
-   "tokens": 365,
-   "coste": 0.001,
-   "ficheros": 1,
-   "veredictos": 1,
-   "aciertos": 1,
-   "aciertosPorTarea": 0.5,
-   "herramientasPorTarea": 3.5,
-   "tokensPorTarea": 183,
-   "costePorTarea": 0.0005
+   "herramientasPorTarea": 9.0,
+   "tokensPorTarea": 455,
+   "costePorTarea": 0.001
   },
   {
    "motor": "desconocido",
@@ -99,6 +99,24 @@
    "costePorTarea": 0.0
   }
  ],
+ "porGrupo": [
+  {
+   "grupo": "arena",
+   "tareas": 2,
+   "veredictos": 2,
+   "aciertos": 1,
+   "aciertosPorVeredicto": 0.5,
+   "tokensPorTarea": 1000
+  },
+  {
+   "grupo": "solas",
+   "tareas": 7,
+   "veredictos": 3,
+   "aciertos": 2,
+   "aciertosPorVeredicto": 0.667,
+   "tokensPorTarea": 250
+  }
+ ],
  "fallos": [
   {
    "mensaje": "Internal error",
@@ -110,8 +128,8 @@
   }
  ],
  "costeDelAcierto": {
-  "tareas": 2,
-  "tokens": 1550,
-  "coste": 0.0133
+  "tareas": 3,
+  "tokens": 2550,
+  "coste": 0.0153
  }
 }

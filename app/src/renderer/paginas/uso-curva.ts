@@ -8,12 +8,23 @@ import { fmtTokens, fmtUSD } from '../chat/formatos'
 export type BarraCurva = { dia: string; titulo: string; altura: number; acierto: boolean }
 export type PedazoEstado = { texto: string; valor: number; tono: 'bien' | 'mal' | 'normal' }
 export type LineaMotor = { motor: string; tareas: number; error: number; tokens: number; acierto: number | null }
+/** Un grupo de tareas: las solas, o las que compartieron arena (dos agentes en el mismo encargo). */
+export type LineaGrupo = {
+  grupo: string
+  titulo: string
+  tareas: number
+  veredictos: number
+  aciertos: number
+  acierto: number | null
+  tokens: number
+}
 export type VistaCurva = {
   titulo: string
   subtitulo: string
   hayCurva: boolean
   barras: BarraCurva[]
   motores: LineaMotor[]
+  grupos: LineaGrupo[]
   fallos: { mensaje: string; veces: number }[]
   costeDelAcierto: string | null
   estados: PedazoEstado[]
@@ -23,8 +34,8 @@ export type VistaCurva = {
 /** La curva, ya contada para la vista: lo que se ve es lo que dice. */
 export function vistaCurva(curva: Curva | null): VistaCurva {
   if (!curva || curva.tareas === 0) {
-    return { titulo: 'La curva del Taller', subtitulo: 'Aún no hay tareas que medir.', hayCurva: false, barras: [], motores: [], fallos: [],
-      costeDelAcierto: null, estados: [], sinAciertos: false }
+    return { titulo: 'La curva del Taller', subtitulo: 'Aún no hay tareas que medir.', hayCurva: false, barras: [], motores: [], grupos: [],
+      fallos: [], costeDelAcierto: null, estados: [], sinAciertos: false }
   }
   // Cómo acabaron las tareas: lo que de verdad se mide, día a día.
   const estados: PedazoEstado[] = ([
@@ -48,6 +59,16 @@ export function vistaCurva(curva: Curva | null): VistaCurva {
     acierto: m.veredictos ? m.aciertosPorTarea : null,
   }))
   const coste = curva.costeDelAcierto
+  // Los grupos: dos agentes en el mismo encargo frente a uno solo. El número que faltaba.
+  const grupos: LineaGrupo[] = (curva.porGrupo ?? []).map((g) => ({
+    grupo: g.grupo,
+    titulo: g.grupo === 'arena' ? 'dos agentes en el mismo encargo' : 'un agente solo',
+    tareas: g.tareas,
+    veredictos: g.veredictos,
+    aciertos: g.aciertos,
+    acierto: g.veredictos ? g.aciertosPorVeredicto : null,
+    tokens: g.tokensPorTarea,
+  }))
   return {
     titulo: 'La curva del Taller',
     subtitulo: v.total
@@ -56,6 +77,7 @@ export function vistaCurva(curva: Curva | null): VistaCurva {
     hayCurva: true,
     barras: curva.porDia.map(barra),
     motores,
+    grupos,
     fallos: curva.fallos.slice(0, 4),
     costeDelAcierto: coste ? `${fmtTokens(coste.tokens)} tokens y ${fmtUSD(coste.coste)} por tarea que te quedaste` : null,
     estados,

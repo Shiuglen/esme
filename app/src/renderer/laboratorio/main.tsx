@@ -67,6 +67,10 @@ function PiezaCurva() {
       { motor: 'opencode', tareas: 21, terminadas: 10, error: 3, parada: 8, trabajando: 0, herramientas: 1884, tokens: 2512986, coste: 0, ficheros: 210, veredictos: 8, aciertos: 5, aciertosPorTarea: 0.238, herramientasPorTarea: 89.7, tokensPorTarea: 119666, costePorTarea: 0 },
       { motor: 'qwen-code', tareas: 22, terminadas: 11, error: 10, parada: 1, trabajando: 0, herramientas: 9, tokens: 0, coste: 0, ficheros: 3, veredictos: 3, aciertos: 2, aciertosPorTarea: 0.091, herramientasPorTarea: 0.4, tokensPorTarea: 0, costePorTarea: 0 },
     ],
+    porGrupo: [
+      { grupo: 'arena', tareas: 11, veredictos: 0, aciertos: 0, aciertosPorVeredicto: 0, tokensPorTarea: 118000 },
+      { grupo: 'solas', tareas: 35, veredictos: 11, aciertos: 7, aciertosPorVeredicto: 0.636, tokensPorTarea: 121000 },
+    ],
     fallos: [
       { mensaje: 'Internal error', veces: 7 },
       { mensaje: 'Authentication required: provider authentication required', veces: 3 },

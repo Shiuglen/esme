@@ -49,9 +49,23 @@ def test_los_fallos_son_solo_de_las_tareas_que_estan_en_error():
 
 def test_el_coste_del_accierto_solo_cuenta_las_tareas_del_veredicto():
     c = curva.curva_de(curva.carga(EJEMPLO))
-    # Hay tres veredictos positivos, pero uno llegó sin tarea: el coste es de los otros dos.
-    assert c["veredictos"]["positivos"] == 3
-    assert c["costeDelAcierto"] == {"tareas": 2, "tokens": 1550, "coste": 0.0133}
+    # Hay cuatro veredictos positivos, pero uno llegó sin tarea: el coste es de los otros tres.
+    assert c["veredictos"]["positivos"] == 4
+    assert c["costeDelAcierto"] == {"tareas": 3, "tokens": 2550, "coste": 0.0153}
+
+
+def test_los_grupos_dicen_si_dos_agentes_rindieron_mas():
+    # El número que faltaba: las tareas que compartieron arena (dos agentes en el mismo encargo)
+    # frente a las que fueron solas, con la etiqueta del creador en cada grupo.
+    c = curva.curva_de(curva.carga(EJEMPLO))
+    grupos = {g["grupo"]: g for g in c["porGrupo"]}
+    assert grupos["arena"]["tareas"] == 2
+    assert grupos["arena"]["veredictos"] == 2
+    assert grupos["arena"]["aciertos"] == 1
+    assert grupos["arena"]["aciertosPorVeredicto"] == 0.5
+    assert grupos["solas"]["tareas"] == 7
+    assert grupos["solas"]["veredictos"] == 3
+    assert grupos["solas"]["aciertosPorVeredicto"] == 0.667
 
 
 def test_sin_datos_no_hay_curva_pero_no_se_rompe(tmp_path: Path):

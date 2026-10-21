@@ -53,6 +53,22 @@ export function CurvaTaller({ curva }: { curva: Curva | null }) {
         ))}
       </div>
 
+      {vista.grupos.length > 1 && (
+        <div className="grid gap-1.5 border-t border-linea pt-3">
+          <span className="text-xs text-texto-3">dos agentes o uno solo</span>
+          {vista.grupos.map((g) => (
+            <div key={g.grupo} className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-baseline gap-4 text-xs">
+              <span className="truncate font-medium">{g.titulo}</span>
+              <span className="text-texto-3 tabular-nums">{g.tareas} tareas</span>
+              <span className="text-texto-3 tabular-nums">
+                {g.veredictos ? `${g.aciertos} de ${g.veredictos} te quedaste` : 'sin veredicto aún'}
+              </span>
+              <span className="text-texto-3 tabular-nums">{fmtTokens(g.tokens)} tokens/tarea</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {vista.costeDelAcierto && <span className="text-xs text-texto-3">{vista.costeDelAcierto}</span>}
 
       {vista.fallos.length > 0 && (

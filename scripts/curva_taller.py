@@ -212,6 +212,39 @@ def curva_de(datos: dict) -> dict:
             cuenta[limpio] += 1
     fallos_lista = [{"mensaje": k, "veces": v} for k, v in sorted(cuenta.items(), key=lambda kv: -kv[1])]
 
+    # 2b. Los grupos: las tareas que compartieron arena (dos agentes en el mismo encargo) y las
+    # que fueron solas. Es el número que faltaba: «dos agentes juntos rinden más que dos solos».
+    # Ojo con lo que este número NO dice: la arena se usa para los encargos difíciles, así que
+    # una diferencia entre los grupos puede ser que el trabajo era más duro, no que los dos
+    # agentes rinden más. Por eso se cuenta junto a los veredictos del creador y no sólo a los turnos.
+    grupos: dict[str, dict] = {}
+    tokens_por_grupo: dict[str, list[int]] = {}
+    for t in tareas:
+        nombre = "arena" if t.get("arena") else "solas"
+        g = grupos.setdefault(nombre, {"grupo": nombre, "tareas": 0, "veredictos": 0, "aciertos": 0,
+                                       "aciertosPorVeredicto": 0, "tokensPorTarea": 0})
+        g["tareas"] += 1
+        uso = t.get("uso") or {}
+        tokens = tokens_por_grupo.setdefault(nombre, [0, 0])
+        tokens[0] += int(uso.get("entrada") or 0) + int(uso.get("salida") or 0)
+        tokens[1] += 1
+    for v in veredictos:
+        t = _tarea_del_veredicto(v, tareas)
+        if not t:
+            continue
+        nombre = "arena" if t.get("arena") else "solas"
+        g = grupos.setdefault(nombre, {"grupo": nombre, "tareas": 0, "veredictos": 0, "aciertos": 0,
+                                       "aciertosPorVeredicto": 0, "tokensPorTarea": 0})
+        g["veredictos"] += 1
+        if v.get("exito"):
+            g["aciertos"] += 1
+    for g in grupos.values():
+        total = g["veredictos"]
+        g["aciertosPorVeredicto"] = redondea(g["aciertos"] / total) if total else 0
+        tok = tokens_por_grupo.get(g["grupo"])
+        g["tokensPorTarea"] = math.floor(tok[0] / tok[1] + 0.5) if tok and tok[1] else 0
+    por_grupo = sorted(grupos.values(), key=lambda g: 0 if g["grupo"] == "arena" else 1)
+
     estados: Counter[str] = Counter()
     for t in tareas:
         estados[t.get("estado") or "lista"] += 1
@@ -224,6 +257,7 @@ def curva_de(datos: dict) -> dict:
                        "negativos": sum(1 for v in veredictos if not v.get("exito"))},
         "porDia": dias,
         "porMotor": motores,
+        "porGrupo": por_grupo,
         "fallos": fallos_lista,
         "costeDelAcierto": coste_del_acierto,
     }

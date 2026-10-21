@@ -36,8 +36,7 @@ describe('la curva del Taller, contada', () => {
     expect(v.motores.every((m) => m.acierto === null)).toBe(true)
   })
 
-  it('cuenta cómo acabaron las tareas: eso es lo que se mide día a día', () => {
-    const v = vistaCurva(curva({ tareas: 46, estados: { lista: 19, error: 16, parada: 9, trabajando: 2 } }))
+  it('cuenta cómo acabaron las tareas: eso es lo que se mide día a día', () => {    const v = vistaCurva(curva({ tareas: 46, estados: { lista: 19, error: 16, parada: 9, trabajando: 2 } }))
     expect(v.estados).toEqual([
       { texto: 'terminadas', valor: 19, tono: 'bien' },
       { texto: 'con error', valor: 16, tono: 'mal' },
@@ -60,5 +59,21 @@ describe('la curva del Taller, contada', () => {
     expect(con.costeDelAcierto).toContain('1,2 mil tokens')
     const sin = vistaCurva(curva({ tareas: 2 }))
     expect(sin.costeDelAcierto).toBeNull()
+  })
+
+  it('los grupos: dos agentes en el mismo encargo, o uno solo', () => {
+    const v = vistaCurva(curva({
+      tareas: 46,
+      veredictos: { total: 7, positivos: 3, negativos: 4 },
+      porGrupo: [
+        { grupo: 'arena', tareas: 2, veredictos: 2, aciertos: 1, aciertosPorVeredicto: 0.5, tokensPorTarea: 1000 },
+        { grupo: 'solas', tareas: 44, veredictos: 5, aciertos: 2, aciertosPorVeredicto: 0.4, tokensPorTarea: 250 },
+      ],
+    }))
+    expect(v.grupos.map((g) => g.titulo)).toEqual(['dos agentes en el mismo encargo', 'un agente solo'])
+    expect(v.grupos[0]).toMatchObject({ tareas: 2, veredictos: 2, aciertos: 1, acierto: 0.5, tokens: 1000 })
+    // sin veredictos, el acierto se dice que no se sabe (no se inventa un 0)
+    const sin = vistaCurva(curva({ tareas: 3, porGrupo: [{ grupo: 'arena', tareas: 2, veredictos: 0, aciertos: 0, aciertosPorVeredicto: 0, tokensPorTarea: 10 }] }))
+    expect(sin.grupos[0].acierto).toBeNull()
   })
 })
