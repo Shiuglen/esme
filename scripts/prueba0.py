@@ -84,6 +84,22 @@ def _recall(th_or_fn, pairs, texts, budget=BUDGET):
     return float(np.mean(rec)), float(np.mean(tok))
 
 
+def _recall_hechos(th_or_fn, pairs, budget=BUDGET):
+    """La segunda lente del examen: ¿el contexto trae los HECHOS CLAVE de la respuesta?
+
+    El recall por trozo (el de arriba) pide el **trozo exacto** que el examen señaló como oro. Ésta
+    aplica la misma regla de palabras que el juez (60 % de las palabras de cada hecho) al
+    **contexto**, no a la respuesta: es más estricta, no más benévola (medido el 21-oct: 0,833
+    contra 0,929). Se reporta **junto** a la otra porque cada una ve una cosa distinta: el trozo
+    dice de dónde salió la respuesta, los hechos dicen si las palabras de la respuesta están."""
+    from daimon.bench.judge import fact_recall
+    rec = []
+    for it, q in pairs:
+        out = th_or_fn.compose(q, budget) if isinstance(th_or_fn, Thalamus) else th_or_fn(q, budget)
+        rec.append(fact_recall(it, out[0]))
+    return float(np.mean(rec))
+
+
 def cmd_train(_):
     """Entrena con el VISIBLE (originales+paráfrasis) y elige max_drop por validación cruzada en el visible."""
     home = Home(HOME)
@@ -179,7 +195,8 @@ def cmd_retrieval(a):
         for n, fn in variants.items():
             if n != "ia_sola":
                 r, t = _recall(fn, [(i, i.question) for i in its], texts)
-                out.setdefault(qset, {})[n] = {"recall": round(r, 3), "tokens": round(t)}
+                h = _recall_hechos(fn, [(i, i.question) for i in its])
+                out.setdefault(qset, {})[n] = {"recall": round(r, 3), "hechos": round(h, 3), "tokens": round(t)}
     RUNS.mkdir(parents=True, exist_ok=True)
     (RUNS / f"retrieval_{a.split}.json").write_text(json.dumps(out, indent=1, ensure_ascii=False))
     print(json.dumps(out, indent=1, ensure_ascii=False))
