@@ -114,6 +114,13 @@ describe('explicarError — los muertos hablan humano', () => {
     expect(e?.titulo).toContain('mudo')
     expect(e?.consejo).toContain('copia')
   })
+  it('la negativa no es un fallo técnico: conduce a los que sí pueden, no a reintentar', () => {
+    const x = explicarError('OpenCode se negó a hacer el encargo', 'OpenCode', '')
+    expect(x?.tipo).toBe('negativa')
+    expect(x?.titulo).toBe('OpenCode se negó')
+    expect(x?.consejo).toContain('los que sí pueden')
+    expect(x?.consejo).not.toContain('reintentar')
+  })
 })
 
 describe('archivar lo viejo', () => {

@@ -118,6 +118,24 @@ export function elegirVarios(cs: Candidato[], vs: Veredicto[], n: number, o: Opc
 /** Qué puede elegir Esme sola: lo gratis, y lo local o de pago solo si alguna vez aplicaste una tarea hecha con ello. */
 export const elegibles = (cs: Candidato[], vs: Veredicto[]) => cs.filter((c) => c.gratis || cuenta(c, vs.filter((v) => v.exito)).aciertos > 0)
 
+/** Los que sí pueden: para una tarea que un motor se negó a hacer, los candidatos instalados y despiertos,
+ *  sin el par motor+modelo que se negó, puntuados con lo aprendido (veredictos y fallos reales) y con su
+ *  motivo en prosa. La elección es del creador: esto sólo le enseña las opciones con su evidencia. */
+export function puedenHacer(o: {
+  motores: Pick<MotorTaller, 'id' | 'nombre' | 'instalado'>[]
+  opciones: Record<string, OpcionMotor[]>
+  caidos: string[]
+  veredictos: Veredicto[]
+  sin?: { motor: string; modelo: string | null }
+  n?: number
+  azar?: () => number
+}): Eleccion[] {
+  const cs = candidatosDe(o.motores, o.opciones, o.caidos).filter(
+    (c) => !(o.sin && c.motor === o.sin.motor && c.modelo === o.sin.modelo),
+  )
+  return elegirVarios(elegibles(cs, o.veredictos), o.veredictos, o.n ?? 3, { azar: o.azar })
+}
+
 /** Los motores que hoy no están listos, aprendido de su último intento real: si falló por la sesión o porque no existe en el
  *  equipo, no se ofrece en Automático y su botón dice por qué. En cuanto vuelve a funcionar una vez, vuelve a estar listo.
  *  Un límite de peticiones o un fallo de red es pasajero: no cuenta. */

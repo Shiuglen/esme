@@ -536,7 +536,17 @@ export class Taller {
       t.turnos++; t.fin = this.ahora()
       // El punto del turno: el estado de la copia tal como quedó. Deshacer un turno, no la tarea.
       await this.punto(r, t.turnos)
-      t.estado = motivo === 'cancelled' ? 'parada' : 'lista'
+      if (motivo === 'refusal') {
+        // La negativa no es un éxito: el motor habló y decidió no hacerlo. Si quedara «lista», el router
+        // lo volvería a proponer sin memoria y la tarea parecería terminada sin estarlo. Cuenta como fallo suyo.
+        t.estado = 'error'
+        t.error = `${t.motorNombre} se negó a hacer el encargo`
+        this.registrar(r, { tipo: 'fallo', mensaje: t.error })
+        r.sesion?.cerrar(); r.sesion = undefined
+        void this.aprenderEquipo()   // lo que se niega también es una lección para el equipo
+      } else {
+        t.estado = motivo === 'cancelled' ? 'parada' : 'lista'
+      }
       this.anotarTurno(r)
     } catch (e) {
       if (r.descartada || this.cerrado) return

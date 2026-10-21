@@ -72,6 +72,20 @@ describe('Taller', () => {
     expect(emisiones.filter((e) => e.canal === 'evento').every((e) => e.dato.id === tarea.id)).toBe(true)
   })
 
+  it('una negativa del motor no es un éxito: la tarea acaba en error, la lección queda y la sesión se cierra', async () => {
+    const s = sesiones(async (o) => { o.alEvento({ tipo: 'texto', texto: 'prefiero no hacerlo' }); return 'refusal' })
+    const tarea = crear(s.abrir).crear({ motor, carpeta: '/proyecto', texto: 'Algo que el motor no quiso hacer' })
+    await esperar(tarea.id, 'error')
+    const muerta = t!.lista()[0]
+    expect(muerta.estado).toBe('error')
+    expect(muerta.error).toBe('Falso se negó a hacer el encargo')
+    expect(muerta.turnos).toBe(1)
+    const ev = await t!.eventos(tarea.id)
+    expect(ev).toContainEqual(expect.objectContaining({ tipo: 'fin', motivo: 'refusal' }))
+    expect(ev).toContainEqual(expect.objectContaining({ tipo: 'fallo', mensaje: 'Falso se negó a hacer el encargo' }))
+    expect(s.cerrar).toHaveBeenCalled()   // la sesión de un motor que se negó no queda abierta
+  })
+
   it('dos tareas trabajan a la vez: cada una con su copia, su motor y sus eventos', async () => {
     // La promesa del contrato: dos tareas pueden estar «trabajando» al mismo tiempo. Aquí se
     // comprueba que de verdad conviven (ninguna espera a la otra) y que no se pisan: cada una

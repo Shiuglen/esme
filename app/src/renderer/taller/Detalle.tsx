@@ -18,6 +18,7 @@ import { Arena } from './Arena'
 import { Forja } from './Forja'
 import { VistaPrevia } from './VistaPrevia'
 import { contarLineas } from './diff'
+import type { Eleccion } from './eleccion'
 import { PastillaEstado } from './FilaMotor'
 import { describirHerramienta, type ItemLinea } from './linea'
 import { SelectorOpcion } from './Opciones'
@@ -32,13 +33,14 @@ const PERMISO: Record<string, string> = { allow_once: 'Permitir', allow_always: 
 
 
 export type Pestana = 'vivo' | 'revision' | 'previa' | 'arena'
-export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, onDescartar, onAbrir, onConfigurar, onTerminal, revision, onPestana, arena, pedida, onReencarnar, onDeshacerTurno, ahora = Date.now() }: {
+export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, onDescartar, onAbrir, onConfigurar, onTerminal, revision, onPestana, arena, pedida, onReencarnar, onDeshacerTurno, pueden, onReencarnarCon, ahora = Date.now() }: {
   ahora?: number
   t: TareaTaller; linea: ItemLinea[] | undefined; login?: string; onTerminal(): void; revision: AccionesRevision; onPestana?(p: Pestana): void
   arena?: Omit<React.ComponentProps<typeof Arena>, 'actual'>; pedida?: { p: Pestana; n: number } | null
   onSeguir(texto: string): Promise<boolean>; onResponder(opcion: string): void; onParar(): void; onDescartar(): void; onAbrir(): void; onReencarnar(): void
   onDeshacerTurno(): Promise<boolean> | void
   onConfigurar(opcion: string, valor: string): void
+  pueden?: Eleccion[]; onReencarnarCon?(e: Eleccion): void
 }) {
   const muelle = useMuelle({ stiffness: 500, damping: 40 })
   const [pestana, setPestana] = useState<Pestana>(t.arena ? 'arena' : 'vivo')
@@ -144,6 +146,19 @@ export function Detalle({ t, linea, login = '', onSeguir, onResponder, onParar, 
               <button type="button" onClick={onTerminal} className="mt-2.5 inline-flex h-8 items-center gap-1.5 rounded-full bg-acento px-3.5 text-[13px] font-medium text-sobre-acento">
                 <SquareTerminal className="size-3.5" strokeWidth={1.75} />Abrir una terminal
               </button>
+            )}
+            {x.tipo === 'negativa' && !!pueden?.length && onReencarnarCon && (
+              <div className="mt-2.5">
+                <p className="text-xs text-texto-3">Los que sí pueden (con lo que han demostrado):</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {pueden.map((e) => (
+                    <button key={`${e.motor}/${e.modelo}`} type="button" title={e.motivo} onClick={() => onReencarnarCon(e)}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-full border border-linea bg-s2 px-3 text-[13px] text-texto transition-colors hover:border-atencion/60 hover:text-atencion">
+                      {e.modeloNombre}<span className="text-xs text-texto-3">· {e.motorNombre}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )

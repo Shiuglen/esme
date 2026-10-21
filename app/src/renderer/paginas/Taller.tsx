@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import type { SeccionId } from '../shell/secciones'
-import type { TareaTaller } from '../lib/bridge'
+import { bridge, type TareaTaller, type OpcionMotor, type VeredictoTaller } from '../lib/bridge'
 import { Detalle, type Pestana } from '../taller/Detalle'
 import { FilaMotor } from '../taller/FilaMotor'
 import { useRumbo } from './Rumbo'
@@ -15,7 +15,7 @@ import { NuevaTarea } from '../taller/NuevaTarea'
 import { Terminales } from '../taller/Terminales'
 import type { useTaller } from '../taller/useTaller'
 import { activa, archivable, ESTADOS, explicarError } from '../taller/vista'
-import { caidosDe, fallosDe, noListos } from '../taller/eleccion'
+import { caidosDe, fallosDe, noListos, puedenHacer, type Eleccion } from '../taller/eleccion'
 import { cn } from '../lib/cn'
 import { useMuelle } from '../tinta/movimiento'
 import { ofrece, TIPO_AGENTE, type PeticionDeAgente } from '../lib/peticiones'
@@ -81,6 +81,14 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
     if (id) elegir(id)
   }
 
+  // La negativa no es un fallo técnico: el motor pudo y no quiso. La elección pasa al creador con evidencia:
+  // «los que sí pueden» nace de lo aprendido (veredictos tuyos + tareas que acabaron en error), no de una corazonada.
+  const reencarnarCon = async (muerta: TareaTaller, destino: Eleccion) => {
+    const texto = `Reencarnación de una tarea que ${muerta.motorNombre} se negó a hacer. ${muerta.texto}`
+    const id = await tl.crear({ motor: destino.motor, carpeta: muerta.carpeta, texto, config: { model: destino.modelo } })
+    if (id) elegir(id)
+  }
+
   // Los errores y paradas de hace más de un día se archivan: no se borran, pero dejan de llenar la fila y las cuentas
   const [verArchivadas, setVerArchivadas] = useState(false)
   const todas = useMemo(() => [...tl.tareas].sort((a, b) => Number(activa(b)) - Number(activa(a)) || b.inicio - a.inicio), [tl.tareas])
@@ -90,6 +98,30 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
   const t = pedirNuevo ? undefined : tl.tareas.find((x) => x.id === seleccion)
   const enfoque = !!t && pestana !== 'vivo'   // al revisar o comparar, la planta se recoge y el detalle gana sitio
   const rivales = t?.arena ? tl.tareas.filter((x) => x.arena === t.arena).sort((a, b) => a.inicio - b.inicio) : []
+  // Una negativa activa la elección: se cargan las opciones de los motores instalados y los veredictos una vez por tarea.
+  const negada = !!t && t.estado === 'error' && !!t.error && explicarError(t.error, t.motorNombre, '')?.tipo === 'negativa'
+  const [opcionesCargadas, setOpcionesCargadas] = useState<Record<string, OpcionMotor[]>>({})
+  const [veredictosTuyos, setVeredictosTuyos] = useState<VeredictoTaller[]>([])
+  useEffect(() => {
+    if (!negada) return
+    let vivo = true
+    const instalados = tl.motores.filter((m) => m.instalado)
+    void Promise.all([...instalados.map(async (m) => [m.id, await bridge.taller.opcionesMotor(m.id)] as const), bridge.taller.veredictos()]).then((todo) => {
+      if (!vivo) return
+      const vs = todo.at(-1) as VeredictoTaller[]
+      setOpcionesCargadas(Object.fromEntries(todo.slice(0, -1) as [string, OpcionMotor[]][]))
+      setVeredictosTuyos(vs)
+    })
+    return () => { vivo = false }
+  }, [negada, t?.id])   // eslint-disable-line react-hooks/exhaustive-deps
+  const pueden = useMemo(
+    () => (t && negada ? puedenHacer({
+      motores: tl.motores, opciones: opcionesCargadas, caidos,
+      veredictos: [...veredictosTuyos, ...fallosDe(tl.tareas)],
+      sin: { motor: t.motor, modelo: t.modelo },
+    }) : []),
+    [t, negada, opcionesCargadas, veredictosTuyos, caidos],   // eslint-disable-line react-hooks/exhaustive-deps
+  )
   // quedarse con una de la arena: las demás se descartan (veredicto negativo para su modelo) y se abre su revisión
   const quedarme = async (id: string) => {
     for (const x of rivales) if (x.id !== id) await tl.descartar(x.id)
@@ -233,6 +265,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
                     onVolverTurno: (sha, n) => tl.deshacerTurno(t.id, sha, n) }} onSeguir={(q) => tl.seguir(t.id, q)} onResponder={(o) => tl.responder(t.id, o)}
                   onParar={() => void tl.parar(t.id)} onDescartar={() => void tl.descartar(t.id)} onAbrir={() => tl.abrir(t.id)} onReencarnar={() => void reincarna(t)}
                   onDeshacerTurno={() => tl.deshacerUltimoTurno(t.id)}
+                  pueden={pueden} onReencarnarCon={(e) => { if (t) void reencarnarCon(t, e) }}
                   onConfigurar={(o, v) => void tl.configurar(t.id, o, v)} />
               ) : (
                 <NuevaTarea motores={tl.motores} noListos={sinListo} fallos={fallos} motorPedido={motorPedido} onIrMotores={() => onIr('ajustes')}
@@ -265,6 +298,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
               onVolverTurno: (sha, n) => tl.deshacerTurno(t.id, sha, n) }} onSeguir={(q) => tl.seguir(t.id, q)} onResponder={(o) => tl.responder(t.id, o)}
             onParar={() => void tl.parar(t.id)} onDescartar={() => void tl.descartar(t.id)} onAbrir={() => tl.abrir(t.id)} onReencarnar={() => void reincarna(t)}
             onDeshacerTurno={() => tl.deshacerUltimoTurno(t.id)}
+            pueden={pueden} onReencarnarCon={(e) => { if (t) void reencarnarCon(t, e) }}
             onConfigurar={(o, v) => void tl.configurar(t.id, o, v)} />
         </BottomSheet>
       )}
