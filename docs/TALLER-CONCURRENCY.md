@@ -35,6 +35,31 @@
 8. **Cada commit cuenta una historia**: el mensaje dice qué cambió y por qué, como en
    `docs/ESME.md` (esto es lo que lee el otro agente cuando lista los compañeros).
 
+## 1b. El susto del 20-oct: por qué la regla 7 es un candado
+
+**Lo que pasó**: un `git add -A` mío se llevó **209 líneas del trabajo a medias del otro
+agente** (`Paleta.tsx`) dentro de un commit titulado «Anotado en la fuente de verdad». Nada se
+perdió —el contenido estaba bien— pero **la atribución era falsa**: ese commit no era mío del
+todo, y la historia del repo mintió.
+
+**Por qué pasó**: el otro agente tenía su tarea configurada para trabajar **en la carpeta** (la
+casa), no en una copia. Así que su trabajo a medias aparece en `~/Daimon` mientras trabaja, y
+cualquier `git add -A` se lo lleva. La regla 7 («no te metas en lo que es de otro») era una
+intención; no había nada que la hiciera cumplir.
+
+**Lo que se hizo** (regla convertida en mecanismo):
+
+- `scripts/casa.sh commit` **no usa `add -A`**: sube sólo las rutas que le digas.
+- Si el árbol tiene **cambios sin subir que no son tuyos**, el commit **se niega** (sale con **76**)
+  y te dice cuáles son. Si el cerrojo está ocupado, sale con **75**. Dos códigos, dos problemas.
+- En la práctica: `git add <lo mío>` y `scripts/casa.sh commit -m "..."`.
+
+**La lección de fondo**: dos agentes en la misma casa **no** se coordinan con buenos modales; se
+coordinan con candados. Un contrato que depende de la atención se rompe en cuanto los dos tienen
+algo urgente que hacer — y siempre lo tienen.
+
+## 1c. Lo que este contrato NO resuelve (y hay que decidir)
+
 ## 2. El flujo completo de un agente (el "bucle")
 
 ```
