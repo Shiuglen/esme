@@ -19,6 +19,7 @@
 | 9 | **El comparador empareja las ventanas por parecido** | `daimon/rea.py` | «3 nuevas y 3 que se fueron» → «**1 nueva y 2 que cambiaron**» (la verdad) |
 | 10 | **La memoria no se llena de boilerplate** | `daimon/ingest.py` | 59 → 44 trozos; la puerta es por fuente |
 | 11 | **El checkpoint por turno** (el hueco que tenía MonoCode, MIT) | `app/src/main/taller/copias.ts`, `taller.ts` | 3 pruebas: el punto es un commit; volver **sólo** toca la copia |
+| 12 | **La jaula: el agente ya no hereda tus credenciales** | `app/src/main/motores/jaula.ts`, `sesion-acp.ts`, `pty-host.ts`, `taller.ts` | 8 pruebas: se esconden las que tienen forma de credencial; **pasan** las llaves del motor y las que la tarea declara; PATH y HOME intactos |
 
 ## 2. Ya estaba aplicado (y el estudio se equivocó)
 
@@ -31,7 +32,7 @@
 
 | # | Qué | El hueco, en una línea | De dónde sale |
 |---|---|---|---|
-| 14 | **La jaula: la credencial a petición** | El agente hereda **todo** el entorno: `sesion-acp.ts:33` y `:110`, `pty-host.ts:16` (`env: { ...process.env, ...o.env }`) | SPACE (Perplexity, Apache 2.0) · `@Arindam_1729` (`--pass-env`) · Deska 1.37 (cuentas aisladas) |
+| 14 | ~~**La jaula: la credencial a petición**~~ | **Hecha** (fila 12). Queda el botón en la interfaz para declararlas | SPACE (Perplexity, Apache 2.0) · `@Arindam_1729` (`--pass-env`) · Deska 1.37 (cuentas aisladas) |
 | 15 | **El coste por petición** | El Taller anota el uso **por turno**; lo que falta es por petición y que se pueda consultar | Deska (`recordTokenUsage`) |
 | 16 | **La skill con dueño y con caducidad** | El veredicto se firma y **no caduca**; tampoco hay dueño | `@mem0ai` (skill drift) · `@KanikaBK` (revisar permisos cada mes) |
 | 17 | **Los permisos se re-preguntan al cambiar** | La Tienda compara huellas (ya está); falta **preguntar** cuando una skill trae permisos nuevos | Deska 1.33: «an update adding one asks again» |
