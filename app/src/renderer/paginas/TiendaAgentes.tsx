@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { bridge } from '../lib/bridge'
 import { cn } from '../lib/cn'
 import { AGENTES_TIENDA, type AgenteTienda } from '../tinta/agentes-tienda'
+import { pide, TIPO_AGENTE, type PeticionDeAgente } from '../lib/peticiones'
 
 type Agente = { id: string; nombre: string; autor: string; descripcion: string; etiquetas: string[]; version: number; comando: string; herramientas: string[]; ejemplo?: string; deCasa: boolean }
 
@@ -146,10 +147,20 @@ function FichaAgente({ a }: { a: Agente }) {
         </p>
       )}
 
-      <button type="button" onClick={() => { toast(`«${a.nombre}» está en la Tienda: úsalo al encargar una tarea.`); }}
-        className="mt-1 inline-flex h-9 items-center justify-center gap-2 rounded-full bg-acento px-4 text-[13px] font-medium text-sobre-acento transition-[filter] hover:brightness-110">
-        Usar en el Taller
-      </button>
+      <div className="mt-1 grid gap-1.5">
+        <button type="button" onClick={() => {
+          // el Taller está en otra pantalla: se lo pide por el bus. Si no hay nadie escuchando, se avisa.
+          const peticion: PeticionDeAgente = { motor: a.id, nombre: a.nombre, que: a.ejemplo ?? '' }
+          if (pide(TIPO_AGENTE, peticion)) toast(`«${a.nombre}» te espera en el Taller.`)
+          else toast('Abre el Taller y vuelve aquí: el agente se queda elegido.', { description: 'Nadie está escuchando todavía.' })
+        }}
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-acento px-4 text-[13px] font-medium text-sobre-acento transition-[filter] hover:brightness-110">
+          Usar en el Taller
+        </button>
+        {falta && falta.length > 0 && (
+          <p className="m-0 text-center text-[11.5px] text-atencion">Te falta {falta.join(' y ')}: instálalo y vuelve.</p>
+        )}
+      </div>
     </article>
   )
 }

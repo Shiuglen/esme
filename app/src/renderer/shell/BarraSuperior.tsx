@@ -16,17 +16,19 @@ export function BarraSuperior({ seccion, estado, tema, onTema, onBuscar, paletaA
   return (
     <header className="barra-ventana flex h-12 shrink-0 items-center gap-2.5 px-3 pt-1">
       {/* piezas de vidrio líquido flotando sobre la escena, no una franja: la barra es parte de la capa de navegación */}
-      <Vidrio radio={18} className="flex h-9 items-center gap-2.5 pr-4 pl-2.5">
+      <Vidrio radio={18} className="flex h-9 shrink-0 items-center gap-2.5 pr-4 pl-2.5">
       <Firma px={22} estado={estado.pensando ? 'pensando' : 'reposo'} />
-      <span className="text-texto-3">/</span>
-      <span className="font-medium text-texto-2">{seccion}</span>
+      <span className="hidden text-texto-3 sm:inline">/</span>
+      <span className="hidden truncate font-medium text-texto-2 sm:inline">{seccion}</span>
       </Vidrio>
-      {/* el buscador y la paleta son el mismo objeto: al abrirla, este botón se estira hasta convertirse en ella */}
-      {paletaAbierta ? <span className="ml-auto h-9 w-[320px]" aria-hidden /> : (
+      {/* el buscador y la paleta son el mismo objeto: al abrirla, este botón se estira hasta convertirse en ella.
+          En una ventana estrecha no cabe el botón entero: se queda con el icono y el atajo se va. */}
+      {paletaAbierta ? <span className="ml-auto h-9 w-[320px] max-w-[42vw]" aria-hidden /> : (
         <motion.button layoutId="buscador" transition={muelle} type="button" onClick={onBuscar} style={{ borderRadius: 18 }}
-          className="ml-auto flex h-9 w-[320px] items-center gap-2 border border-linea bg-s1/50 px-3 text-[13px] text-texto-3 shadow-flotante backdrop-blur-xl transition-colors hover:text-texto-2">
-          <Search className="size-4" strokeWidth={1.5} aria-hidden />Busca o pregunta
-          <kbd className="ml-auto rounded-[5px] border border-linea bg-s1 px-1.5 py-0.5 font-sans text-[11px] text-texto-3">Ctrl K</kbd>
+          className="ml-auto flex h-9 w-[320px] max-w-[42vw] items-center gap-2 border border-linea bg-s1/50 px-3 text-[13px] text-texto-3 shadow-flotante backdrop-blur-xl transition-colors hover:text-texto-2">
+          <Search className="size-4 shrink-0" strokeWidth={1.5} aria-hidden />
+          <span className="hidden truncate min-w-0 sm:inline">Busca o pregunta</span>
+          <kbd className="ml-auto hidden shrink-0 rounded-[5px] border border-linea bg-s1 px-1.5 py-0.5 font-sans text-[11px] text-texto-3 sm:inline">Ctrl K</kbd>
         </motion.button>
       )}
       <Vidrio radio={18} className="flex h-9 items-center gap-1.5 px-1.5">

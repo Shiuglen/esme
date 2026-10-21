@@ -1,12 +1,14 @@
 // Los agentes de la Tienda: lo que la gente publica para que tu equipo trabaje con ellos.
 //
-// Un agente es un producto como una piel, pero en vez de vestirse se USA: dice cómo se lanza (el comando), con qué
-// herramientas cuenta y para qué sirve. Viene en el catálogo firmado, así que no es un comando suelto que alguien
-// te cuela: viene con la firma de Esme y con su versión.
+// Un agente es un producto como una piel, pero en vez de vestirse se USA. No duplicamos la lista de agentes: el
+// registro de ACP (main/motores/catalogo-registry.ts) ya sabe de cada uno su nombre, su repositorio y cómo se
+// instala y se lanza. Aquí solo se dice CUÁLES te interesan y POR QUÉ, para que la Tienda los presente como
+// catálogo (con su comando, sus herramientas y su ejemplo) en vez de una lista suelta.
 //
 // El contenido es DATOS, nunca código: el comando es una plantilla con {carpeta} y {tarea} que se rellenan al
 // instalar. La app no ejecuta nada sin que tú lo pidas.
 export type AgenteTienda = {
+  /** El id en el registro de ACP: el mismo que usa el Taller para lanzarlo. */
   id: string
   nombre: string
   autor: string
@@ -26,7 +28,7 @@ export const AGENTES_TIENDA: AgenteTienda[] = [
     id: 'opencode',
     nombre: 'OpenCode',
     autor: 'SST',
-    descripcion: 'El agente de terminal que lee el repo, edita ficheros y corre pruebas. El más versátil para construir.',
+    descripcion: 'El agente de terminal que lee el repo, edita ficheros y corre pruebas. El más versatile para construir.',
     etiquetas: ['código', 'terminal', 'general'],
     version: 1,
     comando: 'opencode -p "{tarea}"',
@@ -34,7 +36,7 @@ export const AGENTES_TIENDA: AgenteTienda[] = [
     ejemplo: '«Arregla el test que falla y deja la suite en verde»',
   },
   {
-    id: 'claude-code',
+    id: 'claude-acp',
     nombre: 'Claude Code',
     autor: 'Anthropic',
     descripcion: 'El agente de Anthropic para la terminal: lee, edita y explica. Fuerte con refactors grandes.',
@@ -45,7 +47,7 @@ export const AGENTES_TIENDA: AgenteTienda[] = [
     ejemplo: '«Mueve este módulo a la arquitectura nueva y deja los tests»',
   },
   {
-    id: 'codex',
+    id: 'codex-acp',
     nombre: 'Codex',
     autor: 'OpenAI',
     descripcion: 'El agente de OpenAI para la terminal. Preciso con los cambios mecánicos y con el formato.',
@@ -56,7 +58,7 @@ export const AGENTES_TIENDA: AgenteTienda[] = [
     ejemplo: '«Renombra estas funciones y actualiza las llamadas»',
   },
   {
-    id: 'gemini-cli',
+    id: 'gemini',
     nombre: 'Gemini CLI',
     autor: 'Google',
     descripcion: 'El agente de Google para la terminal. Contexto enorme: bueno para leer repos enteros.',

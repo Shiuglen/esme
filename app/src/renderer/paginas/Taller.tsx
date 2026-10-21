@@ -18,6 +18,9 @@ import { activa, archivable, ESTADOS, explicarError } from '../taller/vista'
 import { caidosDe, fallosDe, noListos } from '../taller/eleccion'
 import { cn } from '../lib/cn'
 import { useMuelle } from '../tinta/movimiento'
+import { ofrece, TIPO_AGENTE, type PeticionDeAgente } from '../lib/peticiones'
+import { useEstrecho } from '../lib/estrecho'
+import { BottomSheet } from '../ui/motion/bottom-sheet'
 import { Agenda, useAgenda } from '../taller/Agenda'
 
 function useAhora(cada: number) {
@@ -38,6 +41,10 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
   const { rumbo } = useRumbo()
   const objetivosDe = Object.fromEntries((rumbo?.objetivos ?? []).map((o) => [o.id, o.texto]))
   const [seleccion, setSeleccion] = useState<string | null>(null)
+  const [pedirNuevo, setPedirNuevo] = useState(false)   // la pantalla de encargar, abierta a propósito
+  // en una ventana estrecha el detalle no cabe al lado: se abre abajo, en una hoja que se desliza
+  const estrecho = useEstrecho(900)
+  const [hoja, setHoja] = useState(false)
   const [motorVisto, setMotorVisto] = useState<string | null>(null)
   const [motorPedido, setMotorPedido] = useState<{ id: string; n: number } | null>(null)   // pulsar un agente de la sala filtra la fila por él
   const [resaltada, setResaltada] = useState<string | null>(null)
@@ -48,6 +55,12 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
 
   // desde un aviso de fuera («Ver»): abre esa tarea
   useEffect(() => { if (foco) { setSeleccion(foco.id); void tl.cargar(foco.id) } }, [foco?.n])   // eslint-disable-line react-hooks/exhaustive-deps
+  // la Tienda pide un agente: este Taller lo recoge, lo deja elegido y abre la pantalla de encargar.
+  useEffect(() => ofrece<PeticionDeAgente>(TIPO_AGENTE, (p) => {
+    setMotorPedido({ id: p.motor, n: (motorPedido?.n ?? 0) + 1 })
+    setPedirNuevo(true)
+    toast(`«${p.nombre}» te espera: escribe qué quieres que haga.`)
+  }), [motorPedido?.n])   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (seleccion && !tl.tareas.some((t) => t.id === seleccion)) setSeleccion(null) }, [tl.tareas, seleccion])
   // Un modelo que el motor rechaza por retirado o caído no se vuelve a proponer... salvo que vuelva a funcionar.
   const caidos = useMemo(() => caidosDe(tl.tareas), [tl.tareas])
@@ -73,8 +86,8 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
   const todas = useMemo(() => [...tl.tareas].sort((a, b) => Number(activa(b)) - Number(activa(a)) || b.inicio - a.inicio), [tl.tareas])
   const archivadas = todas.filter((x) => archivable(x, ahora))
   const ordenadas = todas.filter((x) => !archivable(x, ahora))
-  const elegir = (id: string) => { setSeleccion(id); void tl.cargar(id) }
-  const t = tl.tareas.find((x) => x.id === seleccion)
+  const elegir = (id: string) => { setSeleccion(id); setPedirNuevo(false); if (estrecho) setHoja(true); void tl.cargar(id) }
+  const t = pedirNuevo ? undefined : tl.tareas.find((x) => x.id === seleccion)
   const enfoque = !!t && pestana !== 'vivo'   // al revisar o comparar, la planta se recoge y el detalle gana sitio
   const rivales = t?.arena ? tl.tareas.filter((x) => x.arena === t.arena).sort((a, b) => a.inicio - b.inicio) : []
   // quedarse con una de la arena: las demás se descartan (veredicto negativo para su modelo) y se abre su revisión
@@ -209,7 +222,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
             )}
           </div>
         </section>
-        <section aria-label={t ? 'Detalle de la tarea' : 'Nueva tarea'} className="vidrio min-h-0 overflow-hidden rounded-4 border">
+        <section aria-label={t ? 'Detalle de la tarea' : 'Nueva tarea'} className={cn('vidrio min-h-0 overflow-hidden rounded-4 border', estrecho && 'hidden')}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={t?.id ?? 'nueva'} className="h-full" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.18 }}>
               {t ? (
@@ -229,6 +242,7 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
                       const id = await tl.crear(p)
                       if (id && !primera) { primera = id; elegir(id) }
                     }
+                    if (primera) setPedirNuevo(false)   // la tarea ya está: la pantalla de encargar se cierra
                     return !!primera
                   }} />
               )}
@@ -236,6 +250,21 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
           </AnimatePresence>
         </section>
       </div>
+
+      {/* En una ventana estrecha, el detalle va en una hoja que sube desde abajo: no cabe al lado. Se arrastra
+          para ver más, y se cierra bajándola. */}
+      {estrecho && t && (
+        <BottomSheet open={hoja} onOpenChange={setHoja} snapPoints={[0.55, 0.9, 'auto']} defaultSnap={1}
+          title={t.titulo} description={t.motorNombre}>
+          <Detalle t={t} linea={tl.lineas[t.id]} onPestana={setPestana} pedida={pedida} ahora={ahora}
+            arena={rivales.length > 1 ? { tareas: rivales, lineas: tl.lineas, ahora, onVer: (id) => { elegir(id); setPedida((v) => ({ p: 'revision', n: (v?.n ?? 0) + 1 })) }, onQuedarme: quedarme, onCargar: (id) => void tl.cargar(id) } : undefined} login={login(t.motor)} onTerminal={() => setTerminal(true)}
+            revision={{ onAplicar: () => tl.aplicar(t.id, () => void tl.deshacer(t.id)), onDeshacer: () => tl.deshacer(t.id),
+              onGuardarRama: () => tl.guardarRama(t.id), onExportar: () => tl.exportar(t.id), onAbrir: () => tl.abrir(t.id) }} onSeguir={(q) => tl.seguir(t.id, q)} onResponder={(o) => tl.responder(t.id, o)}
+            onParar={() => void tl.parar(t.id)} onDescartar={() => void tl.descartar(t.id)} onAbrir={() => tl.abrir(t.id)} onReencarnar={() => void reincarna(t)}
+            onConfigurar={(o, v) => void tl.configurar(t.id, o, v)} />
+        </BottomSheet>
+      )}
+
       <Terminales abierto={terminal} onCerrar={() => setTerminal(false)} tema={tema} />
     </div>
   )

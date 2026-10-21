@@ -1,7 +1,7 @@
 // La Tienda de Esme (docs/superpowers/specs/2026-10-18-la-tienda.md), paso 1: pieles. Lo de casa (la colección de
 // lanzamiento) más el catálogo firmado de la red. Descubrir por palabras, por color o «Sorpréndeme»; probar en vivo sobre
 // tu propia Esme antes de quedártela; vestir; guardar en tu colección. Paso 2: herramientas MCP (TiendaHerramientas.tsx).
-import { Heart, Search, Shuffle, Sparkles, X } from 'lucide-react'
+import { Heart, Maximize2, Search, Shuffle, Sparkles, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { bridge } from '../lib/bridge'
@@ -18,6 +18,7 @@ import { TiendaSkills } from './TiendaSkills'
 import { TiendaModulos } from './TiendaModulos'
 import { TiendaDeseos } from './TiendaDeseos'
 import { TiendaAgentes } from './TiendaAgentes'
+import { MorphingModal } from '../ui/motion/morphing-modal'
 import { PuntoVista } from '../marca/PuntoVista'
 
 const PUNTO: Record<Familia, string> = { rojo: '#ef4444', naranja: '#f97316', amarillo: '#eab308', verde: '#22c55e', cian: '#06b6d4', azul: '#3b82f6', violeta: '#8b5cf6', rosa: '#ec4899', gris: '#9ca3af' }
@@ -27,6 +28,8 @@ export function Tienda({ tema, pieles }: { tema: Tema; pieles: Pieles }) {
   const [remotos, setRemotos] = useState<ItemTienda[]>([])
   const [origen, setOrigen] = useState<string>('')
   const [cargando, setCargando] = useState(true)
+  // el detalle de una piel, en grande: el modal que se abre desde la miniatura
+  const [detalle, setDetalle] = useState<ItemTienda | null>(null)
   useEffect(() => {
     void bridge.tienda.catalogo().then((r) => {
       setCargando(false)
@@ -126,7 +129,7 @@ export function Tienda({ tema, pieles }: { tema: Tema; pieles: Pieles }) {
         <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-5">
           {filtrados.map((i) => (
             <Ficha key={i.id} i={i} tema={tema} probando={probando?.item.id === i.id} puesta={JSON.stringify(pieles.actual) === JSON.stringify(i.piel) && !probando} nueva={i.origen === 'tienda' && !deCasa.has(i.id)}
-              guardada={coleccion.includes(i.id)} onProbar={() => probar(i)} onVestir={() => { pieles.vestir(i.piel); setProbando(null); toast.success(`Llevas «${i.piel.nombre}»`) }}
+              guardada={coleccion.includes(i.id)} onProbar={() => probar(i)} onDetalle={() => setDetalle(i)} onVestir={() => { pieles.vestir(i.piel); setProbando(null); toast.success(`Llevas «${i.piel.nombre}»`) }}
               onGuardar={() => setColeccion((c) => (c.includes(i.id) ? c.filter((x) => x !== i.id) : [...c, i.id]))} />
           ))}
           {!filtrados.length && (
@@ -153,14 +156,64 @@ export function Tienda({ tema, pieles }: { tema: Tema; pieles: Pieles }) {
           <button type="button" onClick={volver} className="inline-flex h-9 items-center rounded-full px-3 text-[13px] text-texto-2 transition-colors hover:text-texto">Volver a la mía</button>
         </div>
       )}
+
+      {/* El detalle de una piel, en grande: qué trae, con sus colores de verdad. El modal de beUI (morphing) lo abre
+          desde la miniatura y devuelve el foco al cerrarse. */}
+      <MorphingModal viewId={detalle?.id ?? null} onClose={() => setDetalle(null)} placement="center" ariaLabel="Detalle de la piel">
+        {detalle && <DetallePiel i={detalle} tema={tema} onProbar={() => { setDetalle(null); probar(detalle) }} onVestir={() => { setDetalle(null); pieles.vestir(detalle.piel); toast.success(`Llevas «${detalle.piel.nombre}»`) }} />}
+      </MorphingModal>
+    </div>
+  )
+}
+
+/** El detalle de una piel: la misma miniatura pero en grande, con la lista de lo que trae y sus colores. */
+function DetallePiel({ i, tema, onProbar, onVestir }: { i: ItemTienda; tema: Tema; onProbar(): void; onVestir(): void }) {
+  const p = i.piel, m = muestra(p, tema), t = LETRAS[p.letra.titulos]
+  const r = (b: number) => `${Math.round(b * p.forma.radio)}px`
+  const sup = PIEZAS.superficie.variantes.find((v) => v.id === p.piezas.superficie)?.nombre
+  return (
+    <div data-view={i.id} className="grid gap-5 p-6">
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_260px]">
+        {/* la piel en grande, con sus colores de verdad */}
+        <div className="relative min-h-[300px] overflow-hidden rounded-4" style={{ background: m.fondo }}>
+          <span aria-hidden className="absolute inset-0 opacity-70" style={{ background: `radial-gradient(70% 60% at 50% 35%, ${m.acento}55, transparent 70%)` }} />
+          {p.presencia !== 'ninguna' && <span aria-hidden className="absolute top-8 left-1/2 -translate-x-1/2" style={{ color: m.acento }}><PuntoVista px={64} /></span>}
+          <span className="absolute top-[168px] right-0 left-0 text-center text-[26px] leading-none" style={{ color: m.texto, fontFamily: t.titulos }}>Buenas noches.</span>
+          <span aria-hidden className="absolute right-6 bottom-5 left-6 flex h-10 items-center justify-between rounded-full px-4" style={{ background: m.superficie, border: `1px solid ${m.acento}44` }}>
+            <span className="h-2 w-1/2 rounded-full opacity-50" style={{ background: m.texto }} />
+            <span className="size-5 rounded-full" style={{ background: m.acento }} />
+          </span>
+        </div>
+        <div className="grid content-start gap-3">
+          <h2 className="m-0 font-display text-[26px] leading-tight text-texto italic">{p.nombre}</h2>
+          <p className="m-0 text-[13.5px] leading-5 text-texto-2">{i.descripcion}</p>
+          <dl className="m-0 grid gap-1.5 text-[12.5px]">
+            <div className="flex justify-between gap-3"><dt className="text-texto-3">Superficie</dt><dd className="text-texto">{sup}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-texto-3">Escena</dt><dd className="text-texto">{p.escena === 'ninguna' ? 'sin escena' : ESCENAS[p.escena].nombre}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-texto-3">Letra</dt><dd className="text-texto">{LETRAS[p.letra.titulos].nombre}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-texto-3">Navegación</dt><dd className="text-texto">{p.navegacion}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-texto-3">Autor</dt><dd className="truncate text-texto">{i.autor}</dd></div>
+          </dl>
+          {/* los colores de la piel, tal cual: para ver si el contraste te convence */}
+          <div className="flex gap-1.5">
+            {(['fondo', 'superficie', 'acento', 'texto'] as const).map((k) => (
+              <span key={k} title={`${k}: ${m[k]}`} className="size-7 rounded-2 border border-linea" style={{ background: m[k] }} />
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={onProbar} className="inline-flex h-10 flex-1 items-center justify-center rounded-full border border-linea px-4 text-[13px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">Probar en vivo</button>
+            <button type="button" onClick={onVestir} className="inline-flex h-10 flex-1 items-center justify-center rounded-full bg-acento px-4 text-[13px] font-medium text-sobre-acento">Vestir</button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
 
 // La ficha de un diseño: una Esme en miniatura vestida con él (fondo, cápsulas, presencia, texto y botón con sus colores,
 // su letra, su forma y su superficie), y lo que trae.
-function Ficha({ i, tema, probando, puesta, guardada, nueva, onProbar, onVestir, onGuardar }: {
-  i: ItemTienda; tema: Tema; probando: boolean; puesta: boolean; guardada: boolean; nueva: boolean; onProbar(): void; onVestir(): void; onGuardar(): void
+function Ficha({ i, tema, probando, puesta, guardada, nueva, onProbar, onDetalle, onVestir, onGuardar }: {
+  i: ItemTienda; tema: Tema; probando: boolean; puesta: boolean; guardada: boolean; nueva: boolean; onProbar(): void; onDetalle(): void; onVestir(): void; onGuardar(): void
 }) {
   const p = i.piel, m = muestra(p, tema), t = LETRAS[p.letra.titulos], x = LETRAS[p.letra.texto]
   const r = (b: number) => `${Math.round(b * p.forma.radio)}px`
@@ -169,7 +222,7 @@ function Ficha({ i, tema, probando, puesta, guardada, nueva, onProbar, onVestir,
   const sombra = p.piezas.superficie === 'brutal' ? `4px 4px 0 ${m.texto}` : p.piezas.superficie === 'neon' ? `0 0 16px -4px ${m.acento}` : '0 10px 24px -14px rgba(0,0,0,.6)'
   return (
     <article className={cn('vidrio group grid gap-3 rounded-4 border p-3 transition-colors', probando ? 'border-acento ring-2 ring-acento/40' : 'hover:border-linea-fuerte')}>
-      <button type="button" onClick={onProbar} aria-label={`Probar «${p.nombre}» en vivo`}
+      <button type="button" onClick={onDetalle} aria-label={`Ver el detalle de «${p.nombre}»`}
         className="relative block h-[168px] overflow-hidden text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foco" style={{ background: m.fondo, borderRadius: r(14) }}>
         <span aria-hidden className="absolute inset-0 opacity-60" style={{ background: `radial-gradient(70% 60% at 50% 35%, ${m.acento}55, transparent 70%)` }} />
         <span aria-hidden className="absolute top-2.5 left-2.5 h-4 w-16" style={{ background: m.superficie, border: borde, borderRadius: r(10), boxShadow: sombra }} />
@@ -180,6 +233,10 @@ function Ficha({ i, tema, probando, puesta, guardada, nueva, onProbar, onVestir,
         <span aria-hidden className="absolute right-5 bottom-3 left-5 flex h-8 items-center justify-between px-3" style={{ background: m.superficie, border: borde, borderRadius: r(12), boxShadow: sombra }}>
           <span className="h-1.5 w-1/2 rounded-full opacity-50" style={{ background: m.texto }} />
           <span className="size-4 rounded-full" style={{ background: m.acento }} />
+        </span>
+        {/* el detalle: qué trae esta piel, con sus colores y sus formas, en grande */}
+        <span aria-hidden className="absolute right-2.5 bottom-2.5 grid size-7 place-items-center rounded-full border border-linea/60 bg-s1/70 text-texto-2 opacity-0 backdrop-blur transition-opacity group-hover:opacity-100">
+          <Maximize2 className="size-3.5" strokeWidth={1.75} />
         </span>
       </button>
       <div className="grid gap-1 px-0.5">
