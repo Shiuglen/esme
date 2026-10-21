@@ -10,6 +10,7 @@ import { bloqueEquipo, bloqueHerencia, heredar, heredarEquipo, type Mente } from
 import { leeCurva } from './curva-io'
 import type { Curva } from './curva'
 import { errorDelProveedor, esTemporal, sesionMuerta } from './fallos'
+import { esNegativaTexto } from './negativa'
 import { leeRoles, textoConRol, type Rol } from './roles'
 import { deltaDeUso, type Estado } from './uso'
 import { otroModeloGratis } from './gratis'
@@ -67,6 +68,7 @@ type Registro = {
   ultimoEmitido: number; temporizador?: NodeJS.Timeout
   usoEscrito?: { entrada: number; salida: number; pensamiento: number; contexto: number; coste?: number }   // lo que ya llegó al Uso: los turnos anotan su delta
   usoMotor?: Estado   // lo último que reportó el motor y en qué idioma habla: el delta sale de ahí
+  textoUltimo?: string   // el último mensaje del motor del turno (los trozos del ACP se juntan): aquí mira la negativa
 }
 
 const finCubo = (ms: number) => (Math.floor(ms / MS_CUBO) + 1) * MS_CUBO
@@ -530,6 +532,8 @@ export class Taller {
         const e = await heredarEquipo(this.mente())
         if (e) mensaje = bloqueEquipo(e) + mensaje
       }
+      // Cada turno mira lo que el motor diga EN ESTE turno: el texto del anterior no mancha este.
+      r.textoUltimo = ''
       const motivo = await this.preguntar(r, mensaje)
       if (r.descartada || this.cerrado) return
       this.registrar(r, { tipo: 'fin', motivo, ms: this.ahora() - r.inicioTurno })
@@ -538,7 +542,17 @@ export class Taller {
       t.turnos++; t.fin = this.ahora()
       // El punto del turno: el estado de la copia tal como quedó. Deshacer un turno, no la tarea.
       await this.punto(r, t.turnos)
-      t.estado = motivo === 'cancelled' ? 'parada' : 'lista'
+      // La negativa, con palabras o por el motivo del ACP: no es un éxito (el motor pudo y no quiso) ni «lista».
+      const negado = motivo === 'refusal' || (motivo === 'end_turn' && esNegativaTexto(r.textoUltimo))
+      if (negado) {
+        t.estado = 'error'
+        t.error = motivo === 'refusal' ? `${t.motorNombre} se negó a hacer el encargo` : `${t.motorNombre} se negó a hacerlo`
+        this.registrar(r, { tipo: 'fallo', mensaje: t.error })
+        r.sesion?.cerrar(); r.sesion = undefined
+        void this.aprenderEquipo()   // lo que se niega también es una lección para el equipo
+      } else {
+        t.estado = motivo === 'cancelled' ? 'parada' : 'lista'
+      }
       this.anotarTurno(r)
     } catch (e) {
       if (r.descartada || this.cerrado) return
@@ -629,6 +643,9 @@ export class Taller {
     }
     this.actividad(r)
     if (t.turnos === 0 && t.primeraRespuestaMs === undefined) t.primeraRespuestaMs = Math.max(0, this.ahora() - r.inicioTurno)
+    if (e.tipo === 'texto') r.textoUltimo = (r.textoUltimo ?? '') + e.texto
+    // lo que interrumpe el mensaje (pensar, herramienta, plan) corta: lo que manda es lo ÚLTIMO que dijo
+    else if (e.tipo === 'pensamiento' || e.tipo === 'herramienta' || e.tipo === 'plan') r.textoUltimo = ''
     if (e.tipo === 'herramienta') { r.ids.add(e.id); t.herramientas = Math.max(t.herramientas, r.ids.size) }
     else if (e.tipo === 'uso') {
       // El motor manda el acumulado de su sesión, no el turno: lo que pasó es la diferencia con lo

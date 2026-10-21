@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { candidatosDe, caidosDe, elegibles, elegir, elegirVarios, fallosDe, historial, semillado, type Candidato, noListos } from './eleccion'
+import { candidatosDe, caidosDe, elegibles, elegir, elegirVarios, fallosDe, historial, puedenHacer, semillado, type Candidato, noListos } from './eleccion'
 
 const opcionModelo = (ids: string[], actual = ids[0]) => ({ id: 'model', nombre: 'Model', actual, valores: ids.map((id) => ({ id, nombre: `opencode/${id.split('/')[1]} Nombre` })) })
 const motores = [{ id: 'opencode', nombre: 'OpenCode', instalado: true }, { id: 'cline', nombre: 'Cline', instalado: true }, { id: 'gemini', nombre: 'Gemini CLI', instalado: false }]
@@ -51,6 +51,22 @@ describe('elegibles', () => {
     const vs = [{ motor: 'opencode', modelo: 'pago-bueno', exito: true }, { motor: 'opencode', modelo: 'local-malo', exito: false }]
     const r = elegibles([c('libre-free'), c('pago-bueno', false), c('local-malo', false), c('nunca', false)], vs)
     expect(r.map((x) => x.modelo)).toEqual(['libre-free', 'pago-bueno'])
+  })
+})
+
+describe('los que sí pueden (tras una negativa)', () => {
+  it('fuera el par que se negó y los caídos; lo que queda llega con su motivo, y elige el creador', () => {
+    const opciones = { opencode: [opcionModelo(['opencode/negado-free', 'opencode/otro-free'])], cline: [opcionModelo(['cline/a-free'])] }
+    const r = puedenHacer({ motores, opciones, caidos: ['opencode/otro-free'], veredictos: [], sin: { motor: 'opencode', modelo: 'opencode/negado-free' } })
+    expect(r.map((x) => x.modelo)).toEqual(['cline/a-free'])
+    expect(r[0].motivo).toContain('sin historial')
+  })
+  it('con lo aprendido: el modelo que tú aprobaste va primero y lo dice con sus números', () => {
+    const opciones = { opencode: [opcionModelo(['opencode/negado-free', 'opencode/bueno-free'])], cline: [opcionModelo(['cline/a-free'])] }
+    const vs = [...Array(4)].map(() => ({ motor: 'opencode', modelo: 'opencode/bueno-free', exito: true }))
+    const r = puedenHacer({ motores, opciones, caidos: [], veredictos: vs, sin: { motor: 'opencode', modelo: 'opencode/negado-free' }, azar: semillado(11) })
+    expect(r[0].modelo).toBe('opencode/bueno-free')
+    expect(r[0].motivo).toContain('Acertó 4 de 4')
   })
 })
 

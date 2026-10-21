@@ -58,9 +58,11 @@ export const ESTADOS: Record<TareaTaller['estado'], { texto: string; tono: 'vida
   error: { texto: 'No pudo', tono: 'peligro' },
 }
 
-export type Explicacion = { tipo: 'sesion' | 'modelo' | 'limite' | 'motor'; titulo: string; consejo: string }
+export type Explicacion = { tipo: 'negativa' | 'sesion' | 'modelo' | 'limite' | 'motor'; titulo: string; consejo: string }
 /** Traduce los errores típicos de los motores a qué pasa y qué hacer. null si no es uno conocido. */
 export function explicarError(error: string, motor: string, login: string): Explicacion | null {
+  if (/se negó (a hacer|a hacerlo)|\brefusal\b/i.test(error))
+    return { tipo: 'negativa', titulo: `${motor} se negó`, consejo: 'No es un fallo técnico: el motor pudo y no quiso, por sus reglas o su criterio. Reintentar con él no cambia nada. Abajo están los que sí pueden: elige uno y la tarea renace con el mismo encargo.' }
   if (/dejó de responder|sin señales/i.test(error))
     return { tipo: 'motor', titulo: 'El motor se quedó mudo', consejo: 'Dejó de dar señales durante mucho rato y se le dio por muerto. Lo que había hecho quedó a salvo en su copia: reencarna la tarea con otro motor (⟳ arriba).' }
   if (/auth(entication|enticate)? required|authMethods|not authenticated|unauthori[sz]ed|sign in|log ?in required/i.test(error))
