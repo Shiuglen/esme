@@ -6,7 +6,7 @@ import { Check, ChevronDown, Copy, MessageSquarePlus, Plug, Search, Trash2, Volu
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { BrainClient, Memory } from '../lib/brain'
 import { Markdown } from '../chat/Markdown'
-import { aplicarPaso } from '../chat/pasos'
+import { aplicarPaso, type PasoVisto } from '../chat/pasos'
 import { Pasos, PidePermiso } from '../chat/PasosVivos'
 import { TiraUso, type UsoSesion } from '../chat/TiraUso'
 import { cn } from '../lib/cn'
@@ -146,16 +146,35 @@ export function ChatPanel(props: { brain: BrainClient | null; onAjustes?(): void
     const history: ChatMsg[] = [...turns.filter((t) => !t.error).map((t) => ({ role: t.role, content: t.content })), { role: 'user', content: q }]
     setTurns((t) => [...t, { role: 'assistant', content: '', who: `${current?.label ?? provider} · ${model}`, ...meta }])
     let dicho = ''
+    // El texto y el pensado llegan a trozos: pintar en cada trozo repinta toda la conversación
+    // miles de veces (y copia la lista de turnos entera). Se acumula y se pinta **una vez por
+    // fotograma**, como la línea del Taller.
+    let pensado = ''
+    let pasos: PasoVisto[] = []
+    let pintado = 0
+    const pintar = () => {
+      pintado = 0
+      setTurns((t) => {
+        const c = [...t]
+        const u = c[c.length - 1]
+        c[c.length - 1] = { ...u, content: dicho, pensamiento: pensado, pasos }
+        return c
+      })
+    }
+    const pedirPintado = () => { if (!pintado) pintado = requestAnimationFrame(pintar) }
     // el panorama de tu mente viaja solo con la memoria activada (son datos tuyos, como la memoria)
     const s = bridge.chat(provider, model, history, memory, undefined, { panorama: conMemoria ? props.panorama : undefined, voz: porVoz })
     s.onUsage((u) => setSesion((v) => ({ costeUSD: v.costeUSD + u.costeUSD, ultimaEntrada: u.entrada, memoria: memTokens })))
-    s.onChunk((d) => { dicho += d; setFase(null); if (porVoz) props.onVivo?.(dicho, false); return setTurns((t) => { const c = [...t]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + d }; return c }) })
+    s.onChunk((d) => { dicho += d; setFase(null); if (porVoz) props.onVivo?.(dicho, false); pedirPintado() })
     // El pensado viaja en su hilo: los que piensan antes de hablar no dejan el chat mudo.
-    s.onPensamiento((d) => setTurns((t) => { const c = [...t]; const u = c[c.length - 1]; c[c.length - 1] = { ...u, pensamiento: (u.pensamiento ?? '') + d }; return c }))
+    s.onPensamiento((d) => { pensado += d; pedirPintado() })
     // las manos: cada paso (buscar, leer, encargar…) se ve en la respuesta; lo que actúa espera tu permiso
-    s.onPaso((p) => { setFase(null); setTurns((t) => { const c = [...t]; const u = c[c.length - 1]; c[c.length - 1] = { ...u, pasos: aplicarPaso(u.pasos ?? [], p) }; return c }) })
+    s.onPaso((p) => { setFase(null); pasos = aplicarPaso(pasos, p); pedirPintado() })
     s.onPermiso((p) => { void sonar('aviso'); setPidiendo({ ...p, responder: (r) => { s.responder(p.id, r); setPidiendo(null) } }) })
     s.onDone(() => {
+      // Lo último se pinta ya: si no, el fotograma pendiente puede llegar después del final.
+      if (pintado) { cancelAnimationFrame(pintado); pintado = 0 }
+      pintar()
       setBusy(false); setFase(null); setPidiendo(null); void sonar(dicho.trim() ? 'respuesta' : 'error')
       if (porVoz) props.onVivo?.(dicho.trim() || 'El modelo respondió vacío. Prueba con otro modelo.', true, memoryOn && props.brain && !permiso ? { motor: current?.label ?? provider, id: provider } : undefined)
       if (porVoz && dicho.trim()) props.onHablar?.(dicho)

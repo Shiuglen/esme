@@ -81,6 +81,10 @@ if (!fotograma.current) fotograma.current = requestAnimationFrame(vaciar)
 taller en segundo plano —que es lo normal mientras se trabaja en otra cosa— la cola **crecía sin
 límite**: cada evento de cada tarea se quedaba esperando a un fotograma que no llegaba.
 
+Y no es una suposición: el propio repo lo avisa (`CLAUDE.md`): *«la ventana de Electron tapada en el
+escritorio no recibe fotogramas (Wayland)»*. La app se usa en el escritorio, con la ventana al lado
+—o tapada—, así que el caso no es raro: es el normal.
+
 La prueba está en el disco: el registro de la sesión viva pesa **12 MB** en JSONL
 (`~/.config/daimon-app/taller/qxntxkie.jsonl`), y el taller entero, **305 MB**.
 
