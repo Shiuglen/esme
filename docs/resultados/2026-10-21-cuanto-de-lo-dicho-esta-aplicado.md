@@ -22,6 +22,9 @@
 | 12 | **La jaula: el agente ya no hereda tus credenciales** | `app/src/main/motores/jaula.ts`, `sesion-acp.ts`, `pty-host.ts`, `taller.ts` | 8 pruebas: se esconden las que tienen forma de credencial; **pasan** las llaves del motor y las que la tarea declara; PATH y HOME intactos |
 | 13 | **El veredicto envejece (la skill con caducidad)** | `app/src/main/skills/veredicto.ts`, `ipc.ts` | 2 pruebas: a los 90 días se marca caducado y **sigue valiendo** («el juez pone el listón, nunca lo quita») |
 | 14 | **La presión de recursos se ve** (lo que faltó cuando la app murió de memoria) | `app/src/main/uso/presion.ts`, `chat.ts` | 5 pruebas: los roles, la suma, el aviso del swap · y la herramienta `ver_presion` en manos del agente |
+| 15 | **Lo visual, por fin** (hasta aquí todo era de dentro: al reiniciar, la app se veía igual porque no había cambiado ni un píxel) | `app/src/renderer/paginas/Apariencia.tsx`, `MandoVista.tsx` | el muro de escenas: la miniatura con su nombre **debajo** y la marca en la elegida (antes el rótulo tapaba la imagen); las piezas se ven **sobre un fondo** (el vidrio y el papel ya se distinguen); los grupos de opciones son un grupo de botones, no una barra rota; «Mi ecuación» → «A tu gusto»; en el Mando la presencia de Esme es el punto final del saludo y el saludo baja a tamaño legible |
+| 16 | **El renderer deja de comerse la memoria** (la app moría de memoria: el plan no era el bug) | `app/src/renderer/taller/ventana.ts`, `taller/Detalle.tsx` | medido: **2,6 GB en 5 min** y 119 % de CPU · ahora se pinta una ventana de 250 elementos (de 17.000) y `Item` es `memo` · 5 pruebas |
+| 17 | **La jaula no rompe al motor** (la bookkeeping de npm no es una credencial) | `app/src/main/motores/jaula.ts`, `taller/taller.ts` | 22 variables `npm_*` dejan de tragarse; las llaves de npm sí se esconden; el error del motor no se llena de ruido |
 
 ## 2. Ya estaba aplicado (y el estudio se equivocó)
 
@@ -57,9 +60,12 @@
 
 - **El botón en la interfaz** del «deshacer turno»: hoy está en el código, el IPC y el puente, pero
   **no hay un botón en la vista**. Es lo siguiente.
-- **La medición en la app en marcha**: el arreglo del renderer y el del atlas no están medidos con
-  la app real, porque **reiniciar la app termina esta sesión** (el agente del Taller cuelga de
-  Electron).
+- **La medición en la app en marcha**: hecha (21-oct, 12:54) — la app se reconstruyó y se reinició
+  con el código nuevo y se midió en vivo. **Y salió mal**: el renderer subía a **2,6 GB en cinco
+  minutos** (RSS del proceso `--type=renderer`), a **119 % de CPU**, y seguía subiendo. Reiniciar no
+  lo arregla: el plan no era el bug, era el síntoma. **Ya está arreglado** (fila 16): la línea en
+  vivo pintaba **entera** —17.000 elementos por fotograma—; ahora pinta una ventana de 250 y se
+  para si quien mira sube a leer. *Pendiente de re-medir con la app reiniciada.*
 - **El número de la caché**: la práctica está puesta (prefijo constante) pero **no se ha medido el
   acierto de caché** de Esme contra el proveedor. Con la cifra de X (76 % de la factura) se puede
   hacer el mismo examen que el del banco del espejo.

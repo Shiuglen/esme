@@ -287,11 +287,14 @@ export class Taller {
   }
 
   /** Si la jaula escondió credenciales, el error lo dice: si la tarea falló por una llave que no
-   *  vio, el motivo tiene que estar a la vista (si no, el fallo es una adivinanza). */
+   *  vio, el motivo tiene que estar a la vista (si no, el fallo es una adivinanza).
+   *  Los nombres se acotan: con treinta llaves escondidas el mensaje deja de explicar nada. */
   private conLaJaula(error: string, t: Tarea): string {
     const ocultas = t.credenciales?.ocultas ?? []
     if (!ocultas.length) return error
-    return `${error} — La jaula escondió ${ocultas.length === 1 ? 'una credencial' : `${ocultas.length} credenciales`} (${ocultas.join(', ')}). Si esta tarea la necesita, declárala en la opción «credenciales».`
+    const n = ocultas.length
+    const algunas = ocultas.slice(0, 3).join(', ') + (n > 3 ? ` y ${n - 3} más` : '')
+    return `${error} — La jaula escondió ${n === 1 ? 'una credencial' : `${n} credenciales`} (${algunas}). Si esta tarea la necesita, declárala en la opción «credenciales».`
   }
 
   /** El punto del turno: un commit en la rama de la tarea.
