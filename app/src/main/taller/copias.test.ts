@@ -30,10 +30,21 @@ describe('copias', () => {
     await commitCopia(c, 'Esme: turno 2')
     const puntos = await puntosCopia(c)
     expect(puntos.map((p) => p.mensaje)).toEqual(['Esme: turno 1', 'Esme: turno 2'])
+    expect(puntos.map((p) => p.turno)).toEqual([1, 2])
     await volverAlPunto(c, puntos[0].sha)
     expect(await readFile(join(c.ruta, 'a.txt'), 'utf8')).toBe('turno uno\n')
     // y la carpeta del usuario, intacta
     expect(await readFile(join(repo, 'a.txt'), 'utf8')).toBe('uno\ndos\ntres\n')
+  })
+
+  it('un commit que no es un punto de turno no cuenta como turno', async () => {
+    const c = await crearCopia({ carpeta: repo, id: 'puntos2', dirCopias })
+    await writeFile(join(c.ruta, 'a.txt'), 'turno uno\n')
+    await commitCopia(c, 'Esme: turno 1')
+    await writeFile(join(c.ruta, 'b.txt'), 'otra cosa\n')
+    await commitCopia(c, 'Esme: guardado en la rama')
+    const puntos = await puntosCopia(c)
+    expect(puntos.map((p) => p.turno)).toEqual([1, null])
   })
 
   it('crea un worktree en una rama esme/<id> desde HEAD sin tocar la carpeta original', async () => {

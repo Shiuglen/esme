@@ -229,8 +229,10 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
                 <Detalle t={t} linea={tl.lineas[t.id]} onPestana={setPestana} pedida={pedida} ahora={ahora}
                   arena={rivales.length > 1 ? { tareas: rivales, lineas: tl.lineas, ahora, onVer: (id) => { elegir(id); setPedida((v) => ({ p: 'revision', n: (v?.n ?? 0) + 1 })) }, onQuedarme: quedarme, onCargar: (id) => void tl.cargar(id) } : undefined} login={login(t.motor)} onTerminal={() => setTerminal(true)}
                   revision={{ onAplicar: () => tl.aplicar(t.id, () => void tl.deshacer(t.id)), onDeshacer: () => tl.deshacer(t.id),
-                    onGuardarRama: () => tl.guardarRama(t.id), onExportar: () => tl.exportar(t.id), onAbrir: () => tl.abrir(t.id) }} onSeguir={(q) => tl.seguir(t.id, q)} onResponder={(o) => tl.responder(t.id, o)}
+                    onGuardarRama: () => tl.guardarRama(t.id), onExportar: () => tl.exportar(t.id), onAbrir: () => tl.abrir(t.id),
+                    onVolverTurno: (sha, n) => tl.deshacerTurno(t.id, sha, n) }} onSeguir={(q) => tl.seguir(t.id, q)} onResponder={(o) => tl.responder(t.id, o)}
                   onParar={() => void tl.parar(t.id)} onDescartar={() => void tl.descartar(t.id)} onAbrir={() => tl.abrir(t.id)} onReencarnar={() => void reincarna(t)}
+                  onDeshacerTurno={() => tl.deshacerUltimoTurno(t.id)}
                   onConfigurar={(o, v) => void tl.configurar(t.id, o, v)} />
               ) : (
                 <NuevaTarea motores={tl.motores} noListos={sinListo} fallos={fallos} motorPedido={motorPedido} onIrMotores={() => onIr('ajustes')}
@@ -259,8 +261,10 @@ export function Taller({ tema, tl, foco, onIr }: { tema: string; tl: ReturnType<
           <Detalle t={t} linea={tl.lineas[t.id]} onPestana={setPestana} pedida={pedida} ahora={ahora}
             arena={rivales.length > 1 ? { tareas: rivales, lineas: tl.lineas, ahora, onVer: (id) => { elegir(id); setPedida((v) => ({ p: 'revision', n: (v?.n ?? 0) + 1 })) }, onQuedarme: quedarme, onCargar: (id) => void tl.cargar(id) } : undefined} login={login(t.motor)} onTerminal={() => setTerminal(true)}
             revision={{ onAplicar: () => tl.aplicar(t.id, () => void tl.deshacer(t.id)), onDeshacer: () => tl.deshacer(t.id),
-              onGuardarRama: () => tl.guardarRama(t.id), onExportar: () => tl.exportar(t.id), onAbrir: () => tl.abrir(t.id) }} onSeguir={(q) => tl.seguir(t.id, q)} onResponder={(o) => tl.responder(t.id, o)}
+              onGuardarRama: () => tl.guardarRama(t.id), onExportar: () => tl.exportar(t.id), onAbrir: () => tl.abrir(t.id),
+                    onVolverTurno: (sha, n) => tl.deshacerTurno(t.id, sha, n) }} onSeguir={(q) => tl.seguir(t.id, q)} onResponder={(o) => tl.responder(t.id, o)}
             onParar={() => void tl.parar(t.id)} onDescartar={() => void tl.descartar(t.id)} onAbrir={() => tl.abrir(t.id)} onReencarnar={() => void reincarna(t)}
+                  onDeshacerTurno={() => tl.deshacerUltimoTurno(t.id)}
             onConfigurar={(o, v) => void tl.configurar(t.id, o, v)} />
         </BottomSheet>
       )}

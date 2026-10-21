@@ -137,6 +137,22 @@ export function useTaller() {
       toast('Deshecho: tu carpeta está como antes.')
       return true
     },
+    /** Los puntos de la tarea: un commit por turno, con su número. */
+    puntos: async (id: string) => bridge.taller.puntos(id),
+    /** Volver a un punto: la copia queda como estaba al terminar ese turno. */
+    deshacerTurno: async (id: string, sha: string, n: number) => {
+      const r = await bridge.taller.deshacerTurno(id, sha)
+      if (!r.ok) { toast.error(r.error); return false }
+      toast(`La copia vuelve al turno ${n}`, { description: 'Tu carpeta no se toca.' })
+      return true
+    },
+    /** Deshacer el último turno, sin tener que saber qué punto es cuál. */
+    deshacerUltimoTurno: async (id: string) => {
+      const r = await bridge.taller.deshacerUltimoTurno(id)
+      if (!r.ok) { toast.error(r.error); return false }
+      toast(`Deshecho el último turno: la copia vuelve al turno ${r.turno}`, { description: 'Tu carpeta no se toca.' })
+      return true
+    },
     guardarRama: async (id: string) => {
       const r = await bridge.taller.guardarRama(id)
       if (!r.ok) { toast.error(r.error); return false }
