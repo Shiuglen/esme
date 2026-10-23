@@ -204,3 +204,50 @@ def test_el_audio_largo_se_acepta(ctx_voz):
     pcm = np.zeros(16000 * 300, dtype="<f4").tobytes()   # 5 minutos: antes se rechazaba a los 3
     r = c.post("/voz/oir", content=pcm, headers={**H, "Content-Type": "application/octet-stream"})
     assert r.status_code == 200 and r.json()["texto"] == "texto oído"
+
+
+# La puerta del Taller: lo que llega de fuera espera a que el creador lo apruebe.
+
+TEXTO = "Repasa los enlaces rotos del blog y deja la lista anotada en una nota."
+
+
+def test_la_puerta_guarda_y_avisa_pero_no_crea_tarea(ctx):
+    c, bus, _ = ctx
+    r = c.post("/taller/encargo", json={"texto": TEXTO}, headers=H)
+    assert r.status_code == 201
+    x = r.json()
+    assert x["estado"] == "pendiente" and x["origen"] == "fuera" and x["titulo"] == TEXTO
+    ev = bus.history[-1]
+    assert ev["type"] == "taller:encargo" and ev["id"] == x["id"]
+    # y la cola dice lo que espera:
+    pend = c.get("/taller/encargo", headers=H).json()["encargos"]
+    assert [y["id"] for y in pend] == [x["id"]]
+
+
+def test_la_puerta_se_negara_a_un_encargo_tonto(ctx):
+    c, _, _ = ctx
+    r = c.post("/taller/encargo", json={"texto": "muy corto"}, headers=H)
+    assert r.status_code == 400 and "detalle" in r.json()["error"]
+
+
+def test_la_respuesta_del_creador_cierra_el_encargo_y_avisa(ctx):
+    c, bus, _ = ctx
+    x = c.post("/taller/encargo", json={"texto": TEXTO}, headers=H).json()
+    r = c.post(f"/taller/encargo/{x['id']}", json={"decision": "aceptado"}, headers=H)
+    assert r.json()["estado"] == "aceptado"
+    assert c.get("/taller/encargo", headers=H).json()["encargos"] == []
+    assert bus.history[-1]["type"] == "taller:encargo-respuesta"
+
+
+def test_dos_respuestas_para_lo_mismo_no_se_dan(ctx):
+    c, _, _ = ctx
+    x = c.post("/taller/encargo", json={"texto": TEXTO}, headers=H).json()
+    c.post(f"/taller/encargo/{x['id']}", json={"decision": "rechazado"}, headers=H)
+    r = c.post(f"/taller/encargo/{x['id']}", json={"decision": "aceptado"}, headers=H)
+    assert r.status_code == 400 and "ya tiene su respuesta" in r.json()["error"]
+
+
+def test_un_id_de_nadie_se_dice_como_es(ctx):
+    c, _, _ = ctx
+    r = c.post("/taller/encargo/enc-desconocido", json={"decision": "aceptado"}, headers=H)
+    assert r.status_code == 400 and "ningún encargo" in r.json()["error"]

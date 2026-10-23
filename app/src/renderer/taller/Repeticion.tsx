@@ -236,3 +236,65 @@ export function TarjetaNecesidad({ n, onFabricar }: { n: Necesidad; onFabricar(e
     </div>
   )
 }
+
+// La puerta del Taller: los encargos que llegaron de fuera (por la mente) y esperan aquí a que
+// el creador los apruebe. La cola vive en la mente; la tarea la crea el Taller si aceptas, con
+// el acceso apretado (ediciones) y sin ninguna credencial. Rechazar también es responder.
+import { DoorOpen } from 'lucide-react'
+import type { EncargoFuera } from '../lib/bridge'
+
+/** «Hace N» en palabras cortas: la cola dice cuándo entró cada encargo (ts en segundos, como la mente). */
+export function haceDe(ts: number, ahora: number): string {
+  const s = Math.max(0, Math.round(ahora - ts))
+  if (s < 90) return `hace ${s} s`
+  const m = Math.round(s / 60)
+  if (m < 90) return `hace ${m} min`
+  const h = Math.round(m / 60)
+  if (h < 36) return `hace ${h} h`
+  return `hace ${Math.round(h / 24)} días`
+}
+
+/** Los encargos de fuera que esperan tu respuesta: se ven con el panel «Nueva tarea» abierto.
+ *  Devuelve la lista y el `quitar` para cuando el creador ya respondió a uno (local, sin re-preguntar). */
+export function useEncargosFuera(): [EncargoFuera[], (id: string) => void] {
+  const [lista, setLista] = useState<EncargoFuera[]>([])
+  useEffect(() => {
+    let vivo = true
+    void bridge.mente.tallerEncargos()
+      .then((r) => { if (vivo) setLista(r.filter((x) => x.estado === 'pendiente')) })
+      .catch(() => { if (vivo) setLista([]) })
+    return () => { vivo = false }
+  }, [])
+  const quitarFueraNow = (id: string) => setLista((v) => v.filter((x) => x.id !== id))
+  return [lista, quitarFueraNow]
+}
+
+/** La tarjeta de un encargo de fuera: de dónde llegó, qué pide, y la decisión del creador. */
+export function TarjetaEncargoFuera({ e, ahora, onAprobar, onRechazar }: {
+  e: EncargoFuera; ahora: number; onAprobar(e: EncargoFuera): void; onRechazar(e: EncargoFuera): void
+}) {
+  return (
+    <div className="group grid content-start gap-1.5 rounded-3 border border-linea-fuerte/40 bg-s1/60 p-3.5 text-left">
+      <span className="flex items-center gap-2">
+        <span className="grid size-7 place-items-center rounded-2 bg-acento-velo text-acento">
+          <DoorOpen className="size-4" strokeWidth={1.75} />
+        </span>
+        <span className="text-[13.5px] font-medium text-texto">{e.titulo}</span>
+      </span>
+      <span className="text-[11px] text-texto-3">
+        Encargo de fuera · {haceDe(e.ts, ahora)} · llega con acceso «ediciones» y sin credenciales
+      </span>
+      <span className="line-clamp-3 text-[12.5px] leading-snug text-texto-2" title={e.texto}>{e.texto}</span>
+      <span className="mt-1 flex gap-2">
+        <button type="button" onClick={() => onAprobar(e)}
+          className="w-fit rounded-full border border-linea px-2.5 py-1 text-[11.5px] text-texto-2 transition-colors hover:border-linea-fuerte hover:text-texto">
+          Aprobar y arrancar
+        </button>
+        <button type="button" onClick={() => onRechazar(e)}
+          className="w-fit rounded-full border border-linea px-2.5 py-1 text-[11.5px] text-texto-3 transition-colors hover:border-linea-fuerte hover:text-texto">
+          Rechazar
+        </button>
+      </span>
+    </div>
+  )
+}

@@ -311,13 +311,13 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
   ipcMain.handle('taller:instalarMotor', (_e, id: unknown) => instalarMotor(id))
   ipcMain.handle('taller:lista', () => t.lista())
   ipcMain.handle('taller:eventos', async (_e, id: unknown) => (idValido(id) ? t.eventos(id).catch(() => []) : []))
-  ipcMain.handle('taller:crear', async (_e, p: { motor?: unknown; carpeta?: unknown; texto?: unknown; config?: unknown; arena?: unknown; acceso?: unknown; rol?: unknown; objetivo?: unknown } | null) => {
+  ipcMain.handle('taller:crear', async (_e, p: { motor?: unknown; carpeta?: unknown; texto?: unknown; config?: unknown; arena?: unknown; acceso?: unknown; rol?: unknown; objetivo?: unknown; origen?: unknown } | null) => {
     const config = p ? configValida(p.config) : undefined
-    if (!p || config === null || (p.arena !== undefined && !idValido(p.arena)) || !textoValido(p.texto) || !(p.carpeta === null || (typeof p.carpeta === 'string' && p.carpeta.length > 0))) return entrada
+    if (!p || config === null || (p.arena !== undefined && !idValido(p.arena)) || !textoValido(p.texto) || !(p.carpeta === null || (typeof p.carpeta === 'string' && p.carpeta.length > 0)) || (p.origen !== undefined && !textoCorto(p.origen))) return entrada
     const motor = await elegirMotor(p.motor)
     if ('error' in motor) return { ok: false, error: motor.error }
     const rol = rolValido(p.rol) ? t.roles().find((r) => r.id === p.rol) ?? null : null
-    try { return { ok: true, tarea: t.crear({ motor, carpeta: p.carpeta, texto: p.texto, config, ...(typeof p.arena === 'string' ? { arena: p.arena } : {}), ...(accesoValido(p.acceso) ? { acceso: p.acceso } : {}), ...(rol ? { rol } : {}), ...(typeof p.objetivo === 'string' && p.objetivo ? { objetivo: p.objetivo } : {}) }) } } catch (e) { return { ok: false, error: mensaje(e) } }
+    try { return { ok: true, tarea: t.crear({ motor, carpeta: p.carpeta, texto: p.texto, config, ...(typeof p.arena === 'string' ? { arena: p.arena } : {}), ...(accesoValido(p.acceso) ? { acceso: p.acceso } : {}), ...(rol ? { rol } : {}), ...(typeof p.objetivo === 'string' && p.objetivo ? { objetivo: p.objetivo } : {}), ...(typeof p.origen === 'string' && p.origen ? { origen: p.origen } : {}) }) } } catch (e) { return { ok: false, error: mensaje(e) } }
   })
   ipcMain.handle('taller:roles', () => t.roles())
   ipcMain.handle('taller:seguir', (_e, id: unknown, texto: unknown) => (idValido(id) && textoValido(texto) ? accion(() => t.seguir(id, texto)) : entrada))

@@ -17,10 +17,19 @@ def test_ofrece_lo_que_sabe_hacer_y_nada_mas():
     assert "sueno" in ids
     memoria = next(s for s in c["skills"] if s["id"] == "memoria")
     assert "recall" in memoria["x-esme"]["herramientas"]
-    # no se promete lo que no hay: encargar tareas al Taller desde fuera aún no existe
-    assert "taller" not in ids
-    rutas = [r for s in c["skills"] for r in s.get("x-esme", {}).get("http", [])]
-    assert not any("taller" in r or "tarea" in r for r in rutas)
+    # la puerta del Taller existe hoy: entra en la tarjeta, y con su regla visible
+    puerta = next(s for s in c["skills"] if s["id"] == "taller")
+    rutas = puerta["x-esme"]["http"]
+    assert any("POST /taller/encargo" in r for r in rutas)
+    # y no promete lo que NO hay: desde fuera la tarea no se crea, la aprueba el creador
+    assert "creador" in puerta["description"]
+
+
+def test_la_puerta_no_dice_que_cree_tareas_sola():
+    """El que la tarjeta nombre el Taller no le quita su regla: sin el creador, nada arranca."""
+    c = agent_card("http://127.0.0.1:47321")
+    puerta = next(s for s in c["skills"] if s["id"] == "taller")
+    assert "NO" in puerta["description"] or "no crea" in puerta["description"]
 
 
 def test_todo_lo_prometido_es_local():

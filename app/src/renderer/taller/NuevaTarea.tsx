@@ -7,14 +7,14 @@ import { cuandoDe, fraseCuando, type OpcionCuando } from './cuando'
 import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
 import { useEffect, useMemo, useState } from 'react'
-import { bridge, type MotorTaller, type OpcionMotor, type AccesoTarea, type Repeticion } from '../lib/bridge'
+import { bridge, type MotorTaller, type OpcionMotor, type AccesoTarea, type Repeticion, type EncargoFuera } from '../lib/bridge'
 import type { Rol } from '../../main/taller/roles'
 import { cn } from '../lib/cn'
 import { candidatosDe, elegibles, elegir, elegirVarios, historial, type Eleccion, type Veredicto } from './eleccion'
 import { configInicial, nombreValor, SelectorOpcion } from './Opciones'
 import { Bicho } from '../marca/SerVista'
 import { Oficios } from './Oficios'
-import { TarjetaNecesidad, TarjetaRepeticion, EditorSkill, useNecesidades, useRepeticiones } from './Repeticion'
+import { TarjetaNecesidad, TarjetaRepeticion, TarjetaEncargoFuera, EditorSkill, useNecesidades, useRepeticiones, useEncargosFuera } from './Repeticion'
 import { useMuelle } from '../tinta/movimiento'
 
 const leer = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(`esme:taller:${k}`); return v === null ? d : (JSON.parse(v) as T) } catch { return d } }
@@ -41,6 +41,7 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
   const [todas, setTodas] = useState<Record<string, OpcionMotor[]> | null>(null)
   // lo que el creador repite: la mente lo ve y lo propone (no se crea nada solo)
   const repetidas = useRepeticiones()
+  const [fuera, quitarFuera] = useEncargosFuera()
   // lo que falta: herramientas que el equipo echa de menos (el fallo se repitió)
   const necesidades = useNecesidades()
   // la receta que se está escribiendo: una repetición convertida en skill (la escribe el creador)
@@ -102,6 +103,19 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
   useEffect(() => { void bridge.mente.rumbo().then((r) => setObjetivos(r.objetivos.filter((o) => o.estado === 'activo').map((o) => ({ id: o.id, texto: o.texto })))).catch(() => setObjetivos([])) }, [])
   const [objetivo, setObjetivo] = useState('')
   const listo = auto || arena ? todas !== null && candidatos.length > 0 : !!actual && opciones !== null
+  /** La petición que este panel haría con un encargo dado (el motor de la vista, la carpeta y el acceso).
+   *  En arena no sirve: la puerta no entra en competiciones. `null` si no hay motor de verdad. */
+  const peticionPara = (txt: string, o: { acceso?: AccesoTarea; origen?: string; objetivo?: string } = {}): Peticion | null => {
+    if (arena) return null
+    if (auto) {
+      const e = elegir(candidatos, pasado)
+      if (!e) return null
+      return { motor: e.motor, carpeta, texto: txt, config: { model: e.modelo }, acceso: o.acceso ?? acceso, ...(o.origen ? { origen: o.origen } : {}), ...(o.objetivo ? { objetivo: o.objetivo } : {}) }
+    }
+    if (!actual) return null
+    const elegida = Object.fromEntries((opciones ?? []).filter((x) => x.id === 'model' || x.id === 'mode').map((x) => [x.id, config[x.id] ?? x.actual]))
+    return { motor: actual.id, carpeta, texto: txt, config: { ...config, ...elegida }, acceso: o.acceso ?? acceso, ...(o.origen ? { origen: o.origen } : {}), ...(o.objetivo ? { objetivo: o.objetivo } : {}) }
+  }
   const empezar = async () => {
     const q = texto.trim()
     if (!q || enviando || !listo) return
@@ -112,14 +126,12 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
       const elegidos = oficios.length ? oficios : roles.slice(0, 2).map((r) => r.id)
       peticiones = rivales.map((r, i) => ({ motor: r.motor, carpeta, texto: q, config: { model: r.modelo }, arena: id, acceso,
         ...(elegidos.length ? { rol: elegidos[i % elegidos.length] } : {}), ...(objetivo ? { objetivo } : {}) }))
-    } else if (auto) {
-      const e = elegir(candidatos, pasado)!
-      peticiones = [{ motor: e.motor, carpeta, texto: q, config: { model: e.modelo }, acceso, ...(objetivo ? { objetivo } : {}) }]
-      toast(`Esme eligió ${e.motorNombre} con ${corto(e)}`, { description: e.motivo })
     } else {
-      // Lo que ves es lo que se usa: se envía siempre el valor mostrado de cada selector (el motor puede cambiarlo al abrir).
-      const elegida = Object.fromEntries((opciones ?? []).filter((o) => o.id === 'model' || o.id === 'mode').map((o) => [o.id, config[o.id] ?? o.actual]))
-      peticiones = [{ motor: actual!.id, carpeta, texto: q, config: { ...config, ...elegida }, acceso, ...(objetivo ? { objetivo } : {}) }]
+      // Lo que ves es lo que se usa: la misma petición que la puerta de fuera construiría, con el motor de la vista.
+      const p = peticionPara(q, { objetivo })
+      if (!p) { setEnviando(false); return }
+      if (auto) { const e = elegir(candidatos, pasado)!; toast(`Esme eligió ${e.motorNombre} con ${corto(e)}`, { description: e.motivo }) }
+      peticiones = [p]
     }
     if (regla && peticiones[0]) {
       // programado: la agenda lo lanzará a su hora como una tarea normal
@@ -130,6 +142,25 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
     setEnviando(false)
   }
   const nombreCarpeta = carpeta?.split(/[\\/]/).filter(Boolean).pop()
+  /** La aprobación de un encargo de fuera: tarea con la puerta apretada (ediciones, sin credenciales).
+   *  La decisión a la cola llega DESPUÉS de crear: si la tarea no arranca, el encargo sigue esperando. */
+  const aprobarFuera = async (e: EncargoFuera) => {
+    const p = peticionPara(e.texto, { acceso: 'ediciones', origen: 'fuera' })
+    if (!p) { toast.error('Elige un motor (o deja «auto») para poder arrancar el encargo de fuera.'); return }
+    if (!await onCrear([p])) return
+    quitarFuera(e.id)
+    try {
+      await bridge.mente.tallerEncargoResponder(e.id, 'aceptado')
+      toast('Encargo aceptado', { description: 'La tarea está en marcha con acceso «ediciones» y sin ninguna credencial.' })
+    } catch (err) { toast.error(err instanceof Error ? err.message : 'la mente no respondió') }
+  }
+  const rechazarFuera = async (e: EncargoFuera) => {
+    try {
+      await bridge.mente.tallerEncargoResponder(e.id, 'rechazado')
+      quitarFuera(e.id)
+      toast('Encargo rechazado', { description: 'Se lo contó a la cola; nadie lo creará.' })
+    } catch (err) { toast.error(err instanceof Error ? err.message : 'la mente no respondió') }
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-y-auto px-6 pt-6 pb-5">
@@ -275,6 +306,20 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
               {repetidas.map((r) => <TarjetaRepeticion key={`${r.titulo}-${r.desde}`} r={r} onElegir={setTexto} onConvertir={setReceta} />)}
             </div>
           )}
+        </section>
+      )}
+      {fuera.length > 0 && (
+        <section aria-label="Encargos de fuera" className="mt-5 grid gap-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-[13px] font-medium text-texto">Encargos de fuera</span>
+            <span className="text-[12px] text-texto-3">Llegaron por tu mente a la puerta del Taller. Tú decides si entran.</span>
+          </div>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2.5">
+            {fuera.map((e) => (
+              <TarjetaEncargoFuera key={e.id} e={e} ahora={Date.now() / 1000}
+                onAprobar={aprobarFuera} onRechazar={rechazarFuera} />
+            ))}
+          </div>
         </section>
       )}
       {instalados.length > 0 && !texto && necesidades.length > 0 && (

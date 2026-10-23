@@ -70,6 +70,16 @@ export type Repeticion = { titulo: string; veces: number; terminos: string[]; ej
 export type BorradorSkill = { nombre: string; descripcion: string; cuerpo: string }
 /** Una herramienta que el equipo echa de menos: la Forja puede fabricarla. */
 export type Necesidad = { titulo: string; fallo: string; veces: number; motores: string[]; herramienta: string; encargos: string[] }
+/** Un encargo que llegó de fuera y espera a que el creador lo apruebe (la puerta del Taller). */
+export type EncargoFuera = {
+  id: string
+  ts: number
+  titulo: string
+  texto: string
+  origen: string
+  estado: 'pendiente' | 'aceptado' | 'rechazado'
+  respondido: number | null
+}
 export type BrainInfo = { url: string | null; estado: EstadoMente }
 export type ProviderView = { id: string; label: string; local: boolean; needsKey: boolean; hasKey: boolean; retainsData: boolean | 'depends'; defaultModel?: string }
 export type AgentView = { id: string; label: string; installed: boolean; memory: boolean; note?: string }
@@ -139,6 +149,9 @@ type ElectronApi = {
     /** Qué cambió entre dos versiones del programa. */
     espejoComparar(ruta: string, contra: string): Promise<ResultadoMente<Espejo & { texto: string }>>
     necesidad(): Promise<ResultadoMente<{ necesidades: Necesidad[]; total: number; informe: string }>>
+    /** La puerta del Taller: encargos que llegaron de fuera y esperan tu aprobación. */
+    tallerEncargos(): Promise<ResultadoMente<EncargoFuera[]>>
+    tallerEncargoResponder(id: string, decision: 'aceptado' | 'rechazado'): Promise<ResultadoMente<EncargoFuera>>
     memoria(id: string): Promise<ResultadoMente<Memoria>>
     oir(pcm: ArrayBuffer, idioma: string): Promise<ResultadoMente<{ texto: string }>>
     decir(texto: string): Promise<ResultadoMente<ArrayBuffer>>
@@ -207,7 +220,7 @@ type ElectronApi = {
     metodosEntrada(id: string): Promise<{ ok: true; metodos: MetodoEntrada[]; actual: string | null } | { ok: false; error: string }>
     entrar(id: string, metodo: string | null): Promise<{ ok: boolean; error?: string; terminal?: boolean }>
     instalarMotor(id: string): Promise<InstalarMotor>; onInstalacion(fn: (p: { id: string; trozo?: string; listo?: boolean }) => void): () => void
-    crear(p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: AccesoTarea; rol?: string }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }>
+    crear(p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: AccesoTarea; rol?: string; origen?: string }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }>
     seguir(id: string, texto: string): Promise<ResultadoTaller>; responder(id: string, opcion: string): Promise<ResultadoTaller>
     parlamentar(p: { texto: string; carpeta: string | null; relevos: { rol: string; motor: string }[]; acceso?: AccesoTarea }): Promise<ResultadoParlamento>
     vistaPrevia(id: string): Promise<{ ok: true; url: string } | { ok: false; error: string }>; cerrarVista(id: string): Promise<ResultadoTaller>
@@ -266,6 +279,10 @@ export const bridge = {
     espejo: async (ruta: string, motivo: string) => dato(isElectron() ? window.daimon!.mente.espejo(ruta, motivo) : solo<Espejo>()),
     espejoComparar: async (ruta: string, contra: string) => dato(isElectron() ? window.daimon!.mente.espejoComparar(ruta, contra) : solo<Espejo & { texto: string }>()),
     necesidad: async () => dato(isElectron() ? window.daimon!.mente.necesidad() : datoWeb((c) => c.necesidad())),
+    // La puerta del Taller: lo que llegó de fuera por la mente, y la respuesta del creador.
+    tallerEncargos: async () => dato(isElectron() ? window.daimon!.mente.tallerEncargos() : datoWeb((c) => c.encargosDeFuera())),
+    tallerEncargoResponder: async (id: string, decision: 'aceptado' | 'rechazado') =>
+      dato(isElectron() ? window.daimon!.mente.tallerEncargoResponder(id, decision) : datoWeb((c) => c.responderEncargo(id, decision))),
     memoria: async (id: string) => dato(isElectron() ? window.daimon!.mente.memoria(id) : datoWeb((c) => c.memoria(id))),
     oir: async (pcm: ArrayBuffer, idioma: string) => dato(isElectron() ? window.daimon!.mente.oir(pcm, idioma) : datoWeb((c) => c.oir(pcm, idioma))),
     decir: async (texto: string) => dato(isElectron() ? window.daimon!.mente.decir(texto) : datoWeb((c) => c.decir(texto))),

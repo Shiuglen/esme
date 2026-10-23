@@ -35,6 +35,7 @@ export type Tarea = {
   actividadMs: number   // dónde acaba el último cubo: sin eventos nuevos, la interfaz desplaza la micrográfica sola
   arena?: string   // las tareas que compiten con el mismo encargo comparten este id
   rol?: string     // el oficio del motor en esa arena (constructor, revisor, probador…)
+  origen?: string  // de dónde salió el encargo: vacío (el creador), 'fuera' (la puerta de la mente)
   acceso?: Acceso   // cuánto puede hacer sin preguntarte (taller/acceso.ts); las antiguas, sin campo, preguntan todo
   objetivo?: string   // el objetivo del rumbo al que sirve esta tarea (id del objetivo en la mente)
   credenciales?: { vistas: string[]; ocultas: string[] }   // la jaula: qué credenciales ve el agente y cuáles no
@@ -179,7 +180,7 @@ export class Taller {
     }
   }
 
-  crear(p: { motor: MotorElegido; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: Acceso; rol?: Rol; objetivo?: string; parche?: string }): Tarea {
+  crear(p: { motor: MotorElegido; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: Acceso; rol?: Rol; objetivo?: string; parche?: string; origen?: string }): Tarea {
     let id = nuevoId()
     while (this.registros.has(id)) id = nuevoId()
     const titulo = (p.texto.split('\n').find((l) => l.trim()) ?? '').trim().slice(0, 120)
@@ -189,7 +190,7 @@ export class Taller {
       ...(p.rol ? { rol: p.rol.nombre } : {}),
       estado: 'preparando', copia: null, inicio: this.ahora(), turnos: 0, herramientas: 0, cambios: null,
       uso: { entrada: 0, salida: 0, pensamiento: 0 }, permiso: null, actividad: new Array(CUBOS).fill(0), actividadMs: 0, opciones: [], modelo: null,
-      acceso: p.acceso ?? 'ediciones', ...(p.objetivo ? { objetivo: p.objetivo } : {}) }
+      acceso: p.acceso ?? 'ediciones', ...(p.objetivo ? { objetivo: p.objetivo } : {}), ...(p.origen ? { origen: p.origen } : {}) }
     tarea.actividadMs = finCubo(tarea.inicio)
     const r = this.registroNuevo(tarea, false)
     r.motor = p.motor; r.config = { ...p.config }

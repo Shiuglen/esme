@@ -1,7 +1,7 @@
 // Lo que el creador repite: lo que dice la tarjeta y qué puede hacer con ella.
 import { describe, expect, it, vi } from 'vitest'
 import type { Necesidad, Repeticion } from '../lib/bridge'
-import { encargoNecesidad, fraseNecesidad, fraseRepeticion, nombreValido, sePuedeUsar } from './Repeticion'
+import { encargoNecesidad, fraseNecesidad, fraseRepeticion, haceDe, nombreValido, sePuedeUsar } from './Repeticion'
 
 // El editor habla con la app por el puente; en esta prueba el puente no hace nada.
 vi.mock('../lib/bridge', () => ({ bridge: { skills: { catalogo: async () => ({ skills: [], agentes: [] }) }, mente: { repeticiones: async () => ({ repeticiones: [] }), necesidad: async () => ({ necesidades: [] }) } } }))
@@ -97,5 +97,16 @@ describe('el editor de la receta (pintado de verdad)', () => {
     // y avisa si el nombre no puede ser una carpeta
     const malo = renderToStaticMarkup(React.createElement(EditorSkill, { r: { ...r, borrador: { ...r.borrador!, nombre: 'con espacio' } }, onCerrar: () => {} }))
     expect(malo).toContain('Sólo letras, números, guiones y puntos')
+  })
+})
+
+describe('la puerta del Taller (encargos de fuera)', () => {
+  it('haceDe lo dice en palabras cortas: s, min, h, días (segundos, como los da la mente)', () => {
+    const ahora = 1_700_000_000
+    expect(haceDe(ahora - 20, ahora)).toBe('hace 20 s')
+    expect(haceDe(ahora - 5 * 60, ahora)).toBe('hace 5 min')
+    expect(haceDe(ahora - 4 * 3_600, ahora)).toBe('hace 4 h')
+    expect(haceDe(ahora - 2 * 86_400, ahora)).toBe('hace 2 días')
+    expect(haceDe(ahora + 1, ahora)).toBe('hace 0 s')   // el reloj del otro lado nunca se fió
   })
 })

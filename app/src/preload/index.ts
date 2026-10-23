@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld('daimon', {
     espejoComparar: (ruta: string, contra: string) => ipcRenderer.invoke('mente:espejo:comparar', ruta, contra),
     repeticiones: () => ipcRenderer.invoke('mente:repeticiones'),
     necesidad: () => ipcRenderer.invoke('mente:necesidad'),
+    tallerEncargos: () => ipcRenderer.invoke('mente:tallerEncargos'),
+    tallerEncargoResponder: (id: string, decision: string) => ipcRenderer.invoke('mente:tallerEncargoResponder', id, decision),
     memoria: (id: string) => ipcRenderer.invoke('mente:memoria', id),
     oir: (pcm: ArrayBuffer, idioma: string) => ipcRenderer.invoke('mente:oir', pcm, idioma),
     decir: (texto: string) => ipcRenderer.invoke('mente:decir', texto),

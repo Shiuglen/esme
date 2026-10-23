@@ -48,6 +48,17 @@ export type Necesidad = {
 /** Las herramientas que faltan: la mente lo deduce de los fallos. */
 export type Necesidades = { necesidades: Necesidad[]; total: number; informe: string }
 
+/** Un encargo que llegó de fuera y espera a que el creador lo apruebe (la puerta del Taller). */
+export type EncargoFuera = {
+  id: string
+  ts: number
+  titulo: string
+  texto: string
+  origen: string
+  estado: 'pendiente' | 'aceptado' | 'rechazado'
+  respondido: number | null
+}
+
 /** Un fallo del cerebro, siempre con la misma forma (nunca una excepción suelta de fetch). */
 export type FalloCerebro = { ok: false; error: string }
 
@@ -77,6 +88,8 @@ export const RUTAS = {
   equipo: '/equipo',
   repeticiones: '/repeticiones',
   necesidad: '/necesidad',
+  tallerPendientes: '/taller/encargo',
+  tallerRespuesta: '/taller/encargo/{id}',
 } as const
 
 const MS = 10_000
@@ -145,6 +158,16 @@ export class ClienteCerebro {
   /** Las herramientas que el equipo echa de menos, deducidas de los fallos. */
   async necesidad(): Promise<Necesidades> {
     return this.llamar<Necesidades>(RUTAS.necesidad)
+  }
+
+  /** La puerta del Taller: los encargos que llegaron de fuera y esperan tu aprobación. */
+  async encargosDeFuera(): Promise<EncargoFuera[]> {
+    return this.llamar<{ encargos: EncargoFuera[] }>(RUTAS.tallerPendientes).then((r) => r.encargos)
+  }
+
+  /** La respuesta de la mente a un encargo de fuera; la tarea, si aceptas, la crea el Taller. */
+  async responderEncargo(id: string, decision: 'aceptado' | 'rechazado'): Promise<EncargoFuera> {
+    return this.llamar<EncargoFuera>(RUTAS.tallerRespuesta.replace('{id}', encodeURIComponent(id)), { method: 'POST', body: JSON.stringify({ decision }) })
   }
 
   /** El Tálamo compone el contexto con presupuesto: lo que entra en el prompt. */

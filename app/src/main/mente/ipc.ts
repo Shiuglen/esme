@@ -45,6 +45,13 @@ export function registerMente(o: Opciones) {
   ipcMain.handle('mente:repeticiones', () => conMente((c) => c.repeticiones()))
   // Las herramientas que el equipo echa de menos: lo que falló y se repitió.
   ipcMain.handle('mente:necesidad', () => conMente((c) => c.necesidad()))
+  // La puerta del Taller: encargos que llegaron de fuera y esperan tu aprobación (la creación
+  // la hace el Taller, no la mente: aquí sólo se pregunta y se contesta).
+  ipcMain.handle('mente:tallerEncargos', () => conMente((c) => c.encargosDeFuera()))
+  ipcMain.handle('mente:tallerEncargoResponder', (_e, id: unknown, decision: unknown) =>
+    (typeof id === 'string' && id.startsWith('enc-') && (decision === 'aceptado' || decision === 'rechazado')
+      ? conMente((c) => c.responderEncargo(id, decision))
+      : Promise.resolve({ ok: false as const, error: 'La decisión es aceptado o rechazado, y el id es de la cola.' })))
   ipcMain.handle('mente:memoria', (_e, id: unknown) => conMente((c) => c.memoria(String(id ?? ''))))
   ipcMain.handle('mente:oir', (_e, pcm: unknown, idioma: unknown) => conMente((c) => c.oir(pcm as ArrayBuffer, String(idioma ?? 'es'))))
   ipcMain.handle('mente:decir', (_e, texto: unknown) => conMente((c) => c.decir(String(texto ?? ''))))

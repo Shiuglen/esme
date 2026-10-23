@@ -12,9 +12,9 @@ Lo que ofrece Esme de verdad hoy:
   navegador de la app detrás (MCP).
 - **sueño**: la mente ordena su memoria, aprende de las tareas del Taller y prepara el día.
 - **voz**: el oído y la voz de Esme, en el equipo, sin ir a la nube.
-
-Lo que **no** ofrece todavía (y por eso no está en la tarjeta): encargar tareas al Taller desde
-fuera. Está en camino; la tarjeta no promete lo que no hay.
+- **taller**: la puerta para encargar tareas desde fuera. La cola guarda el encargo (24 h de vida,
+  5 por hora); nunca crea una tarea: lo aprueba el creador desde la app, y lo aceptado corre con
+  acceso limitado y sin credenciales (daimon/taller_cola.py).
 """
 from __future__ import annotations
 
@@ -73,6 +73,19 @@ def agent_card(url_base: str, version: str = VERSION) -> dict:
                 "tags": ["memoria", "proactividad"],
                 "examples": ["Ordena lo que sabes y avísame de lo importante."],
                 "x-esme": {"http": ["/sueno", "/orquesta", "/atlas", "/repeticiones", "/necesidad", "/equipo"]},
+            },
+            {
+                "id": "taller",
+                "name": "La puerta del Taller",
+                "description": ("Encargar una tarea al Taller de Esme desde fuera: el encargo entra en una cola "
+                                "local con su hora y su origen, y lo aprueba el creador desde la app. "
+                                "Desde aquí NO se crea ninguna tarea: la decisión es del creador. "
+                                "Lo aceptado corre con acceso limitado («ediciones») y sin ninguna credencial."),
+                "tags": ["taller", "agentes", "colaboracion", "aprobado-por-el-creador"],
+                "examples": [
+                    "Pide a Esme que repase los enlaces rotos de la web mañana. Lo verá el creador y lo aprobará.",
+                ],
+                "x-esme": {"http": ["POST /taller/encargo", "GET /taller/encargo", "POST /taller/encargo/{id}"]},
             },
             {
                 "id": "voz",

@@ -215,7 +215,9 @@ def test_analizar_usa_rea_con_la_version_fijada(tmp_path, monkeypatch):
     visto = _rea_falso(monkeypatch, evidencia=_evidencia())
     ev = rea.analizar(app)
     assert ev["evidence_id"] == "ev_123"
-    assert visto["cmd"][0] in ("rea", "npx")
+    # el comando puede ser el binario instalado (en el PATH o en ~/.local/bin) o npx con la
+    # versión fijada: lo que se fija es la versión, no el sitio donde está el binario
+    assert visto["cmd"][0] == "npx" or Path(visto["cmd"][0]).name == "rea"
     if visto["cmd"][0] == "npx":
         assert f"rea-agents@{rea.VERSION}" in visto["cmd"]
     assert "--format" in visto["cmd"] and "json" in visto["cmd"]

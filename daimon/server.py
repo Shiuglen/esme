@@ -308,6 +308,40 @@ def create_app(home: Home, token: str, allowed_hosts: list[str] | None = None, v
         from .necesidad import necesidad_de
         return JSONResponse(await locked(necesidad_de)(home))
 
+    @mcp.custom_route("/taller/encargo", methods=["POST"])
+    async def taller_encargo(req: Request):
+        """La puerta del Taller: lo que llega de fuera espera aquí a que el creador lo apruebe.
+
+        Guarda el encargo con su hora y su origen y avisa por el bus; NUNCA crea la tarea:
+        el Taller es del creador y la decisión es suya, desde la app.
+        """
+        from .taller_cola import ErrPuerta, entrar
+        b = await req.json()
+        try:
+            x = await locked(entrar)(home, b.get("texto"), titulo=b.get("titulo"), origen=str(b.get("origen", "fuera")))
+        except ErrPuerta as e:
+            return JSONResponse({"error": str(e)}, 400)
+        bus.publish({"type": "taller:encargo", "id": x["id"], "titulo": x["titulo"]})
+        return JSONResponse(x, 201)
+
+    @mcp.custom_route("/taller/encargo", methods=["GET"])
+    async def taller_encargos(_: Request):
+        """Lo que sigue esperando respuesta del creador (lo caducado ya no está)."""
+        from .taller_cola import pendientes
+        return JSONResponse({"encargos": await locked(pendientes)(home)})
+
+    @mcp.custom_route("/taller/encargo/{id}", methods=["POST"])
+    async def taller_encargo_respuesta(req: Request):
+        """La respuesta del creador: 'aceptado' o 'rechazado'. Lo aceptado lo crea la app, no la mente."""
+        from .taller_cola import ErrPuerta, responder
+        b = await req.json()
+        try:
+            x = await locked(responder)(home, req.path_params["id"], str(b.get("decision", "")))
+        except ErrPuerta as e:
+            return JSONResponse({"error": str(e)}, 400)
+        bus.publish({"type": "taller:encargo-respuesta", "id": x["id"], "estado": x["estado"]})
+        return JSONResponse(x)
+
     @mcp.custom_route("/equipo", methods=["POST"])
     async def equipo(req: Request):
         """Lo que la mente aprende del equipo: cada veredicto del creador es una lección."""
