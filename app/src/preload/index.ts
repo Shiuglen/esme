@@ -56,6 +56,7 @@ contextBridge.exposeInMainWorld('daimon', {
     busqueda: () => ipcRenderer.invoke('herramientas:busqueda'), ponerBusqueda: (o: unknown) => ipcRenderer.invoke('herramientas:ponerBusqueda', o),
   },
   ajustes: { alCerrar: () => ipcRenderer.invoke('ajustes:alCerrar'), ponerAlCerrar: (v: string) => ipcRenderer.invoke('ajustes:ponerAlCerrar', v) },
+  presion: { ahora: () => ipcRenderer.invoke('uso:presion'), parar: (pid: number) => ipcRenderer.invoke('uso:parar', pid) },
   ventana: { plataforma: process.platform, colores: (c: { fondo: string; simbolos: string }) => ipcRenderer.send('ventana:colores', c),
     // el tamaño de una piel: el zoom de verdad de la ventana (como Ctrl +), entre 85 % y 120 %
     zoom: (f: number) => webFrame.setZoomFactor(Math.min(1.2, Math.max(0.85, f))) },

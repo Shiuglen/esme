@@ -27,6 +27,17 @@ export type EncargoForja = { slug: string; necesidad: string; instalada?: boolea
 export type ConectadaVista = { ficha: Ficha; activa: boolean; faltan: string[] }
 type ResultadoConexion = { ok: true; acciones: number; aviso?: string; sesion?: boolean } | { ok: false; error: string }
 export type AlCerrar = 'auto' | 'siempre' | 'nunca'
+/** La casa, medida: los procesos que Esme enciende (la app, el cerebro, los agentes) con su peso. */
+export type PresionVista = {
+  ts: number
+  procesos: { pid: number; rol: string; rssMB: number; cpu: number; parable: boolean }[]
+  totalMB: number
+  libresMB: number
+  swapUsadaMB: number
+  swapLibreMB: number
+  texto: string
+}
+export type ResultadoParar = { ok: true; rol: string } | { ok: false; error: string }
 export type ProgramadoVisto = Programado & { proxima: number | null }
 import type { Consumo, Presupuesto, RegistroUso } from '../../main/uso/registro'
 import type { UsoExterno as UsoExternoMain } from '../../main/uso/externo'
@@ -149,6 +160,7 @@ type ElectronApi = {
     busqueda(): Promise<{ brave: boolean; searxng: string }>; ponerBusqueda(o: { brave?: string; searxng?: string }): Promise<ResultadoTaller>
   }
   ajustes: { alCerrar(): Promise<AlCerrar>; ponerAlCerrar(v: AlCerrar): Promise<ResultadoTaller> }
+  presion: { ahora(): Promise<PresionVista>; parar(pid: number): Promise<ResultadoParar> }
   ventana: { plataforma: string; colores(c: { fondo: string; simbolos: string }): void; zoom?(f: number): void }
   providers: { list(): Promise<ProviderView[]>; models(id: string): Promise<{ ok: boolean; models?: string[]; error?: string }> }
   keys: { status(): Promise<{ secure: boolean; backend: string }>; set(id: string, v: string): Promise<unknown>; remove(id: string): Promise<unknown> }
@@ -309,6 +321,10 @@ export const bridge = {
   ajustes: {
     alCerrar: async (): Promise<AlCerrar> => (isElectron() ? window.daimon!.ajustes.alCerrar() : 'auto'),
     ponerAlCerrar: async (v: AlCerrar): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.ajustes.ponerAlCerrar(v) : { ok: false, error: 'Solo en la app.' }),
+  },
+  presion: {
+    ahora: async (): Promise<PresionVista> => (isElectron() ? window.daimon!.presion.ahora() : { ts: 0, procesos: [], totalMB: 0, libresMB: 0, swapUsadaMB: 0, swapLibreMB: 0, texto: '' }),
+    parar: async (pid: number): Promise<ResultadoParar> => (isElectron() ? window.daimon!.presion.parar(pid) : { ok: false, error: 'Solo en la app.' }),
   },
   mode: (): 'electron' | 'web' => (isElectron() ? 'electron' : 'web'),
   ventana: () => (isElectron() ? window.daimon!.ventana : null),

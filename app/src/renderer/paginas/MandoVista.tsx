@@ -33,7 +33,8 @@ import { RumboEditor, RumboResumen, useRumbo } from './Rumbo'
 import type { SeccionId } from '../shell/secciones'
 import type { EstadoMente } from '../lib/bridge'
 import { estadoDelDia } from './mando-vivo'
-import { CalendarClock, Hammer, Plug } from 'lucide-react'
+import { CalendarClock, CircleStop, Hammer, Plug } from 'lucide-react'
+import { filasPresion, fraseCasa, textoConfirmarParado, usePresion } from './presion'
 import { usePiezas } from '../tinta/movimiento'
 
 const saludo = (h = new Date().getHours()) => (h < 6 ? 'Buenas noches' : h < 13 ? 'Buenos días' : h < 20 ? 'Buenas tardes' : 'Buenas noches')
@@ -195,8 +196,8 @@ export function Mando({ onSeccion, presencia = 'orbe', sitio = { izquierda: 240,
         </div>
       </div>
 
-      {/* «Ahora»: tu equipo, lo próximo, tus manos y lo último que pasó */}
-      <section aria-label="Ahora" className="absolute right-8 grid grid-cols-[1.4fr_1fr_0.8fr_1.4fr] gap-x-8 border-t border-linea/70 pt-4" style={{ left: Math.max(sitio.izquierda, 96) + 24, bottom: Math.max(24, sitio.abajo) }}>
+      {/* «Ahora»: tu equipo, lo próximo, tus manos, la casa y lo último que pasó */}
+      <section aria-label="Ahora" className="absolute right-8 grid grid-cols-[1.4fr_1fr_0.8fr_0.9fr_1.4fr] gap-x-8 border-t border-linea/70 pt-4" style={{ left: Math.max(sitio.izquierda, 96) + 24, bottom: Math.max(24, sitio.abajo) }}>
         <div className="grid min-w-0 content-start gap-2">
           <p className="m-0 text-[12px] text-texto-3">Tu equipo</p>
           <div className="flex flex-wrap gap-x-4 gap-y-2">
@@ -219,6 +220,7 @@ export function Mando({ onSeccion, presencia = 'orbe', sitio = { izquierda: 240,
           <p className="m-0 flex items-center gap-1.5 text-[12px] text-texto-3"><Plug className="size-3.5" strokeWidth={1.75} />Tus manos</p>
           <p className="m-0 text-[13px] text-texto-2">{manos.conectadas ? `${manos.conectadas} herramientas` : 'Buscar, leer, encargar'}{manos.forjadas ? <span className="ml-1 inline-flex items-center gap-1 text-acento"><Hammer className="size-3" />{manos.forjadas} forjadas</span> : null}</p>
         </button>
+        <LaCasa />
         <div className="grid min-w-0 content-start gap-2">
           <p className="m-0 text-[12px] text-texto-3">Lo último</p>
           {diarioHoy.slice(0, 2).map((e) => (
@@ -229,6 +231,62 @@ export function Mando({ onSeccion, presencia = 'orbe', sitio = { izquierda: 240,
           {!diarioHoy.length && <span className="text-[13px] text-texto-3">Tranquilo: nada nuevo en 24 h.</span>}
         </div>
       </section>
+    </div>
+  )
+}
+
+// La casa: los procesos que Esme enciende, con su peso. El que se desboca se mira y se suelta;
+// el resto (la app, el cerebro) no se toca: pararlo es apagar a Esme.
+function LaCasa() {
+  const { p, error } = usePresion(true)
+  const [abierto, setAbierto] = useState(false)
+  const [pidAvisado, setPidAvisado] = useState<number | null>(null)
+  const parar = async (pid: number, rol: string) => {
+    if (pidAvisado !== pid) { setPidAvisado(pid); setTimeout(() => setPidAvisado((x) => (x === pid ? null : x)), 4000); return }
+    setPidAvisado(null)
+    const r = await bridge.presion.parar(pid)
+    if (r.ok) toast.success(`Parado el ${r.rol} (pid ${pid})`, { description: 'La memoria que se suelte es la del agente, no la del historial.' })
+    else toast.error(r.error)
+  }
+  const desbocada = (p?.totalMB ?? 0) > 12_000 || (p !== null && p.swapLibreMB < 512)
+  return (
+    <div className="relative grid min-w-0 content-start gap-2">
+      <button type="button" onClick={() => setAbierto((v) => !v)} className="grid min-w-0 content-start gap-2 text-left">
+        <p className="m-0 flex items-center gap-1.5 text-[12px] text-texto-3"><CalendarClock className="size-3.5" strokeWidth={1.75} />La casa</p>
+        <p className={cn('m-0 truncate text-[13px]', desbocada ? 'text-atencion' : 'text-texto-2')}>
+          {error ? 'No se pudo medir' : p ? fraseCasa(p) : 'Midiendo…'}
+        </p>
+      </button>
+      <AnimatePresence>
+        {abierto && p && (
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
+            className="absolute bottom-full left-0 mb-2 w-72 rounded-3 border border-linea/70 bg-fondo p-3.5 shadow-xl">
+            <div className="grid gap-2">
+              <p className="m-0 text-[12px] text-texto-3">{p.texto}</p>
+              <div className="grid gap-1">
+                {filasPresion(p).map((x) => (
+                  <div key={x.pid} className="grid grid-cols-[1fr_auto_auto_w-5] items-center gap-x-2 text-[12.5px]">
+                    <p className="m-0 truncate text-texto-2" title={x.rol}>{x.rol} <span className="text-texto-3">· pid {x.pid}</span></p>
+                    <p className="m-0 w-16 text-right text-[11.5px] text-texto-3">{x.rssMB} MB</p>
+                    <p className="m-0 w-10 text-right text-[11.5px] text-texto-3">{x.cpu} %</p>
+                    <span className="grid w-5 justify-end">
+                      {!x.parable ? (
+                        <span title={textoConfirmarParado(x.rol, false)}>·</span>
+                      ) : (
+                        <button type="button" title={textoConfirmarParado(x.rol, pidAvisado === x.pid)} onClick={() => void parar(x.pid, x.rol)}
+                          className={cn('transition-colors hover:text-atencion', pidAvisado === x.pid ? 'text-atencion' : 'text-texto-3')}>
+                          <CircleStop className="size-3.5" strokeWidth={1.75} />
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                ))}
+                {pidAvisado !== null && <p className="m-0 text-[11.5px] text-atencion">Otra vez para completar: se para de verdad.</p>}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

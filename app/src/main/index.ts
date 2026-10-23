@@ -15,6 +15,7 @@ import { alCerrarVentana, guardarPreferencia, leerPreferencia, resumenBandeja, t
 import { registerProveedores } from './ipc-proveedores'
 import { keys } from './keys'
 import { registerLicencia } from './licencia/ipc'
+import { registerUso } from './uso/ipc'
 import { registerHilos } from './hilos/ipc'
 import { registerTienda } from './tienda/ipc'
 import { registerPieles } from './pieles/propias'
@@ -131,6 +132,7 @@ function startPtyHost() {
 
 function registerIpc() {
   registerLicencia()
+  registerUso()
   registerHilos()
   registerTienda({ brainInfo: () => brain.info })
   registerModulos({ brainInfo: () => brain.info })

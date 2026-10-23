@@ -17,6 +17,7 @@ export type Proceso = {
   rol: string
   rssMB: number
   cpu: number      // porcentaje de un núcleo, medido entre dos muestras
+  parable: boolean // se puede soltar: un agente o un chrome de la casa. El resto (la app, el cerebro) no
 }
 
 export type Presion = {
@@ -26,6 +27,30 @@ export type Presion = {
   libresMB: number     // la memoria que el sistema dice que queda
   swapUsadaMB: number
   swapLibreMB: number
+}
+
+/** Los roles que se pueden soltar si se desbocan: los agentes del Taller y el navegador que la app
+ *  enciende (vuelve a arrancar). El resto es la casa: matarlos es apagar Esme, no lo hace nadie. */
+const PARABLES = new Set(['agente', 'chrome'])
+
+/** La señal de parada. `avisar` es la orden de matar (para las pruebas); a falta de la real, process.kill. */
+export type OrdenParar = (pid: number, señal: number) => void
+
+/** Parar un proceso de la casa cuando se desboca. Antes de matar se vuelve a mirar su línea de órdenes
+ *  A HORA: el pid que llega por la ventana es la parte menos de fiar de la casa, y un pid reutilizado
+ *  ya ha borrado datos de otros. Si ya no es lo que era, no se toca. Grace: SIGTERM; si sigue ahí, SIGKILL. */
+export async function pararProceso(pid: number, o: { fuente?: Fuente; avisar?: OrdenParar; esperaFinMs?: number } = {}): Promise<{ ok: true; rol: string } | { ok: false; error: string }> {
+  const fuente = o.fuente ?? porDefecto
+  const avisar: OrdenParar = o.avisar ?? ((p, s) => { try { process.kill(p, s as unknown as NodeJS.Signals) } catch { /* ya no existe */ } })
+  if (!Number.isInteger(pid) || pid <= 0) return { ok: false, error: 'Ese pid no vale.' }
+  const rol = rolDe(fuente.cmdline(pid)) ?? (fuente.rss(pid) > 0 ? 'desconocido' : '')
+  if (!PARABLES.has(rol)) return { ok: false, error: 'No se para: no es un agente ni un navegador de la casa.' }
+  if (fuente.rss(pid) <= 0) return { ok: false, error: 'Ya no está: nadie que parar.' }
+  avisar(pid, 15)   // SIGTERM: que pueda soltar lo suyo y cerrarse
+  const fin = Date.now() + (o.esperaFinMs ?? 2500)
+  while (Date.now() < fin && fuente.rss(pid) > 0) await new Promise((s) => setTimeout(s, 150))
+  if (fuente.rss(pid) > 0) avisar(pid, 9)   // SIGKILL: se aunque siga comiendo
+  return { ok: true, rol }
 }
 
 /** Los roles que se distinguen por la línea de órdenes (a pelo, como hace `medir_reposo.py`). */
@@ -109,7 +134,7 @@ export function medirPresion(fuente: Fuente = porDefecto, esperaMs = 300): Presi
     const a = antes.get(pid) ?? 0
     const b = fuente.ticks(pid)
     const cpu = transcurrido > 0 ? ((b - a) / 100) / transcurrido : 0   // 100 ticks = 1 s
-    procesos.push({ pid, rol, rssMB: Math.round(fuente.rss(pid)), cpu: Math.round(cpu * 10) / 10 })
+    procesos.push({ pid, rol, rssMB: Math.round(fuente.rss(pid)), cpu: Math.round(cpu * 10) / 10, parable: PARABLES.has(rol) })
   }
   procesos.sort((a, b) => b.rssMB - a.rssMB)
   const m = fuente.meminfo()
