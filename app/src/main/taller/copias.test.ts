@@ -130,6 +130,49 @@ describe('copias', () => {
     expect(a.ruta).not.toBe(b.ruta); expect(a.rama).not.toBe(b.rama)
   })
 
+  it('la copia que ya existe se adopte, no se rehace: su trabajo sigue ahí (la app se reinició)', async () => {
+    const c = await crearCopia({ carpeta: repo, id: 'abc123', dirCopias })
+    await writeFile(join(c.ruta, 'a.txt'), 'ediciones del turno\n')
+    await writeFile(join(c.ruta, 'lo que quedó.txt'), 'sin commitear, se queda\n')
+    await commitCopia(c, 'Esme: turno 1')
+    // El registro de la app pierde la copia (tareas.json sin ella): volver a pedirla con la misma id la encuentra.
+    const d = await crearCopia({ carpeta: repo, id: 'abc123', dirCopias })
+    expect(d.ruta).toBe(c.ruta); expect(d.rama).toBe(c.rama)
+    // el trabajo sigue: sus cambios frente a la base y sus puntos de turno
+    expect((await cambiosCopia(d)).ficheros).toBe(2)
+    expect((await puntosCopia(d)).map((p) => p.turno)).toEqual([1])
+  })
+
+  it('la rama huérfana (la copia se fue sin quitar la rama) se vuelve a criar, con su trabajo dentro', async () => {
+    const c = await crearCopia({ carpeta: repo, id: 'abc123', dirCopias })
+    await writeFile(join(c.ruta, 'del turno.txt'), 'hecho\n')
+    await commitCopia(c, 'Esme: turno 1')
+    // el worktree desaparece a mano y la rama se queda abandona
+    await rm(c.ruta, { recursive: true, force: true })
+    const d = await crearCopia({ carpeta: repo, id: 'abc123', dirCopias })
+    expect(d.rama).toBe('esme/abc123')
+    expect((await puntosCopia(d)).map((p) => p.turno)).toEqual([1])
+    expect((await cambiosCopia(d)).ficheros).toBe(1)
+  })
+
+  it('un residuo sin git en el camino del Taller se limpia y la copia se crea en su sitio', async () => {
+    const residuo = join(dirCopias, 'abc123')
+    await mkdir(residuo, { recursive: true })
+    await writeFile(join(residuo, 'cualquiera.txt'), 'basura\n')
+    const c = await crearCopia({ carpeta: repo, id: 'abc123', dirCopias })
+    expect(c.rama).toBe('esme/abc123')
+    expect(await readFile(join(c.ruta, 'a.txt'), 'utf8')).toBe('uno\ndos\ntres\n')
+  })
+
+  it('la carpeta nueva de Esme que ya existe se sigue, sin un commit de partida de más', async () => {
+    const c = await crearCopia({ carpeta: null, id: 'nuevo1', dirCopias })
+    await writeFile(join(c.ruta, 'x.txt'), 'algo\n')
+    const d = await crearCopia({ carpeta: null, id: 'nuevo1', dirCopias })
+    expect(d.ruta).toBe(c.ruta)
+    expect((await g(d.ruta, 'log', '--format=%s')).trim()).toBe('Esme: punto de partida')
+    expect((await cambiosCopia(d)).ficheros).toBe(1)
+  })
+
   it('quitar borra el worktree y la rama, y se niega a borrar fuera del Taller', async () => {
     const c = await crearCopia({ carpeta: repo, id: 'abc123', dirCopias })
     await quitarCopia(c, { dirCopias })

@@ -25,11 +25,35 @@ export async function raizRepo(carpeta: string, git: Git = gitReal): Promise<str
   try { return (await git(['rev-parse', '--show-toplevel'], { cwd: carpeta })).trim() || null } catch { return null }
 }
 
+/** Los worktrees de un repo, con la rama que lleva cada uno: así se sabe quién tiene qué terreno. (La práctica
+ *  de Deska 1.32: `worktreeInUse` / `worktreeUsedByAnotherTask`; aquí la rama `esme/<id>` ya dice el dueño.) */
+export async function worktreesDe(repo: string, git: Git = gitReal): Promise<{ ruta: string; rama: string | null }[]> {
+  let salida = ''
+  try { salida = await git(['worktree', 'list', '--porcelain'], { cwd: repo }) } catch { return [] }
+  const out: { ruta: string; rama: string | null }[] = []
+  let actual: { ruta: string; rama: string | null } | null = null
+  for (const l of salida.split('\n')) {
+    if (l.startsWith('worktree ')) { actual = { ruta: l.slice('worktree '.length).trim(), rama: null }; out.push(actual) }
+    else if (l.startsWith('branch ') && actual) actual.rama = l.slice('branch '.length).trim().replace(/^refs\/heads\//, '')
+  }
+  return out
+}
+
+const existe = (ruta: string) => stat(ruta).then(() => true, () => false)
+
 export async function crearCopia(o: { carpeta: string | null; id: string; dirCopias: string; git?: Git }): Promise<Copia> {
   const git = o.git ?? gitReal
   const ruta = join(o.dirCopias, o.id)
   await mkdir(o.dirCopias, { recursive: true })
   if (o.carpeta === null) {
+    // La copia de esta tarea ya está: se sigue con ella, no se rehace (la app se reinició y no se perdió el trabajo).
+    // Si lo que quedó ahí no es un repo, era residuo de un intento a medias: se limpia y se empieza en su sitio.
+    if (await existe(ruta)) {
+      let base: string | null = null
+      try { base = (await git(['rev-parse', 'HEAD'], { cwd: ruta })).trim() || null } catch { /* no es un repo: residuo */ }
+      if (base) return { id: o.id, ruta, rama: null, base, repo: null }
+      await rm(ruta, { recursive: true, force: true })
+    }
     await mkdir(ruta, { recursive: true })
     await git(['init', '-q'], { cwd: ruta })
     await git(['-c', 'user.name=Esme', '-c', 'user.email=esme@localhost', 'commit', '--allow-empty', '-q', '-m', 'Esme: punto de partida'], { cwd: ruta })
@@ -41,8 +65,35 @@ export async function crearCopia(o: { carpeta: string | null; id: string; dirCop
   let base: string
   try { base = (await git(['rev-parse', 'HEAD'], { cwd: repo })).trim() } catch { throw new Error('El repositorio aún no tiene commits.') }
   const rama = `esme/${o.id}`
-  await git(['-C', repo, 'worktree', 'add', '-b', rama, ruta, base], { cwd: repo })
+  // La copia de esta tarea ya vive en este repo (la app se reinició y su registro la perdió): se adopte, con
+  // su historia incluida. La verdadera base de la tarea es donde su rama se apartó de la casa.
+  const wts = await worktreesDe(repo, git)
+  let propia = wts.find((w) => w.rama === rama)
+  if (propia && !(await existe(propia.ruta))) { await git(['worktree', 'prune'], { cwd: repo }); propia = undefined }
+  if (propia) return { id: o.id, ruta: propia.ruta, rama, base: await baseDeArranque(repo, rama, git, base), repo }
+  // Residuo sin git en el camino del Taller (un intento que se quedó a medias): era suyo, se limpia.
+  if (await existe(ruta) && !(await stat(join(ruta, '.git')).then(() => true, () => false))) await rm(ruta, { recursive: true, force: true })
+  try {
+    await git(['-C', repo, 'worktree', 'add', '-b', rama, ruta, base], { cwd: repo })
+  } catch (e) {
+    // La rama quedó huérfana: el worktree se fue (y la carpeta se limpió) sin quitar la rama. Se vuelve a criar
+    // sobre ella — el trabajo que el motor ya commiteó entra con la copia, no se pierde.
+    const huérfana = ((await git(['branch', '--list', rama], { cwd: repo })).trim() || '').length > 0
+    if (!huérfana) throw e
+    const baseAntes = await baseDeArranque(repo, rama, git, base)
+    // el registro del worktree que se fue caducó con él: se depura antes de criar sobre la rama
+    await git(['worktree', 'prune'], { cwd: repo }).catch(() => undefined)
+    await git(['-C', repo, 'worktree', 'add', ruta, rama], { cwd: repo })
+    return { id: o.id, ruta, rama, base: baseAntes, repo }
+  }
   return { id: o.id, ruta, rama, base, repo }
+}
+
+/** Donde la rama de la tarea se apartó de la casa: en una copia nueva es el HEAD del repo; en una que se
+ *  adopta, el punto común entre su rama y la casa — así los puntos de la tarea siguen siendo suyos, y si
+ *  su trabajo ya se llevó a casa (la rama quedó dentro de HEAD), la copia arranca de nuevo limpia. */
+async function baseDeArranque(repo: string, rama: string, git: Git, base: string): Promise<string> {
+  try { return (await git(['merge-base', rama, 'HEAD'], { cwd: repo })).trim() || base } catch { return base }
 }
 
 // Ejecuta `pedir` con un índice temporal que parte de HEAD y ya incluye todo (también lo no seguido); siempre lo borra.
