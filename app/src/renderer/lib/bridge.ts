@@ -12,9 +12,11 @@ import type { Producto } from '../../main/tienda/catalogo'
 import type { Tarea as TareaTaller, Veredicto as VeredictoTaller } from '../../main/taller/taller'
 import { CURVA_VACIA, type Curva } from '../../main/taller/curva'
 import type { Rol } from '../../main/taller/roles'
+import type { Plantilla } from '../../main/taller/plantillas'
 import type { FinParlamento } from '../../main/taller/parlamento'
 
 export type { Rol }
+export type { Plantilla }
 export type ResultadoParlamento = FinParlamento | { ok: false; error: string }
 export type { Curva }
 import type { NuevoProgramado, Programado } from '../../main/taller/agenda'
@@ -216,6 +218,7 @@ type ElectronApi = {
   licencia: { estado(): Promise<EstadoPlan>; activar(c: string): Promise<{ ok: boolean; motivo?: string; estado: EstadoPlan }>; quitar(): Promise<EstadoPlan> }
   taller: {
     motores(): Promise<MotorTaller[]>; lista(): Promise<TareaTaller[]>; eventos(id: string): Promise<EventoTaller[]>
+    plantillas(): Promise<Plantilla[]>
     versiones(): Promise<VersionAgente[]>; actualizar(id: string): Promise<{ ok: boolean; antes: string | null; despues: string | null; detalle: string }>
     metodosEntrada(id: string): Promise<{ ok: true; metodos: MetodoEntrada[]; actual: string | null } | { ok: false; error: string }>
     entrar(id: string, metodo: string | null): Promise<{ ok: boolean; error?: string; terminal?: boolean }>
@@ -477,6 +480,7 @@ export const bridge = {
 
   taller: {
     motores: async (): Promise<MotorTaller[]> => (isElectron() ? window.daimon!.taller.motores() : []),
+    plantillas: async (): Promise<Plantilla[]> => (isElectron() ? window.daimon!.taller.plantillas() : []),
     // tus agentes al día (main/motores/actualizar.ts)
     versiones: async (): Promise<VersionAgente[]> => (isElectron() ? window.daimon!.taller.versiones() : []),
     actualizar: async (id: string) => (isElectron() ? window.daimon!.taller.actualizar(id) : { ok: false, antes: null, despues: null, detalle: 'Solo en la app de escritorio.' }),

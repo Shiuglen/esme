@@ -1,13 +1,13 @@
 // Pedir una tarea: qué quieres, con qué motor y modelo, y sobre qué carpeta. Esme monta una copia aislada y el motor trabaja ahí.
 // Recuerda tu motor, tu carpeta y tus opciones por motor; si el motor trae un modelo lento o de pago, propone uno gratis.
-import { LayoutTemplate as ILayoutTemplate, Rocket as IRocket, Plus as IPlus, FlaskConical as IFlaskConical, Wrench as IWrench, ScanSearch as IScanSearch, ShieldCheck as IShieldCheck, PackageCheck as IPackageCheck, BookOpen as IBookOpen, FileText as IFileText, Shuffle as IShuffle, Languages as ILanguages, Gauge as IGauge, Accessibility as IAccessibility, Sparkles as ISparkles, type LucideIcon, Target } from 'lucide-react'
-import { CATEGORIAS, RECETAS } from './recetas'
+import { LayoutTemplate as ILayoutTemplate, Rocket as IRocket, Plus as IPlus, FlaskConical as IFlaskConical, Wrench as IWrench, ScanSearch as IScanSearch, ShieldCheck as IShieldCheck, PackageCheck as IPackageCheck, BookOpen as IBookOpen, FileText as IFileText, Shuffle as IShuffle, Languages as ILanguages, Gauge as IGauge, Accessibility as IAccessibility, Sparkles as ISparkles, Server as IServer, Binary as IBinary, Smartphone as ISmartphone, Apple as IApple, MonitorSmartphone as IMonitorSmartphone, Globe as IGlobe, Network as INetwork, BarChart3 as IBarChart3, LayoutDashboard as ILayoutDashboard, FolderSync as IFolderSync, GitBranch as IGitBranch, Container as IContainer, CloudUpload as ICloudUpload, Palette as IPalette, PenLine as IPenLine, Workflow as IWorkflow, type LucideIcon, Target } from 'lucide-react'
+import { RECETAS } from './recetas'
 import { CalendarClock, CornerDownLeft, Dices, Folder, FolderPlus, ShieldCheck, Sparkles, Swords, X } from 'lucide-react'
 import { cuandoDe, fraseCuando, type OpcionCuando } from './cuando'
 import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
 import { useEffect, useMemo, useState } from 'react'
-import { bridge, type MotorTaller, type OpcionMotor, type AccesoTarea, type Repeticion, type EncargoFuera } from '../lib/bridge'
+import { bridge, type MotorTaller, type OpcionMotor, type AccesoTarea, type Repeticion, type EncargoFuera, type Plantilla } from '../lib/bridge'
 import type { Rol } from '../../main/taller/roles'
 import { cn } from '../lib/cn'
 import { candidatosDe, elegibles, elegir, elegirVarios, historial, type Eleccion, type Veredicto } from './eleccion'
@@ -343,37 +343,45 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
   )
 }
 
-const ICONOS_RECETA: Record<string, LucideIcon> = { LayoutTemplate: ILayoutTemplate, Rocket: IRocket, Plus: IPlus, FlaskConical: IFlaskConical, Wrench: IWrench, ScanSearch: IScanSearch, ShieldCheck: IShieldCheck, PackageCheck: IPackageCheck, BookOpen: IBookOpen, FileText: IFileText, Shuffle: IShuffle, Languages: ILanguages, Gauge: IGauge, Accessibility: IAccessibility, Sparkles: ISparkles }
+const ICONOS_RECETA: Record<string, LucideIcon> = { LayoutTemplate: ILayoutTemplate, Rocket: IRocket, Plus: IPlus, FlaskConical: IFlaskConical, Wrench: IWrench, ScanSearch: IScanSearch, ShieldCheck: IShieldCheck, PackageCheck: IPackageCheck, BookOpen: IBookOpen, FileText: IFileText, Shuffle: IShuffle, Languages: ILanguages, Gauge: IGauge, Accessibility: IAccessibility, Sparkles: ISparkles, Server: IServer, Binary: IBinary, Smartphone: ISmartphone, Apple: IApple, MonitorSmartphone: IMonitorSmartphone, Globe: IGlobe, Network: INetwork, BarChart3: IBarChart3, LayoutDashboard: ILayoutDashboard, FolderSync: IFolderSync, GitBranch: IGitBranch, Container: IContainer, CloudUpload: ICloudUpload, Palette: IPalette, PenLine: IPenLine, Workflow: IWorkflow }
 
 // La galería de recetas (taller/recetas.ts): encargos completos por categoría; al elegir uno, su texto queda en la caja.
 function Recetas({ onElegir }: { onElegir(texto: string): void }) {
-  const [cat, setCat] = useState<(typeof CATEGORIAS)[number] | 'Todas'>('Todas')
-  const vistas = RECETAS.filter((r) => cat === 'Todas' || r.categoria === cat)
+  // Plantillas del Taller (main/taller/plantillas.ts): las de casa más las tuyas de plantillas.json. En la web no hay
+  // puente, así que se cae a las recetas de casa del renderer.
+  const [plantillas, setPlantillas] = useState<Plantilla[]>(() => RECETAS.map((r, i) => ({ id: `casa-${i}`, titulo: r.titulo, categoria: r.categoria, icono: r.icono, descripcion: r.descripcion, encargo: r.encargo, fuente: 'casa' as const })))
+  useEffect(() => { void bridge.taller.plantillas().then((ps) => { if (ps.length) setPlantillas(ps) }).catch(() => {}) }, [])
+  const cats = useMemo(() => ['Todas', ...Array.from(new Set(plantillas.map((p) => p.categoria)))], [plantillas])
+  const [cat, setCat] = useState('Todas')
+  const vistas = plantillas.filter((p) => cat === 'Todas' || p.categoria === cat)
+  const hayTuyas = plantillas.some((p) => p.fuente === 'tuya')
   return (
-    <section aria-label="Recetas" className="mt-5 grid gap-3">
+    <section aria-label="Plantillas" className="mt-5 grid gap-3">
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="mr-1 text-[13px] font-medium text-texto">Recetas</span>
-        {(['Todas', ...CATEGORIAS] as const).map((c) => (
+        <span className="mr-1 text-[13px] font-medium text-texto">Plantillas</span>
+        {cats.map((c) => (
           <button key={c} type="button" onClick={() => setCat(c)} aria-pressed={cat === c}
             className={cn('h-7 rounded-full px-3 text-[12.5px] transition-colors', cat === c ? 'bg-s3 text-texto' : 'text-texto-2 hover:text-texto')}>{c}</button>
         ))}
       </div>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2.5">
-        {vistas.map((r) => {
-          const Icono = ICONOS_RECETA[r.icono] ?? ISparkles
+        {vistas.map((p) => {
+          const Icono = ICONOS_RECETA[p.icono] ?? ISparkles
           return (
-            <button key={r.titulo} type="button" onClick={() => onElegir(r.encargo)}
+            <button key={p.id} type="button" onClick={() => onElegir(p.encargo)}
               className="group grid content-start gap-1.5 rounded-3 border border-linea/70 bg-s1/40 p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-linea-fuerte hover:bg-s2/50">
               <span className="flex items-center gap-2">
                 <span className="grid size-7 place-items-center rounded-2 bg-acento-velo text-acento"><Icono className="size-4" strokeWidth={1.75} /></span>
-                <span className="text-[13.5px] font-medium text-texto">{r.titulo}</span>
+                <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-texto">{p.titulo}</span>
+                {p.fuente === 'tuya' && <span className="shrink-0 rounded-full bg-s3 px-1.5 text-[10px] text-texto-2">tuya</span>}
               </span>
-              <span className="text-[12.5px] leading-snug text-texto-2">{r.descripcion}</span>
-              <span className="text-[11px] text-texto-3">{r.categoria}</span>
+              <span className="text-[12.5px] leading-snug text-texto-2">{p.descripcion}</span>
+              <span className="text-[11px] text-texto-3">{p.categoria}{p.pasos?.length ? ` · ${p.pasos.length} pasos` : ''}</span>
             </button>
           )
         })}
       </div>
+      <p className="m-0 text-[11.5px] text-texto-3">{hayTuyas ? 'Las tuyas salen de' : 'Haz las tuyas en'} <code className="rounded-1 bg-s2 px-1 py-0.5 text-[11px]">plantillas.json</code> (en la carpeta del Taller): se suman a estas sin fin, y el Sueño deja ahí lo que repites.</p>
     </section>
   )
 }
