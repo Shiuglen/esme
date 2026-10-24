@@ -6,7 +6,7 @@
 // carpeta del Taller, las tuyas se suman a las de casa, y si repites un id, mandan tus palabras. El Sueño deja ahí las que
 // propone de lo que repites. Esta es la fuente de verdad del catálogo; `renderer/taller/recetas.ts` es solo el respaldo
 // mínimo de la web cuando no hay app de escritorio detrás.
-import { readFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 export type Plantilla = {
@@ -116,22 +116,64 @@ export const PLANTILLAS_CASA: Plantilla[] = [
     encargo: 'Prepara y prueba esta app en dispositivos, en orden: 1) deja listo lo que haga falta (un emulador de Android, o Playwright con sus navegadores), diciendo qué instalar si falta. 2) escribe una prueba de extremo a extremo del camino principal. 3) córrela emulando móvil, tableta y escritorio (y, si aplica, varios navegadores), con captura de cada uno. 4) deja un informe con las capturas y lo que falla en cada tamaño. Di siempre qué quedó comprobado de verdad.' }),
 ]
 
-const valida = (x: unknown): x is Omit<Plantilla, 'fuente'> =>
+export type NuevaPlantilla = { id?: string; titulo: string; categoria: string; icono?: string; descripcion: string; encargo: string; pasos?: string[]; oficios?: string[] }
+type Cruda = Omit<Plantilla, 'fuente'>
+
+const valida = (x: unknown): x is Cruda =>
   !!x && typeof x === 'object' && ['id', 'titulo', 'categoria', 'icono', 'descripcion', 'encargo'].every((k) => typeof (x as Record<string, unknown>)[k] === 'string' && ((x as Record<string, string>)[k]).trim().length > 0)
+
+const fichero = (dir: string) => join(dir, 'plantillas.json')
+
+/** Las plantillas que escribiste tú (lo que hay en plantillas.json), sin las de casa. */
+function leeCrudas(dir: string): Cruda[] {
+  try {
+    const crudo: unknown = JSON.parse(readFileSync(fichero(dir), 'utf8'))
+    return Array.isArray(crudo) ? crudo.filter(valida) : []
+  } catch { return [] }
+}
+
+function escribe(dir: string, tuyas: Cruda[]): void {
+  mkdirSync(dir, { recursive: true })
+  writeFileSync(`${fichero(dir)}.tmp`, `${JSON.stringify(tuyas, null, 1)}\n`)
+  renameSync(`${fichero(dir)}.tmp`, fichero(dir))
+}
+
+/** Un nombre corto y válido a partir de un texto: sin acentos ni símbolos, empieza por letra. */
+export const slug = (s: string) =>
+  s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^[^a-z]+/, '').replace(/-+$/g, '')
 
 /** Las plantillas de este Taller: las de casa, más las tuyas de `plantillas.json` (si repites un id, mandan las tuyas). */
 export function leePlantillas(dir: string): Plantilla[] {
-  let tuyas: Plantilla[] = []
-  try {
-    const crudo: unknown = JSON.parse(readFileSync(join(dir, 'plantillas.json'), 'utf8'))
-    if (Array.isArray(crudo)) tuyas = crudo.filter(valida).map((p) => ({
-      ...p, fuente: 'tuya' as const,
-      ...(Array.isArray((p as Plantilla).pasos) ? { pasos: (p as Plantilla).pasos } : {}),
-      ...(Array.isArray((p as Plantilla).oficios) ? { oficios: (p as Plantilla).oficios } : {}),
-    }))
-  } catch { /* sin archivo o ilegible: solo las de casa */ }
+  const tuyas: Plantilla[] = leeCrudas(dir).map((p) => ({ ...p, fuente: 'tuya' as const }))
   const idsTuyos = new Set(tuyas.map((p) => p.id))
   return [...PLANTILLAS_CASA.filter((p) => !idsTuyos.has(p.id)), ...tuyas]
+}
+
+/** Guarda una plantilla tuya (crea o pisa por id, también sobre una de casa). El id sale del título si no lo das. */
+export function guardaPlantilla(dir: string, p: NuevaPlantilla): { ok: true; id: string } | { ok: false; error: string } {
+  const id = slug(p.id?.trim() ? p.id : p.titulo)
+  if (!/^[a-z][a-z0-9-]+$/.test(id)) return { ok: false, error: 'El título no da un nombre válido (hace falta algo con letras).' }
+  if (!p.titulo.trim()) return { ok: false, error: 'Falta el título.' }
+  if (!p.categoria.trim()) return { ok: false, error: 'Falta la categoría.' }
+  if (!p.descripcion.trim()) return { ok: false, error: 'Falta la descripción.' }
+  if (p.encargo.trim().length < 10) return { ok: false, error: 'El encargo es demasiado corto: describe qué hacer con detalle.' }
+  const pasos = p.pasos?.map((x) => x.trim()).filter(Boolean)
+  const oficios = p.oficios?.map((x) => x.trim()).filter(Boolean)
+  const nueva: Cruda = {
+    id, titulo: p.titulo.trim(), categoria: p.categoria.trim(), icono: p.icono?.trim() || 'Sparkles',
+    descripcion: p.descripcion.trim(), encargo: p.encargo.trim(),
+    ...(pasos?.length ? { pasos } : {}), ...(oficios?.length ? { oficios } : {}),
+  }
+  escribe(dir, [...leeCrudas(dir).filter((x) => x.id !== id), nueva])
+  return { ok: true, id }
+}
+
+/** Borra una plantilla tuya. Las de casa no se tocan (si quieres cambiar una, guárdala con su id y la pisas). */
+export function borraPlantilla(dir: string, id: string): { ok: true } | { ok: false; error: string } {
+  const crudas = leeCrudas(dir)
+  if (!crudas.some((x) => x.id === id)) return { ok: false, error: 'Esa plantilla no es tuya: las de casa no se borran.' }
+  escribe(dir, crudas.filter((x) => x.id !== id))
+  return { ok: true }
 }
 
 /** Las categorías que hay, en el orden en que aparecen y sin repetir. */

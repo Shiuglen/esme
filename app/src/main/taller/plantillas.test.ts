@@ -72,3 +72,43 @@ describe('las categorías, en orden de aparición y sin repetir', () => {
     expect(new Set(cats).size).toBe(cats.length)
   })
 })
+
+import { existsSync, readFileSync as leer } from 'node:fs'
+import { borraPlantilla, guardaPlantilla, slug } from './plantillas'
+
+describe('crear y borrar tus plantillas desde la app (escribe plantillas.json)', () => {
+  const dir = () => mkdtempSync(join(tmpdir(), 'guarda-'))
+  it('el id sale del título si no lo das, sin acentos ni símbolos', () => {
+    expect(slug('Emular un iPhone 15 Pro')).toBe('emular-un-iphone-15-pro')
+    expect(slug('  ¿Qué hago?  ')).toBe('que-hago')
+    expect(slug('—')).toBe('')
+  })
+  it('guarda una tuya y leePlantillas la trae marcada como tuya', () => {
+    const d = dir()
+    const r = guardaPlantilla(d, { titulo: 'Mi receta', categoria: 'Lo mío', descripcion: 'd', encargo: 'un encargo con detalle de verdad' })
+    expect(r).toMatchObject({ ok: true, id: 'mi-receta' })
+    const p = leePlantillas(d).find((x) => x.id === 'mi-receta')!
+    expect(p).toMatchObject({ titulo: 'Mi receta', fuente: 'tuya', icono: 'Sparkles' })
+    expect(JSON.parse(leer(join(d, 'plantillas.json'), 'utf8'))).toHaveLength(1)
+  })
+  it('guardar con el id de una de casa la pisa (mandan tus palabras)', () => {
+    const d = dir()
+    guardaPlantilla(d, { id: 'web-presentacion', titulo: 'Mi landing', categoria: 'Construir', descripcion: 'd', encargo: 'la mía con todo el detalle' })
+    const web = leePlantillas(d).filter((x) => x.id === 'web-presentacion')
+    expect(web).toHaveLength(1)
+    expect(web[0]).toMatchObject({ titulo: 'Mi landing', fuente: 'tuya' })
+  })
+  it('se niega si falta lo esencial', () => {
+    const d = dir()
+    expect(guardaPlantilla(d, { titulo: '', categoria: 'c', descripcion: 'd', encargo: 'xxxxxxxxxxxx' })).toMatchObject({ ok: false })
+    expect(guardaPlantilla(d, { titulo: 'T', categoria: 'c', descripcion: 'd', encargo: 'corto' })).toMatchObject({ ok: false })
+  })
+  it('borrar quita solo la tuya; una de casa no se puede borrar', () => {
+    const d = dir()
+    guardaPlantilla(d, { titulo: 'Mía', categoria: 'c', descripcion: 'd', encargo: 'un encargo con detalle de verdad' })
+    expect(borraPlantilla(d, 'mia')).toMatchObject({ ok: true })
+    expect(leePlantillas(d).some((x) => x.id === 'mia')).toBe(false)
+    expect(borraPlantilla(d, 'web-presentacion')).toMatchObject({ ok: false })
+    expect(existsSync(join(d, 'plantillas.json'))).toBe(true)
+  })
+})

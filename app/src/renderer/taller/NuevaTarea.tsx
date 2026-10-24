@@ -1,6 +1,6 @@
 // Pedir una tarea: qué quieres, con qué motor y modelo, y sobre qué carpeta. Esme monta una copia aislada y el motor trabaja ahí.
 // Recuerda tu motor, tu carpeta y tus opciones por motor; si el motor trae un modelo lento o de pago, propone uno gratis.
-import { LayoutTemplate as ILayoutTemplate, Rocket as IRocket, Plus as IPlus, FlaskConical as IFlaskConical, Wrench as IWrench, ScanSearch as IScanSearch, ShieldCheck as IShieldCheck, PackageCheck as IPackageCheck, BookOpen as IBookOpen, FileText as IFileText, Shuffle as IShuffle, Languages as ILanguages, Gauge as IGauge, Accessibility as IAccessibility, Sparkles as ISparkles, Server as IServer, Binary as IBinary, Smartphone as ISmartphone, Apple as IApple, MonitorSmartphone as IMonitorSmartphone, Globe as IGlobe, Network as INetwork, BarChart3 as IBarChart3, LayoutDashboard as ILayoutDashboard, FolderSync as IFolderSync, GitBranch as IGitBranch, Container as IContainer, CloudUpload as ICloudUpload, Palette as IPalette, PenLine as IPenLine, Workflow as IWorkflow, type LucideIcon, Target } from 'lucide-react'
+import { LayoutTemplate as ILayoutTemplate, Rocket as IRocket, Plus as IPlus, FlaskConical as IFlaskConical, Wrench as IWrench, ScanSearch as IScanSearch, ShieldCheck as IShieldCheck, PackageCheck as IPackageCheck, BookOpen as IBookOpen, FileText as IFileText, Shuffle as IShuffle, Languages as ILanguages, Gauge as IGauge, Accessibility as IAccessibility, Sparkles as ISparkles, Server as IServer, Binary as IBinary, Smartphone as ISmartphone, Apple as IApple, MonitorSmartphone as IMonitorSmartphone, Globe as IGlobe, Network as INetwork, BarChart3 as IBarChart3, LayoutDashboard as ILayoutDashboard, FolderSync as IFolderSync, GitBranch as IGitBranch, Container as IContainer, CloudUpload as ICloudUpload, Palette as IPalette, PenLine as IPenLine, Workflow as IWorkflow, Trash2 as ITrash2, type LucideIcon, Target } from 'lucide-react'
 import { RECETAS } from './recetas'
 import { CalendarClock, CornerDownLeft, Dices, Folder, FolderPlus, ShieldCheck, Sparkles, Swords, X } from 'lucide-react'
 import { cuandoDe, fraseCuando, type OpcionCuando } from './cuando'
@@ -347,14 +347,17 @@ const ICONOS_RECETA: Record<string, LucideIcon> = { LayoutTemplate: ILayoutTempl
 
 // La galería de recetas (taller/recetas.ts): encargos completos por categoría; al elegir uno, su texto queda en la caja.
 function Recetas({ onElegir }: { onElegir(texto: string): void }) {
-  // Plantillas del Taller (main/taller/plantillas.ts): las de casa más las tuyas de plantillas.json. En la web no hay
-  // puente, así que se cae a las recetas de casa del renderer.
-  const [plantillas, setPlantillas] = useState<Plantilla[]>(() => RECETAS.map((r, i) => ({ id: `casa-${i}`, titulo: r.titulo, categoria: r.categoria, icono: r.icono, descripcion: r.descripcion, encargo: r.encargo, fuente: 'casa' as const })))
-  useEffect(() => { void bridge.taller.plantillas().then((ps) => { if (ps.length) setPlantillas(ps) }).catch(() => {}) }, [])
+  // Plantillas del Taller (main/taller/plantillas.ts): casa + las tuyas (plantillas.json). Puedes crear las tuyas aquí
+  // mismo —se escriben en plantillas.json— o borrarlas; las de casa no se tocan. En la web (sin puente) caen a las de casa.
+  const casa = (): Plantilla[] => RECETAS.map((r, i) => ({ id: `casa-${i}`, titulo: r.titulo, categoria: r.categoria, icono: r.icono, descripcion: r.descripcion, encargo: r.encargo, fuente: 'casa' as const }))
+  const [plantillas, setPlantillas] = useState<Plantilla[]>(casa)
+  const recargar = () => bridge.taller.plantillas().then((ps) => setPlantillas(ps.length ? ps : casa())).catch(() => {})
+  useEffect(() => { void recargar() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
   const cats = useMemo(() => ['Todas', ...Array.from(new Set(plantillas.map((p) => p.categoria)))], [plantillas])
   const [cat, setCat] = useState('Todas')
   const vistas = plantillas.filter((p) => cat === 'Todas' || p.categoria === cat)
-  const hayTuyas = plantillas.some((p) => p.fuente === 'tuya')
+  const [creando, setCreando] = useState(false)
+  const borrar = async (id: string) => { await bridge.taller.borrarPlantilla(id); void recargar() }
   return (
     <section aria-label="Plantillas" className="mt-5 grid gap-3">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -363,13 +366,16 @@ function Recetas({ onElegir }: { onElegir(texto: string): void }) {
           <button key={c} type="button" onClick={() => setCat(c)} aria-pressed={cat === c}
             className={cn('h-7 rounded-full px-3 text-[12.5px] transition-colors', cat === c ? 'bg-s3 text-texto' : 'text-texto-2 hover:text-texto')}>{c}</button>
         ))}
+        <button type="button" onClick={() => setCreando((v) => !v)} aria-expanded={creando}
+          className="ml-auto inline-flex h-7 items-center gap-1 rounded-full border border-linea px-2.5 text-[12.5px] text-texto-2 hover:border-linea-fuerte hover:text-texto"><IPlus className="size-3.5" />Nueva plantilla</button>
       </div>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2.5">
+      {creando && <FormaPlantilla cats={cats.filter((c) => c !== 'Todas')} onGuardada={() => { setCreando(false); void recargar() }} onCerrar={() => setCreando(false)} />}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-2.5">
         {vistas.map((p) => {
           const Icono = ICONOS_RECETA[p.icono] ?? ISparkles
           return (
-            <button key={p.id} type="button" onClick={() => onElegir(p.encargo)}
-              className="group grid content-start gap-1.5 rounded-3 border border-linea/70 bg-s1/40 p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-linea-fuerte hover:bg-s2/50">
+            <div key={p.id} role="button" tabIndex={0} onClick={() => onElegir(p.encargo)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onElegir(p.encargo) } }}
+              className="group relative grid cursor-pointer content-start gap-1.5 rounded-3 border border-linea/70 bg-s1/40 p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-linea-fuerte hover:bg-s2/50">
               <span className="flex items-center gap-2">
                 <span className="grid size-7 place-items-center rounded-2 bg-acento-velo text-acento"><Icono className="size-4" strokeWidth={1.75} /></span>
                 <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-texto">{p.titulo}</span>
@@ -377,11 +383,46 @@ function Recetas({ onElegir }: { onElegir(texto: string): void }) {
               </span>
               <span className="text-[12.5px] leading-snug text-texto-2">{p.descripcion}</span>
               <span className="text-[11px] text-texto-3">{p.categoria}{p.pasos?.length ? ` · ${p.pasos.length} pasos` : ''}</span>
-            </button>
+              {p.fuente === 'tuya' && <button type="button" aria-label={`Borrar ${p.titulo}`} onClick={(e) => { e.stopPropagation(); void borrar(p.id) }}
+                className="absolute top-2 right-2 grid size-6 place-items-center rounded-full text-texto-3 opacity-0 transition-opacity hover:bg-s3 hover:text-peligro group-hover:opacity-100"><ITrash2 className="size-3.5" /></button>}
+            </div>
           )
         })}
       </div>
-      <p className="m-0 text-[11.5px] text-texto-3">{hayTuyas ? 'Las tuyas salen de' : 'Haz las tuyas en'} <code className="rounded-1 bg-s2 px-1 py-0.5 text-[11px]">plantillas.json</code> (en la carpeta del Taller): se suman a estas sin fin, y el Sueño deja ahí lo que repites.</p>
+      <p className="m-0 text-[11.5px] text-texto-3">Las tuyas se guardan en <code className="rounded-1 bg-s2 px-1 py-0.5 text-[11px]">plantillas.json</code> (en la carpeta del Taller) y se suman a estas sin fin; el Sueño deja ahí lo que repites.</p>
     </section>
+  )
+}
+
+function FormaPlantilla({ cats, onGuardada, onCerrar }: { cats: string[]; onGuardada(): void; onCerrar(): void }) {
+  const [titulo, setTitulo] = useState('')
+  const [categoria, setCategoria] = useState(cats[0] ?? 'Lo mío')
+  const [descripcion, setDescripcion] = useState('')
+  const [encargo, setEncargo] = useState('')
+  const [pasosTxt, setPasosTxt] = useState('')
+  const [error, setError] = useState('')
+  const campo = 'h-9 rounded-2 border border-linea bg-s1/60 px-3 text-[13px] text-texto outline-none placeholder:text-texto-3 focus:border-foco'
+  const guardar = async () => {
+    const pasos = pasosTxt.split('\n').map((s) => s.trim()).filter(Boolean)
+    const r = await bridge.taller.guardarPlantilla({ titulo, categoria, descripcion, encargo, ...(pasos.length ? { pasos } : {}) })
+    if (r.ok) onGuardada(); else setError(r.error)
+  }
+  return (
+    <div className="grid gap-2.5 rounded-3 border border-linea bg-s1/40 p-4">
+      <div className="grid grid-cols-2 gap-2.5">
+        <input className={campo} value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título (p. ej. Emular un reloj)" aria-label="Título" />
+        <input className={campo} value={categoria} onChange={(e) => setCategoria(e.target.value)} placeholder="Categoría" aria-label="Categoría" list="cats-plantilla" />
+        <datalist id="cats-plantilla">{cats.map((c) => <option key={c} value={c} />)}</datalist>
+      </div>
+      <input className={campo} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción en una línea" aria-label="Descripción" />
+      <textarea className={cn(campo, 'h-24 resize-y py-2 leading-snug')} value={encargo} onChange={(e) => setEncargo(e.target.value)} placeholder="El encargo: qué hacer, cómo comprobarlo y qué entregar (usa [corchetes] para lo que rellenarás cada vez)" aria-label="Encargo" />
+      <textarea className={cn(campo, 'h-16 resize-y py-2 leading-snug')} value={pasosTxt} onChange={(e) => setPasosTxt(e.target.value)} placeholder="Flujo (opcional): un paso por línea" aria-label="Pasos" />
+      {error && <p className="m-0 text-[12px] text-peligro">{error}</p>}
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={() => void guardar()} className="inline-flex h-8 items-center rounded-full bg-acento px-3.5 text-[12.5px] font-medium text-sobre-acento disabled:opacity-40" disabled={!titulo.trim() || encargo.trim().length < 10}>Guardar plantilla</button>
+        <button type="button" onClick={onCerrar} className="h-8 rounded-full px-3 text-[12.5px] text-texto-3 hover:text-texto">Cancelar</button>
+        <span className="ml-auto text-[11px] text-texto-3">Se guarda en plantillas.json, puedes editarla o borrarla cuando quieras.</span>
+      </div>
+    </div>
   )
 }

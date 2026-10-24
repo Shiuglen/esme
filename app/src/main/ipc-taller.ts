@@ -17,7 +17,7 @@ import { abrirSesionACP, metodosDeEntrada, type MetodoEntrada, type OpcionConfig
 import { anotarConsumo } from './ipc-proveedores'
 import { keys } from './keys'
 import { Taller, type MotorElegido } from './taller/taller'
-import { leePlantillas } from './taller/plantillas'
+import { borraPlantilla, guardaPlantilla, leePlantillas, type NuevaPlantilla } from './taller/plantillas'
 import { mcpParaTaller } from './herramientas/ipc'
 import { servirCopia, type Servidor } from './taller/vista-previa'
 import { accesoValido } from './taller/acceso'
@@ -273,6 +273,8 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
 
   ipcMain.handle('taller:motores', () => motoresTaller())
   ipcMain.handle('taller:plantillas', () => leePlantillas(join(app.getPath('userData'), 'taller')))
+  ipcMain.handle('taller:guardarPlantilla', (_e, p: unknown) => (p && typeof p === 'object' ? guardaPlantilla(join(app.getPath('userData'), 'taller'), p as NuevaPlantilla) : { ok: false as const, error: 'Datos no válidos.' }))
+  ipcMain.handle('taller:borrarPlantilla', (_e, id: unknown) => (typeof id === 'string' ? borraPlantilla(join(app.getPath('userData'), 'taller'), id) : { ok: false as const, error: 'Datos no válidos.' }))
   // Entrar en un agente que pide sesión (Cline, OpenCode, Qwen…): primero cómo se entra; luego Esme llama a authenticate con
   // el método elegido (algunos abren tu navegador para que entres con tu cuenta) y, si funciona, lo recuerda para siempre.
   // tus agentes al día: qué versión tienes, si hay otra y actualizar (main/motores/actualizar.ts; idea de MonoCode y Deska)
