@@ -7,8 +7,9 @@ import type { EventoMotor } from '../motores/sesion-acp'
 import type { ActaFirmada } from './acta'
 import type { Rol } from './roles'
 
-/** Un relevo: quién lleva el testigo en esa etapa del comité. */
-export type Relevo = { rol: string; motor: string }
+/** Un relevo: quién lleva el testigo en esa etapa del comité. Con `etapa` es un relevo de un FLUJO
+ *  (flujo.ts): además del encargo entero, sabe qué paso le toca a él. */
+export type Relevo = { rol: string; motor: string; etapa?: string }
 
 /** Cómo acabó el parlamento entero: los ids de los relevos en orden, el estado del veredicto
  *  y la frase humana. `error` trae el motivo si el comité no llegó al final. `acta` dice si el
@@ -31,6 +32,8 @@ export type Paso = {
   motor: string
   instruccion?: string   // el texto del oficio (roles.ts); si el rol no existe, el paso no se arma
   encargo: string        // el encargo de base, sin la evidencia (ésta se cose en encargoRelevo)
+  etapa?: string         // solo en un flujo: el paso que lleva este relevo
+  total?: number         // solo en un flujo: cuántas etapas hay
 }
 
 /** La evidencia que un relevo deja para el siguiente (nada de promesas: hechos del runtime). */
@@ -56,7 +59,8 @@ export function planParlamento(encargo: string, relevos: Relevo[], roles: Rol[])
   for (const r of relevos) {
     const instruccion = oficios.get(r.rol)
     if (!instruccion?.trim()) return []   // un oficio desconocido no es parlamento: mejor parar que adivinar
-    plan.push({ orden: plan.length + 1, rol: r.rol, motor: r.motor, instruccion, encargo: encargo.trim() })
+    const etapa = r.etapa?.trim()
+    plan.push({ orden: plan.length + 1, rol: r.rol, motor: r.motor, instruccion, encargo: encargo.trim(), ...(etapa ? { etapa, total: relevos.length } : {}) })
   }
   return plan
 }
@@ -74,6 +78,7 @@ export function encargoRelevo(paso: Paso, anterior?: Evidencia): string {
     if (anterior.caido?.trim()) cosido.push(`Lo que quedó MAL en el camino anterior: ${anterior.caido.trim()}`)
     if (cosido.length) piezas.push(`Evidencia del relevo anterior:\n${cosido.join('\n')}`)
   }
+  if (paso.etapa) piezas.push(etapaDe(paso, !!anterior))
   piezas.push(`Encargo:\n${paso.encargo}`)
   return piezas.join('\n\n')
 }
@@ -97,6 +102,17 @@ export function veredictoDe(base: { resumen?: string; caido?: string }): { estad
   const diceNo = /\b(fallan|no pasan|no pasaron|no pasa la|failing|failed|no se ejecut)/.test(texto)
   if (dicePasa && !diceNo) return { estado: 'probado', frase: base.resumen!.trim() }
   return { estado: 'dudoso', frase: base.resumen?.trim() || 'El último relevo no dijo nada: sin veredicto.' }
+}
+
+/** La etapa de un relevo de flujo: cuál le toca y qué hace con las demás (no las rehace ni las adelanta). */
+function etapaDe(paso: Paso, huboAnterior: boolean): string {
+  const total = paso.total ?? paso.orden
+  const cabeza = `Tu etapa en este flujo (${paso.orden} de ${total}): ${paso.etapa}`
+  if (paso.orden >= total) return `${cabeza}\nEs la última etapa: cierra el trabajo y di claramente cómo quedó; si hay pruebas, córrelas y di con qué comando.`
+  const prueba = huboAnterior ? (paso.orden === 2 ? ' (su evidencia está arriba)' : ' (la evidencia del último está arriba)') : ''
+  const antes = paso.orden === 1 ? '' : paso.orden === 2 ? `La etapa anterior ya la llevó otro relevo${prueba}. ` : `Las etapas anteriores ya las llevaron otros relevos${prueba}. `
+  const despues = total - paso.orden === 1 ? 'La siguiente la llevará otro relevo' : 'Las siguientes las llevarán otros relevos'
+  return `${cabeza}\nHaz solo esta etapa. ${antes}${despues} con lo que tú dejes: di qué hiciste y qué queda.`
 }
 
 const recortado = (s: string, max = 800) => (s.trim().length > max ? s.trim().slice(0, max - 1).trimEnd() + '…' : s.trim())

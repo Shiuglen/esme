@@ -91,14 +91,16 @@ const cacheOpciones = new Map<string, OpcionConfig[]>()
 const textoCorto = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 200
 
 // El parlamento: encargo con sustancia, carpeta real (o null) y de 2 a 5 relevos, cada uno con su
-// oficio y su motor (nombres cortos; la verdad de los oficios la comprueba el plan en el runtime).
-function parlamentoValido(p: unknown): p is { texto: string; carpeta: string | null; relevos: { rol: string; motor: string }[]; acceso?: unknown } {
+// oficio y su motor (nombres cortos; la verdad de los oficios la comprueba el plan en el runtime). En un
+// flujo (flujo.ts) cada relevo trae además su etapa: texto, y con tope.
+const etapaValida = (v: unknown) => v === undefined || (typeof v === 'string' && v.length <= 600)
+function parlamentoValido(p: unknown): p is { texto: string; carpeta: string | null; relevos: { rol: string; motor: string; etapa?: string }[]; acceso?: unknown } {
   if (!p || typeof p !== 'object') return false
   const x = p as { texto?: unknown; carpeta?: unknown; relevos?: unknown; acceso?: unknown }
   if (!textoValido(x.texto)) return false
   if (!(x.carpeta === null || (typeof x.carpeta === 'string' && x.carpeta.length > 0))) return false
   if (!Array.isArray(x.relevos) || x.relevos.length < 2 || x.relevos.length > 5) return false
-  return x.relevos.every((r) => !!r && typeof r === 'object' && typeof (r as { rol?: unknown }).rol === 'string' && textoCorto((r as { rol: string }).rol) && typeof (r as { motor?: unknown }).motor === 'string' && textoCorto((r as { motor: string }).motor))
+  return x.relevos.every((r) => !!r && typeof r === 'object' && typeof (r as { rol?: unknown }).rol === 'string' && textoCorto((r as { rol: string }).rol) && typeof (r as { motor?: unknown }).motor === 'string' && textoCorto((r as { motor: string }).motor) && etapaValida((r as { etapa?: unknown }).etapa))
 }
 
 // config: objeto plano de hasta 10 claves con valores string cortos; undefined si no es válido.
@@ -329,7 +331,7 @@ export function registerTaller(o: { brainInfo: () => { url: string; token: strin
   ipcMain.handle('taller:parlamentar', async (_e, p: unknown) => {
     if (!parlamentoValido(p)) return entrada
     try {
-      return await t.parlamentar({ texto: p.texto, carpeta: p.carpeta, relevos: p.relevos, ...(accesoValido(p.acceso) ? { acceso: p.acceso } : {}) })
+      return await t.parlamentar({ texto: p.texto, carpeta: p.carpeta, relevos: p.relevos.map((r) => ({ rol: r.rol, motor: r.motor, ...(r.etapa?.trim() ? { etapa: r.etapa } : {}) })), ...(accesoValido(p.acceso) ? { acceso: p.acceso } : {}) })
     } catch (e) { return { ok: false, error: mensaje(e) } }
   })
   ipcMain.handle('taller:parar', (_e, id: unknown) => (idValido(id) ? accion(() => t.parar(id)) : entrada))

@@ -27,8 +27,15 @@ describe('las plantillas de casa', () => {
     const cats = new Set(PLANTILLAS_CASA.map((p) => p.categoria))
     for (const c of ['Construir', 'Calidad', 'Entender', 'Emular', 'Datos', 'DevOps', 'Flujo']) expect(cats.has(c), `falta la categoría ${c}`).toBe(true)
   })
+  it('el listón de las recetas de siempre: títulos únicos, encargo concreto y descripción que se entiende', () => {
+    expect(new Set(PLANTILLAS_CASA.map((p) => p.titulo)).size).toBe(PLANTILLAS_CASA.length)
+    for (const p of PLANTILLAS_CASA) {
+      expect(p.encargo.length, p.id).toBeGreaterThan(160)
+      expect(p.descripcion.length, p.id).toBeGreaterThan(20)
+    }
+  })
   it('conserva las recetas que ya había (no se pierde ninguna)', () => {
-    for (const id of ['web-presentacion', 'app-desde-cero', 'tests-de-lo-que-falta', 'entender-un-programa']) expect(PLANTILLAS_CASA.some((p) => p.id === id), id).toBe(true)
+    for (const id of ['web-presentacion', 'app-desde-cero', 'funcion-nueva', 'tests-de-lo-que-falta', 'arreglar-tipos', 'revision-codigo', 'auditoria-seguridad', 'dependencias-al-dia', 'explicar-proyecto', 'documentacion', 'entender-un-programa', 'refactorizar', 'traducir-app', 'rendimiento', 'accesibilidad']) expect(PLANTILLAS_CASA.some((p) => p.id === id), id).toBe(true)
   })
   it('un flujo lleva sus pasos en orden', () => {
     const flujo = PLANTILLAS_CASA.find((p) => p.categoria === 'Flujo')!

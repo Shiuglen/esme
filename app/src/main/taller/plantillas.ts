@@ -1,120 +1,12 @@
-// Plantillas del Taller: puntos de partida para que cualquiera, haga lo que haga, empiece con una base lista — no solo
-// programar, también emular dispositivos, analizar datos, montar CI o encadenar un flujo de varios pasos. Cada plantilla es
-// un encargo escrito para que salga bien a la primera; se elige en una galería y el texto queda en la caja para retocarlo.
-//
-// «Sin fin»: las de casa viven aquí, pero el patrón es el de los oficios (roles.json). Si pones un `plantillas.json` en la
-// carpeta del Taller, las tuyas se suman a las de casa, y si repites un id, mandan tus palabras. El Sueño deja ahí las que
-// propone de lo que repites. Esta es la fuente de verdad del catálogo; `renderer/taller/recetas.ts` es solo el respaldo
-// mínimo de la web cuando no hay app de escritorio detrás.
+// Tus plantillas, sin fin: el patrón es el de los oficios (roles.json). Las de casa viven en plantillas-casa.ts; si
+// pones un `plantillas.json` en la carpeta del Taller, las tuyas se suman a las de casa, y si repites un id mandan tus
+// palabras. Se crean y se borran también desde la app (guardaPlantilla/borraPlantilla), y el Sueño deja ahí lo que repites.
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { PLANTILLAS_CASA, slug, type Plantilla } from './plantillas-casa'
 
-export type Plantilla = {
-  id: string
-  titulo: string
-  categoria: string          // abierta a propósito: tus plantillas traen las categorías que quieras
-  icono: string              // nombre de un icono de lucide (el renderer lo dibuja)
-  descripcion: string
-  encargo: string
-  pasos?: string[]           // un flujo: los pasos en orden (el encargo ya los nombra; se muestran como guía)
-  oficios?: string[]         // ids de oficios sugeridos para una arena (roles.ts)
-  fuente: 'casa' | 'tuya'
-}
-
-const casa = (p: Omit<Plantilla, 'fuente'>): Plantilla => ({ ...p, fuente: 'casa' })
-
-export const PLANTILLAS_CASA: Plantilla[] = [
-  // ---- Construir ----
-  casa({ id: 'web-presentacion', titulo: 'Una web de presentación', categoria: 'Construir', icono: 'LayoutTemplate', descripcion: 'Una landing de verdad para este proyecto, que se vea en móvil.',
-    encargo: 'Crea una página de presentación para este proyecto: lee el README y el código para entender qué hace y para quién. Un titular claro, qué problema resuelve, tres funciones principales con ejemplos reales y una llamada a la acción. Que funcione en móvil y en escritorio, accesible (contraste AA, foco visible) y sin dependencias nuevas si no hacen falta. Al terminar, dime cómo abrirla y qué decisiones tomaste.' }),
-  casa({ id: 'app-desde-cero', titulo: 'Una app desde cero', categoria: 'Construir', icono: 'Rocket', descripcion: 'Del encargo a algo que funciona, con su estructura y sus tests.',
-    encargo: 'Crea una app nueva a partir de esta idea: [describe la idea]. Elige una pila sencilla y actual, monta la estructura, implementa lo mínimo que la hace útil, añade tests de lo importante y un README con cómo arrancarla. Antes de escribir código, resume en cinco líneas qué vas a construir; al terminar, dime qué falta para la siguiente versión.' }),
-  casa({ id: 'funcion-nueva', titulo: 'Una función nueva', categoria: 'Construir', icono: 'Plus', descripcion: 'Añadir algo al proyecto siguiendo su estilo y con tests.',
-    encargo: 'Añade esta función al proyecto: [describe la función]. Primero localiza dónde encaja leyendo el código y sigue su estilo y sus convenciones. Escribe el test que la describe antes de implementarla, implementa lo mínimo para que pase y comprueba que el resto de tests sigue en verde. Al terminar, resume qué ficheros tocaste y por qué.' }),
-  casa({ id: 'api-rest', titulo: 'Una API', categoria: 'Construir', icono: 'Server', descripcion: 'Un servicio con sus rutas, validación y tests.',
-    encargo: 'Crea una API para esto: [describe qué datos y qué operaciones]. Elige una pila sencilla y actual, define las rutas, valida la entrada, maneja los errores con códigos claros y documenta cada ruta con un ejemplo. Añade tests de las rutas y de los casos de error. Al terminar, dime cómo arrancarla y cómo probar una llamada.' }),
-
-  // ---- Calidad ----
-  casa({ id: 'tests-de-lo-que-falta', titulo: 'Tests de lo que falta', categoria: 'Calidad', icono: 'FlaskConical', descripcion: 'Encuentra lo que no tiene tests y protégelo.',
-    encargo: 'Busca las partes del proyecto con más lógica y sin tests (empieza por las funciones puras y las que deciden cosas). Escribe tests que describan su comportamiento real, incluidos los casos límite y los errores. No cambies el código salvo que un test destape un fallo: si pasa, explícalo y propón el arreglo aparte. Al terminar, di cuántos tests añadiste y qué cubren.' }),
-  casa({ id: 'arreglar-tipos', titulo: 'Arreglar los errores de tipos', categoria: 'Calidad', icono: 'Wrench', descripcion: 'Que el comprobador de tipos quede limpio, sin trampas.',
-    encargo: 'Ejecuta el comprobador de tipos del proyecto y arregla todos los errores sin usar «any», sin silenciar reglas y sin cambiar el comportamiento. Si un error destapa un fallo real, arréglalo y dilo. Al terminar, ejecuta los tests y el comprobador otra vez y enseña que ambos pasan.' }),
-  casa({ id: 'revision-codigo', titulo: 'Revisión de código', categoria: 'Calidad', icono: 'ScanSearch', descripcion: 'Una revisión seria: fallos, riesgos y mejoras, por prioridad.',
-    encargo: 'Revisa el código de este proyecto como lo haría una persona exigente del equipo: busca fallos de lógica, condiciones de carrera, errores sin tratar, código muerto y duplicado. Ordena lo que encuentres de más grave a menos, con el fichero y la línea, por qué importa y cómo arreglarlo. No cambies nada: solo el informe.' }),
-
-  // ---- Seguridad ----
-  casa({ id: 'auditoria-seguridad', titulo: 'Auditoría de seguridad', categoria: 'Seguridad', icono: 'ShieldCheck', descripcion: 'Revisión defensiva de tu propio código: secretos, inyecciones, permisos.',
-    encargo: 'Haz una auditoría de seguridad defensiva de este proyecto: busca secretos en el código o en el historial, entradas sin validar (inyección, rutas, HTML), dependencias con fallos conocidos, permisos excesivos y datos sensibles en registros. Para cada hallazgo: gravedad, dónde está, cómo podría explotarse y el arreglo concreto. No cambies nada sin preguntar.' }),
-  casa({ id: 'dependencias-al-dia', titulo: 'Dependencias al día', categoria: 'Seguridad', icono: 'PackageCheck', descripcion: 'Actualizar con cuidado, sin romper nada.',
-    encargo: 'Revisa las dependencias del proyecto: cuáles están desactualizadas, cuáles tienen fallos de seguridad conocidos y cuáles ya no se usan. Actualiza primero las de parches y menores, ejecuta los tests después de cada grupo y para si algo se rompe. Las mayores, propónlas con lo que cambiaría. Al terminar, un resumen de lo actualizado y lo pendiente.' }),
-
-  // ---- Entender ----
-  casa({ id: 'explicar-proyecto', titulo: 'Explícame este proyecto', categoria: 'Entender', icono: 'BookOpen', descripcion: 'Un mapa del proyecto para entenderlo en diez minutos.',
-    encargo: 'Lee este proyecto y explícamelo como a alguien que llega nuevo: qué hace, cómo está organizado (carpetas y piezas principales), por dónde entra una petición o una acción del usuario, qué depende de qué y dónde están las partes delicadas. Termina con las cinco cosas que cambiaría primero y por qué. No cambies nada.' }),
-  casa({ id: 'documentacion', titulo: 'Documentación', categoria: 'Entender', icono: 'FileText', descripcion: 'Un README y documentación que de verdad se entienden.',
-    encargo: 'Escribe o mejora la documentación de este proyecto: un README con qué es, cómo instalarlo, cómo usarlo con ejemplos reales y cómo contribuir; y comentarios en las partes que no se entienden solas. Comprueba que cada comando del README funciona de verdad. No inventes funciones que no existen.' }),
-  casa({ id: 'entender-un-programa', titulo: 'Entender un programa', categoria: 'Entender', icono: 'Binary', descripcion: 'Ingeniería inversa con evidencia: qué hace un binario o una app de verdad.',
-    encargo: 'Analiza este programa: [ruta al ejecutable, al .asar, al .apk o a la .dll]. Primero, si tienes la herramienta de Esme para absorber un programa (esme_absorbe_programa), úsala: lo que REA vio de él queda en la memoria de Esme y luego puedes preguntarle por sus canales, sus funciones y sus límites. Si no la tienes, usa REA en crudo: cada respuesta viene con la evidencia de la conclusión y con los límites de esa evidencia, y eso es lo que debes contar. Termina diciendo qué hace, cómo está organizado, qué funciones importan y qué queda incierto, citando el fichero o la función. No modifiques el objetivo.' }),
-
-  // ---- Emular / Dispositivos ----
-  casa({ id: 'emular-android', titulo: 'Emular un Android', categoria: 'Emular', icono: 'Smartphone', descripcion: 'Un emulador de Android listo y una prueba que arranca la app en él.',
-    encargo: 'Prepara este proyecto para probarse en un Android emulado: comprueba que el SDK de Android y un AVD están disponibles (si no, di exactamente qué instalar y el comando), arranca el emulador sin interfaz (headless) y escribe una prueba de humo que lance la app en él y confirme que abre. Deja un script `probar-android` que lo haga de principio a fin. Si algo del entorno falta, dilo claro en vez de fingir que pasó.' }),
-  casa({ id: 'emular-ios', titulo: 'Emular un iPhone', categoria: 'Emular', icono: 'Apple', descripcion: 'Simulador de iOS (en Mac) o el camino para compilar desde Linux con xtool.',
-    encargo: 'Prepara este proyecto para probarse en un iPhone: si estás en macOS, usa el Simulator (xcrun simctl) para arrancar la app y una prueba de humo que confirme que abre. Si estás en Linux, no inventes un simulador que no hay: documenta el camino real con xtool (compilar apps de iOS Swift/SwiftPM desde Linux) y deja listo lo que sí se puede hacer aquí. Di siempre qué parte quedó comprobada de verdad y cuál es solo el camino.' }),
-  casa({ id: 'responsive-matrix', titulo: 'Probar en muchas pantallas', categoria: 'Emular', icono: 'MonitorSmartphone', descripcion: 'Capturas de la interfaz en móvil, tableta y escritorio, a la vez.',
-    encargo: 'Emula una matriz de dispositivos para esta interfaz web con un navegador automatizado (Playwright si no hay otro): móvil (390×844), tableta (768×1024) y escritorio (1440×900), en claro y oscuro. Haz una captura de cada pantalla clave en cada tamaño, detecta desbordes y texto cortado, y deja un informe con las capturas y lo que falla. No cambies el diseño: solo mide y enseña.' }),
-  casa({ id: 'cross-navegador', titulo: 'Que funcione en todos los navegadores', categoria: 'Emular', icono: 'Globe', descripcion: 'La misma prueba en Chromium, Firefox y WebKit.',
-    encargo: 'Monta pruebas de extremo a extremo con Playwright que recorran el camino principal de la app y ejecútalas en Chromium, Firefox y WebKit. Para cada navegador, di qué pasó y qué falló (con captura del fallo). Si algo solo se rompe en uno, señala la causa. Deja un script que lo lance en los tres.' }),
-  casa({ id: 'emular-api', titulo: 'Emular un servicio externo', categoria: 'Emular', icono: 'Network', descripcion: 'Un servidor falso que imita una API para trabajar sin ella.',
-    encargo: 'Crea un servidor que emule esta API externa para desarrollo y pruebas: [nombra la API o pega un ejemplo de sus respuestas]. Imita sus rutas, sus formatos y sus errores con datos de ejemplo realistas; que se arranque con un comando y que el proyecto pueda apuntar a él con una variable de entorno. Añade una prueba que compruebe que el proyecto funciona contra el emulador. Documenta cómo cambiar entre el real y el emulado.' }),
-
-  // ---- Datos ----
-  casa({ id: 'analisis-datos', titulo: 'Analizar unos datos', categoria: 'Datos', icono: 'BarChart3', descripcion: 'De un CSV o una tabla a conclusiones con un gráfico.',
-    encargo: 'Analiza estos datos: [ruta al CSV/JSON o describe la tabla]. Cárgalos, descríbelos (filas, columnas, valores que faltan), responde a estas preguntas: [las tuyas] y saca tres conclusiones con su número. Haz un gráfico de lo más importante y deja un informe corto con los hallazgos y cómo reproducirlos. No inventes datos que no están.' }),
-  casa({ id: 'panel-datos', titulo: 'Un panel de datos', categoria: 'Datos', icono: 'LayoutDashboard', descripcion: 'Un tablero sencillo que enseña lo que importa de unos datos.',
-    encargo: 'Crea un panel para estos datos: [ruta o fuente]. Elige las tres o cuatro cifras que de verdad importan, muéstralas grandes y claras, añade un gráfico de tendencia y una tabla filtrable. Que se vea en móvil, que cargue rápido y que diga de cuándo son los datos. Al terminar, dime cómo abrirlo y de dónde salen las cifras.' }),
-  casa({ id: 'etl', titulo: 'Limpiar y mover datos', categoria: 'Datos', icono: 'FolderSync', descripcion: 'Una tubería que coge, limpia y deja los datos listos.',
-    encargo: 'Monta una tubería que coja los datos de [origen], los limpie (quita duplicados, arregla formatos, marca lo que falta) y los deje en [destino] en un formato limpio. Que sea idempotente (ejecutarla dos veces no duplica), que registre qué hizo y cuántas filas y que falle claro si la entrada no es lo esperado. Añade una prueba con un ejemplo pequeño.' }),
-
-  // ---- DevOps ----
-  casa({ id: 'ci-github', titulo: 'Integración continua', categoria: 'DevOps', icono: 'GitBranch', descripcion: 'GitHub Actions que prueba y construye en cada push.',
-    encargo: 'Añade integración continua con GitHub Actions: un flujo que en cada push y cada pull request instale las dependencias, ejecute el comprobador de tipos, los tests y la construcción, con caché para que vaya rápido. Que falle si algo falla y que el resultado se vea claro. No subas secretos al repositorio: usa los secrets de Actions y documéntalos.' }),
-  casa({ id: 'dockerizar', titulo: 'Meterlo en un contenedor', categoria: 'DevOps', icono: 'Container', descripcion: 'Un Dockerfile cuidado y un compose para levantarlo entero.',
-    encargo: 'Prepara este proyecto para correr en un contenedor: un Dockerfile en varias etapas (ligero, sin nada que no haga falta, sin secretos dentro, usuario no root), un .dockerignore y un docker-compose para levantarlo con sus dependencias (base de datos, etc.) con un comando. Comprueba que la imagen construye y que el contenedor arranca y responde. Documenta cómo usarlo.' }),
-  casa({ id: 'desplegar', titulo: 'Cómo desplegarlo', categoria: 'DevOps', icono: 'CloudUpload', descripcion: 'El camino real para ponerlo en marcha, probado hasta donde se pueda.',
-    encargo: 'Deja listo el despliegue de este proyecto a [dónde: un VPS, un servicio, el servidor del creador]. Escribe el script o el flujo que lo pone en marcha, con los pasos reproducibles, las variables que hacen falta (sin ponerles valor) y cómo volver atrás si algo sale mal. Prueba hasta donde se pueda desde aquí y di claramente qué queda por hacer en el destino real.' }),
-
-  // ---- Diseño y contenido ----
-  casa({ id: 'sistema-diseno', titulo: 'Sacar el sistema de diseño', categoria: 'Diseño', icono: 'Palette', descripcion: 'Los colores, tipos y espacios de la app, ordenados y con nombre.',
-    encargo: 'Recorre la interfaz de este proyecto y saca su sistema de diseño: los colores (con su uso), la tipografía (familias, tamaños, pesos), los espacios y los radios, en tokens con nombre. Marca las incoherencias (dos grises casi iguales, tamaños sueltos) y propón unificarlas. Deja un documento con los tokens y una página que los enseñe. No cambies la app todavía: primero el mapa.' }),
-  casa({ id: 'post-tecnico', titulo: 'Un post sobre el proyecto', categoria: 'Contenido', icono: 'PenLine', descripcion: 'Un artículo claro de qué hace y cómo está hecho.',
-    encargo: 'Escribe un artículo técnico sobre este proyecto para quien quiera entenderlo o usarlo: qué problema resuelve, cómo está hecho (las decisiones que importan y por qué), un ejemplo real de uso y qué aprendiste construyéndolo. Tono claro y honesto, sin humo. Que todo lo que cuentes sea verdad del código, no un folleto.' }),
-
-  // ---- Pulir ----
-  casa({ id: 'refactorizar', titulo: 'Refactorizar sin miedo', categoria: 'Pulir', icono: 'Shuffle', descripcion: 'Código más claro con el mismo comportamiento, probado.',
-    encargo: 'Refactoriza la parte más enrevesada de este proyecto: [indica cuál o déjalo a tu criterio]. Antes de tocar nada, asegúrate de que hay tests que cubren su comportamiento (escríbelos si faltan). Haz cambios pequeños, ejecutando los tests después de cada uno. El comportamiento no puede cambiar. Al terminar, explica qué estaba mal y qué mejoró.' }),
-  casa({ id: 'traducir-app', titulo: 'Traducir la app', categoria: 'Pulir', icono: 'Languages', descripcion: 'Español e inglés (o los que digas), sin textos sueltos.',
-    encargo: 'Prepara la app para varios idiomas: saca todos los textos visibles a ficheros de traducción, añade español e inglés (o los idiomas que indique) y un selector de idioma. Revisa que no quede ningún texto escrito a mano en los componentes, que las fechas y los números se formateen según el idioma y que nada se corte con traducciones más largas.' }),
-  casa({ id: 'rendimiento', titulo: 'Rendimiento', categoria: 'Pulir', icono: 'Gauge', descripcion: 'Que vaya más rápido, midiendo antes y después.',
-    encargo: 'Mide el rendimiento de este proyecto (tiempo de arranque, lo más lento al usarlo, tamaño de lo que se descarga) y busca las causas principales. Arregla las tres más importantes sin cambiar el comportamiento y vuelve a medir. Enseña las cifras de antes y después y explica cada cambio.' }),
-  casa({ id: 'accesibilidad', titulo: 'Accesibilidad', categoria: 'Pulir', icono: 'Accessibility', descripcion: 'Que cualquiera pueda usarla: teclado, lector de pantalla, contraste.',
-    encargo: 'Revisa la accesibilidad de la interfaz: navegación completa con teclado y foco visible, etiquetas para lectores de pantalla, contraste de colores (WCAG AA), textos alternativos y movimiento reducido. Arregla lo que encuentres empezando por lo que bloquea a más personas y explica cada cambio.' }),
-
-  // ---- Flujos (varios pasos encadenados) ----
-  casa({ id: 'flujo-funcion-completa', titulo: 'Flujo: una función de principio a fin', categoria: 'Flujo', icono: 'Workflow',
-    descripcion: 'Explorar, construir, probar y revisar — los cuatro pasos, en orden.',
-    oficios: ['explorador', 'constructor', 'probador', 'revisor'],
-    pasos: ['Explorar: entender dónde encaja y qué convenciones seguir', 'Construir: implementar la función siguiendo el estilo del proyecto', 'Probar: escribir y ejecutar los tests, incluidos los casos límite', 'Revisar: mirar el resultado con ojo crítico y arreglar lo pequeño'],
-    encargo: 'Lleva esta función de principio a fin, en cuatro pasos y en este orden: 1) EXPLORAR — lee el código y di dónde encaja, qué convenciones seguir y qué riesgos hay. 2) CONSTRUIR — impleméntala siguiendo el estilo del proyecto. 3) PROBAR — escribe el test que la describe (antes de darla por hecha) y ejecútalo, con los casos límite. 4) REVISAR — míralo con ojo crítico, arregla lo pequeño y di lo que quede. La función: [descríbela]. Al terminar, resume qué hiciste en cada paso.' }),
-  casa({ id: 'flujo-publicar', titulo: 'Flujo: dejarlo listo para publicar', categoria: 'Flujo', icono: 'Rocket',
-    descripcion: 'Tests en verde, construcción, changelog y versión — en orden.',
-    pasos: ['Tests y tipos en verde', 'Construcción sin errores', 'Changelog con lo que cambió', 'Subir la versión y etiquetar'],
-    encargo: 'Deja este proyecto listo para publicar, en orden y parando si un paso falla: 1) ejecuta los tests y el comprobador de tipos y déjalos en verde (arregla lo que rompa). 2) construye y comprueba que no hay errores. 3) escribe en el CHANGELOG lo que ha cambiado desde la última versión, en lenguaje de persona. 4) sube el número de versión según corresponda y deja la etiqueta preparada (no publiques fuera sin que te lo confirmen). Al terminar, di en qué quedó cada paso.' }),
-  casa({ id: 'flujo-emular-probar', titulo: 'Flujo: emular y probar en dispositivos', categoria: 'Flujo', icono: 'MonitorSmartphone',
-    descripcion: 'Montar el emulador, escribir la prueba y correrla en varios tamaños.',
-    pasos: ['Preparar el emulador o los navegadores', 'Escribir la prueba del camino principal', 'Correrla en móvil, tableta y escritorio', 'Informe con capturas y lo que falla'],
-    encargo: 'Prepara y prueba esta app en dispositivos, en orden: 1) deja listo lo que haga falta (un emulador de Android, o Playwright con sus navegadores), diciendo qué instalar si falta. 2) escribe una prueba de extremo a extremo del camino principal. 3) córrela emulando móvil, tableta y escritorio (y, si aplica, varios navegadores), con captura de cada uno. 4) deja un informe con las capturas y lo que falla en cada tamaño. Di siempre qué quedó comprobado de verdad.' }),
-]
+export { categorias, PLANTILLAS_CASA, slug } from './plantillas-casa'
+export type { Plantilla } from './plantillas-casa'
 
 export type NuevaPlantilla = { id?: string; titulo: string; categoria: string; icono?: string; descripcion: string; encargo: string; pasos?: string[]; oficios?: string[] }
 type Cruda = Omit<Plantilla, 'fuente'>
@@ -137,10 +29,6 @@ function escribe(dir: string, tuyas: Cruda[]): void {
   writeFileSync(`${fichero(dir)}.tmp`, `${JSON.stringify(tuyas, null, 1)}\n`)
   renameSync(`${fichero(dir)}.tmp`, fichero(dir))
 }
-
-/** Un nombre corto y válido a partir de un texto: sin acentos ni símbolos, empieza por letra. */
-export const slug = (s: string) =>
-  s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^[^a-z]+/, '').replace(/-+$/g, '')
 
 /** Las plantillas de este Taller: las de casa, más las tuyas de `plantillas.json` (si repites un id, mandan las tuyas). */
 export function leePlantillas(dir: string): Plantilla[] {
@@ -176,9 +64,3 @@ export function borraPlantilla(dir: string, id: string): { ok: true } | { ok: fa
   return { ok: true }
 }
 
-/** Las categorías que hay, en el orden en que aparecen y sin repetir. */
-export function categorias(ps: Plantilla[]): string[] {
-  const vistas = new Set<string>(), out: string[] = []
-  for (const p of ps) if (!vistas.has(p.categoria)) { vistas.add(p.categoria); out.push(p.categoria) }
-  return out
-}

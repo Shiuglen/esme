@@ -227,7 +227,7 @@ type ElectronApi = {
     instalarMotor(id: string): Promise<InstalarMotor>; onInstalacion(fn: (p: { id: string; trozo?: string; listo?: boolean }) => void): () => void
     crear(p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: AccesoTarea; rol?: string; origen?: string }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }>
     seguir(id: string, texto: string): Promise<ResultadoTaller>; responder(id: string, opcion: string): Promise<ResultadoTaller>
-    parlamentar(p: { texto: string; carpeta: string | null; relevos: { rol: string; motor: string }[]; acceso?: AccesoTarea }): Promise<ResultadoParlamento>
+    parlamentar(p: { texto: string; carpeta: string | null; relevos: { rol: string; motor: string; etapa?: string }[]; acceso?: AccesoTarea }): Promise<ResultadoParlamento>
     vistaPrevia(id: string): Promise<{ ok: true; url: string } | { ok: false; error: string }>; cerrarVista(id: string): Promise<ResultadoTaller>
     configurar(id: string, opcion: string, valor: string): Promise<ResultadoTaller>; opcionesMotor(motor: string): Promise<OpcionMotor[]>
     aplicar(id: string): Promise<{ ok: true; ficheros: number } | { ok: false; error: string; ficheros?: string[] }>; deshacer(id: string): Promise<ResultadoTaller>
@@ -498,7 +498,7 @@ export const bridge = {
     crear: async (p: { motor: string; carpeta: string | null; texto: string; config?: Record<string, string>; arena?: string; acceso?: AccesoTarea; rol?: string; objetivo?: string }): Promise<{ ok: true; tarea: TareaTaller } | { ok: false; error: string }> =>
       (isElectron() ? window.daimon!.taller.crear(p) : SOLO_ESCRITORIO),
     seguir: async (id: string, texto: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.seguir(id, texto) : SOLO_ESCRITORIO),
-    parlamentar: async (p: { texto: string; carpeta: string | null; relevos: { rol: string; motor: string }[]; acceso?: AccesoTarea }): Promise<ResultadoParlamento> => (isElectron() ? window.daimon!.taller.parlamentar(p) : { ids: [], estado: 'tumbado', frase: 'El parlamento vive en el escritorio.' }),
+    parlamentar: async (p: { texto: string; carpeta: string | null; relevos: { rol: string; motor: string; etapa?: string }[]; acceso?: AccesoTarea }): Promise<ResultadoParlamento> => (isElectron() ? window.daimon!.taller.parlamentar(p) : { ids: [], estado: 'tumbado', frase: 'El parlamento vive en el escritorio.' }),
     responder: async (id: string, opcion: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.responder(id, opcion) : SOLO_ESCRITORIO),
     vistaPrevia: async (id: string): Promise<{ ok: true; url: string } | { ok: false; error: string }> => (isElectron() ? window.daimon!.taller.vistaPrevia(id) : SOLO_ESCRITORIO),
     cerrarVista: async (id: string): Promise<ResultadoTaller> => (isElectron() ? window.daimon!.taller.cerrarVista(id) : SOLO_ESCRITORIO),

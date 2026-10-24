@@ -17,6 +17,9 @@ import { CurvaTaller } from '../paginas/CurvaTaller'
 import { Oficios } from '../taller/Oficios'
 import { Bienvenida } from '../paginas/Bienvenida'
 import { Arena } from '../taller/Arena'
+import { PanelFlujo } from '../taller/PanelFlujo'
+import { relevosDeFlujo } from '../../main/taller/flujo'
+import { PLANTILLAS_CASA } from '../../main/taller/plantillas-casa'
 import { RedNeuronal, type RedHandle } from '../memoria/RedNeuronal'
 import { FondoVivo } from '../shell/FondoVivo'
 import '../styles/esme.css'
@@ -111,6 +114,29 @@ function PiezaOficios() {
 
 
 // La arena con oficios: dos rivales, cada uno con su papel, y los ficheros que tocó cada uno.
+/** Los flujos de casa tal como los verá «Nueva tarea»: un relevo por paso con su oficio (los datos y la
+ *  lógica son los de verdad: plantillas-casa.ts + flujo.ts), y uno de seis pasos que no cabe. */
+function PiezaFlujo() {
+  const roles = [{ id: 'constructor', nombre: 'Constructor' }, { id: 'revisor', nombre: 'Revisor' }, { id: 'probador', nombre: 'Probador' },
+    { id: 'explorador', nombre: 'Explorador' }, { id: 'espejo', nombre: 'Espejo' }]
+  const ids = roles.map((r) => r.id)
+  const flujos = PLANTILLAS_CASA.filter((p) => p.categoria === 'Flujo')
+  const largo = ['Explorar el proyecto', 'Construir la base', 'Construir la interfaz', 'Probar en Android', 'Probar en la web', 'Revisar el conjunto']
+  return (
+    <div className="h-full overflow-y-auto p-10">
+      <div className="mx-auto grid max-w-[720px] gap-6">
+        {[...flujos.map((f) => ({ id: f.id, titulo: f.titulo, relevos: relevosDeFlujo({ pasos: f.pasos ?? [], oficios: f.oficios }, ['opencode'], ids) })),
+          { id: 'largo', titulo: 'Un flujo de seis pasos (no cabe en un parlamento)', relevos: relevosDeFlujo({ pasos: largo }, ['opencode'], ids) }].map((f) => (
+          <div key={f.id} className="vidrio aurora-foco rounded-4 border">
+            <p className="m-0 px-4 pt-3.5 pb-2.5 text-[14.5px] text-texto">{f.titulo}</p>
+            <PanelFlujo relevos={f.relevos} roles={roles} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function PiezaArena() {
   const ahora = Date.now()
   const tarea = (id: string, rol: string, motor: string, modelo: string, mas: number, ficheros: string[], extra: object = {}): TareaTaller => ({
@@ -186,7 +212,7 @@ function Lab() {
   return (
     <div className="h-screen w-screen overflow-hidden bg-papel text-texto">
       <FondoVivo tema={tema} estado="reposo" />
-      <div className="relative z-10 h-full">{pieza === 'chispa' ? <PiezaChispa atlas={atlas} /> : pieza === 'curva' ? <PiezaCurva /> : pieza === 'oficios' ? <PiezaOficios /> : pieza === 'bienvenida' ? <PiezaBienvenida /> : pieza === 'arena' ? <PiezaArena /> : pieza === 'taller' ? <Taller atlas={atlas} tema={tema} /> : <RedNeuronal ref={red} atlas={atlas} tema={tema} recordados={[]} onPick={() => {}} />}</div>
+      <div className="relative z-10 h-full">{pieza === 'chispa' ? <PiezaChispa atlas={atlas} /> : pieza === 'curva' ? <PiezaCurva /> : pieza === 'oficios' ? <PiezaOficios /> : pieza === 'bienvenida' ? <PiezaBienvenida /> : pieza === 'arena' ? <PiezaArena /> : pieza === 'flujo' ? <PiezaFlujo /> : pieza === 'taller' ? <Taller atlas={atlas} tema={tema} /> : <RedNeuronal ref={red} atlas={atlas} tema={tema} recordados={[]} onPick={() => {}} />}</div>
     </div>
   )
 }

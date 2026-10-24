@@ -1,13 +1,15 @@
 // Pedir una tarea: qué quieres, con qué motor y modelo, y sobre qué carpeta. Esme monta una copia aislada y el motor trabaja ahí.
 // Recuerda tu motor, tu carpeta y tus opciones por motor; si el motor trae un modelo lento o de pago, propone uno gratis.
 import { LayoutTemplate as ILayoutTemplate, Rocket as IRocket, Plus as IPlus, FlaskConical as IFlaskConical, Wrench as IWrench, ScanSearch as IScanSearch, ShieldCheck as IShieldCheck, PackageCheck as IPackageCheck, BookOpen as IBookOpen, FileText as IFileText, Shuffle as IShuffle, Languages as ILanguages, Gauge as IGauge, Accessibility as IAccessibility, Sparkles as ISparkles, Server as IServer, Binary as IBinary, Smartphone as ISmartphone, Apple as IApple, MonitorSmartphone as IMonitorSmartphone, Globe as IGlobe, Network as INetwork, BarChart3 as IBarChart3, LayoutDashboard as ILayoutDashboard, FolderSync as IFolderSync, GitBranch as IGitBranch, Container as IContainer, CloudUpload as ICloudUpload, Palette as IPalette, PenLine as IPenLine, Workflow as IWorkflow, Trash2 as ITrash2, type LucideIcon, Target } from 'lucide-react'
-import { RECETAS } from './recetas'
+import { PLANTILLAS_CASA } from '../../main/taller/plantillas-casa'
+import { flujoLanzable, relevosDeFlujo } from '../../main/taller/flujo'
+import { PanelFlujo } from './PanelFlujo'
 import { CalendarClock, CornerDownLeft, Dices, Folder, FolderPlus, ShieldCheck, Sparkles, Swords, X } from 'lucide-react'
 import { cuandoDe, fraseCuando, type OpcionCuando } from './cuando'
 import { AnimatePresence, motion } from 'motion/react'
 import { toast } from 'sonner'
 import { useEffect, useMemo, useState } from 'react'
-import { bridge, type MotorTaller, type OpcionMotor, type AccesoTarea, type Repeticion, type EncargoFuera, type Plantilla } from '../lib/bridge'
+import { bridge, type MotorTaller, type OpcionMotor, type AccesoTarea, type Repeticion, type EncargoFuera, type Plantilla, type ResultadoParlamento } from '../lib/bridge'
 import type { Rol } from '../../main/taller/roles'
 import { cn } from '../lib/cn'
 import { candidatosDe, elegibles, elegir, elegirVarios, historial, type Eleccion, type Veredicto } from './eleccion'
@@ -62,7 +64,14 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
   // cuánto puede hacer sin preguntarte; se recuerda (por defecto, ediciones: dentro de su copia aislada no rompe nada tuyo)
   const [acceso, setAcceso] = useState<AccesoTarea>(() => { try { const v = localStorage.getItem('esme:taller:acceso'); return v === 'preguntar' || v === 'todo' ? v : 'ediciones' } catch { return 'ediciones' } })
   useEffect(() => { try { localStorage.setItem('esme:taller:acceso', acceso) } catch { /* sin almacenamiento */ } }, [acceso])
-  const regla = arena ? null : cuandoDe(cuando, Date.now())
+  // una plantilla de varios pasos elegida en la galería: puede correr como flujo (un relevo por paso, flujo.ts)
+  const [flujo, setFlujo] = useState<Plantilla | null>(null)
+  const [comoFlujo, setComoFlujo] = useState(true)
+  useEffect(() => { if (!texto.trim()) setFlujo(null) }, [texto])
+  const enFlujo = !!flujo && comoFlujo && !arena
+  const pasosFlujo = flujo ? relevosDeFlujo({ pasos: flujo.pasos ?? [], oficios: flujo.oficios }, ['·'], roles.map((r) => r.id)) : []
+  const flujoOk = flujoLanzable(pasosFlujo)
+  const regla = arena || enFlujo ? null : cuandoDe(cuando, Date.now())
   const auto = motor === AUTO
   const actual = auto ? undefined : instalados.find((m) => m.id === motor) ?? instalados[0]
 
@@ -120,6 +129,19 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
     const q = texto.trim()
     if (!q || enviando || !listo) return
     setEnviando(true)
+    if (enFlujo && flujo) {
+      const motorId = auto ? elegir(candidatos, pasado)?.motor : actual?.id
+      if (!motorId) { toast.error('Elige un motor (o deja «Automático» con alguno listo) para lanzar el flujo.'); setEnviando(false); return }
+      const relevos = relevosDeFlujo({ pasos: flujo.pasos ?? [], oficios: flujo.oficios }, [motorId], roles.map((r) => r.id))
+      const v = flujoLanzable(relevos)
+      if (!v.ok) { toast.error(v.motivo); setEnviando(false); return }
+      const nombre = flujo.titulo, motorNombre = instalados.find((m) => m.id === motorId)?.nombre ?? motorId
+      // el parlamento entero puede tardar horas: se lanza y su veredicto llega como aviso al acabar
+      void bridge.taller.parlamentar({ texto: q, carpeta, relevos, acceso }).then((fin) => avisarFlujo(nombre, fin))
+      toast(`Flujo en marcha: ${relevos.length} relevos`, { description: `${motorNombre} lleva cada paso con su oficio, en tu copia; el siguiente hereda la evidencia y el parche del anterior. Al final, el juez firma el acta.` })
+      setTexto(''); setFlujo(null); setEnviando(false)
+      return
+    }
     let peticiones: Peticion[]
     if (arena) {
       const id = nuevoId()
@@ -180,6 +202,7 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void empezar() } }}
             placeholder="Describe qué quieres. Por ejemplo: añade un modo oscuro a la página de ajustes, con sus tests."
             className="block w-full resize-none bg-transparent px-4 pt-3.5 pb-2 text-[14.5px] leading-[22px] text-texto outline-none placeholder:text-texto-3" />
+          {enFlujo && <PanelFlujo relevos={pasosFlujo} roles={roles} />}
           <div className="flex flex-wrap items-center gap-2 border-t border-linea px-3 py-2.5">
             <div role="radiogroup" aria-label="Motor" className="relative flex max-w-full overflow-x-auto rounded-full border border-linea bg-s1/70 p-0.5 [scrollbar-width:none]">
               {[{ id: AUTO, nombre: 'Automático' }, ...instalados].map((m) => {
@@ -198,7 +221,7 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
               <Oficios roles={roles} elegidos={oficios}
                 onCambiar={(n) => { setOficios(n); guardar('oficios', n) }} />
             )}
-            {!auto && !arena && (opciones === null ? <span className="h-8 w-40 animate-pulse rounded-2 bg-s2/70" aria-label="Leyendo los modelos del motor" />
+            {!auto && !arena && !enFlujo && (opciones === null ? <span className="h-8 w-40 animate-pulse rounded-2 bg-s2/70" aria-label="Leyendo los modelos del motor" />
               : opciones.filter((o) => o.id === 'model' || o.id === 'mode').map((o) => (
                 <SelectorOpcion key={o.id} o={o} valor={config[o.id]} onCambiar={(v) => cambiarOpcion(o.id, v)} className={o.id === 'model' ? 'max-w-[220px]' : 'max-w-[150px]'} />
               )))}
@@ -208,6 +231,14 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
                 arena ? 'aurora-borde border-transparent bg-s2 text-texto' : 'border-linea bg-s1/70 text-texto-2 hover:text-texto')}>
               <Swords className="size-3.5" strokeWidth={1.75} />Arena
             </button>
+            {flujo && (
+              <button type="button" role="switch" aria-checked={enFlujo} onClick={() => { if (enFlujo) setComoFlujo(false); else { setComoFlujo(true); setArena(false) } }}
+                title="Cada paso de la plantilla lo lleva un relevo con su oficio; el siguiente hereda la evidencia y el parche del anterior"
+                className={cn('inline-flex h-8 items-center gap-1.5 rounded-2 border px-2.5 text-[12.5px] transition-colors',
+                  enFlujo ? 'aurora-borde border-transparent bg-s2 text-texto' : 'border-linea bg-s1/70 text-texto-2 hover:text-texto')}>
+                <IWorkflow className="size-3.5" strokeWidth={1.75} />Flujo
+              </button>
+            )}
             <span className="inline-flex h-8 items-center rounded-2 border border-linea bg-s1/70 text-[12.5px]">
               <button type="button" onClick={() => void elegirCarpeta()} title={carpeta ?? 'Empieza en una carpeta nueva, vacía'}
                 className="inline-flex h-full items-center gap-1.5 rounded-l-2 pr-2 pl-2.5 text-texto-2 hover:text-texto">
@@ -219,9 +250,9 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
                   className="grid h-full w-7 place-items-center rounded-r-2 border-l border-linea text-texto-3 hover:text-texto"><X className="size-3" /></button>
               )}
             </span>
-            <button type="button" onClick={() => void empezar()} disabled={!texto.trim() || enviando || !listo || (arena && rivales.length < 2)}
+            <button type="button" onClick={() => void empezar()} disabled={!texto.trim() || enviando || !listo || (arena && rivales.length < 2) || (enFlujo && !flujoOk.ok)}
               className="cta-viva ml-auto inline-flex h-8 items-center gap-2 rounded-full bg-acento px-4 text-[13px] font-medium text-sobre-acento transition-opacity disabled:opacity-35">
-              {enviando ? 'Montando…' : !listo ? 'Leyendo los motores…' : arena ? `Empezar arena de ${rivales.length}` : regla ? 'Programar' : 'Empezar'}
+              {enviando ? 'Montando…' : !listo ? 'Leyendo los motores…' : arena ? `Empezar arena de ${rivales.length}` : enFlujo ? `Empezar flujo de ${pasosFlujo.length}` : regla ? 'Programar' : 'Empezar'}
               <kbd className="inline-flex items-center gap-0.5 font-sans text-[11px] opacity-70">Ctrl<CornerDownLeft className="size-3" /></kbd>
             </button>
           </div>
@@ -247,7 +278,7 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
               <span className="text-texto-3">de tu rumbo</span>
             </div>
           )}
-          {!arena && (
+          {!arena && !enFlujo && (
             <div role="radiogroup" aria-label="Cuándo" className="flex flex-wrap items-center gap-1.5 border-t border-linea px-3 py-2 text-[12.5px]">
               <CalendarClock className="mr-0.5 size-3.5 text-texto-3" strokeWidth={1.5} aria-hidden />
               {([['ahora', 'Ahora'], ['noche', 'Esta noche'], ['manana', 'Mañana a las 9'], ['diaria', 'Cada día']] as const).map(([m, nombre]) => (
@@ -292,7 +323,7 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
         </div>
       )}
 
-      {instalados.length > 0 && !texto && <Recetas onElegir={setTexto} />}
+      {instalados.length > 0 && !texto && <Recetas onElegir={(p) => { setTexto(p.encargo); setFlujo((p.pasos?.length ?? 0) >= 2 ? p : null); setComoFlujo(true) }} />}
       {instalados.length > 0 && !texto && repetidas.length > 0 && (
         <section aria-label="Tareas repetidas" className="mt-5 grid gap-3">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -303,7 +334,7 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
             <EditorSkill r={receta} onCerrar={() => setReceta(null)} />
           ) : (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2.5">
-              {repetidas.map((r) => <TarjetaRepeticion key={`${r.titulo}-${r.desde}`} r={r} onElegir={setTexto} onConvertir={setReceta} />)}
+              {repetidas.map((r) => <TarjetaRepeticion key={`${r.titulo}-${r.desde}`} r={r} onElegir={(t) => { setTexto(t); setFlujo(null) }} onConvertir={setReceta} />)}
             </div>
           )}
         </section>
@@ -346,12 +377,18 @@ export function NuevaTarea({ motores, noListos = new Map(), fallos = [], onCrear
 const ICONOS_RECETA: Record<string, LucideIcon> = { LayoutTemplate: ILayoutTemplate, Rocket: IRocket, Plus: IPlus, FlaskConical: IFlaskConical, Wrench: IWrench, ScanSearch: IScanSearch, ShieldCheck: IShieldCheck, PackageCheck: IPackageCheck, BookOpen: IBookOpen, FileText: IFileText, Shuffle: IShuffle, Languages: ILanguages, Gauge: IGauge, Accessibility: IAccessibility, Sparkles: ISparkles, Server: IServer, Binary: IBinary, Smartphone: ISmartphone, Apple: IApple, MonitorSmartphone: IMonitorSmartphone, Globe: IGlobe, Network: INetwork, BarChart3: IBarChart3, LayoutDashboard: ILayoutDashboard, FolderSync: IFolderSync, GitBranch: IGitBranch, Container: IContainer, CloudUpload: ICloudUpload, Palette: IPalette, PenLine: IPenLine, Workflow: IWorkflow }
 
 // La galería de recetas (taller/recetas.ts): encargos completos por categoría; al elegir uno, su texto queda en la caja.
-function Recetas({ onElegir }: { onElegir(texto: string): void }) {
+/** El final de un flujo: el veredicto del juez con su frase, o por qué no arrancó. */
+function avisarFlujo(nombre: string, fin: ResultadoParlamento) {
+  if ('ok' in fin) { toast.error(`${nombre}: no arrancó`, { description: fin.error }); return }
+  const aviso = fin.estado === 'probado' ? toast.success : fin.estado === 'tumbado' ? toast.error : toast
+  aviso(`${nombre}: ${fin.estado}`, { description: fin.frase })
+}
+
+function Recetas({ onElegir }: { onElegir(p: Plantilla): void }) {
   // Plantillas del Taller (main/taller/plantillas.ts): casa + las tuyas (plantillas.json). Puedes crear las tuyas aquí
-  // mismo —se escriben en plantillas.json— o borrarlas; las de casa no se tocan. En la web (sin puente) caen a las de casa.
-  const casa = (): Plantilla[] => RECETAS.map((r, i) => ({ id: `casa-${i}`, titulo: r.titulo, categoria: r.categoria, icono: r.icono, descripcion: r.descripcion, encargo: r.encargo, fuente: 'casa' as const }))
-  const [plantillas, setPlantillas] = useState<Plantilla[]>(casa)
-  const recargar = () => bridge.taller.plantillas().then((ps) => setPlantillas(ps.length ? ps : casa())).catch(() => {})
+  // mismo —se escriben en plantillas.json— o borrarlas; las de casa no se tocan. En la web (sin puente) se ven las de casa.
+  const [plantillas, setPlantillas] = useState<Plantilla[]>(PLANTILLAS_CASA)
+  const recargar = () => bridge.taller.plantillas().then((ps) => setPlantillas(ps.length ? ps : PLANTILLAS_CASA)).catch(() => {})
   useEffect(() => { void recargar() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
   const cats = useMemo(() => ['Todas', ...Array.from(new Set(plantillas.map((p) => p.categoria)))], [plantillas])
   const [cat, setCat] = useState('Todas')
@@ -374,7 +411,7 @@ function Recetas({ onElegir }: { onElegir(texto: string): void }) {
         {vistas.map((p) => {
           const Icono = ICONOS_RECETA[p.icono] ?? ISparkles
           return (
-            <div key={p.id} role="button" tabIndex={0} onClick={() => onElegir(p.encargo)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onElegir(p.encargo) } }}
+            <div key={p.id} role="button" tabIndex={0} onClick={() => onElegir(p)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onElegir(p) } }}
               className="group relative grid cursor-pointer content-start gap-1.5 rounded-3 border border-linea/70 bg-s1/40 p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-linea-fuerte hover:bg-s2/50">
               <span className="flex items-center gap-2">
                 <span className="grid size-7 place-items-center rounded-2 bg-acento-velo text-acento"><Icono className="size-4" strokeWidth={1.75} /></span>

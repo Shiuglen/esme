@@ -123,6 +123,23 @@ describe('Taller', () => {
       expect(segundo?.arena).toBe('parlamento')
     })
 
+    it('un flujo: cada relevo recibe SU etapa, la evidencia sigue cosida y el juez firma igual', async () => {
+      const s = sesiones(async (o, _texto, n) => {
+        if (n === 2) o.alEvento({ tipo: 'herramienta', id: 'p1', clase: 'execute', detalle: 'npm test', estado: 'completed' })
+        o.alEvento({ tipo: 'texto', texto: ['Encaja en reloj.ts.', 'Lo implementé.', 'Las pruebas pasan.'][n] ?? '' })
+        return 'end_turn'
+      })
+      const taller = crear(s.abrir, copiasFalsas().ops, { resolverMotor: resolverBien })
+      const etapas = ['Explorar: dónde encaja', 'Construir: implementarlo', 'Probar: correr los tests']
+      const fin = await taller.parlamentar({ texto: 'Arregla el reloj', carpeta: '/proyecto', relevos: rr.map((r, i) => ({ ...r, etapa: etapas[i] })) })
+      expect(fin.estado).toBe('probado')
+      const textos = fin.ids.map((id) => taller.lista().find((x) => x.id === id)?.texto ?? '')
+      expect(textos[0]).toContain('Tu etapa en este flujo (1 de 3): Explorar: dónde encaja')
+      expect(textos[1]).toContain('Tu etapa en este flujo (2 de 3): Construir: implementarlo')
+      expect(textos[1]).toContain('Encaja en reloj.ts.')
+      expect(textos[2]).toContain('Es la última etapa')
+    })
+
     it('un relevo que se niega tumba el parlamento y el comité no rellena el hueco', async () => {
       let llamada = 0
       const s = sesiones(async (o) => { if (++llamada === 2) o.alEvento({ tipo: 'texto', texto: 'No puedo hacer eso.' }); return 'end_turn' })
